@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# Update your DNS server
+# Based on the script by charles duffy from the OpenVPN mailing list
+# http://openvpn.net/archive/openvpn-users/2005-08/msg00146.html
+#
+
+
+REPLACEHOSTNAME=true          ## Would you like your hostname replaced?
+DNSSERVER="10.8.0.1"          ## your DNS server
+FWDZONE="vms.canfar.vpn"      ## forward resolution zone (ie. vpn.company.com)
+REVZONE="0.8.10.in-addr.arpa" ## reverse resolution zone (ie. "1.0.0.in-addr.arpa")
+NSUOPTS=""                    ## extra arguments for nsupdate (ie. "-k /path/to/key")
+
+if [ -n "$DEBUG" ] ; then
+	NSUOPTS="$NSUOPTS -d"
+	set -x
+fi
+
+#Only execute if we can contact the DNS server
+NUMPINGS=0
+PINGLIMIT=100
+until ping -c 1 ${DNSSERVER} >/dev/null 2>&1; do
+    sleep 1
+    let NUM++
+    if [ "$NUMPINGS" -ge "$PINGLIMIT" ] ;then  return 1 ; fi
+done
+
+
+reverseRecord() {
+	echo $1 | sed -re 's/^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$/\4.\3.\2.\1.in-addr.arpa./'
+}
+
+addRecord() {
+	local ADDRESS="$1"
+	local NAME="$2"
+	local CN=$2.$FWDZONE
+	local TEMPFILE=$(mktemp /tmp/nsupdate.XXXXXX)
+	local REVERSE=$(reverseRecord $ADDRESS)
+
+	cat >$TEMPFILE <<EOF
+server $DNSSERVER
+zone $FWDZONE
+update delete ${CN}. A
+update add ${CN}. 3600 A $ADDRESS
+send
+EOF
+	if [ -n "$DEBUG" ] ; then cat $TEMPFILE; fi
+	nsupdate $NSUOPTS $TEMPFILE
+	cat >$TEMPFILE <<EOF
+server $DNSSERVER
+zone $REVZONE
+update delete $REVERSE PTR
+update add $REVERSE 3600 PTR $CN.
+send
+EOF
+	if [ -n "$DEBUG" ] ; then cat $TEMPFILE; fi
+	nsupdate $NSUOPTS $TEMPFILE
+	rm -f $TEMPFILE
+}
+
+removeRecord() {
+	local ADDRESS="$1"
+	local CN="$2"
+	local TEMPFILE=$(mktemp /tmp/nsupdate.XXXXXX)
+	local REVERSE=$(reverseRecord $ADDRESS)
+
+	cat >$TEMPFILE <<EOF
+server $DNSSERVER
+zone $FWDZONE
+update delete ${CN}. A
+send
+EOF
+	if [ -n "$DEBUG" ] ; then cat $TEMPFILE; fi
+	nsupdate $NSUOPTS $TEMPFILE
+	cat >$TEMPFILE <<EOF
+server $DNSSERVER
+zone $REVZONE
+update delete $REVERSE PTR
+send
+EOF
+	if [ -n "$DEBUG" ] ; then cat $TEMPFILE; fi
+	nsupdate $NSUOPTS $TEMPFILE
+	rm -f $TEMPFILE
+}
+
+getCN() {
+	local IPADDR=$1
+	local FULLNAME=$(dig +noadditional +noqr +noquestion +nocmd +noauthority +nostats +nocomments -x ${IPADDR} | gawk '{print $5}')
+	if [ -n "$FULLNAME" ] ; then
+		echo $FULLNAME | sed -re 's/\.$//'
+		return 0
+	else
+		return 1
+	fi
+}
+
+OPERATION=$1
+ADDRESS=$2
+HOST=$3
+REVERSE=$(reverseRecord $ADDRESS)
+
+case "$OPERATION" in
+	add|update)
+		addRecord "$ADDRESS" "$HOST"
+                hostname $HOST
+		;;
+	delete)
+		CN=$(getCN "$ADDRESS")
+		removeRecord "$ADDRESS" "$CN"
+		;;
+	*)
+		echo "ERROR: don't know operation \"$OPERATION\"."
+		exit 1
+esac
+
