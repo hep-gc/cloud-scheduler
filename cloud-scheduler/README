@@ -1,0 +1,9 @@
+This directory contains the developing cloud scheduler. 
+
+Cloud management functions and structures are kept in the cloud_management.py file. Cloud scheduler functionality is kept in the cloud_scheduler.py file.
+
+The sample_cloud file is a configuration file of the format currently being processed by the cloud scheduler. The file contains an explanation of its data formatting.
+
+For more documentation on the cloud scheduler, please refer to the following wiki pages:
+
+https://wiki.gridx1.ca/twiki/bin/view/Main/VirtualizationProjectHome#Cloud_Scheduling

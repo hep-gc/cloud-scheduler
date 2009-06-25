@@ -1,0 +1,34 @@
+# This is a sample config file for phase1 of the cloud scheduler
+# To comment lines, add a '#' to beginning of the line (note that the
+#    # MUST be the first character of the line)
+#
+# This configuration file contains clusters that make up a cloud.
+# Format (no whitespace at beginning of lines!):
+# 
+# name/network_IP/vm_slots/cpu_cores/storageGB/memoryMB/x86/x86_64/network_public/network_private
+#
+# Explanation:
+#  name 	- a colloqial name for the cluster
+#  network_IP	- a publicly accesible IP address for the cluster headnode
+#  vm_slots	- the max. number of VMs that can be run on the cluster at any one time
+#  cpu_cores	- the number of CPU cores per machine on the cluster worker nodes*
+#  storageGB	- the amount of storage (in GB) available on the cluster worker nodes*
+#  memoryMB	- the amount of memory (in MB) available on the cluster worker nodes*
+#  x86		- a flag for whether or not the cluster has x86 processors (yes/no)
+#  x86_64	- a flag for whether or not the cluster has x86_64 processors (yes/no)
+#  network_pub	- a flag for whether or not the cluster has public IP address space for VMs (yes/no)
+#  network_priv	- a flag for whether or not the cluster has private IP address space for VMs (yes/no)
+#
+# *: These fields represent the specs of cluster worker nodes. If the cluster has heterogeneous worker 
+#    nodes, use the lowest values possible (from any worker node) to give performance guarantees.
+#    
+#
+# Example:
+# gridcn/142.104.111.222/10/4/100/1024/yes/no/yes/yes
+#
+
+# clusterX (at 111.222.333.444) has 5 VM slots, and has worker nodes with quadcore CPUs, with at least 50
+# GBs of storage and 1024 MBs of RAM. clusterX has x86, but not x86_64 processors, and has private IP space
+# avaible for VM use.
+
+clusterX/111.222.333.444/5/4/50/1024/yes/no/no/yes
