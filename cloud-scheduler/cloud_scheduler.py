@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+## GIT test for commit on new branch
+
 ## Auth: Duncan Penfold-Brown. 6/15/2009
 
 ##
