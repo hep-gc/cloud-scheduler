@@ -22,34 +22,7 @@ import cloud_management
 ## Class Definitions
 ##
 
-
-# Move to cloud_management?
-class ResourcePool:
-    
-    # Instance variables    
-    name = "default"
-    resources = []
-    
-    # Instance methods
-
-    # Constructor
-    def __init__(self, name):
-        print "dbg - New ResourcePool " + name+ " created"
-	self.name = name
-
-    # Add a cluster resource to the pool's resource list
-    def add_resource(self, cluster):
-        self.resources.append(cluster)
-
-    # Print the name+address of every cluster in the resource pool
-    def print_pool(self, ):
-        print "Resource pool " + self.name + ":"
-        if len(self.resources) == 0:
-	    print "Pool is empty..."
-	else:
-	    for cluster in self.resources:
-	        print "\t" + cluster.name + ", " + cluster.network_address
-	    
+    # See cloud_management.py
 
 ##
 ## Functions
@@ -66,7 +39,7 @@ def main(argv = sys.argv):
     cloud_conffile = argv[1]
 
     # Create a resource pool
-    cloud_resources = ResourcePool("Testpool")
+    cloud_resources = cloud_management.ResourcePool("Testpool")
 
     # Read the cloud config file into a resource pool
     if readCloudConfig(cloud_conffile, cloud_resources):

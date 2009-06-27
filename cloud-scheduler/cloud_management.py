@@ -16,6 +16,41 @@
 ##     e.g.:    from cloud_management import  NimbusCluster
 ##
 
+
+# A simple class for storing a list of Cluster type resources (or Cluster sub-
+# classes). Consists of a name and a list.
+
+class ResourcePool:
+    
+    # Instance variables    
+    name = "default"
+    resources = []
+    
+    # Instance methods
+
+    # Constructor
+    def __init__(self, name):
+        print "dbg - New ResourcePool " + name+ " created"
+	self.name = name
+
+    # Add a cluster resource to the pool's resource list
+    def add_resource(self, cluster):
+        self.resources.append(cluster)
+
+    # Print the name+address of every cluster in the resource pool
+    def print_pool(self, ):
+        print "Resource pool " + self.name + ":"
+        if len(self.resources) == 0:
+	    print "Pool is empty..."
+	else:
+	    for cluster in self.resources:
+	        print "\t" + cluster.name + "\t" + cluster.network_address
+	    
+
+
+# The Cluster superclass, containing all general cluster instance variables
+# and Cluster interface methods (stubs for implementation in subclasses).
+
 class Cluster:
    
     # Instance variables (preset to defaults)
@@ -62,11 +97,11 @@ class Cluster:
         
 
     # Workspace manipulation methods 
-    def workspace_create(self):
+    def vm_create(self):
         print 'This method should be defined by all subclasses of CloudManager\n'
         assert 0, 'Must define workspace_create'
 
-    def workspace_destroy(self):
+    def vm_destroy(self):
         print 'This method should be defined by all subclasses of CloudManager\n'
         assert 0, 'Must define workspace_destroy'
 
@@ -88,13 +123,13 @@ class NimbusCluster(Cluster):
         print "dbg - New NimbusCluster created"
 
 
-    def workspace_create(self):
+    def vm_create(self):
         print 'dbg - Nimbus cloud create command'
 	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
           control command with the "create" option'
 	
 
-    def workspace_destroy(self):
+    def vm_destroy(self):
         print 'dbg - Nimbus cloud destroy command'
 	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
           control command with the "destroy" option'
