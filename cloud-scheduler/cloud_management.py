@@ -17,6 +17,15 @@
 ##
 
 
+##
+## Imports
+##
+
+import xml.dom.ext
+import xml.dom.minidom
+import nimbus_xml
+
+
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
 
@@ -105,7 +114,7 @@ class Cluster:
         print 'This method should be defined by all subclasses of CloudManager\n'
         assert 0, 'Must define workspace_destroy'
 
-    ## More potential functions: workspace_move, workspace_pause, workspace_resume, etc.
+    ## More potential functions: vm_move, vm_pause, vm_resume, etc.
 
 
 
@@ -127,11 +136,16 @@ class NimbusCluster(Cluster):
         print 'dbg - Nimbus cloud create command'
 	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
           control command with the "create" option'
+
+        # TODO: fill in call with passed values from vm_create
+        # Creates a workspace metadata xml file from passed parameters
+        nimbus_xml.ws_metadata_factory("name", "network", "cpu_arch", "vm_location")
 	
 
     def vm_destroy(self):
         print 'dbg - Nimbus cloud destroy command'
 	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
           control command with the "destroy" option'
+
 
 
