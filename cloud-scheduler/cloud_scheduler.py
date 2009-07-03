@@ -6,45 +6,40 @@
 ## The main body for the cloud scheduler, that encapsulates and organizes
 ## all cloud scheduler functionality.
 ##
-
-usage = """Usage: cloud_scheduler CLOUD_CONFIG"""
-
-
+## Using optparse for command line options (http://docs.python.org/library/optparse.html)
 ##
+
+
 ## Imports
-##
 
 import sys
 import getopt
+from optparse import OptionParser
 import cloud_management
 
-##
-## Class Definitions
-##
 
-    # See cloud_management.py
+## GLOBAL VARIABLES
 
-##
+usage_str = "cloud_scheduler [-c FILE | --cluster-config FILE]"
+version_str = "Cloud Scheduler v 0.1"
+
 ## Functions
-##
 
-def main(argv = sys.argv):
+def main():
 
-    # Check cmdline arguments (cloud config, )
-    if len(argv) < 2:
-        print usage
-        print "Error in command-line parameters. Exiting..."
-        sys.exit(1)
-    
-    cloud_conffile = argv[1]
+    # Create a parser and process commandline arguments
+    parser = OptionParser(usage=usage_str, version=version_str)
+    set_options(parser)
+    (options, args) = parser.parse_args()
 
     # Create a resource pool
     cloud_resources = cloud_management.ResourcePool("Testpool")
 
-    # Read the cloud config file into a resource pool
-    if readCloudConfig(cloud_conffile, cloud_resources):
-        print "Reading cloud configuration file failed. Exiting..."
-        sys.exit(1)
+    # If the cluster config options was passed, read in the config file
+    if options.cloud_conffile:
+        if readCloudConfig(options.cloud_conffile, cloud_resources):
+	    print "Reading cloud configuration file failed. Exiting..."
+	    sys.exit(1)
 
     # Print the resource pool
     cloud_resources.print_pool()
@@ -52,6 +47,18 @@ def main(argv = sys.argv):
     print "dbg - tmp. done..."
 
 
+# Sets the command-line options for a passed in OptionParser object (via optparse)
+def set_options(parser):
+
+    # Option attributes: action, type, dest, help. See optparse documentation.
+    # Defaults: action=store, type=string, dest=[name of the option] help=none
+    parser.add_option("-c", "--cloud-config", dest="cloud_conffile", metavar="FILE", \
+      help="Designate a config file from which cloud cluster information is obtained")
+
+
+# Reads in a cmdline passed configuration file containing cloud cluster information
+# Stores cluster information in the ResourcePool parameter rsrc_pool
+# (see the sample_cloud example configuration file for more information)
 def readCloudConfig(config_file, rsrc_pool):
 
     print "Attempting to read cloud configuration file: " + config_file
