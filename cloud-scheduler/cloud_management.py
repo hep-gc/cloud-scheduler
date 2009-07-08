@@ -21,10 +21,22 @@
 ## Imports
 ##
 
-import xml.dom.ext
-import xml.dom.minidom
+from subprocess import Popen
 import nimbus_xml
 
+
+##
+## GLOBALS
+##
+
+# Log files
+# TODO: Resolve: separate log files for each cluster, each cluster class, or 
+#       single log file? How do we atomically write to one log? A log thread
+#       with a queue? Log messages are written to tmp handles, which are queued,
+#       and then closed by the write thread after writing?
+#
+nimbus_logfile = "nimbus.log"
+ws_log = open(nimbus_logfile, "a")
 
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
@@ -123,29 +135,99 @@ class Cluster:
 
 class NimbusCluster(Cluster):
 
-    # NimbusCluster specific instance variables
+    ## NimbusCluster specific instance variables
+    
+    # A list containing all deployed virtual machines (epr_files)
+    vms = []
 
-    # NimbusCluster specific instance methods
+    ## NimbusCluster specific instance methods
     
     # Overridden constructor
     def __init__(self, ):
         print "dbg - New NimbusCluster created"
 
 
-    def vm_create(self):
-        print 'dbg - Nimbus cloud create command'
-	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
-          control command with the "create" option'
+    def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation,\
+      vm_duration, vm_mem, vm_targetstate):
+        
+	print "dbg - Nimbus cloud create command"
 
-        # TODO: fill in call with passed values from vm_create
         # Creates a workspace metadata xml file from passed parameters
-        nimbus_xml.ws_metadata_factory("name", "network", "cpu_arch", "vm_location")
+        vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
+	  vm_cpuarch, vm_imagelocation)
 	
+	# Set a timestamp for VM creation
+	now = datetime.datetime.now()
+	
+	# Create an EPR file name (unique with timestamp)
+	vm_epr = "nimbusVM_" + now.isoformat() + ".epr"
 
+        # Create the workspace command list (private method)
+	ws_cmd = vmcreate_factory(vm_epr, vm_metadata, vm_duration, vm_mem, vm_targetstate)
+	
+	# Prep log 
+        ws_log.write("-"*20 + "NIMBUS" + "-"*54 + "\n")
+        ws_log.write( str(now) )
+        ws_log.write(":\n")
+
+	# Execute a no-wait workspace command with the above cmd list.
+	# Returns immediately to parent program. Subprocess continues to execute, writing to log.
+	# stdin, stdout, and stderr set the filehandles for streams. PIPE opens a pipe to stream
+	# (PIPE streams are accessed via popen_object.stdin/out/err)
+	# Can also specify and filehandle or file object, or None (default).
+	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=ws_log, stderr=ws_log)
+
+	# Add the newly created VM to the cluster list
+	self.vms.append(vm_epr)
+
+	# TODO: Change the cluster variables to reflect resources allocated to this vm.
+	#       Maintain as-correct-as-possible internal information at all times.
+
+    
     def vm_destroy(self):
         print 'dbg - Nimbus cloud destroy command'
 	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
           control command with the "destroy" option'
+
+
+    ## NimbusCluster private methods
+
+    # The following _factory methods take the given parameters and return a list 
+    # representing the corresponding workspace command.
+
+    def vmcreate_factory(self, epr_file, metadata_file, duration, mem, \ 
+      deploy_state, exit_state):
+
+        ws_list = ["workspace", 
+           "-z", "none",
+           "--poll-delay", "200",
+           "--deploy",
+           "--file", epr_file,
+           "--metadata", metadata_file,
+           "--trash-at-shutdown",
+           "-s", "https://" + self.network_address  + "8443/wsrf/services/WorkspaceFactoryService",
+           "--deploy-duration", duration,    # minutes
+           "--deploy-mem", mem,              # megabytes
+           "--deploy-state", deploy_state,   # Running, Paused, etc.
+           "--exit-state", "Running",        # Running, Paused, Propagated - hard set.
+           "--dryrun",
+          ]
+
+        # Return the workspace command list
+	return ws_list
+
+    def vmdestroy_factory(self, epr_file):
+	ws_list = [ "workspace", "-e", epr_file, "--destroy"]
+	return ws_list
+
+    def vmstatus_factory(self, epr_file):
+	ws_list = [ "workspace", "-e", epr_file, "--rpquery"]
+	return ws_list
+
+
+
+
+
 
 
 
