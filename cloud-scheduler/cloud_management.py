@@ -40,6 +40,7 @@ import nimbus_xml
 nimbus_logfile = "nimbus.log"
 ws_log = open(nimbus_logfile, "a")
 
+
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
 
@@ -67,7 +68,8 @@ class ResourcePool:
 	    print "Pool is empty..."
 	else:
 	    for cluster in self.resources:
-	        print "\t" + cluster.name + "\t" + cluster.network_address
+	        print "\t" + cluster.name + "\t" + cluster.cloud_type + "\t" + \
+		  cluster.network_address
 	    
 
 
@@ -79,8 +81,9 @@ class Cluster:
     # Instance variables (preset to defaults)
     # TODO: Add storage for cluster type ("NIMBUS", "OPENNEBULA", etc.)
     # TODO: Change network fields to lists. Add fields discussed in clouddev meetings
-    name            = 'def_cluster'
+    name            = 'default-cluster'
     network_address = '0.0.0.0'
+    cloud_type      = 'default-type'
     vm_slots        = 0
     cpu_cores       = 0
     storageGB       = 0
@@ -98,7 +101,7 @@ class Cluster:
 
     # Set Cluster attributes from a parameter list
     def populate(self, attr_list):
-        (self.name, self.network_address, self.vm_slots, self.cpu_cores, \
+        (self.name, self.network_address, self.cloud_type, self.vm_slots, self.cpu_cores, \
           self.storageGB, self.memoryMB, self.x86, self.x86_64, \
           self.network_public, self.network_private) = attr_list;
         
@@ -110,6 +113,7 @@ class Cluster:
         print "-" * 80
         print "Name:\t\t%s" % (self.name)
         print "Address:\t%s" % (self.network_address)
+	print "Type:\t\t%s" % (self.cloud_type)
         print "VM Slots:\t%s" % (self.vm_slots)
         print "CPU Cores:\t%s" % (self.cpu_cores)
         print "Storage:\t%s" % (self.storageGB)
@@ -207,8 +211,10 @@ class NimbusCluster(Cluster):
 
 	# TODO: Change the cluster variables to reflect resources allocated to this vm.
 	#       Maintain as-correct-as-possible internal information at all times.
-	self.vm_slots--
-	self.memoryMB -= vm_mem       # TODO: Specify for which node in the list of cluster worker nodes.
+	self.vm_slots = self.vm_slots - 1
+	self.memoryMB = self.memoryMB - vm_mem       
+	# TODO: If clusters have worker-node granular information, subtract memory from
+	#       a specific node.
 
     
     def vm_destroy(self, vm_id):
@@ -227,7 +233,7 @@ class NimbusCluster(Cluster):
     # The following _factory methods take the given parameters and return a list 
     # representing the corresponding workspace command.
 
-    def vmcreate_factory(self, epr_file, metadata_file, duration, mem, \ 
+    def vmcreate_factory(self, epr_file, metadata_file, duration, mem, \
       deploy_state):
 
         ws_list = ["workspace", 

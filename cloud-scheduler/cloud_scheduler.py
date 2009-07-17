@@ -79,9 +79,19 @@ def readCloudConfig(config_file, rsrc_pool):
         cluster_attr = line.split('/') 
         print "dbg - %s" % (cluster_attr)
 
-        # Currently working with only general clusters. Support for checking
-        # which type of cluster to create coming in future (add as a config file parameter: Nimbus, OpenNebula...)
-        new_cluster = cloud_management.Cluster()
+        # Create a new cluster according to cloud_type
+	# TODO: A more dynamic format would be helpful here - current solution is hardcoded
+        if "Nimbus" in cluster_attr:
+	    print "dbg - found new Nimbus cluster"
+	    new_cluster = cloud_management.NimbusCluster()
+	elif "OpenNebula" in cluster_attr:
+	    print "dbg - found new OpenNebula cluster"
+	    new_cluster = cloud_management.Cluster()   # TODO: Use superclass for now
+	elif "Eucalyptus" in cluster_attr:
+	    print "dbg - found new Eucalyptus cluster"
+	    new_cluster = cloud_management.Cluster()   # TODO: Use superclass for now
+	
+	# Use superclass methods for population and print
         new_cluster.populate(cluster_attr)
         new_cluster.print_cluster()
         
