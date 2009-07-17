@@ -41,6 +41,9 @@ def main():
 	    print "Reading cloud configuration file failed. Exiting..."
 	    sys.exit(1)
 
+    # TODO: Add code to query an MDS to get initial cluster/cloud information
+    #       Should spec. the MDS address on command line, with tag?
+
     # Print the resource pool
     cloud_resources.print_pool()
 

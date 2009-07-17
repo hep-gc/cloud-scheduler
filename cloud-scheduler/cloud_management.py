@@ -35,6 +35,8 @@ import nimbus_xml
 #       with a queue? Log messages are written to tmp handles, which are queued,
 #       and then closed by the write thread after writing?
 #
+# NOTE: Use python's log modules. Investigate.
+#  
 nimbus_logfile = "nimbus.log"
 ws_log = open(nimbus_logfile, "a")
 
@@ -75,6 +77,8 @@ class ResourcePool:
 class Cluster:
    
     # Instance variables (preset to defaults)
+    # TODO: Add storage for cluster type ("NIMBUS", "OPENNEBULA", etc.)
+    # TODO: Change network fields to lists. Add fields discussed in clouddev meetings
     name            = 'def_cluster'
     network_address = '0.0.0.0'
     vm_slots        = 0
@@ -117,15 +121,32 @@ class Cluster:
         print "-" * 80
         
 
-    # Workspace manipulation methods 
-    def vm_create(self):
-        print 'This method should be defined by all subclasses of CloudManager\n'
+    # Workspace manipulation methods
+    #-!------------------------------------------------------------------------
+    # NOTE: In implementing subclasses of Cluster, the following method prototypes
+    #       should be used (standardize on these parameters)
+    #-!------------------------------------------------------------------------
+
+    # Note: vm_id is the identifier for a VM, used to query or change an already
+    #       created VM. vm_id will be a different entity based on the subclass's
+    #       cloud software. EG:
+    #       - Nimbus vm_ids are epr files
+    #       - OpenNebula (and Eucalyptus?) vm_ids are names/numbers
+    # TODO: Explain all params
+    
+    def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, \
+      vm_mem):
+        print 'This method should be defined by all subclasses of Cluster\n'
         assert 0, 'Must define workspace_create'
 
-    def vm_destroy(self):
-        print 'This method should be defined by all subclasses of CloudManager\n'
+    def vm_destroy(self, vm_id):
+        print 'This method should be defined by all subclasses of Cluster\n'
         assert 0, 'Must define workspace_destroy'
-
+    
+    def vm_poll(self, vm_id):
+        print 'This method should be defined by all subclasses of Cluster\n'
+        assert 0, 'Must define workspace_poll'
+        
     ## More potential functions: vm_move, vm_pause, vm_resume, etc.
 
 
@@ -136,6 +157,10 @@ class Cluster:
 class NimbusCluster(Cluster):
 
     ## NimbusCluster specific instance variables
+    
+    # Global Nimbus command variables
+    VM_DURATION = 1000
+    VM_TARGETSTATE = "Running"
     
     # A list containing all deployed virtual machines (epr_files)
     vms = []
@@ -148,7 +173,7 @@ class NimbusCluster(Cluster):
 
 
     def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation,\
-      vm_duration, vm_mem, vm_targetstate):
+      vm_mem):
         
 	print "dbg - Nimbus cloud create command"
 
@@ -162,8 +187,8 @@ class NimbusCluster(Cluster):
 	# Create an EPR file name (unique with timestamp)
 	vm_epr = "nimbusVM_" + now.isoformat() + ".epr"
 
-        # Create the workspace command list (private method)
-	ws_cmd = vmcreate_factory(vm_epr, vm_metadata, vm_duration, vm_mem, vm_targetstate)
+        # Create the workspace command as a list (private method)
+	ws_cmd = vmcreate_factory(vm_epr, vm_metadata, VM_DURATION, vm_mem, VM_TARGETSTATE)
 	
 	# Prep log 
         ws_log.write("-"*20 + "NIMBUS" + "-"*54 + "\n")
@@ -182,12 +207,19 @@ class NimbusCluster(Cluster):
 
 	# TODO: Change the cluster variables to reflect resources allocated to this vm.
 	#       Maintain as-correct-as-possible internal information at all times.
+	self.vm_slots--
+	self.memoryMB -= vm_mem       # TODO: Specify for which node in the list of cluster worker nodes.
 
     
-    def vm_destroy(self):
+    def vm_destroy(self, vm_id):
         print 'dbg - Nimbus cloud destroy command'
 	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
           control command with the "destroy" option'
+    
+    def vm_poll(self, vm_id):
+        print 'dbg - Nimbus cloud poll command'
+	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
+          control command with the "rpquery" option'
 
 
     ## NimbusCluster private methods
@@ -196,7 +228,7 @@ class NimbusCluster(Cluster):
     # representing the corresponding workspace command.
 
     def vmcreate_factory(self, epr_file, metadata_file, duration, mem, \ 
-      deploy_state, exit_state):
+      deploy_state):
 
         ws_list = ["workspace", 
            "-z", "none",
@@ -210,7 +242,7 @@ class NimbusCluster(Cluster):
            "--deploy-mem", mem,              # megabytes
            "--deploy-state", deploy_state,   # Running, Paused, etc.
            "--exit-state", "Running",        # Running, Paused, Propagated - hard set.
-           "--dryrun",
+           "--dryrun",                       # TODO: Remove dryrun tag for full vm creation
           ]
 
         # Return the workspace command list
@@ -220,7 +252,7 @@ class NimbusCluster(Cluster):
 	ws_list = [ "workspace", "-e", epr_file, "--destroy"]
 	return ws_list
 
-    def vmstatus_factory(self, epr_file):
+    def vmpoll_factory(self, epr_file):
 	ws_list = [ "workspace", "-e", epr_file, "--rpquery"]
 	return ws_list
 
