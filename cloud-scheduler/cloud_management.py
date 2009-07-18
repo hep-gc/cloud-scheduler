@@ -2,6 +2,7 @@
 
 ## Auth: Duncan Penfold-Brown. 6/15/2009.
 
+## CLOUD MANAGEMENT
 ##
 ## The Cluster superclass provides the basic structure for cluster information,
 ## and provides the framework (interface) for cloud management functionality.
@@ -22,24 +23,29 @@
 ##
 
 from subprocess import Popen
+import logging
+import string
 import nimbus_xml
-
 
 ##
 ## GLOBALS
 ##
 
-# Log files
-# TODO: Resolve: separate log files for each cluster, each cluster class, or 
-#       single log file? How do we atomically write to one log? A log thread
-#       with a queue? Log messages are written to tmp handles, which are queued,
-#       and then closed by the write thread after writing?
-#
-# NOTE: Use python's log modules. Investigate.
-#  
-nimbus_logfile = "nimbus.log"
-ws_log = open(nimbus_logfile, "a")
+## Log files
+# TODO: Consider logging interface: python logger is good for normal log writes
+#       How to log output from vm commands? 
+#       Initial: pass logfile handler to Popen cmd for stdout?
 
+# For now, create a file to dump vm command outputs in to.
+vm_logfile = "vm.log"
+vm_log = open(vm_logfile, 'a')
+
+# Create a python logger
+nimbus_logfile = "nimbus.log"
+logging.basicConfig(level=logging.DEBUG, 
+                    format="%(asctime)s - %(levelname)s: %(message)s",
+		    filename=nimbus_logfile, 
+		    filemode='a')
 
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
@@ -194,27 +200,29 @@ class NimbusCluster(Cluster):
         # Create the workspace command as a list (private method)
 	ws_cmd = vmcreate_factory(vm_epr, vm_metadata, VM_DURATION, vm_mem, VM_TARGETSTATE)
 	
-	# Prep log 
-        ws_log.write("-"*20 + "NIMBUS" + "-"*54 + "\n")
-        ws_log.write( str(now) )
-        ws_log.write(":\n")
+	# Print prep message to log
+	logging.info("Nimbus: workspace command prepared. Creating vm...")
+	logging.info("Command: " + string.join(ws_cmd, " "))
 
 	# Execute a no-wait workspace command with the above cmd list.
 	# Returns immediately to parent program. Subprocess continues to execute, writing to log.
 	# stdin, stdout, and stderr set the filehandles for streams. PIPE opens a pipe to stream
 	# (PIPE streams are accessed via popen_object.stdin/out/err)
 	# Can also specify and filehandle or file object, or None (default).
-	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=ws_log, stderr=ws_log)
+	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=vm_log, stderr=vm_log)
 
 	# Add the newly created VM to the cluster list
 	self.vms.append(vm_epr)
 
-	# TODO: Change the cluster variables to reflect resources allocated to this vm.
-	#       Maintain as-correct-as-possible internal information at all times.
-	self.vm_slots = self.vm_slots - 1
-	self.memoryMB = self.memoryMB - vm_mem       
+	# TODO: Maintain as-correct-as-possible internal information at all times.
+	#       More refined resource subtraction is needed.
 	# TODO: If clusters have worker-node granular information, subtract memory from
 	#       a specific node.
+	self.vm_slots = self.vm_slots - 1
+	self.memoryMB = self.memoryMB - vm_mem       
+	
+	# Print finish message to log
+	logging.info("Nimbus: Workspace command executed. VM created and stored, cluster updated.")
 
     
     def vm_destroy(self, vm_id):
