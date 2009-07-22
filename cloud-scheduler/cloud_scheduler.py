@@ -15,6 +15,9 @@
 
 import sys
 import getopt
+import threading
+import time  # for testing purposes only (sleeps)
+import string # for debugging purposes
 from optparse import OptionParser
 import cloud_management
 
@@ -24,11 +27,81 @@ import cloud_management
 usage_str = "cloud_scheduler [-c FILE | --cluster-config FILE]"
 version_str = "Cloud Scheduler v 0.1"
 
+
+## Thread Bodies
+
+# Polling:
+# The resource & running vm polling thread. Inherits from Thread class.
+# Polling thread will iterate through the resource pool, updating resource
+#   status based on vm_poll calls to each vm in a cluster's 'vms' list (of 
+#   running vms)
+# Constructed with argument 'resource_pool'
+class PollingTh(threading.Thread):
+    
+    def __init__(self, resource_pool):
+        threading.Thread.__init__(self)
+	self.resource_pool = resource_pool
+
+    def run(self):
+	# TODO: Implement polling thread functionality here.
+        print "dbg - Poll - Starting polling thread..."
+
+# Scheduling:
+# Scheduling thread will match jobs to available resources and start vms
+# (for now, will contain test create/destroy functions)
+class SchedulingTh(threading.Thread):
+    
+    def __init__(self, resource_pool):
+        threading.Thread.__init__(self)
+	self.resource_pool = resource_pool
+
+    def run(self):
+        print "dbg - Sched - Starting scheduling thread..."
+        
+        ## Initial tests:
+
+	# TODO: Simulate job requirements for VMs (simple parameters only)
+	# TODO: Scan through resource pool to find fitting cluster
+	# TODO: Start a VM with simulated parameters on fitting cluster
+
+	# VM create parameters (name, networktype, cpuarch, imageloc, mem)
+	# Note: These are the only currently used fields that would be retrieved
+	#       from the job scheduler + job description files
+        req_name = "test-vm-nimbus-01"
+	req_network = "public"
+	req_cpuarch = "x86"
+	req_imageloc = "file://sl53base_i386.img"
+	req_mem = 128
+
+	## Create
+	
+	# Create a VM (DRYRUN) on first cluster in resource pool's 'resources' list
+        target_rsrc = self.resource_pool.get_resource()
+        print "dbg - Sched - open resource selected:"
+	target_rsrc.print_short()
+	target_rsrc.vm_create(req_name, req_network, req_cpuarch, req_imageloc, req_mem)
+
+	# Check that create is reflected internally
+	print "dbg - Sched - Print updated cluster information (after create):"
+	print "target resource's running VMs:" + string.join(target_rsrc.vms, " ")
+	target_rsrc.print_short()
+	
+	## Wait...
+        print "dbg - Sched - Waiting..."
+	time.sleep(5)
+
+        ## Poll...
+
+	## Destroy...
+
+
+
 ## Functions
 
 def main():
 
     # Create a parser and process commandline arguments
+    # TODO: Halt(w/error msg) on run without a config file OR an MDS
     parser = OptionParser(usage=usage_str, version=version_str)
     set_options(parser)
     (options, args) = parser.parse_args()
@@ -38,7 +111,7 @@ def main():
 
     # If the cluster config options was passed, read in the config file
     if options.cloud_conffile:
-        if readCloudConfig(options.cloud_conffile, cloud_resources):
+        if read_cloud_config(options.cloud_conffile, cloud_resources):
 	    print "Reading cloud configuration file failed. Exiting..."
 	    sys.exit(1)
 
@@ -48,7 +121,24 @@ def main():
     # Print the resource pool
     cloud_resources.print_pool()
 
-    print "dbg - tmp. done..."
+    # TODO: Resolve issue of atomicity / reliability when 2 threads are working
+    #       on the same resource pool data. Does it matter (best effort!)?
+    
+    # Create the Polling thread (pass resource pool)
+    #poller = PollingTh(cloud_resources)
+    #poller.start()
+
+    # Create the Scheduling thread (pass resource pool)
+    scheduler = SchedulingTh(cloud_resources)
+    scheduler.start()
+
+    print "dbg - Scheduling and Polling threads started."
+
+    # Wait on the scheduler to finish before exiting main
+    # (Unnecessary? The scheduler and the poller are the only things that need
+    # to remain running)
+    print "dbg - Waiting for the scheduler to finish..."
+    scheduler.join()
 
 
 # Sets the command-line options for a passed in OptionParser object (via optparse)
@@ -63,7 +153,7 @@ def set_options(parser):
 # Reads in a cmdline passed configuration file containing cloud cluster information
 # Stores cluster information in the ResourcePool parameter rsrc_pool
 # (see the sample_cloud example configuration file for more information)
-def readCloudConfig(config_file, rsrc_pool):
+def read_cloud_config(config_file, rsrc_pool):
 
     print "Attempting to read cloud configuration file: " + config_file
 

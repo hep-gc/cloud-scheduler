@@ -23,6 +23,7 @@
 ##
 
 from subprocess import Popen
+import datetime
 import logging
 import string
 import nimbus_xml
@@ -32,13 +33,13 @@ import nimbus_xml
 ##
 
 ## Log files
-# TODO: Consider logging interface: python logger is good for normal log writes
-#       How to log output from vm commands? 
-#       Initial: pass logfile handler to Popen cmd for stdout?
+#  TODO: Revise logging issue: vm commands and internal messages in the same log
+#  Currently: vm command stdout is dumped to a file, and log msgs are sent to a
+#   python log object.
 
-# For now, create a file to dump vm command outputs in to.
+# Create a file to dump vm command outputs in to.
 vm_logfile = "vm.log"
-vm_log = open(vm_logfile, 'a')
+vm_log = open(vm_logfile, 'w')
 
 # Create a python logger
 nimbus_logfile = "nimbus.log"
@@ -46,6 +47,7 @@ logging.basicConfig(level=logging.DEBUG,
                     format="%(asctime)s - %(levelname)s: %(message)s",
 		    filename=nimbus_logfile, 
 		    filemode='a')
+
 
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
@@ -71,11 +73,23 @@ class ResourcePool:
     def print_pool(self, ):
         print "Resource pool " + self.name + ":"
         if len(self.resources) == 0:
-	    print "Pool is empty..."
+	    print "Pool is empty... Cannot print pool"
 	else:
 	    for cluster in self.resources:
 	        print "\t" + cluster.name + "\t" + cluster.cloud_type + "\t" + \
 		  cluster.network_address
+    
+    # Return an arbitrary resource from the 'resources' list. Does not remove
+    # the returned element from the list.
+    # (Currently, the first cluster in the list)
+    # TODO: overload with different parameters to return matching resources?
+    def get_resource(self, ):
+	if len(self.resources) == 0:
+	    # TODO: Throw exception instead of exiting?
+	    print "Pool is empty... Cannot return resource."
+	    sys.exit(1)
+	else:
+	    return (self.resources[0])
 	    
 
 
@@ -84,8 +98,7 @@ class ResourcePool:
 
 class Cluster:
    
-    # Instance variables (preset to defaults)
-    # TODO: Add storage for cluster type ("NIMBUS", "OPENNEBULA", etc.)
+    ## Instance variables (preset to defaults)
     # TODO: Change network fields to lists. Add fields discussed in clouddev meetings
     name            = 'default-cluster'
     network_address = '0.0.0.0'
@@ -98,8 +111,11 @@ class Cluster:
     x86_64          = 'no'
     network_public  = 'no'
     network_private = 'no'
+    
+    # Running vms list (uses best-effort internal representation of resources)
+    vms = []
 
-    # Instance methods
+    ## Instance methods
 
     # Constructor
     def __init__(self, ):
@@ -111,6 +127,12 @@ class Cluster:
           self.storageGB, self.memoryMB, self.x86, self.x86_64, \
           self.network_public, self.network_private) = attr_list;
         
+	# Convert numerical fields to ints
+        self.vm_slots = int(self.vm_slots)
+	self.cpu_cores = int(self.cpu_cores)
+	self.storageGB = int(self.storageGB)
+	self.memoryMB = int(self.memoryMB)
+
         self.network_private = self.network_private.rstrip("\n");
         print "dbg - Cluster populated successfully"
         
@@ -129,7 +151,12 @@ class Cluster:
         print "Network Pub:\t%s" % (self.network_public)
         print "Network Priv:\t%s" % (self.network_private)
         print "-" * 80
-        
+    
+    # Print a short form of cluster information
+    def print_short(self):
+        print ">CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %d" \
+	  % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
+	  self.memoryMB)
 
     # Workspace manipulation methods
     #-!------------------------------------------------------------------------
@@ -169,18 +196,15 @@ class NimbusCluster(Cluster):
     ## NimbusCluster specific instance variables
     
     # Global Nimbus command variables
-    VM_DURATION = 1000
+    VM_DURATION = "1000"
     VM_TARGETSTATE = "Running"
     
-    # A list containing all deployed virtual machines (epr_files)
-    vms = []
-
+    
     ## NimbusCluster specific instance methods
     
     # Overridden constructor
     def __init__(self, ):
         print "dbg - New NimbusCluster created"
-
 
     def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation,\
       vm_mem):
@@ -198,18 +222,18 @@ class NimbusCluster(Cluster):
 	vm_epr = "nimbusVM_" + now.isoformat() + ".epr"
 
         # Create the workspace command as a list (private method)
-	ws_cmd = vmcreate_factory(vm_epr, vm_metadata, VM_DURATION, vm_mem, VM_TARGETSTATE)
-	
-	# Print prep message to log
-	logging.info("Nimbus: workspace command prepared. Creating vm...")
-	logging.info("Command: " + string.join(ws_cmd, " "))
+	ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, self.VM_DURATION, vm_mem, \
+	  self.VM_TARGETSTATE)
+	logging.debug("Nimbus: workspace create command prepared.")
+	logging.debug("Command: " + string.join(ws_cmd, " "))
 
 	# Execute a no-wait workspace command with the above cmd list.
 	# Returns immediately to parent program. Subprocess continues to execute, writing to log.
 	# stdin, stdout, and stderr set the filehandles for streams. PIPE opens a pipe to stream
 	# (PIPE streams are accessed via popen_object.stdin/out/err)
-	# Can also specify and filehandle or file object, or None (default).
+	# Can also specify a filehandle or file object, or None (default).
 	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=vm_log, stderr=vm_log)
+	logging.debug("Nimbus: workspace create command executed.")
 
 	# Add the newly created VM to the cluster list
 	self.vms.append(vm_epr)
@@ -221,15 +245,40 @@ class NimbusCluster(Cluster):
 	self.vm_slots = self.vm_slots - 1
 	self.memoryMB = self.memoryMB - vm_mem       
 	
-	# Print finish message to log
-	logging.info("Nimbus: Workspace command executed. VM created and stored, cluster updated.")
+	logging.info("Nimbus: Workspace create command executed. VM created and stored, cluster updated.")
 
     
     def vm_destroy(self, vm_id):
         print 'dbg - Nimbus cloud destroy command'
-	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
-          control command with the "destroy" option'
-    
+        
+        # TODO: Poll vm to check vm state. If not destroyed, destroy.
+	#       If destroyed, remove epr from 'vms' list.
+
+	# Create the workspace command with destroy option as a list (priv.)
+	ws_cmd = self.vmdestroy_factory(vm_id)
+	logging.debug("Nimbus: workspace destroy command prepared.")
+	logging.debug("Command: " + string.join(ws_cmd, " "))
+
+	# Execute the workspace command: no-wait, stdout to log.
+	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=vm_log, stderr=vm_log)
+	logging.debug("Nimbus: workspace destroy command executed.")
+
+	# TODO: Poll the vm to ensure it is properly destroyed? 
+	#       Try to get most accurate info., or assume destroy works?
+
+	# Return resources to cluster (currently only vm_slots and memory) and
+	# remove VM epr from 'vms' list
+	# TODO: Resolve issue of returning memory: How to know how much memory
+	#       to return?
+	#       Sol'n: store an (epr_file, mem) pair in the 'vms' list?
+	self.vm_slots += 1
+	#self.memoryMB += vm_mem
+	vms.remove(vm_id)
+
+	logging.info("Nimbus: Workspace destroy command executed. \
+	  VM destroyed and removed, cluster updated.")
+
+
     def vm_poll(self, vm_id):
         print 'dbg - Nimbus cloud poll command'
 	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
@@ -251,9 +300,9 @@ class NimbusCluster(Cluster):
            "--file", epr_file,
            "--metadata", metadata_file,
            "--trash-at-shutdown",
-           "-s", "https://" + self.network_address  + "8443/wsrf/services/WorkspaceFactoryService",
+           "-s", "https://" + self.network_address  + ":8443/wsrf/services/WorkspaceFactoryService",
            "--deploy-duration", duration,    # minutes
-           "--deploy-mem", mem,              # megabytes
+           "--deploy-mem", str(mem),         # megabytes (convert from int)
            "--deploy-state", deploy_state,   # Running, Paused, etc.
            "--exit-state", "Running",        # Running, Paused, Propagated - hard set.
            "--dryrun",                       # TODO: Remove dryrun tag for full vm creation

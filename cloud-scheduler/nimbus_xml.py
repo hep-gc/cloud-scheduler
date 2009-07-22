@@ -11,6 +11,7 @@ import xml.dom.minidom
 #       should be global variables, as for the namespace vars)
 
 ## Global Variables for xml population (VM and VM host machine information)
+NAME_URI_LVL = "http://"
 VM_NIC = "eth0"
 ACQUISITION_METHOD = "AllocateAndConfigure"
 VIRT_TYPE = "Xen"
@@ -133,7 +134,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     ##
 
     # Create and set the name text value
-    name_txt = doc.createTextNode(vm_name)
+    name_txt = doc.createTextNode(NAME_URI_LVL+vm_name)
     name_el.appendChild(name_txt)
 
     log_name_txt = doc.createTextNode(VM_NIC)
@@ -168,7 +169,10 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     ## (NOTE: Overwrites previous file)
     file_name = XML_OUT
     xml_out = open(file_name, "w")
-    xml_out.write(doc.toprettyxml(encoding="utf-8"))
+    
+    # Note: toprettyxml causes parse errors with Sax
+    #xml_out.write(doc.toprettyxml(encoding="utf-8"))
+    xml_out.write(doc.toxml(encoding="utf-8"))
     xml_out.close()
 
     # Print document (in pretty)
@@ -180,6 +184,6 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
 
 ## Main Functionality
 
-# tfo = ws_metadata_factory("http://test_image/name/over::Passed", "public", "x86", "http://some_image")
-# print "Filename out: %s" %(tfo)
+#tfo = ws_metadata_factory("http://test_image/name/over::Passed", "public", "x86", "http://some_image")
+#print "Filename out: %s" %(tfo)
 
