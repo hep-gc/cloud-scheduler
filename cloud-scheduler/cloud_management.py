@@ -49,6 +49,43 @@ logging.basicConfig(level=logging.DEBUG,
 		    filemode='a')
 
 
+# A class for storing created VM information. Used to populate Cluster classes
+# 'vms' lists.
+
+class VM:
+
+    ## Instance Variables
+
+    ## Instance Methods
+
+    # Constructor
+    # name         - (str) The name of the vm (arbitrary)
+    # id           - (str) The id tag for the VM. Whatever is used to access the vm
+    #              - by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
+    # clusteraddr  - (str) The address of the cluster hosting the VM
+    # type         - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
+    # network      - (str) The network association the VM uses
+    # cpuarch      - (str) The required CPU architecture of the VM
+    # imageloation - (str) The location of the image from which the VM was created
+    # memory       - (int) The memory used by the VM
+    def __init__(self, name, id, clusteraddr, type, network, cpuarch, imagelocation,\
+      memory):
+        print "dbg - New VM object created:"
+	print "dbg - VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
+	  % (name, id, clusteraddr, imagelocation, memory)
+	self.name = name
+	self.id = id
+	self.clusteraddr = clusteraddr
+	self.type = type
+	self.network = network
+	self.cpuarch = cpuarch
+	self.imagelocation = imagelocation
+	self.memory = memory
+
+	# Set a status variable on new creation
+	self.status = "Running"
+
+
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
 
@@ -62,7 +99,7 @@ class ResourcePool:
 
     # Constructor
     def __init__(self, name):
-        print "dbg - New ResourcePool " + name+ " created"
+        print "dbg - New ResourcePool " + name + " created"
 	self.name = name
 
     # Add a cluster resource to the pool's resource list
@@ -81,7 +118,7 @@ class ResourcePool:
     
     # Return an arbitrary resource from the 'resources' list. Does not remove
     # the returned element from the list.
-    # (Currently, the first cluster in the list)
+    # (Currently, the first cluster in the list is returned)
     # TODO: overload with different parameters to return matching resources?
     def get_resource(self, ):
 	if len(self.resources) == 0:
@@ -176,11 +213,11 @@ class Cluster:
         print 'This method should be defined by all subclasses of Cluster\n'
         assert 0, 'Must define workspace_create'
 
-    def vm_destroy(self, vm_id):
+    def vm_destroy(self, vm):
         print 'This method should be defined by all subclasses of Cluster\n'
         assert 0, 'Must define workspace_destroy'
     
-    def vm_poll(self, vm_id):
+    def vm_poll(self, vm):
         print 'This method should be defined by all subclasses of Cluster\n'
         assert 0, 'Must define workspace_poll'
         
@@ -194,7 +231,9 @@ class Cluster:
 class NimbusCluster(Cluster):
 
     ## NimbusCluster specific instance variables
-    
+   
+    # NimbusCluster 'vms' list is composed of tuples: (vm_epr, vm_mem)
+
     # Global Nimbus command variables
     VM_DURATION = "1000"
     VM_TARGETSTATE = "Running"
@@ -211,7 +250,7 @@ class NimbusCluster(Cluster):
         
 	print "dbg - Nimbus cloud create command"
 
-        # Creates a workspace metadata xml file from passed parameters
+	# Create a workspace metadata xml file from passed parameters
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
 	  vm_cpuarch, vm_imagelocation)
 	
@@ -235,27 +274,31 @@ class NimbusCluster(Cluster):
 	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=vm_log, stderr=vm_log)
 	logging.debug("Nimbus: workspace create command executed.")
 
-	# Add the newly created VM to the cluster list
-	self.vms.append(vm_epr)
+	# Create a VM object to represent the newly created VM
+	new_vm = VM(vm_name, vm_epr, self.network_address, self.cloud_type, \
+	  vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem)
+	
+	# Add the new VM object to the cluster's vms list
+	self.vms.append(new_vm)
 
 	# TODO: Maintain as-correct-as-possible internal information at all times.
 	#       More refined resource subtraction is needed.
 	# TODO: If clusters have worker-node granular information, subtract memory from
 	#       a specific node.
-	self.vm_slots = self.vm_slots - 1
-	self.memoryMB = self.memoryMB - vm_mem       
+	self.vm_slots -= 1
+	self.memoryMB -= vm_mem       
 	
 	logging.info("Nimbus: Workspace create command executed. VM created and stored, cluster updated.")
 
     
-    def vm_destroy(self, vm_id):
+    def vm_destroy(self, vm):
         print 'dbg - Nimbus cloud destroy command'
         
         # TODO: Poll vm to check vm state. If not destroyed, destroy.
 	#       If destroyed, remove epr from 'vms' list.
 
 	# Create the workspace command with destroy option as a list (priv.)
-	ws_cmd = self.vmdestroy_factory(vm_id)
+	ws_cmd = self.vmdestroy_factory(vm.id)
 	logging.debug("Nimbus: workspace destroy command prepared.")
 	logging.debug("Command: " + string.join(ws_cmd, " "))
 
@@ -272,14 +315,20 @@ class NimbusCluster(Cluster):
 	#       to return?
 	#       Sol'n: store an (epr_file, mem) pair in the 'vms' list?
 	self.vm_slots += 1
-	#self.memoryMB += vm_mem
-	vms.remove(vm_id)
+	self.memoryMB += vm.memory
+	
+	# NOTE: May not want to remove the VM from the vms list. If the destroy command
+	#       fails, the vm should stay in the list to be removed by the Polling thread
+	#       later. Could simply run the destroy cmd, and set the status to "Destroyed"
+	#       The poller would poll it to check for destruction, and remove the VM from
+	#       the list if correctly destroyed.
+	self.vms.remove(vm)
 
 	logging.info("Nimbus: Workspace destroy command executed. \
 	  VM destroyed and removed, cluster updated.")
 
 
-    def vm_poll(self, vm_id):
+    def vm_poll(self, vm):
         print 'dbg - Nimbus cloud poll command'
 	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
           control command with the "rpquery" option'
@@ -312,7 +361,7 @@ class NimbusCluster(Cluster):
 	return ws_list
 
     def vmdestroy_factory(self, epr_file):
-	ws_list = [ "workspace", "-e", epr_file, "--destroy"]
+	ws_list = [ "workspace", "-e", epr_file, "--destroy", "--dryrun"]
 	return ws_list
 
     def vmpoll_factory(self, epr_file):

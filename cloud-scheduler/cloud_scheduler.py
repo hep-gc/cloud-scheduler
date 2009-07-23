@@ -76,6 +76,10 @@ class SchedulingTh(threading.Thread):
 	## Create
 	
 	# Create a VM (DRYRUN) on first cluster in resource pool's 'resources' list
+        print "dbg - Sched - Selecting arbitrary resource for test run."
+        print "dbg - Sched - Simulated job VM parameters: "
+	print "\tname: %s\n\tnetwork assoc.: %s\n\tcpu arch.: %s\n\timage: %s\n\tmemory: %d" \
+	  % (req_name, req_network, req_cpuarch, req_imageloc, req_mem)
         target_rsrc = self.resource_pool.get_resource()
         print "dbg - Sched - open resource selected:"
 	target_rsrc.print_short()
@@ -83,7 +87,7 @@ class SchedulingTh(threading.Thread):
 
 	# Check that create is reflected internally
 	print "dbg - Sched - Print updated cluster information (after create):"
-	print "target resource's running VMs:" + string.join(target_rsrc.vms, " ")
+	print "target resource's running VMs: " + string.join(target_rsrc.vms, " ")
 	target_rsrc.print_short()
 	
 	## Wait...
@@ -93,6 +97,12 @@ class SchedulingTh(threading.Thread):
         ## Poll...
 
 	## Destroy...
+
+        # Call vm_destroy on the first entry in the target resource's 'vms' list
+	print "dbg - Sched - Destroying created VM..."
+	target_rsrc.vm_destroy(target_rsrc.vms[0])
+	print "target resource's running VMs: " + string.join(target_rsrc.vms, " ")
+	target_rsrc.print_short()
 
 
 
