@@ -18,9 +18,10 @@ class OneCloud(cloud_management.Cluster):
 		response = self.getProxy().one.vmallocate('', template)
 		if response[0]:
 			id = response[1]
-			vm = VM(vm_name, id, self.network_address, self.cloud_type, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem)	
+			vm = cloud_management.VM(vm_name, str(id), self.network_address, self.cloud_type, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem)	
 			self.vms.append(vm)
 			self.vm_slots -= 1
+			logging.info(self.name + ' VM ' + str(id) + ' Created')
 		else:
 			raise Exception(response[1])
 	
@@ -45,6 +46,7 @@ class OneCloud(cloud_management.Cluster):
 		if pollResponse == 'RUNNING':
 			destroyResponse = self.getProxy().one.vmaction('', 'shutdown', int(vm.id))
 			if destroyResponse[0]:
+				logging.info(self.name + ' VM ' + str(vm.name) + ' Shutting Down') 
 				self.vm_slots += 1
 			else:
 				raise Exception(destroyResponse[1])
