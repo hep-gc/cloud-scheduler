@@ -87,22 +87,23 @@ class SchedulingTh(threading.Thread):
 
 	# Check that create is reflected internally
 	print "dbg - Sched - Print updated cluster information (after create):"
-	print "target resource's running VMs: " + string.join(target_rsrc.vms, " ")
 	target_rsrc.print_short()
+	target_rsrc.print_vms()
 	
 	## Wait...
         print "dbg - Sched - Waiting..."
-	time.sleep(5)
+	time.sleep(45)
 
         ## Poll...
+	# TODO: Poll until state changes to running, then wait for 5 and destroy
 
 	## Destroy...
 
         # Call vm_destroy on the first entry in the target resource's 'vms' list
 	print "dbg - Sched - Destroying created VM..."
 	target_rsrc.vm_destroy(target_rsrc.vms[0])
-	print "target resource's running VMs: " + string.join(target_rsrc.vms, " ")
 	target_rsrc.print_short()
+	target_rsrc.print_vms()
 
 
 
@@ -119,15 +120,21 @@ def main():
     # Create a resource pool
     cloud_resources = cloud_management.ResourcePool("Testpool")
 
-    # If the cluster config options was passed, read in the config file
+    # If the neither the cloud conffile or the MDS server are passed to obtain
+    # initial cluster information, print usage and exit the system.
+    if (not options.cloud_conffile) and (not options.mds_server):
+        print "ERROR - main - No cloud or cluster information sources provided"
+	parser.print_help()
+	sys.exit(1)
+    
+    # If the cluster config option was passed, read in the config file
     if options.cloud_conffile:
         if read_cloud_config(options.cloud_conffile, cloud_resources):
-	    print "Reading cloud configuration file failed. Exiting..."
+	    print "ERROR - main - Reading cloud configuration file failed. Exiting..."
 	    sys.exit(1)
 
     # TODO: Add code to query an MDS to get initial cluster/cloud information
-    #       Should spec. the MDS address on command line, with tag?
-
+    
     # Print the resource pool
     cloud_resources.print_pool()
 
@@ -159,6 +166,8 @@ def set_options(parser):
     parser.add_option("-c", "--cloud-config", dest="cloud_conffile", metavar="FILE", \
       help="Designate a config file from which cloud cluster information is obtained")
 
+    parser.add_option("-m", "--MDS", dest="mds_server", metavar="SERVER", \
+      help="Designate an MDS server from which cloud cluster information is obtained")
 
 # Reads in a cmdline passed configuration file containing cloud cluster information
 # Stores cluster information in the ResourcePool parameter rsrc_pool

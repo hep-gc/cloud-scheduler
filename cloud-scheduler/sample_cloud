@@ -5,36 +5,46 @@
 # This configuration file contains clusters that make up a cloud.
 # Format (no whitespace at beginning of lines!):
 # 
-# name/network_IP/cloud_software/vm_slots/cpu_cores/storageGB/memoryMB/x86/x86_64/network_public/network_private
+# name/network_addr/cloud_software/vm_slots/cpu_cores/storage/memory/cpu_archs/network_pools
 #
 # Explanation:
 #  name 	- a colloqial name for the cluster
-#  network_IP	- a publicly accesible IP address for the cluster headnode
-#  cloud_software - the cloud software being used on the cluster. Currently, Nimbus is supported
-#                   Future options: Nimbus, OpenNebula, Eucalyptus(?)
+#  network_addr	  - the publicly accesible IP address or hostname of the cluster headnode
+#  cloud_software - the cloud software being used on the cluster. Currently, Nimbus and OpenNebula are 
+#                   supported. Future options: Eucalyptus(?)
 #  vm_slots	- the max. number of VMs that can be run on the cluster at any one time
+#                 The sum of the network slots available for VMs to use in all network pools
 #  cpu_cores	- the number of CPU cores per machine on the cluster worker nodes*
 #  storageGB	- the amount of storage (in GB) available on the cluster worker nodes*
-#  memoryMB	- the amount of memory (in MB) available on the cluster worker nodes*
-#  x86		- a flag for whether or not the cluster has x86 processors (yes/no)
-#  x86_64	- a flag for whether or not the cluster has x86_64 processors (yes/no)
-#  network_pub	- a flag for whether or not the cluster has public IP address space for VMs (yes/no)
-#  network_priv	- a flag for whether or not the cluster has private IP address space for VMs (yes/no)
+#  memory	- A comma separated list of the memory (MB) available to VMs on each cluster worker node
+#  cpu_archs    - A comma separated list of the CPU architectures available on the cluster worker nodes.
+#                 Currently supports x86, x86_64.
+#  network_pools  - A comma separated list of the network pools on the cluster (from which VMs may
+#                   lease network slots).
 #
 # *: These fields represent the specs of cluster worker nodes. If the cluster has heterogeneous worker 
 #    nodes, use the lowest values possible (from any worker node) to give performance guarantees.
 #    
 #
 # Example:
-# gridcn/142.104.111.222/Nimbus/10/4/100/1024/yes/no/yes/yes
+# test_cluster01/tc01.somewhere.ca/Nimbus/10/4/50/1024,512,512/x86,x86_64/public,org1,internal
 #
+# The above config line describes the following cluster:
+# - test_cluster01 can be reached at the hostname tc01.somewhere.ca, and is running Nimbus cloud software.
+# - It has 10 available network slots (the sum from all pools) for VMs to lease, so may support up to
+#   10 running VMs at one time. 
+# - Each worker-node of the cluster has quadcore CPUs, and at least 50 GB of storage space for VMs to 
+#   use (total, not per VM). 
+# - The cluster has three worker nodes, with 1024, 512, and 512 MB of memory, respectively. 
+# - The cluster has both x86 and x86_64 processors. 
+# - The cluster also provides public, org1, and internal network pools (these names are not standard, 
+#   but specific to the cluster and are named arbitrarily on the cluster itself).
 
-# clusterX (at 111.222.333.444) is running Nimbus, has 5 VM slots, and has worker nodes with 
-# quadcore CPUs, with at least 50 GBs of storage and 1024 MBs of RAM. clusterX has x86, but not 
-# x86_64 processors, and has private IP space avaible for VM use.
-#
-#clusterX/111.222.333.444/Nimbus/5/4/50/1024/yes/no/no/yes
+# The gridsn test cluster. Based on current gridsn configuration.
+# 28 VM slots: 23 private, 5 public (see $GLOBUS_LOCATION/etc/nimbus/workspace-service/network-pools/)
+# Memory: 512, 256, 256 (see $GLOBUS_LOCATION/etc/nimbus/workspace-service/vmm-pools/)
+gridsn/gridsn.phys.uvic.ca/Nimbus/28/1/10/512,256,256/x86/public,private
 
-nimbus-01/gridsn.phys.uvic.ca/Nimbus/10/2/100/384/yes/yes/yes/no
-nimbus-02/142.104.111.222/Nimbus/10/1/10/1024/yes/yes/yes/yes
-#ON-01/142.104.111.222/OpenNebula/10/1/10/1024/yes/yes/yes/yes
+# Test clusters (FAKE)
+nimbus-test/test.hostname.ca/Nimbus/10/2/50/128,512/x86,x86_64/public,private,testpool
+

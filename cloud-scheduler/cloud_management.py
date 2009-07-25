@@ -24,6 +24,7 @@
 
 from subprocess import Popen
 import datetime
+import sys
 import logging
 import string
 import nimbus_xml
@@ -68,8 +69,10 @@ class VM:
     # cpuarch      - (str) The required CPU architecture of the VM
     # imageloation - (str) The location of the image from which the VM was created
     # memory       - (int) The memory used by the VM
+    # mementry     - (int) The index of the entry in the host cluster's memory list
+    #                from which this VM is taking memory
     def __init__(self, name, id, clusteraddr, type, network, cpuarch, imagelocation,\
-      memory):
+      memory, mementry):
         print "dbg - New VM object created:"
 	print "dbg - VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
 	  % (name, id, clusteraddr, imagelocation, memory)
@@ -81,10 +84,16 @@ class VM:
 	self.cpuarch = cpuarch
 	self.imagelocation = imagelocation
 	self.memory = memory
+	self.mementry = mementry
 
 	# Set a status variable on new creation
-	self.status = "Running"
+	self.status = "Starting"
 
+    # Print a short description of the VM
+    # spacer - (str) a string to prepend to each VM line being printed
+    def print_short(self, spacer):
+       print spacer + "VM Name: %s, ID: %s, host: %s, Status: %s" \
+         % (self.name, self.id, self.clusteraddr, self.status)
 
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
@@ -119,15 +128,47 @@ class ResourcePool:
     # Return an arbitrary resource from the 'resources' list. Does not remove
     # the returned element from the list.
     # (Currently, the first cluster in the list is returned)
-    # TODO: overload with different parameters to return matching resources?
     def get_resource(self, ):
 	if len(self.resources) == 0:
-	    # TODO: Throw exception instead of exiting?
 	    print "Pool is empty... Cannot return resource."
-	    sys.exit(1)
-	else:
-	    return (self.resources[0])
+	    return None
+	
+	return (self.resources[0])
+    
+    # Return the first resource that fits the passed in VM requirements. Does
+    # not remove the element returned.
+    # Built to support "First-fit" scheduling.
+    # Parameters:
+    #    network  - the network assoication required by the VM
+    #    cpuarch  - the cpu architecture that the VM must run on
+    #    memory   - the amount of memory (RAM) the VM requires
+    #    TODO: storage   - the amount of scratch space the VM requires
+    # Return: returns a Cluster object if one is found that vits VM requirments
+    #         Otherwise, returns the 'None' object
+    def get_resourceFF(self, network, cpuarch, memory):
+        if len(self.resources) == 0:
+	    print "Pool is empty... Cannot return FF resource"
+	    return None
+	
+	for cluster in self.resources:
+            # If the cluster has no open VM slots
+	    if (cluster.vm_slots <= 0)
+	        continue
+	    # If the cluster has no sufficient memory entries for the VM
+	    if (cluster.find_mementry(memory) < 0)
+	        continue
+	    # If the cluster does not have the required CPU architecture
+	    if not (cpuarch in cluster.cpu_archs)
+                continue
+	    # If required network is NOT in cluster's network associations
+	    if not (network in cluster.network_pools):
+	        continue
 	    
+	    # Return the cluster as an available resource (meets all job reqs)
+	    return cluster
+	
+	# If no clusters are found (no clusters can host the required VM)
+	return None
 
 
 # The Cluster superclass, containing all general cluster instance variables
@@ -136,18 +177,19 @@ class ResourcePool:
 class Cluster:
    
     ## Instance variables (preset to defaults)
-    # TODO: Change network fields to lists. Add fields discussed in clouddev meetings
     name            = 'default-cluster'
     network_address = '0.0.0.0'
     cloud_type      = 'default-type'
     vm_slots        = 0
     cpu_cores       = 0
     storageGB       = 0
-    memoryMB        = 0
-    x86             = 'no'
-    x86_64          = 'no'
-    network_public  = 'no'
-    network_private = 'no'
+    
+    # A list of the memory available on each cluster worker node
+    memory = []
+    # A list of the network pools made available to VMs
+    network_pools = []
+    # A list of the available CPU architectures on the cluster
+    cpu_archs = []
     
     # Running vms list (uses best-effort internal representation of resources)
     vms = []
@@ -161,39 +203,70 @@ class Cluster:
     # Set Cluster attributes from a parameter list
     def populate(self, attr_list):
         (self.name, self.network_address, self.cloud_type, self.vm_slots, self.cpu_cores, \
-          self.storageGB, self.memoryMB, self.x86, self.x86_64, \
-          self.network_public, self.network_private) = attr_list;
+          self.storageGB, memory, cpu_archs, network_pools) = attr_list;
         
+	# Strip the newline from the last config line item (network_pools string)
+        network_pools = network_pools.rstrip("\n")
+
+	# Split strings into lists for list fields (memory, cpuarchs, networkpools)
+	self.memory = memory.split(",")
+	self.cpu_archs = cpu_archs.split(",")
+	self.network_pools = network_pools.split(",")
+	
 	# Convert numerical fields to ints
         self.vm_slots = int(self.vm_slots)
 	self.cpu_cores = int(self.cpu_cores)
 	self.storageGB = int(self.storageGB)
-	self.memoryMB = int(self.memoryMB)
-
-        self.network_private = self.network_private.rstrip("\n");
+	# Set all self.memory values to ints (iterate through memory list)
+	for i in range(len(self.memory)):
+	    self.memory[i] = int(self.memory[i])
+	    
         print "dbg - Cluster populated successfully"
         
     # Print cluster information
     def print_cluster(self):
         print "-" * 80
-        print "Name:\t\t%s" % (self.name)
-        print "Address:\t%s" % (self.network_address)
-	print "Type:\t\t%s" % (self.cloud_type)
-        print "VM Slots:\t%s" % (self.vm_slots)
-        print "CPU Cores:\t%s" % (self.cpu_cores)
-        print "Storage:\t%s" % (self.storageGB)
-        print "Memory:\t\t%s" % (self.memoryMB)
-        print "x86:\t\t%s" % (self.x86)
-        print "x86_64:\t\t%s" % (self.x86_64)
-        print "Network Pub:\t%s" % (self.network_public)
-        print "Network Priv:\t%s" % (self.network_private)
+        print "Name:\t\t%s"        % self.name
+        print "Address:\t%s"       % self.network_address
+	print "Type:\t\t%s"        % self.cloud_type
+        print "VM Slots:\t%s"      % self.vm_slots
+        print "CPU Cores:\t%s"     % self.cpu_cores
+        print "Storage:\t%s"       % self.storageGB
+        print "Memory:\t%s"        % string.join(self.memory, ", ")
+        print "CPU Archs:\t%s"     % string.join(self.cpu_archs, ", ")
+        print "Network Pools:\t%s" % string.join(self.network_pools, ", ")	
         print "-" * 80
     
     # Print a short form of cluster information
     def print_short(self):
-        print ">CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %d" \
+        print "CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
 	  % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
-	  self.memoryMB)
+	  string.join(self.memory, ", "))
+
+    # Print the cluster 'vms' list (via VM print)
+    def print_vms(self):
+        if len(self.vms) == 0:
+	    print "CLUSTER %s has no running VMs..." % (self.name)
+	else:
+	    print "CLUSTER %s running VMs:" % (self.name)
+            for vm in self.vms:
+	        vm.print_short("\t")
+    
+    # Finds a memory entry in the Cluster's 'memory' list which supports the
+    # requested amount of memory for the VM. If multiple memory entries fit
+    # the request, returns the first suitable entry.
+    # Parameters: memory - the memory required for VM creation
+    # Return: The index of the first fitting entry in the Cluster's 'memory'
+    #         list.
+    #         If no fitting memory entries are found, returns -1 (error!)
+    def find_mementry(self, memory):
+        for i in range(len(self.memory)):
+	   if self.memory[i] >= memory:
+	       return i
+	
+	# If no entries found, return error code. 
+	return(-1)
+
 
     # Workspace manipulation methods
     #-!------------------------------------------------------------------------
@@ -274,19 +347,28 @@ class NimbusCluster(Cluster):
 	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=vm_log, stderr=vm_log)
 	logging.debug("Nimbus: workspace create command executed.")
 
+	# Find the memory entry in the Cluster 'memory' list which _create will be 
+	# subtracted from
+	vm_mementry = self.find_mementry(vm_mem)
+	if (vm_mementry < 0):
+	    # At this point, there should always be a valid mementry, as the ResourcePool
+	    # get_resource methods have selected this cluster based on having an open 
+	    # memory entry that fits VM requirements.
+	    print "ERROR - vm_create - Cluster memory list has no sufficient memory " +\
+	      "entries. FATAL. System exiting..."
+	    sys.exit(1)
+	print "dbg - vm_create - Memory entry found in given cluster: %d" % vm_mementry
+	
 	# Create a VM object to represent the newly created VM
 	new_vm = VM(vm_name, vm_epr, self.network_address, self.cloud_type, \
-	  vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem)
+	  vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem, vm_mementry)
 	
 	# Add the new VM object to the cluster's vms list
 	self.vms.append(new_vm)
 
-	# TODO: Maintain as-correct-as-possible internal information at all times.
-	#       More refined resource subtraction is needed.
-	# TODO: If clusters have worker-node granular information, subtract memory from
-	#       a specific node.
+	# TODO: Write a private 'checkout' method to do resource checkout?
 	self.vm_slots -= 1
-	self.memoryMB -= vm_mem       
+	self.memory[vm_mementry] -= vm_mem       
 	
 	logging.info("Nimbus: Workspace create command executed. VM created and stored, cluster updated.")
 
@@ -294,8 +376,8 @@ class NimbusCluster(Cluster):
     def vm_destroy(self, vm):
         print 'dbg - Nimbus cloud destroy command'
         
-        # TODO: Poll vm to check vm state. If not destroyed, destroy.
-	#       If destroyed, remove epr from 'vms' list.
+        # TODO: Poll vm to check vm state. If Starting, return a wait message.
+	#       Otherwise, destroy.
 
 	# Create the workspace command with destroy option as a list (priv.)
 	ws_cmd = self.vmdestroy_factory(vm.id)
@@ -306,22 +388,17 @@ class NimbusCluster(Cluster):
 	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=vm_log, stderr=vm_log)
 	logging.debug("Nimbus: workspace destroy command executed.")
 
-	# TODO: Poll the vm to ensure it is properly destroyed? 
-	#       Try to get most accurate info., or assume destroy works?
+	# TODO: Check destroy return code. If successful, continue.
+	#       Otherwise, set VM into error state (wait, and the polling)
+	#       (thread will attempt a destroy later)
 
 	# Return resources to cluster (currently only vm_slots and memory) and
 	# remove VM epr from 'vms' list
-	# TODO: Resolve issue of returning memory: How to know how much memory
-	#       to return?
-	#       Sol'n: store an (epr_file, mem) pair in the 'vms' list?
+	# TODO: Write a private 'return' method to handle resource return
 	self.vm_slots += 1
-	self.memoryMB += vm.memory
+	self.memory[vm.mementry] += vm.memory
 	
-	# NOTE: May not want to remove the VM from the vms list. If the destroy command
-	#       fails, the vm should stay in the list to be removed by the Polling thread
-	#       later. Could simply run the destroy cmd, and set the status to "Destroyed"
-	#       The poller would poll it to check for destruction, and remove the VM from
-	#       the list if correctly destroyed.
+	# Remove VM from the Cluster's 'vms' list
 	self.vms.remove(vm)
 
 	logging.info("Nimbus: Workspace destroy command executed. \
@@ -354,24 +431,18 @@ class NimbusCluster(Cluster):
            "--deploy-mem", str(mem),         # megabytes (convert from int)
            "--deploy-state", deploy_state,   # Running, Paused, etc.
            "--exit-state", "Running",        # Running, Paused, Propagated - hard set.
-           "--dryrun",                       # TODO: Remove dryrun tag for full vm creation
+           # "--dryrun",                     
           ]
 
         # Return the workspace command list
 	return ws_list
 
     def vmdestroy_factory(self, epr_file):
-	ws_list = [ "workspace", "-e", epr_file, "--destroy", "--dryrun"]
+	ws_list = [ "workspace", "-e", epr_file, "--destroy"]
 	return ws_list
 
     def vmpoll_factory(self, epr_file):
 	ws_list = [ "workspace", "-e", epr_file, "--rpquery"]
 	return ws_list
 
-
-
-
-
-
-
-
+    
