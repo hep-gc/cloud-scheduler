@@ -24,7 +24,7 @@ import cloud_management
 
 ## GLOBAL VARIABLES
 
-usage_str = "cloud_scheduler [-c FILE | --cluster-config FILE]"
+usage_str = "cloud_scheduler [-c FILE | --cluster-config FILE] [-m SERVER | --MDS SERVER]"
 version_str = "Cloud Scheduler v 0.1"
 
 
@@ -92,7 +92,7 @@ class SchedulingTh(threading.Thread):
 	
 	## Wait...
         print "dbg - Sched - Waiting..."
-	time.sleep(45)
+	time.sleep(120)
 
         ## Poll...
 	# TODO: Poll until state changes to running, then wait for 5 and destroy
@@ -102,6 +102,8 @@ class SchedulingTh(threading.Thread):
         # Call vm_destroy on the first entry in the target resource's 'vms' list
 	print "dbg - Sched - Destroying created VM..."
 	target_rsrc.vm_destroy(target_rsrc.vms[0])
+	
+	print "dbg - Sched - Print updated cluster information (after destroy):"
 	target_rsrc.print_short()
 	target_rsrc.print_vms()
 
@@ -117,15 +119,15 @@ def main():
     set_options(parser)
     (options, args) = parser.parse_args()
 
-    # Create a resource pool
-    cloud_resources = cloud_management.ResourcePool("Testpool")
-
     # If the neither the cloud conffile or the MDS server are passed to obtain
     # initial cluster information, print usage and exit the system.
     if (not options.cloud_conffile) and (not options.mds_server):
         print "ERROR - main - No cloud or cluster information sources provided"
 	parser.print_help()
 	sys.exit(1)
+    
+    # Create a resource pool
+    cloud_resources = cloud_management.ResourcePool("Testpool")
     
     # If the cluster config option was passed, read in the config file
     if options.cloud_conffile:

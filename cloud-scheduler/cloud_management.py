@@ -92,8 +92,8 @@ class VM:
     # Print a short description of the VM
     # spacer - (str) a string to prepend to each VM line being printed
     def print_short(self, spacer):
-       print spacer + "VM Name: %s, ID: %s, host: %s, Status: %s" \
-         % (self.name, self.id, self.clusteraddr, self.status)
+       print spacer + "VM Name: %s, ID: %s, Status: %s" \
+         % (self.name, self.id, self.status)
 
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
@@ -152,13 +152,13 @@ class ResourcePool:
 	
 	for cluster in self.resources:
             # If the cluster has no open VM slots
-	    if (cluster.vm_slots <= 0)
+	    if (cluster.vm_slots <= 0):
 	        continue
 	    # If the cluster has no sufficient memory entries for the VM
-	    if (cluster.find_mementry(memory) < 0)
+	    if (cluster.find_mementry(memory) < 0):
 	        continue
 	    # If the cluster does not have the required CPU architecture
-	    if not (cpuarch in cluster.cpu_archs)
+	    if not (cpuarch in cluster.cpu_archs):
                 continue
 	    # If required network is NOT in cluster's network associations
 	    if not (network in cluster.network_pools):
@@ -232,7 +232,7 @@ class Cluster:
         print "VM Slots:\t%s"      % self.vm_slots
         print "CPU Cores:\t%s"     % self.cpu_cores
         print "Storage:\t%s"       % self.storageGB
-        print "Memory:\t%s"        % string.join(self.memory, ", ")
+        print "Memory:\t\t%s"      % self.memory
         print "CPU Archs:\t%s"     % string.join(self.cpu_archs, ", ")
         print "Network Pools:\t%s" % string.join(self.network_pools, ", ")	
         print "-" * 80
@@ -241,7 +241,7 @@ class Cluster:
     def print_short(self):
         print "CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
 	  % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
-	  string.join(self.memory, ", "))
+	  self.memory)
 
     # Print the cluster 'vms' list (via VM print)
     def print_vms(self):
@@ -254,13 +254,19 @@ class Cluster:
     
     # Finds a memory entry in the Cluster's 'memory' list which supports the
     # requested amount of memory for the VM. If multiple memory entries fit
-    # the request, returns the first suitable entry.
+    # the request, returns the first suitable entry. Returns an exact fit if
+    # one exists.
     # Parameters: memory - the memory required for VM creation
     # Return: The index of the first fitting entry in the Cluster's 'memory'
     #         list.
     #         If no fitting memory entries are found, returns -1 (error!)
     def find_mementry(self, memory):
-        for i in range(len(self.memory)):
+        # Check for exact fit
+	if (memory in self.memory):
+	   return self.memory.index(memory)
+	
+	# Scan for any fit
+	for i in range(len(self.memory)):
 	   if self.memory[i] >= memory:
 	       return i
 	
@@ -370,7 +376,7 @@ class NimbusCluster(Cluster):
 	self.vm_slots -= 1
 	self.memory[vm_mementry] -= vm_mem       
 	
-	logging.info("Nimbus: Workspace create command executed. VM created and stored, cluster updated.")
+	logging.info("Nimbus: VM created and stored, cluster updated.")
 
     
     def vm_destroy(self, vm):
@@ -401,8 +407,7 @@ class NimbusCluster(Cluster):
 	# Remove VM from the Cluster's 'vms' list
 	self.vms.remove(vm)
 
-	logging.info("Nimbus: Workspace destroy command executed. \
-	  VM destroyed and removed, cluster updated.")
+	logging.info("Nimbus: VM destroyed and removed, cluster updated.")
 
 
     def vm_poll(self, vm):
