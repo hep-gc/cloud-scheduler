@@ -23,10 +23,12 @@
 ##
 
 from subprocess import Popen
+import subprocess
 import datetime
 import sys
 import logging
 import string
+import re
 import nimbus_xml
 
 ##
@@ -95,18 +97,19 @@ class VM:
        print spacer + "VM Name: %s, ID: %s, Status: %s" \
          % (self.name, self.id, self.status)
 
+
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
 
 class ResourcePool:
     
-    # Instance variables    
-    name = "default"
+    ## Instance variables    
     resources = []
     
-    # Instance methods
+    ## Instance methods
 
     # Constructor
+    # name   - The name of the ResourcePool being created
     def __init__(self, name):
         print "dbg - New ResourcePool " + name + " created"
 	self.name = name
@@ -115,11 +118,11 @@ class ResourcePool:
     def add_resource(self, cluster):
         self.resources.append(cluster)
 
-    # Print the name+address of every cluster in the resource pool
+    # Print the name and address of every cluster in the resource pool
     def print_pool(self, ):
         print "Resource pool " + self.name + ":"
         if len(self.resources) == 0:
-	    print "Pool is empty... Cannot print pool"
+	    print "Pool is empty..."
 	else:
 	    for cluster in self.resources:
 	        print "\t" + cluster.name + "\t" + cluster.cloud_type + "\t" + \
@@ -143,6 +146,7 @@ class ResourcePool:
     #    cpuarch  - the cpu architecture that the VM must run on
     #    memory   - the amount of memory (RAM) the VM requires
     #    TODO: storage   - the amount of scratch space the VM requires
+    #    TODO: cpucores  - the number of cores that a VM requires (dedicated? or general?)
     # Return: returns a Cluster object if one is found that vits VM requirments
     #         Otherwise, returns the 'None' object
     def get_resourceFF(self, network, cpuarch, memory):
@@ -189,9 +193,9 @@ class Cluster:
     # A list of the network pools made available to VMs
     network_pools = []
     # A list of the available CPU architectures on the cluster
-    cpu_archs = []
-    
+    cpu_archs = [] 
     # Running vms list (uses best-effort internal representation of resources)
+    # A list of VM objects
     vms = []
 
     ## Instance methods
@@ -252,29 +256,8 @@ class Cluster:
             for vm in self.vms:
 	        vm.print_short("\t")
     
-    # Finds a memory entry in the Cluster's 'memory' list which supports the
-    # requested amount of memory for the VM. If multiple memory entries fit
-    # the request, returns the first suitable entry. Returns an exact fit if
-    # one exists.
-    # Parameters: memory - the memory required for VM creation
-    # Return: The index of the first fitting entry in the Cluster's 'memory'
-    #         list.
-    #         If no fitting memory entries are found, returns -1 (error!)
-    def find_mementry(self, memory):
-        # Check for exact fit
-	if (memory in self.memory):
-	   return self.memory.index(memory)
-	
-	# Scan for any fit
-	for i in range(len(self.memory)):
-	   if self.memory[i] >= memory:
-	       return i
-	
-	# If no entries found, return error code. 
-	return(-1)
 
-
-    # Workspace manipulation methods
+    # VM manipulation methods
     #-!------------------------------------------------------------------------
     # NOTE: In implementing subclasses of Cluster, the following method prototypes
     #       should be used (standardize on these parameters)
@@ -303,6 +286,54 @@ class Cluster:
     ## More potential functions: vm_move, vm_pause, vm_resume, etc.
 
 
+    ## Private VM methods
+    
+    # Finds a memory entry in the Cluster's 'memory' list which supports the
+    # requested amount of memory for the VM. If multiple memory entries fit
+    # the request, returns the first suitable entry. Returns an exact fit if
+    # one exists.
+    # Parameters: memory - the memory required for VM creation
+    # Return: The index of the first fitting entry in the Cluster's 'memory'
+    #         list.
+    #         If no fitting memory entries are found, returns -1 (error!)
+    def find_mementry(self, memory):
+        # Check for exact fit
+	if (memory in self.memory):
+	   return self.memory.index(memory)
+	
+	# Scan for any fit
+	for i in range(len(self.memory)):
+	   if self.memory[i] >= memory:
+	       return i
+	
+	# If no entries found, return error code. 
+	return(-1)
+
+    # Checks out resources taken by a VM in creation from the internal rep-
+    # resentation of the Cluster
+    # Parameters:
+    #    vm   - the VM object used to check out resources from the Cluster.
+    #           The VMs memory and mementry fields are used to check out memory
+    #           from the appropriate Cluster fields.
+    # Note: No bounds checking is done as of yet.
+    # Note: vm_slots is automatically decremeneted by one (1).
+    # EXPAND HERE as checkout/return become more complex
+    def resource_checkout(self, vm):
+	self.vm_slots -= 1
+	# MOD: Currently, memory checking out is not supported
+	# ISSUE: No way to know what mementry a VM is running on
+	# self.memory[vm.mementry] -= vm.memory
+
+    # Returns the resources taken by the passed in VM to the Cluster's internal
+    # storage.
+    # Parameters: (as for checkout() )
+    # Notes: (as for checkout)
+    def resource_return(self, vm):
+	self.vm_slots += 1
+	# MOD: Currently, memory checking out is not supported
+	# ISSUE: No way to know what mementry a VM is running on
+	# self.memory[vm.mementry] += vm.memory       
+
 
 ## Implements cloud management functionality with the Nimbus service as part of
 ## the Globus Toolkit.
@@ -310,8 +341,9 @@ class Cluster:
 class NimbusCluster(Cluster):
 
     ## NimbusCluster specific instance variables
-   
-    # NimbusCluster 'vms' list is composed of tuples: (vm_epr, vm_mem)
+    
+    # Nimbus global state finding regexp (parsing Poll output)
+    STATE_RE = "State:\s(\w*)$"
 
     # Global Nimbus command variables
     VM_DURATION = "1000"
@@ -345,12 +377,9 @@ class NimbusCluster(Cluster):
 	logging.debug("Nimbus: workspace create command prepared.")
 	logging.debug("Command: " + string.join(ws_cmd, " "))
 
-	# Execute a no-wait workspace command with the above cmd list.
-	# Returns immediately to parent program. Subprocess continues to execute, writing to log.
-	# stdin, stdout, and stderr set the filehandles for streams. PIPE opens a pipe to stream
-	# (PIPE streams are accessed via popen_object.stdin/out/err)
-	# Can also specify a filehandle or file object, or None (default).
-	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=vm_log, stderr=vm_log)
+	# Execute the workspace create commdand: no wait, returns immediately. Dump
+	# to vm_log
+	self.vm_execdump(ws_cmd, vm_log)
 	logging.debug("Nimbus: workspace create command executed.")
 
 	# Find the memory entry in the Cluster 'memory' list which _create will be 
@@ -369,12 +398,9 @@ class NimbusCluster(Cluster):
 	new_vm = VM(vm_name, vm_epr, self.network_address, self.cloud_type, \
 	  vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem, vm_mementry)
 	
-	# Add the new VM object to the cluster's vms list
+	# Add the new VM object to the cluster's vms list And check out required resources
 	self.vms.append(new_vm)
-
-	# TODO: Write a private 'checkout' method to do resource checkout?
-	self.vm_slots -= 1
-	self.memory[vm_mementry] -= vm_mem       
+	self.resource_checkout(new_vm)
 	
 	logging.info("Nimbus: VM created and stored, cluster updated.")
 
@@ -391,20 +417,15 @@ class NimbusCluster(Cluster):
 	logging.debug("Command: " + string.join(ws_cmd, " "))
 
 	# Execute the workspace command: no-wait, stdout to log.
-	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=vm_log, stderr=vm_log)
+	self.vm_execdump(ws_cmd, vm_log)
 	logging.debug("Nimbus: workspace destroy command executed.")
 
 	# TODO: Check destroy return code. If successful, continue.
 	#       Otherwise, set VM into error state (wait, and the polling)
 	#       (thread will attempt a destroy later)
 
-	# Return resources to cluster (currently only vm_slots and memory) and
-	# remove VM epr from 'vms' list
-	# TODO: Write a private 'return' method to handle resource return
-	self.vm_slots += 1
-	self.memory[vm.mementry] += vm.memory
-	
-	# Remove VM from the Cluster's 'vms' list
+	# Return checked out resources And remove VM from the Cluster's 'vms' list
+	self.resource_return(vm)
 	self.vms.remove(vm)
 
 	logging.info("Nimbus: VM destroyed and removed, cluster updated.")
@@ -412,12 +433,77 @@ class NimbusCluster(Cluster):
 
     def vm_poll(self, vm):
         print 'dbg - Nimbus cloud poll command'
-	print 'dbg - should fork and execute (or possibly just execute) a workspace- \
-          control command with the "rpquery" option'
+        
+	# Create workspace poll command
+	ws_cmd = self.vmpoll_factory(vm.id)
+	print "- Nimbus poll command created:\n%s" % string.join(ws_cmd, " ")
+
+	# Execute the workspace poll (wait, stdout to pipe)
+	print "- Executing poll command (wait for completion)..."
+	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=subprocess.PIPE,\
+	  stderr=subprocess.PIPE)
+	poll_return = sp.wait()
+	print "- Poll command completed with return code: %d" % poll_return
+
+        # Capture the stdout and stderr from the poll command
+	(out, err) = sp.communicate(input=None)
+
+	# Check the poll command return
+	if (poll_return != 0):
+	    print "- Failed polling VM %s, %s" % (vm.name, vm.id)
+	    print "- STDERR: %s" % err
+	    # TODO: May alternatively want to try re-polling
+	    print "- Setting VM status to \'Error\'"
+	    vm.status = "Error"
+	    return
+	
+	# Print output, and parse the VM status from it
+	print "- STDOUT: %s" % out
+	print "- Parsing polling output..."
+
+        match = re.search(self.STATE_RE, out)
+	if match:
+	    # TODO: Implement a state dictionary (Subclass specific - subglass var)
+	    # Nimbus state is key, maps to internal state value
+	    # EG: Running    => Running
+	    #     Propagated => Starting
+	    vm.status = match.group(1)
+	    print "- VM state: %s" % vm.status
+	else:
+	    print "- Parsing output failed. No regex match. Setting VM status to \'Error\'"
+	    vm.status = "Error"
+
+	# Return the VM status as a string (refer to VM state diagram)
+	return vm.status
+
 
 
     ## NimbusCluster private methods
 
+    # A function to contain the execution of the workspace command and surrounding
+    # functionality (such as logging output).
+    # Built in order to limit command execution to one function.
+    # Parameters:
+    #    ws_cmd   - The command to be executed, as a list of strings (commands
+    #               created by the _factory methods).
+    def vm_execute(self, cmd):
+	# Execute a no-wait workspace command with the passed cmd list.
+	# Returns immediately to parent program. Subprocess continues to execute, writing to stdout.
+	# stdin, stdout, and stderr params set the filehandles for streams. PIPE opens a pipe to stream
+	# (PIPE streams are accessed via popen_object.stdin/out/err)
+	# Can also specify a filehandle or file object, or None (default).
+	# At present, dumps all stdout and stderr to a logfile, 'vm_log'
+	sp = Popen(cmd, executable="workspace", shell=False)
+    
+    # As above, with stdout and stderr output destinations specified.
+    # Parameters:
+    #    (As above)
+    #    out   - A filehandle or file object into which stdout and stderr streams are
+    #            dumped.
+    def vm_execdump(self, cmd, out):
+	sp = Popen(cmd, executable="workspace", shell=False, stdout=out, stderr=out)
+    
+    
     # The following _factory methods take the given parameters and return a list 
     # representing the corresponding workspace command.
 
