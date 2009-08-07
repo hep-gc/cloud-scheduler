@@ -9,7 +9,7 @@ import logging
 oneLog = 'oneCloud.log'
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s: %(message)s", filename=oneLog, filemode='a')
 
-class OneCloud(cloud_management.Cluster):
+class OpenNebulaCloud(cloud_management.Cluster):
 	
 	def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem, vm_scratchSpace):
 
@@ -18,9 +18,13 @@ class OneCloud(cloud_management.Cluster):
 		response = self.getProxy().one.vmallocate('', template)
 		if response[0]:
 			id = response[1]
-			vm = cloud_management.VM(vm_name, str(id), self.network_address, self.cloud_type, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem)	
+			memoryEntry = self.find_mementry(vm_mem)
+			if memoryEntry < 0:
+				raise Exception('Cluster ' + self.name + ' out of memory')
+			vm = cloud_management.VM(vm_name, str(id), self.network_address, self.cloud_type, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem, memoryEntry)	
 			self.vms.append(vm)
 			self.vm_slots -= 1
+			self.memory[memoryEntry] -= vm_mem
 			logging.info(self.name + ' VM ' + str(id) + ' Created')
 		else:
 			raise Exception(response[1])
@@ -48,6 +52,8 @@ class OneCloud(cloud_management.Cluster):
 			if destroyResponse[0]:
 				logging.info(self.name + ' VM ' + str(vm.name) + ' Shutting Down') 
 				self.vm_slots += 1
+				self.memory[vm.mementry] += vm.memory
+				self.vms.remove(vm)
 			else:
 				raise Exception(destroyResponse[1])
 		else:
