@@ -59,6 +59,15 @@ class VM:
 
     ## Instance Variables
 
+    # The global VM states are:
+    #    Starting - The VM is being created in the cloud
+    #    Running  - The VM is running somewhere on the cloud (fully functional)
+    #    Error    - The VM has been corrupted or is in the process of being destroyed
+    # For a full state diagram, refer to the following development wiki page:
+    # TODO: Add state dia. to wiki
+    # States are defined in each Cluster subclass, in which a VM_STATES dictionary
+    # maps specific cloud software state to these global states.
+
     ## Instance Methods
 
     # Constructor
@@ -197,7 +206,8 @@ class Cluster:
     # Running vms list (uses best-effort internal representation of resources)
     # A list of VM objects
     vms = []
-
+    
+    
     ## Instance methods
 
     # Constructor
@@ -320,7 +330,7 @@ class Cluster:
     # EXPAND HERE as checkout/return become more complex
     def resource_checkout(self, vm):
 	self.vm_slots -= 1
-	# MOD: Currently, memory checking out is not supported
+	# NOTE: Currently, memory checking out is not supported
 	# ISSUE: No way to know what mementry a VM is running on
 	# self.memory[vm.mementry] -= vm.memory
 
@@ -330,7 +340,7 @@ class Cluster:
     # Notes: (as for checkout)
     def resource_return(self, vm):
 	self.vm_slots += 1
-	# MOD: Currently, memory checking out is not supported
+	# NOTE: Currently, memory checking out is not supported
 	# ISSUE: No way to know what mementry a VM is running on
 	# self.memory[vm.mementry] += vm.memory       
 
@@ -348,7 +358,22 @@ class NimbusCluster(Cluster):
     # Global Nimbus command variables
     VM_DURATION = "1000"
     VM_TARGETSTATE = "Running"
-    
+   
+    # A dictionary mapping Nimbus states to global states (see VM class comments
+    # for the global state information)
+    # Nimbus VM states: Unstaged, Unpropagated, Propagated, Running, Paused, 
+    # TransportReady, StagedOut, Corrupted, Cancelled.
+    VM_STATES = {
+         "Unstaged"     : "Starting",
+         "Unpropagated" : "Starting",
+         "Propagated"   : "Starting",
+         "Running"      : "Running",
+	 "Paused"       : "Running",   # TODO: Include a paused state? Will CS support pausing?
+	 "TransportReady" : "Running",
+	 "StagedOut"    : "Running",
+	 "Corrupted"    : "Error",
+	 "Cancelled"    : "Error",
+    }
     
     ## NimbusCluster specific instance methods
     
@@ -356,6 +381,8 @@ class NimbusCluster(Cluster):
     def __init__(self, ):
         print "dbg - New NimbusCluster created"
 
+    
+    # TODO: Explain parameters and returns
     def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation,\
       vm_mem):
         
@@ -374,25 +401,31 @@ class NimbusCluster(Cluster):
         # Create the workspace command as a list (private method)
 	ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, self.VM_DURATION, vm_mem, \
 	  self.VM_TARGETSTATE)
-	logging.debug("Nimbus: workspace create command prepared.")
-	logging.debug("Command: " + string.join(ws_cmd, " "))
+	print "(vm_create) - workspace create command prepared."
+	print "(vm_create) - Command: " + string.join(ws_cmd, " ")
 
 	# Execute the workspace create commdand: no wait, returns immediately. Dump
 	# to vm_log
-	self.vm_execdump(ws_cmd, vm_log)
-	logging.debug("Nimbus: workspace create command executed.")
+	create_return = self.vm_execdump(ws_cmd, vm_log)
+	if (create_return != 0):
+	    print "(vm_create) - Error in executing workspace create command."
+	    print "(vm-create) - VM %s (ID: %s) not created. Returning error code." \
+	      % (vm_name, vm_epr)
+	    return create_return
+	print "(vm_create) - workspace create command executed."
 
 	# Find the memory entry in the Cluster 'memory' list which _create will be 
 	# subtracted from
+	# NOTE: currently obsolete, as memory checkout is disabled (8/03/2009)
 	vm_mementry = self.find_mementry(vm_mem)
 	if (vm_mementry < 0):
 	    # At this point, there should always be a valid mementry, as the ResourcePool
 	    # get_resource methods have selected this cluster based on having an open 
 	    # memory entry that fits VM requirements.
-	    print "ERROR - vm_create - Cluster memory list has no sufficient memory " +\
-	      "entries. FATAL. System exiting..."
-	    sys.exit(1)
-	print "dbg - vm_create - Memory entry found in given cluster: %d" % vm_mementry
+	    print "(vm_create) - Cluster memory list has no sufficient memory " +\
+	      "entries (Not supposed to happen). Returning error."
+	    return (1)
+	print "(vm_create) - vm_create - Memory entry found in given cluster: %d" % vm_mementry
 	
 	# Create a VM object to represent the newly created VM
 	new_vm = VM(vm_name, vm_epr, self.network_address, self.cloud_type, \
@@ -402,78 +435,84 @@ class NimbusCluster(Cluster):
 	self.vms.append(new_vm)
 	self.resource_checkout(new_vm)
 	
-	logging.info("Nimbus: VM created and stored, cluster updated.")
+	print "(vm_create) - VM created and stored, cluster updated."
+	return create_return
 
     
+    # TODO: Explain parameters and returns
     def vm_destroy(self, vm):
         print 'dbg - Nimbus cloud destroy command'
         
-        # TODO: Poll vm to check vm state. If Starting, return a wait message.
-	#       Otherwise, destroy.
-
 	# Create the workspace command with destroy option as a list (priv.)
 	ws_cmd = self.vmdestroy_factory(vm.id)
-	logging.debug("Nimbus: workspace destroy command prepared.")
-	logging.debug("Command: " + string.join(ws_cmd, " "))
+	print "(vm_destroy) - workspace destroy command prepared."
+	print "(vm_destroy) - Command: " + string.join(ws_cmd, " ")
 
 	# Execute the workspace command: no-wait, stdout to log.
-	self.vm_execdump(ws_cmd, vm_log)
-	logging.debug("Nimbus: workspace destroy command executed.")
-
-	# TODO: Check destroy return code. If successful, continue.
-	#       Otherwise, set VM into error state (wait, and the polling)
-	#       (thread will attempt a destroy later)
+	destroy_return = self.vm_execdump(ws_cmd, vm_log)
+        
+	# Check destroy return code. If successful, continue. Otherwise, set VM to 
+	# error state (wait, and the polling thread will attempt a destroy later)
+	if (destroy_return != 0):
+	    print "(vm_destroy) - Error in executing workspace destroy command."
+	    print "(vm_destroy) - VM %s (ID: %s) not correctly destroyed. Setting vm " + \
+	      "status to \'Error\' and returning error code." % (vm.name, vm.id)
+	    vm.status = "Error"
+	    return destroy_return 
+	print "(vm_destroy) - workspace destroy command executed."
 
 	# Return checked out resources And remove VM from the Cluster's 'vms' list
 	self.resource_return(vm)
 	self.vms.remove(vm)
 
-	logging.info("Nimbus: VM destroyed and removed, cluster updated.")
+	print "(vm_destroy) - VM destroyed and removed, cluster updated."
+	return destroy_return
 
 
+    # TODO: Explain parameters and returns
     def vm_poll(self, vm):
         print 'dbg - Nimbus cloud poll command'
         
 	# Create workspace poll command
 	ws_cmd = self.vmpoll_factory(vm.id)
-	print "- Nimbus poll command created:\n%s" % string.join(ws_cmd, " ")
+	print "(vm_poll) - Nimbus poll command created:\n%s" % string.join(ws_cmd, " ")
 
-	# Execute the workspace poll (wait, stdout to pipe)
-	print "- Executing poll command (wait for completion)..."
-	sp = Popen(ws_cmd, executable="workspace", shell=False, stdout=subprocess.PIPE,\
-	  stderr=subprocess.PIPE)
-	poll_return = sp.wait()
-	print "- Poll command completed with return code: %d" % poll_return
-
-        # Capture the stdout and stderr from the poll command
-	(out, err) = sp.communicate(input=None)
+	# Execute the workspace poll (wait, retrieve return code, stdout, and stderr)
+	print "(vm_poll) - Executing poll command (wait for completion)..."
+	(poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd)
+	print "(vm_poll) - Poll command completed with return code: %d" % poll_return
 
 	# Check the poll command return
 	if (poll_return != 0):
-	    print "- Failed polling VM %s, %s" % (vm.name, vm.id)
-	    print "- STDERR: %s" % err
-	    # TODO: May alternatively want to try re-polling
-	    print "- Setting VM status to \'Error\'"
+	    print "(vm_poll) - Failed polling VM %s (ID: %s)" % (vm.name, vm.id)
+	    #print "(vm_poll) - STDERR: %s" % poll_err
+	    print "(vm_poll) - Setting VM status to \'Error\'"
 	    vm.status = "Error"
-	    return
+
+	    # Return the VM status as a string (exit this method)
+	    return vm.status
 	
 	# Print output, and parse the VM status from it
-	print "- STDOUT: %s" % out
-	print "- Parsing polling output..."
+	#print "(vm_poll) - STDOUT: %s" % poll_out
+	print "(vm_poll) - Parsing polling output..."
 
-        match = re.search(self.STATE_RE, out)
+        match = re.search(self.STATE_RE, poll_out)
 	if match:
-	    # TODO: Implement a state dictionary (Subclass specific - subglass var)
-	    # Nimbus state is key, maps to internal state value
-	    # EG: Running    => Running
-	    #     Propagated => Starting
-	    vm.status = match.group(1)
-	    print "- VM state: %s" % vm.status
+	    tmp_state = match.group(1)
+	    # Set VM status:
+	    if (tmp_state in self.VM_STATES):
+	        vm.status = self.VM_STATES[tmp_state]
+	        print "(vm_poll) - VM state: %s" % vm.status
+	    else:
+		print "(vm_poll) - Error: state %s not in VM_STATES." % tmp_state
+		print "(vm_poll) - Setting VM status to \'Error\'"
+		vm.status = "Error"
+
 	else:
-	    print "- Parsing output failed. No regex match. Setting VM status to \'Error\'"
+	    print "(vm_poll) - Parsing output failed. No regex match. Setting VM status to \'Error\'"
 	    vm.status = "Error"
 
-	# Return the VM status as a string (refer to VM state diagram)
+	# Return the VM status as a string
 	return vm.status
 
 
@@ -495,14 +534,39 @@ class NimbusCluster(Cluster):
 	# At present, dumps all stdout and stderr to a logfile, 'vm_log'
 	sp = Popen(cmd, executable="workspace", shell=False)
     
-    # As above, with stdout and stderr output destinations specified.
+    # A command execution with stdout and stderr output destination specified as a filehandle.
+    # Waits on the command to finish, and returns the command's return code.
     # Parameters:
-    #    (As above)
+    #    cmd   - A list containing the command to execute.
     #    out   - A filehandle or file object into which stdout and stderr streams are
     #            dumped.
+    # Returns:
+    #    ret   - The return value of the executed command
     def vm_execdump(self, cmd, out):
 	sp = Popen(cmd, executable="workspace", shell=False, stdout=out, stderr=out)
-    
+	ret = sp.wait()
+	return ret
+   
+    # As above, a function to encapsulate command execution via Popen.
+    # vm_execwait executes the given cmd list, waits for the process to finish,
+    # and returns the return code of the process. STDOUT and STDERR are stored 
+    # in given parameters.
+    # Parameters:
+    #    (cmd as above)
+    #    out   - A string to store the STDOUT of the executed command 
+    #    err   - A string to store the STDERR of the executed command
+    # Returns:
+    #    ret   - The return value of the executed command
+    #    out   - The STDOUT of the executed command
+    #    err   - The STDERR of the executed command
+    # The return of this function is a 3-tuple
+    def vm_execwait(self, cmd):
+        sp = Popen(cmd, executable="workspace", shell=False, stdout=subprocess.PIPE, \
+	  stderr=subprocess.PIPE)
+	ret = sp.wait()
+	(out, err) = sp.communicate(input=None)
+	return (ret, out, err)
+
     
     # The following _factory methods take the given parameters and return a list 
     # representing the corresponding workspace command.
@@ -521,7 +585,8 @@ class NimbusCluster(Cluster):
            "--deploy-duration", duration,    # minutes
            "--deploy-mem", str(mem),         # megabytes (convert from int)
            "--deploy-state", deploy_state,   # Running, Paused, etc.
-           "--exit-state", "Running",        # Running, Paused, Propagated - hard set.
+           "--nosubscriptions",              # Causes the command to start workspace and return immediately
+	   #"--exit-state", "Running",       # Running, Paused, Propagated - hard set.
            # "--dryrun",                     
           ]
 

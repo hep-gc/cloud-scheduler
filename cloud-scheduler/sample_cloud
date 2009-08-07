@@ -46,5 +46,5 @@
 gridsn/gridsn.phys.uvic.ca/Nimbus/28/1/10/512,256,256/x86/public,private
 
 # Test clusters (FAKE)
-nimbus-test/test.hostname.ca/Nimbus/10/2/50/128,512/x86,x86_64/public,private,testpool
+nimbus-test/test.hostname.ca/Nimbus/10/2/50/32,64/x86,x86_64/public,private,testpool
 

@@ -80,7 +80,8 @@ class SchedulingTh(threading.Thread):
         print "dbg - Sched - Simulated job VM parameters: "
 	print "\tname: %s\n\tnetwork assoc.: %s\n\tcpu arch.: %s\n\timage: %s\n\tmemory: %d" \
 	  % (req_name, req_network, req_cpuarch, req_imageloc, req_mem)
-        target_rsrc = self.resource_pool.get_resource()
+        #target_rsrc = self.resource_pool.get_resource()
+        target_rsrc = self.resource_pool.get_resourceFF(req_network, req_cpuarch, req_mem)
         print "dbg - Sched - open resource selected:"
 	target_rsrc.print_short()
 	target_rsrc.vm_create(req_name, req_network, req_cpuarch, req_imageloc, req_mem)
@@ -90,17 +91,23 @@ class SchedulingTh(threading.Thread):
 	target_rsrc.print_short()
 	target_rsrc.print_vms()
 	
-	## Wait...
-        print "dbg - Sched - Waiting..."
-	time.sleep(120)
-
         ## Poll...
-	# TODO: Poll until state changes to running, then wait for 5 and destroy
-
+	# Poll every 5 seconds for 30 seconds (as a test)
+	for i in range(5):
+	    time.sleep(5)
+	    ret_state = target_rsrc.vm_poll(target_rsrc.vms[0])
+            print "dbg - Sched - Polled VM, state:\t%s" % ret_state
+	    if ret_state == "Error":
+	        print "dbg - Sched - VM is in Error state. Polling stopped. Moving to destroy."
+		break
+	    elif ret_state == None:
+	        print "dbg - Sched - VM has been destroyed. Polling stopped"
+		break
+        
 	## Destroy...
 
         # Call vm_destroy on the first entry in the target resource's 'vms' list
-	print "dbg - Sched - Destroying created VM..."
+	print "dbg - Sched - Attempting to destroy created VM..."
 	target_rsrc.vm_destroy(target_rsrc.vms[0])
 	
 	print "dbg - Sched - Print updated cluster information (after destroy):"
