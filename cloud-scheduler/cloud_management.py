@@ -19,7 +19,7 @@
 
 
 ##
-## Imports
+## IMPORTS
 ##
 
 from subprocess import Popen
@@ -37,8 +37,8 @@ import nimbus_xml
 
 ## Log files
 #  TODO: Revise logging issue: vm commands and internal messages in the same log
-#  Currently: vm command stdout is dumped to a file, and log msgs are sent to a
-#   python log object.
+#  Currently: vm command stdout is dumped to a file, and all debug information 
+#             is printed to screen.
 
 # Create a file to dump vm command outputs in to.
 vm_logfile = "vm.log"
@@ -51,6 +51,9 @@ logging.basicConfig(level=logging.DEBUG,
 		    filename=nimbus_logfile, 
 		    filemode='a')
 
+##
+## CLASSES
+##
 
 # A class for storing created VM information. Used to populate Cluster classes
 # 'vms' lists.

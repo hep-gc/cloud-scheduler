@@ -16,7 +16,7 @@
 import sys
 import getopt
 import threading
-import time  # for testing purposes only (sleeps)
+import time   # for testing purposes only (sleeps)
 import string # for debugging purposes
 from optparse import OptionParser
 import cloud_management
@@ -60,9 +60,9 @@ class SchedulingTh(threading.Thread):
         
         ## Initial tests:
 
-	# TODO: Simulate job requirements for VMs (simple parameters only)
-	# TODO: Scan through resource pool to find fitting cluster
-	# TODO: Start a VM with simulated parameters on fitting cluster
+	# Simulate job requirements for VMs (simple parameters only)
+	# Scan through resource pool to find fitting cluster
+	# Start a VM with simulated parameters on fitting cluster
 
 	# VM create parameters (name, networktype, cpuarch, imageloc, mem)
 	# Note: These are the only currently used fields that would be retrieved
@@ -76,7 +76,7 @@ class SchedulingTh(threading.Thread):
 	## Create
 	
 	# Create a VM (DRYRUN) on first cluster in resource pool's 'resources' list
-        print "dbg - Sched - Selecting arbitrary resource for test run."
+        print "dbg - Sched - Selecting a first-fit resource for test run."
         print "dbg - Sched - Simulated job VM parameters: "
 	print "\tname: %s\n\tnetwork assoc.: %s\n\tcpu arch.: %s\n\timage: %s\n\tmemory: %d" \
 	  % (req_name, req_network, req_cpuarch, req_imageloc, req_mem)
@@ -121,7 +121,6 @@ class SchedulingTh(threading.Thread):
 def main():
 
     # Create a parser and process commandline arguments
-    # TODO: Halt(w/error msg) on run without a config file OR an MDS
     parser = OptionParser(usage=usage_str, version=version_str)
     set_options(parser)
     (options, args) = parser.parse_args()
