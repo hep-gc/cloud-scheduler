@@ -1,0 +1,110 @@
+? autocommon/dist
+? autoconfiguration/build
+? autoconfiguration/dist
+? autoconfiguration/lib
+? messaging/gt4.0/java/common/build
+? messaging/gt4.0/java/common/dist
+? messaging/gt4.0/java/gar-builder/build
+? messaging/gt4.0/java/gar-builder/dist
+? messaging/gt4.0/java/msgbridge/build
+? messaging/gt4.0/java/msgbridge/dist
+? messaging/gt4.0/java/stubs/build
+? messaging/gt4.0/java/stubs/dist
+? messaging/gt4.0/schema/dist/build
+? messaging/gt4.0/schema/dist/dist
+? messaging/gt4.0/schema/dist/tmp
+? messaging/gt4.0-elastic/java/msgbridge/build
+? messaging/gt4.0-elastic/java/msgbridge/dist
+? messaging/gt4.0-elastic/java/msgbridge/lib
+? messaging/gt4.0-elastic/java/stubs/build
+? messaging/gt4.0-elastic/java/stubs/dist
+? messaging/gt4.0-elastic/schema/dist/build
+? messaging/gt4.0-elastic/schema/dist/dist
+? messaging/gt4.0-elastic/schema/dist/tmp
+? metadata/java/source/build
+? metadata/java/source/dist
+? service/client/java/source/build
+? service/client/java/source/dist
+? service/service/java/source/build
+? service/service/java/source/dist
+? service-api/java/source/build
+? service-api/java/source/dist
+Index: service/service/java/source/etc/workspace-service/global-policies.conf
+===================================================================
+RCS file: /home/globdev/CVS/globus-packages/workspace/vm/service/service/java/source/etc/workspace-service/global-policies.conf,v
+retrieving revision 1.1.1.1
+diff -r1.1.1.1 global-policies.conf
+69a70,77
+> 
+> 
+> # POLICY: allowed.http.hosts
+> #
+> # This is a list of hosts that the users are allowed to propagate images from 
+> # via http propagation. This should be a comma separated list. 
+> 
+> allowed.http.hosts=
+Index: service/service/java/source/etc/workspace-service/other/main.xml
+===================================================================
+RCS file: /home/globdev/CVS/globus-packages/workspace/vm/service/service/java/source/etc/workspace-service/other/main.xml,v
+retrieving revision 1.2
+diff -r1.2 main.xml
+145a146,147
+>         <property name="allowedHttpHosts"
+>                   value="$GLOBAL{allowed.http.hosts}" />
+Index: service/service/java/source/src/org/globus/workspace/service/binding/GlobalPolicies.java
+===================================================================
+RCS file: /home/globdev/CVS/globus-packages/workspace/vm/service/service/java/source/src/org/globus/workspace/service/binding/GlobalPolicies.java,v
+retrieving revision 1.1
+diff -r1.1 GlobalPolicies.java
+30a31,32
+>     public String[] getAllowedHttpHosts();
+> 
+Index: service/service/java/source/src/org/globus/workspace/service/binding/defaults/DefaultBindDisks.java
+===================================================================
+RCS file: /home/globdev/CVS/globus-packages/workspace/vm/service/service/java/source/src/org/globus/workspace/service/binding/defaults/DefaultBindDisks.java,v
+retrieving revision 1.1
+diff -r1.1 DefaultBindDisks.java
+142a143
+>         final boolean http = "http".equals(rootDiskScheme);
+150a152,173
+>         if (propagationEnabled && http) {
+>             boolean foundHost = false;
+> 
+> 	    String[] allowedHosts = this.globals.getAllowedHttpHosts();
+>             for (String allowedHost : allowedHosts) {
+>                 //convert glob to regex
+>                 allowedHost = allowedHost.trim();
+>                 allowedHost = allowedHost.replaceAll("\\.", "\\\\\\.");
+>                 allowedHost = allowedHost.replaceAll("\\*", "\\.\\*");
+> 
+>                 if (uri.getHost().matches(allowedHost)) {
+>                     foundHost = true;
+>                 }
+> 	    }
+> 
+>             if (!foundHost) {
+>                 final String err = "cannot propagate: supplied image '" +
+>                         uri.toASCIIString() + "' is not in allowed.http.hosts";
+>                 throw new CreationException(err);
+>             }
+>         }
+> 
+240a264
+>         partition.setBlankspace(megabytes);
+Index: service/service/java/source/src/org/globus/workspace/service/binding/defaults/DefaultGlobalPolicies.java
+===================================================================
+RCS file: /home/globdev/CVS/globus-packages/workspace/vm/service/service/java/source/src/org/globus/workspace/service/binding/defaults/DefaultGlobalPolicies.java,v
+retrieving revision 1.1
+diff -r1.1 DefaultGlobalPolicies.java
+54a55,56
+>     private String[] allowedHttpHosts;
+> 
+99a102,109
+>     public String[] getAllowedHttpHosts() {
+>         return this.allowedHttpHosts;
+>     }
+> 
+>     public void setAllowedHttpHosts(String[] allowedHttpHosts) {
+>         this.allowedHttpHosts = allowedHttpHosts;
+>     }
+> 
