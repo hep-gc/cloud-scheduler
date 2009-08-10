@@ -47,7 +47,7 @@ class OpenNebulaCluster(cloud_management.Cluster):
 	def vm_destroy(self, vm):
 		logging.info(self.name + ' Destroying VM ' + str(vm.name)) 
 		pollResponse = self.vm_poll(vm)
-		if pollResponse == 'RUNNING':
+		if pollResponse == 'Running':
 			destroyResponse = self.getProxy().one.vmaction('', 'shutdown', int(vm.id))
 			if destroyResponse[0]:
 				logging.info(self.name + ' VM ' + str(vm.name) + ' Shutting Down') 
