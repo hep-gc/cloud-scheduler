@@ -9,7 +9,7 @@ import logging
 oneLog = 'oneCloud.log'
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s: %(message)s", filename=oneLog, filemode='a')
 
-class OpenNebulaCloud(cloud_management.Cluster):
+class OpenNebulaCluster(cloud_management.Cluster):
 	
 	def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem, vm_scratchSpace):
 
@@ -37,7 +37,7 @@ class OpenNebulaCloud(cloud_management.Cluster):
 			if len(results) == 1 and len(results[0]) == 2:
 				state = results[0][0]
 				lcmstate = results[0][1]
-				logging.info(self.name + ' VM ' + str(vm.name) + ' status ' +  status(state, lcmstate) + ' (ONE ' + oneStatus(state, lcmstate) + ')') 
+				logging.info(self.name + ' VM ' + str(vm.name) + ' STATUS ' +  status(state, lcmstate) + ' (ONE ' + oneStatus(state, lcmstate) + ')') 
 				return status(state, lcmstate)
 					
 			raise Exception('Error Parsing VM state')
@@ -47,7 +47,7 @@ class OpenNebulaCloud(cloud_management.Cluster):
 	def vm_destroy(self, vm):
 		logging.info(self.name + ' Destroying VM ' + str(vm.name)) 
 		pollResponse = self.vm_poll(vm)
-		if pollResponse == 'RUNNING':
+		if pollResponse == 'Running':
 			destroyResponse = self.getProxy().one.vmaction('', 'shutdown', int(vm.id))
 			if destroyResponse[0]:
 				logging.info(self.name + ' VM ' + str(vm.name) + ' Shutting Down') 
@@ -109,10 +109,8 @@ def oneStatus(state, lcmstate):
 
 def status(state, lcmstate):
 	if state == '3' and lcmstate == '3':
-		return 'RUNNING'
+		return 'Running'
 	elif state == '0' or state == '1' or (state == '3' and (lcmstate == '1' or lcmstate == '2')):
-		return 'CREATING'
-	elif state == '6' or (state == '3' and (lcmstate == '11' or lcmstate == '12' or lcmstate == '13')):
-		return 'SHUTDOWN'
+		return 'Starting'
 	else:
-		return 'ERROR'
+		return 'Error'
