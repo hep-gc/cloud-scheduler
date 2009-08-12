@@ -1,0 +1,114 @@
+Index: workspace/vms/xen/xen_v2.py
+===================================================================
+RCS file: /home/globdev/CVS/globus-packages/workspace/vm/backend/workspace/vms/xen/xen_v2.py,v
+retrieving revision 1.31
+diff -u -r1.31 xen_v2.py
+--- workspace/vms/xen/xen_v2.py	9 Jan 2009 20:07:16 -0000	1.31
++++ workspace/vms/xen/xen_v2.py	10 Aug 2009 21:18:34 -0000
+@@ -27,6 +27,7 @@
+ import string
+ import sys
+ import time
++import urllib
+ 
+ # our modules
+ import workspace
+@@ -91,6 +92,9 @@
+                                          "globus-url-copy is either not configured or invalid")
+             func_list.append(self.guc_pull)
+             arg_list.append(dryrun)
++        elif self.opts.image[:7] == "http://":
++            func_list.append(self.native_pull)
++            arg_list.append(dryrun)
+         elif self.opts.image[:6] == "scp://":
+             if not self.opts.scppath:
+                 raise EnvironmentProblem("propagating needs scp but "
+@@ -417,7 +421,43 @@
+ 
+         return cmd
+ 
+-    ### pull() - from guc_pull() and scp_pull()
++    #################
++    # native_pull() #
++    #################
++    def native_pull(self, dryrun):
++        self.xfer_errcode = 0
++        self.xfer_output = ""
++
++        dst = self.opts.securelocaldir + '/' + self.opts.name
++        if not os.path.exists(dst):
++            os.mkdir(dst)
++
++        fnameindex = string.rfind(self.opts.image, '/')
++        dst += '/' + self.opts.image[fnameindex+1:]
++
++        log.debug("destination file is '%s'" % dst)
++
++        if not dryrun:
++            try:
++                urllib.URLopener().retrieve(self.opts.image, dst)
++            except IOError, (error_type, error_code, error_output, e):
++                log.error("problem running transfer, backing out IP/MAC reserves")
++                remove_tracked(dryrun, self.opts)
++                self.xfer_errcode = error_code
++                self.xfer_output = "%s %d %s" % (error_type, error_code, error_output)
++        else:
++            log.debug("dryrun, not running transfer command")
++
++
++        if self.xfer_errcode == 0 and dst[-3:] == '.gz':
++            (success, newname) = self.gunzip_file_inplace(dst)
++            if success:
++                dst = newname
++
++        self.opts.image = "file://" + dst
++        return self.xfer_errcode
++
++    ### pull() - from guc_pull(), scp_pull() 
+     def pull(self, dryrun, cmd, dst):
+         self.xfer_errcode = 0
+         self.xfer_output = ""
+@@ -678,6 +718,10 @@
+                                          "globus-url-copy is either not configured or invalid")
+             self.propagateAndCreate(dryrun)
+             return
++        elif self.opts.image[:7] == "http://":
++            log.debug("image not local calling propagate")
++            self.propagateAndCreate(dryrun)
++            return
+         elif self.opts.image[:6] == "scp://":
+             log.debug("image not local calling propagate")
+             if not self.opts.scppath:
+@@ -1026,6 +1070,8 @@
+ 
+         if self.opts.image[:9] == "gsiftp://":
+             ret = self.guc_pull(dryrun)
++        elif self.opts.image[:7] == "http://":
++            ret = self.native_pull(dryrun)
+         elif self.opts.image[:6] == "scp://":
+             ret = self.scp_pull(dryrun)
+ 
+@@ -2090,7 +2136,7 @@
+             self.tripexception = True
+             return
+ 
+-        if self.image[:9] == "gsiftp://" or self.image[:6] == "scp://":
++        if self.image[:9] == "gsiftp://" or self.image[:6] == "scp://" or self.image[:7] == "http://":
+             if not self.notify:
+                 self.event("fatal, no user/host configured for notify", False)
+                 self.tripexception = True
+@@ -2465,6 +2511,14 @@
+             img.scheme = "gsiftp"
+             img.needspropagation = True
+ 
++        elif imgstr[:7] == "http://":
++            log.warn("Image is http")
++            self.event("  partition/HD is specified w/ http://")
++            img.givenpath = imgstr
++            img.path = imgstr[7:]
++            img.scheme = "http"
++            img.needspropagation = True
++
+         elif imgstr[:6] == "scp://":
+             self.event("  partition/HD is specified w/ scp://")
+             img.givenpath = imgstr
