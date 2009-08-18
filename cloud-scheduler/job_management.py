@@ -19,6 +19,7 @@
 ## IMPORTS
 ##
 import datetime
+import subprocess
 
 ##
 ## CLASSES
@@ -30,7 +31,7 @@ class Job:
     ## Instance Variables
 
     #TODO: Add other fields after examining job files and condor pool
-    name = "default_job"
+    id = "default_jobID"
     # Job status is used by the scheduler to indicate a job's internal status
     # (Unscheduled, Scheduled)
     status       = "Unscheduled"            
@@ -47,7 +48,7 @@ class Job:
 
     # Constructor
     # Parameters:
-    # name     - (str) The name of the job (colloquial)
+    # id       - (str) The ID of the job (via condor). Functions as name.
     # network  - (str) The network association the job requires. TODO: Should support "any"
     # cpuarch  - (str) The CPU architecture the job requires in its run environment
     # image    - (str) The name of the image the job is to run on
@@ -58,12 +59,12 @@ class Job:
     # NOTE: The image field is used as a name field for the image the job will
     #   run on. The cloud scheduler will eventually be able to search a set of 
     #   repositories for this image name. Currently, imageloc MUST be set. 
-    def __init__(self, name, network, cpuarch, image, imageloc, memory, cpucores, storage):
+    def __init__(self, id, network, cpuarch, image, imageloc, memory, cpucores, storage):
         print "dbg - New Job object created:"
 	print "(Job) - Name: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
 	  % (name, network, image, imageloc, memory)
 	
-	self.name = name
+	self.id = id
 	self.req_network  = network
 	self.req_cpuarch  = cpuarch
 	self.req_image    = image
@@ -80,8 +81,8 @@ class Job:
     # Parameters:
     #   spacer  - (str) A string to prepend to each printed line
     def print_short(self, spacer):
-        print spacer + "Job Name: %s, Image: %s, Image location: %s, CPU: %s, Memory: %d" \
-	  % (self.name, self.req_image, self.req_imageloc, self.req_cpuarch, self.req_memory)
+        print spacer + "Job ID: %s, Image: %s, Image location: %s, CPU: %s, Memory: %d" \
+	  % (self.id, self.req_image, self.req_imageloc, self.req_cpuarch, self.req_memory)
 
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
@@ -89,6 +90,11 @@ class Job:
 class JobPool:
 
     ## Instance Variables
+
+    # Default constant variables for Job creation.
+    # TODO: Remove when these options are supported
+    DEF_CORES   = 1
+    DEF_STORAGE = 0
 
     # The 'jobs' list holds all unscheduled jobs in the system. When a job is
     # scheduled by any scheduler that job is moved to 'scheduled_jobs'.
@@ -124,12 +130,107 @@ class JobPool:
         last_query = datetime.datetime.now()
 
 
-    # Query Job Scheduler
+    # Query Job Scheduler via command line condor tools
     # Gets a list of jobs from the job scheduler, and updates internal scheduled
     # and unscheduled job lists with the scheduler information.
-    # TODO: Use SOAP calls or local command line interface + parsing
-    def job_query(self):
-        # TODO: Write method
+    # TODO: Add method job_querySOAP using SOAP calls and the Condor SOAP API
+    def job_queryCMD(self):
+        print "dbg - JobPool job query method"
+
+	# The regular expression to match and parse the following condor cmd
+	# NOTE: This regexp MUST match the (correct) output format of the condor cmd
+        job_regex = r"^VMName:\s(\S*)\sVMLoc:\s(\S*)\sVMNetwork:\s(\S*)\sVMCPUArch:" + \
+          r"\s(\S*)\sVMMem:\s(\S*)\sOwner:\s(\S*)\sJobId:\s(\S*)"
+	
+	# The condor_q command to execute to retrieve jobs
+        condor_cmd = ["condor_q",
+          "-format", 'VMName: %s ',     'VMName',
+          "-format", 'VMLoc: %s ',      'VMLoc',
+          "-format", 'VMNetwork: %s ',  'VMNetwork',
+          "-format", 'VMCPUArch: %s ',  'VMCPUArch',
+          "-format", 'VMMem: %s ',      'VMMem',
+          "-format", 'Owner: %s ',      'Owner',
+          "-format", 'JobId: %s \\n',      'GlobalJobId',
+        ]
+
+	# Execute the condor_cmd, storing the return in a string
+	(condor_ret, condor_out, condor_err) = \
+	  self.condor_execwait(condor_cmd)
+	
+	if (condor_ret != 0):
+	    print "(joq_queryCMD) - Job query command failed. Printing stderr" + \
+	      "and returning..."
+	    print "STDERR:\n%s" % condor_err
+	    return
+	
+	## Parse the correct condor output
+	print "(job_queryCMD) - Job query command completed. Parsing output..."
+
+	# Strip the trailing newline from output and stderr
+	condor_out = condor_out.rstrip()
+	condor_err = condor_err.rstrip()
+	
+	# Split the command output into lines (each line corresponds to a job)
+	job_lines = condor_out.split("\n")
+
+	for line in job_lines:
+	    # Check line validity (via regexp). If invalid, continue
+            match = re.search(job_regex, line)
+	    if not match:
+	        print "(job_queryCMD) - Parsing condor output line failed" +\
+		  "Regexp failed to match."
+		print "(job_queryCMD) - Line '%s' failed to match" % line
+		print "(job_queryCMD) - Regexp to match: %s" % job_regex
+		continue
+	    
+	    # Store match groups (regexp captures) locally, temporarily
+	    (tmp_image, tmp_imageloc, tmp_network, tmp_cpuarch, tmp_memory, \
+	      tmp_owner, tmp_id) = match.groups()
+	    
+	    # Check if job ID is already in the system. If so, continue
+	    if self.has_job(self.jobs, tmp_id):
+	        print "(job_queryCMD) - Job %s is already in the 'jobs' list" \
+		  % tmp_id
+		continue
+            if self.has_job(self.scheduled_jobs, tmp_id):
+	        print "(job_queryCMD) - Job %s is already in the 'scheduled" +\
+		  "_jobs' list" % tmp_id
+		continue
+            
+	    # Check if job is Running (status == 'R'). If so, continue
+            # TODO: Add status retrieval to condor cmd and parsing
+	    # ALT: If job is running, add to scheduled jobs list?
+
+	    # Create a new job from the parsed condor job line
+            new_job = Job(tmp_id, tmp_network, tmp_cpuarch, tmp_image, \
+	      tmp_imageloc, tmp_memory, DEF_CORES, DEF_STORAGE)
+
+            # Add the new job to the JobPool's unscheduled jobs list ('jobs')
+	    self.jobs.append(new_job)
+            print "(job_queryCMD) - New job created successfully, added to jobs list."
+        
+	# When querying is finished, reset last query timestamp
+        last_query = datetime.datetime.now()
+	
+	# After parsing the new condor cmd, print updated job lists
+        print "(job_queryCMD) - Updated job lists:"
+	self.print_jobs()
+        
+
+    # Checks to see if the given job ID is in the given job list
+    # Note: The job_list MUST be a list of Job objects. 
+    # Parameters:
+    #   job_list - (list of Jobs) The list of jobs in which to check for the given ID
+    #   job_id   - (str) The ID of the job to search for
+    # Returns:
+    #   True   - The job exists in the checked lists
+    #   False  - The job does not exist in the checked lists
+    def has_job(self, job_list, job_id):
+        for job in job_list:
+	    if (job_id == job.id):
+	        return True
+	
+	return False
 
 
     # Return an arbitrary subset of the jobs list (unscheduled jobs)
@@ -149,7 +250,6 @@ class JobPool:
     #            length 'size)
     def jobs_priorityset(self, size):
         # TODO: Write method
-
     
     # Print Job Lists (short)
     def print_jobs(self):
@@ -176,6 +276,29 @@ class JobPool:
 	    print "Unscheduled jobs in %s:" % self.name
 	    for job in self.scheduled_jobs
 	        job.print_short("\t")
+
+
+    ## JobPool private methods
+
+    # A function to encapsulate command execution via Popen.
+    # condor_execwait executes the given cmd list, waits for the process to finish,
+    # and returns the return code of the process. STDOUT and STDERR are returned
+    # Parameters:
+    #    cmd   - A list of strings containing the command to be executed
+    # Returns:
+    #    ret   - The return value of the executed command
+    #    out   - The STDOUT of the executed command
+    #    err   - The STDERR of the executed command
+    # The return of this function is a 3-tuple
+    def condor_execwait(self, cmd):
+        sp = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, \
+	  stderr=subprocess.PIPE)
+	ret = sp.wait()
+	(out, err) = sp.communicate(input=None)
+	return (ret, out, err)
+
+
+
 
 # A class to contain a subset of all jobs obtained from the scheduler, to be
 # considered by a scheduler to determine possible schedules (resource environments)
