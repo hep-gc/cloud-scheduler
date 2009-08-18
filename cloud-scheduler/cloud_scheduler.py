@@ -51,68 +51,167 @@ class PollingTh(threading.Thread):
 # (for now, will contain test create/destroy functions)
 class SchedulingTh(threading.Thread):
     
-    def __init__(self, resource_pool):
+    def __init__(self, resource_pool, job_pool):
         threading.Thread.__init__(self)
 	self.resource_pool = resource_pool
+	self.job_pool      = job_pool
 
     def run(self):
         print "dbg - Sched - Starting scheduling thread..."
         
-        ## Initial tests:
+#	##############################################################################
+#       ## Initial tests:
+#	##############################################################################
+#
+#	# Simulate job requirements for VMs (simple parameters only)
+#	# Scan through resource pool to find fitting cluster
+#	# Start a VM with simulated parameters on fitting cluster
+#
+#	# VM create parameters (name, networktype, cpuarch, imageloc, mem)
+#	# Note: These are the only currently used fields that would be retrieved
+#	#       from the job scheduler + job description files
+#       req_name = "test-vm-nimbus-01"
+#	req_network = "public"
+#	req_cpuarch = "x86"
+#	req_imageloc = "file://sl53base_i386.img"
+#	req_mem = 128
+#
+#	## Create
+#	
+#	# Create a VM (DRYRUN) on first cluster in resource pool's 'resources' list
+#       print "dbg - Sched - Selecting a first-fit resource for test run."
+#       print "dbg - Sched - Simulated job VM parameters: "
+#	print "\tname: %s\n\tnetwork assoc.: %s\n\tcpu arch.: %s\n\timage: %s\n\tmemory: %d" \
+#	  % (req_name, req_network, req_cpuarch, req_imageloc, req_mem)
+#       #target_rsrc = self.resource_pool.get_resource()
+#       target_rsrc = self.resource_pool.get_resourceFF(req_network, req_cpuarch, req_mem)
+#       print "dbg - Sched - open resource selected:"
+#	target_rsrc.print_short()
+#	target_rsrc.vm_create(req_name, req_network, req_cpuarch, req_imageloc, req_mem)
+#
+#	# Check that create is reflected internally
+#	print "dbg - Sched - Print updated cluster information (after create):"
+#	target_rsrc.print_short()
+#	target_rsrc.print_vms()
+#	
+#       ## Poll...
+#	# Poll every 5 seconds for 30 seconds (as a test)
+#	for i in range(5):
+#	    time.sleep(5)
+#	    ret_state = target_rsrc.vm_poll(target_rsrc.vms[0])
+#           print "dbg - Sched - Polled VM, state:\t%s" % ret_state
+#	    if ret_state == "Error":
+#	        print "dbg - Sched - VM is in Error state. Polling stopped. Moving to destroy."
+#		break
+#	    elif ret_state == None:
+#	        print "dbg - Sched - VM has been destroyed. Polling stopped"
+#		break
+#        
+#	## Destroy...
+#
+#       # Call vm_destroy on the first entry in the target resource's 'vms' list
+#	print "dbg - Sched - Attempting to destroy created VM..."
+#	target_rsrc.vm_destroy(target_rsrc.vms[0])
+#	
+#	print "dbg - Sched - Print updated cluster information (after destroy):"
+#	target_rsrc.print_short()
+#	target_rsrc.print_vms()
+#
+#	##############################################################################
+#	##############################################################################
 
-	# Simulate job requirements for VMs (simple parameters only)
-	# Scan through resource pool to find fitting cluster
-	# Start a VM with simulated parameters on fitting cluster
+        ##############################################################################
+        ## Full scheduler test
+        ##############################################################################
 
-	# VM create parameters (name, networktype, cpuarch, imageloc, mem)
-	# Note: These are the only currently used fields that would be retrieved
-	#       from the job scheduler + job description files
-        req_name = "test-vm-nimbus-01"
-	req_network = "public"
-	req_cpuarch = "x86"
-	req_imageloc = "file://sl53base_i386.img"
-	req_mem = 128
+        # The main scheduling loop (currently runs for a fixed number of iterations
+	# for demo purposes)
+	for i in range (5):
 
-	## Create
+	    # Query the job pool to get new unscheduled jobs
+            self.job_pool.job_queryCMD()
+
+	    # For each job in the unscheduled jobs list
+	    for job in self.job_pool:
+	        print "(Scheduler) - Attempting to schedule job %s" % job.get_id()
+
+		# Find a resource that matches the job's requirements
+		target_cluster = self.resource_pool.get_resourceFF(job.req_network, \
+		  job.req_cpuarch, job.req_memory)
+
+		# If no job fits, leave job in list and continue to next job
+                if (target_cluster == None):
+		    print "(Scheduler) - No resource to match job: %s" % job.get_id()
+		    print "(Scheduler) - Leaving job unscheduled, moving to next job"
+		    continue
+
+		# Print details of the resource selected
+		print "(Scheduler) - Open resource selected:"
+		target_cluster.print_short()
+
+		# Start VM with job requirements on the selected resource
+		# Note: For now, using job ID as the VM name
+		create_ret = target_cluster.vm_create(job.id, job.req_network, \
+		  job.req_cpuarch, job.req_imageloc, job.req_memory)
+		
+		# If the VM create fails, continue to the next job
+	        if (create_ret != 0):
+		    print "(Scheduler) - Creating VM for job %s failed" % job.get_id()
+		    print "(Scheduler) - VM Create failed on cluster: "
+		    target_cluster.print_short()
+		    print "(Scheduler) - Leaving job unscheduled, moving to next job"
+		    continue
+
+		# Mark job as scheduled
+		self.job_pool.schedule(job)
+            
+	    #ENDFOR - Attempt to schedule each job in the job pool
+            
+	    # Wait for a number of seconds
+	    print "(Scheduler) - Waiting..."
+	    time.sleep(30)
+
+	    # Poll all started VMs
+	    print "(Scheduler) - Polling all running VMs..."
+	    for cluster in self.resource_pool.resources:
+	        for vm in cluster.vms:
+		    ret_state = cluster.vm_poll(vm)
+		    
+		    # Print polled VM's state and details
+		    print "(Scheduler) - Polled VM: "
+		    vm.print_short("\t")
+		    print "(Scheduler) - VM in '%s' state" % ret_state
+
+		    # If the VM is in an error state, destroy it
+		    if ret_state == "Error":
+		        print "(Scheduler) - VM in error state. Destroying..."
+			destroy_ret = cluster.vm_destroy(vm)
+
+			# If destroy fails, leave VM in error state to be destroyed later
+			if (destroy_ret != 0):
+			    print "(Scheduler) - Destroying VM failed"
+			    print "(Scheduler) - Leaving VM in error state"
+			    continue
+	            # TODO: Add case for vm_poll returning None? In this case,
+		    # the VM should be internally removed from vms lists.
+            
+	    #ENDFOR - Poll each running VM in the resource pool
 	
-	# Create a VM (DRYRUN) on first cluster in resource pool's 'resources' list
-        print "dbg - Sched - Selecting a first-fit resource for test run."
-        print "dbg - Sched - Simulated job VM parameters: "
-	print "\tname: %s\n\tnetwork assoc.: %s\n\tcpu arch.: %s\n\timage: %s\n\tmemory: %d" \
-	  % (req_name, req_network, req_cpuarch, req_imageloc, req_mem)
-        #target_rsrc = self.resource_pool.get_resource()
-        target_rsrc = self.resource_pool.get_resourceFF(req_network, req_cpuarch, req_mem)
-        print "dbg - Sched - open resource selected:"
-	target_rsrc.print_short()
-	target_rsrc.vm_create(req_name, req_network, req_cpuarch, req_imageloc, req_mem)
+	#ENDFOR - End of the demo-limited main scheduler loop
+	    
+        # After a set number of iterations, destroy all VMs and finish
+        print "(Scheduler) - Destroying all remaining VMs..."
+	for cluster in self.resource_pool.resources:
+	    for vm in cluster.vms:
+	        print "(Scheduler) - Destroying VM:"
+		vm.print_short("\t")
 
-	# Check that create is reflected internally
-	print "dbg - Sched - Print updated cluster information (after create):"
-	target_rsrc.print_short()
-	target_rsrc.print_vms()
-	
-        ## Poll...
-	# Poll every 5 seconds for 30 seconds (as a test)
-	for i in range(5):
-	    time.sleep(5)
-	    ret_state = target_rsrc.vm_poll(target_rsrc.vms[0])
-            print "dbg - Sched - Polled VM, state:\t%s" % ret_state
-	    if ret_state == "Error":
-	        print "dbg - Sched - VM is in Error state. Polling stopped. Moving to destroy."
-		break
-	    elif ret_state == None:
-	        print "dbg - Sched - VM has been destroyed. Polling stopped"
-		break
+		destroy_ret = cluster.vm_destroy(vm)
+		if destroy_ret != 0:
+		    print "(Scheduler) - Destroying VM failed. Continuing " +\
+		      "anyway... check VM logs"
         
-	## Destroy...
-
-        # Call vm_destroy on the first entry in the target resource's 'vms' list
-	print "dbg - Sched - Attempting to destroy created VM..."
-	target_rsrc.vm_destroy(target_rsrc.vms[0])
-	
-	print "dbg - Sched - Print updated cluster information (after destroy):"
-	target_rsrc.print_short()
-	target_rsrc.print_vms()
+	#ENDFOR - Attempt to destroy each remaining VM in the system
 
 
 
@@ -133,7 +232,10 @@ def main():
 	sys.exit(1)
     
     # Create a resource pool
-    cloud_resources = cloud_management.ResourcePool("Testpool")
+    cloud_resources = cloud_management.ResourcePool("TestRsrcPool")
+
+    # Create a job pool
+    job_pool = job_management.JobPool("TestJobPool")
     
     # If the cluster config option was passed, read in the config file
     if options.cloud_conffile:
@@ -154,7 +256,7 @@ def main():
     #poller.start()
 
     # Create the Scheduling thread (pass resource pool)
-    scheduler = SchedulingTh(cloud_resources)
+    scheduler = SchedulingTh(cloud_resources, job_pool)
     scheduler.start()
 
     print "dbg - Scheduling and Polling threads started."

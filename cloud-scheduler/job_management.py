@@ -21,6 +21,7 @@
 import datetime
 import subprocess
 import string
+import re
 
 ##
 ## CLASSES
@@ -110,8 +111,8 @@ class JobPool:
 
     # Default constant variables for Job creation.
     # TODO: Remove when these options are supported
-    DEF_CORES   = 1
-    DEF_STORAGE = 0
+    DEF_CPUCORES   = 1
+    DEF_STORAGE    = 0
 
     # The 'jobs' list holds all unscheduled jobs in the system. When a job is
     # scheduled by any scheduler that job is moved to 'scheduled_jobs'.
@@ -142,7 +143,7 @@ class JobPool:
     # last_query - A timestamp for the last time the scheduler was queried,
     #              or its creation time
     def __init__(self, name):
-        print "dbg - New JobPool " + name " created"
+        print "dbg - New JobPool %s created" % name
 	self.name = name
         last_query = datetime.datetime.now()
 
@@ -175,7 +176,7 @@ class JobPool:
 	  self.condor_execwait(condor_cmd)
 	
 	if (condor_ret != 0):
-	    print "(joq_queryCMD) - Job query command failed. Printing stderr" + \
+	    print "(job_queryCMD) - Job query command failed. Printing stderr" + \
 	      "and returning..."
 	    print "STDERR:\n%s" % condor_err
 	    return
@@ -219,8 +220,9 @@ class JobPool:
 	    # ALT: If job is running, add to scheduled jobs list?
 
 	    # Create a new job from the parsed condor job line
+	    # Note: convert appropriate fields to integers
             new_job = Job(tmp_id, tmp_network, tmp_cpuarch, tmp_image, \
-	      tmp_imageloc, tmp_memory, DEF_CORES, DEF_STORAGE)
+	      tmp_imageloc, int(tmp_memory), DEF_CPUCORES, DEF_STORAGE)
 
             # Add the new job to the JobPool's unscheduled jobs list ('jobs')
 	    self.jobs.append(new_job)
@@ -256,7 +258,11 @@ class JobPool:
     # Parameters:
     #   job   - (Job object) The job to mark as scheduled
     def schedule(self, job):
-        self.jobs.remove(job)
+        if not (job in self.jobs):
+	    print "(schedule) - Error: job %s not in unscheduled jobs list"
+	    print "(schedule) - Cannot mark job as scheduled. Returning"
+	    return
+	self.jobs.remove(job)
 	self.scheduled_jobs.append(job)
 	job.set_status("Scheduled")
 	print "(schedule) - Job %s marked as scheduled." % job.get_id()
@@ -269,6 +275,7 @@ class JobPool:
     #   subset - (Job list) A list of the jobs selected from the 'jobs' list
     def jobs_subset(self, size):
         # TODO: Write method
+	print "Method not yet implemented"
 
     # Return a subset of size 'size' of the highest priority jobs from the list
     # of unscheduled jobs
@@ -278,8 +285,9 @@ class JobPool:
     #   subset - (Job list) A list of the highest priority unscheduled jobs (of
     #            length 'size)
     def jobs_priorityset(self, size):
-        # TODO: Write method
-    
+      # TODO: Write method
+      print "Method not yet implemented"
+
     # Print Job Lists (short)
     def print_jobs(self):
 	self.print_sched_jobs()
@@ -293,7 +301,7 @@ class JobPool:
 	    return
 	else:
 	    print "Scheduled jobs in %s:" % self.name
-	    for job in self.scheduled_jobs
+	    for job in self.scheduled_jobs:
 	        job.print_short("\t")
 
     # Print Unscheduled Jobs (short)
@@ -303,7 +311,7 @@ class JobPool:
 	    return
 	else:
 	    print "Unscheduled jobs in %s:" % self.name
-	    for job in self.scheduled_jobs
+	    for job in self.scheduled_jobs:
 	        job.print_short("\t")
 
 
@@ -383,7 +391,7 @@ class JobSet:
 	    return
 	else:
 	    print "Job set %s:" % self.name
-	    for job in self.job_set
+	    for job in self.job_set:
 	        job.print_short("\t")
 
 
