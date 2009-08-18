@@ -20,6 +20,7 @@
 ##
 import datetime
 import subprocess
+import string
 
 ##
 ## CLASSES
@@ -30,11 +31,11 @@ class Job:
 
     ## Instance Variables
 
-    #TODO: Add other fields after examining job files and condor pool
+    # A list of possible statuses for internal job representation
+    statuses = ["Unscheduled", "Scheduled"]
+    
     id = "default_jobID"
-    # Job status is used by the scheduler to indicate a job's internal status
-    # (Unscheduled, Scheduled)
-    status       = "Unscheduled"            
+    status       = statuses[0]  # Set initial status to 'Unscheduled'            
     req_network  = "default_network"
     req_cpuarch  = "x86"
     req_image    = "default_image"           # Currently not considered. Imageloc
@@ -74,7 +75,7 @@ class Job:
 	self.req_storage  = storage
 
 	# Set the new job's status
-	self.status = "Unscheduled"
+	self.status = self.statuses[0]
 
     # Short Print
     # Print a short string representing the job
@@ -84,6 +85,22 @@ class Job:
         print spacer + "Job ID: %s, Image: %s, Image location: %s, CPU: %s, Memory: %d" \
 	  % (self.id, self.req_image, self.req_imageloc, self.req_cpuarch, self.req_memory)
 
+    # Get ID
+    # Returns the job's id string
+    def get_id(self):
+        return self.id
+
+    # Set status
+    # Sets the job's status to the given string
+    # Parameters:
+    #   status   - (str) A string indicating the job's new status.
+    # Note: Status must be one of Scheduled, Unscheduled
+    def set_status(self, status):
+        if not (status in statuses):
+	    print "(Job:set_status) - Error: incorrect status '%s' passed" % status
+	    print "Status must be one of: " + string.join(self.statuses, ", ")
+	    return
+        self.status = status
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
 # complete. Keeps scheduled and unscheduled jobs.
@@ -232,7 +249,19 @@ class JobPool:
 	
 	return False
 
-
+    # Mark job scheduled
+    # Makes all changes to a job to indicate that the job has been scheduled
+    # Currently: moves passed job from unscheduled to scheduled job list, 
+    # and changes job status to "Scheduled"
+    # Parameters:
+    #   job   - (Job object) The job to mark as scheduled
+    def schedule(self, job):
+        self.jobs.remove(job)
+	self.scheduled_jobs.append(job)
+	job.set_status("Scheduled")
+	print "(schedule) - Job %s marked as scheduled." % job.get_id()
+    
+    
     # Return an arbitrary subset of the jobs list (unscheduled jobs)
     # Parameters:
     #   size   - (int) The number of jobs to return

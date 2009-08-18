@@ -20,7 +20,7 @@ import time   # for testing purposes only (sleeps)
 import string # for debugging purposes
 from optparse import OptionParser
 import cloud_management
-
+import job_management
 
 ## GLOBAL VARIABLES
 
