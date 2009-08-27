@@ -1,0 +1,14 @@
+Index: workspace/vms/xen/xen_v2.py
+===================================================================
+RCS file: /home/globdev/CVS/globus-packages/workspace/vm/backend/workspace/vms/xen/xen_v2.py,v
+retrieving revision 1.31
+diff -r1.31 xen_v2.py
+661,663d701
+<         # this should be more cleanly handled, and handled elsewhere.
+<         if self.opts.image[-3:] == '.gz':
+<             self.opts.image = self.opts.image[:-3]
+665a704,707
+>             # this should be more cleanly handled, and handled elsewhere.
+>             if self.opts.image[-3:] == '.gz':
+>                 self.opts.image = self.opts.image[:-3]
+> 
