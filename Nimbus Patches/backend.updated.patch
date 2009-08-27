@@ -4,7 +4,7 @@ RCS file: /home/globdev/CVS/globus-packages/workspace/vm/backend/workspace/vms/x
 retrieving revision 1.31
 diff -u -r1.31 xen_v2.py
 --- workspace/vms/xen/xen_v2.py	9 Jan 2009 20:07:16 -0000	1.31
-+++ workspace/vms/xen/xen_v2.py	10 Aug 2009 21:18:34 -0000
++++ workspace/vms/xen/xen_v2.py	11 Aug 2009 18:41:33 -0000
 @@ -27,6 +27,7 @@
  import string
  import sys
@@ -23,7 +23,7 @@ diff -u -r1.31 xen_v2.py
          elif self.opts.image[:6] == "scp://":
              if not self.opts.scppath:
                  raise EnvironmentProblem("propagating needs scp but "
-@@ -417,7 +421,43 @@
+@@ -417,7 +421,44 @@
  
          return cmd
  
@@ -47,11 +47,12 @@ diff -u -r1.31 xen_v2.py
 +        if not dryrun:
 +            try:
 +                urllib.URLopener().retrieve(self.opts.image, dst)
-+            except IOError, (error_type, error_code, error_output, e):
++            except IOError, e:
 +                log.error("problem running transfer, backing out IP/MAC reserves")
 +                remove_tracked(dryrun, self.opts)
-+                self.xfer_errcode = error_code
-+                self.xfer_output = "%s %d %s" % (error_type, error_code, error_output)
++                self.xfer_errcode = 127
++                self.xfer_output = "Problem downloading %s : %s" % (self.opts.image, e.args[0])
++
 +        else:
 +            log.debug("dryrun, not running transfer command")
 +
@@ -68,7 +69,7 @@ diff -u -r1.31 xen_v2.py
      def pull(self, dryrun, cmd, dst):
          self.xfer_errcode = 0
          self.xfer_output = ""
-@@ -678,6 +718,10 @@
+@@ -678,6 +719,10 @@
                                           "globus-url-copy is either not configured or invalid")
              self.propagateAndCreate(dryrun)
              return
@@ -79,7 +80,7 @@ diff -u -r1.31 xen_v2.py
          elif self.opts.image[:6] == "scp://":
              log.debug("image not local calling propagate")
              if not self.opts.scppath:
-@@ -1026,6 +1070,8 @@
+@@ -1026,6 +1071,8 @@
  
          if self.opts.image[:9] == "gsiftp://":
              ret = self.guc_pull(dryrun)
@@ -88,7 +89,7 @@ diff -u -r1.31 xen_v2.py
          elif self.opts.image[:6] == "scp://":
              ret = self.scp_pull(dryrun)
  
-@@ -2090,7 +2136,7 @@
+@@ -2090,7 +2137,7 @@
              self.tripexception = True
              return
  
@@ -97,12 +98,11 @@ diff -u -r1.31 xen_v2.py
              if not self.notify:
                  self.event("fatal, no user/host configured for notify", False)
                  self.tripexception = True
-@@ -2465,6 +2511,14 @@
+@@ -2465,6 +2512,13 @@
              img.scheme = "gsiftp"
              img.needspropagation = True
  
 +        elif imgstr[:7] == "http://":
-+            log.warn("Image is http")
 +            self.event("  partition/HD is specified w/ http://")
 +            img.givenpath = imgstr
 +            img.path = imgstr[7:]
