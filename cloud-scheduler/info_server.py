@@ -14,6 +14,7 @@
 import threading
 import time
 import socket
+import sys
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
@@ -31,23 +32,26 @@ class CloudSchedulerInfoServer(threading.Thread,):
         cloud_resources = c_resources
 
         #set up server
-        self.server = SimpleXMLRPCServer(("localhost", 8000), requestHandler=RequestHandler)
-        self.server.socket.settimeout(1)
-        self.server.register_introspection_functions()
+        try:
+            self.server = SimpleXMLRPCServer(("localhost", 8000), requestHandler=RequestHandler, logRequests=False)
+            self.server.socket.settimeout(1)
+            self.server.register_introspection_functions()
 
+            # Register an instance; all the methods of the instance are
+            # published as XML-RPC methods
+            class externalFunctions:
+                def get_cloud_resources(self):
+                    return cloud_resources.get_pool_info()
 
-        # Register an instance; all the methods of the instance are
-        # published as XML-RPC methods
-        class externalFunctions:
-            def get_cloud_resources(self):
-                return cloud_resources.get_pool_info()
-
-        self.server.register_instance(externalFunctions())
+            self.server.register_instance(externalFunctions())
+        except:
+            print "Couldn't start info server:", sys.exc_info()[0]
+            raise SystemExit
 
     def run(self):
 
         # Run the server's main loop
-        while True:
+        while self.server:
             try:
                 self.server.handle_request()
                 if self.done:
