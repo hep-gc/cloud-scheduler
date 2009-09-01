@@ -11,30 +11,50 @@
 ##
 ## IMPORTS
 ##
-
+import threading
+import time
+import socket
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
-
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
 
-class CloudSchedulerInfoServer:
+class CloudSchedulerInfoServer(threading.Thread,):
 
-    def __init__(self, cloud_resources):
-		
-        #create server
-        server = SimpleXMLRPCServer(("localhost", 8000), requestHandler=RequestHandler)
-        server.register_introspection_functions()
+    cloud_resources = None
+
+    def __init__(self, c_resources):
+        #set up class
+        threading.Thread.__init__(self)
+        self.done = False
+        cloud_resources = c_resources
+
+        #set up server
+        self.server = SimpleXMLRPCServer(("localhost", 8000), requestHandler=RequestHandler)
+        self.server.socket.settimeout(1)
+        self.server.register_introspection_functions()
+
 
         # Register an instance; all the methods of the instance are
-        # published as XML-RPC methods (in this case, just 'div').
+        # published as XML-RPC methods
         class externalFunctions:
             def get_cloud_resources(self):
                 return cloud_resources.get_pool_info()
 
-        server.register_instance(externalFunctions())
+        self.server.register_instance(externalFunctions())
+
+    def run(self):
 
         # Run the server's main loop
-        server.serve_forever()
+        while True:
+            try:
+                self.server.handle_request()
+                if self.done:
+                    print 'Killing info server...'
+                    break
+            except socket.timeout:
+                pass
 
+    def stop(self):
+        self.done = True

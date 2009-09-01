@@ -132,13 +132,18 @@ class ResourcePool:
 
     # Print the name and address of every cluster in the resource pool
     def print_pool(self, ):
-        print "Resource pool " + self.name + ":"
+        print self.get_pool_info()
+
+    # Print the name and address of every cluster in the resource pool
+    def get_pool_info(self, ):
+        output = "Resource pool " + self.name + ":\n"
+        output += "%-15s  %-10s %-15s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS")
         if len(self.resources) == 0:
-	    print "Pool is empty..."
+            output += "Pool is empty..."
 	else:
 	    for cluster in self.resources:
-	        print "\t" + cluster.name + "\t" + cluster.cloud_type + "\t" + \
-		  cluster.network_address
+	        output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
+        return output
     
     # Return an arbitrary resource from the 'resources' list. Does not remove
     # the returned element from the list.
