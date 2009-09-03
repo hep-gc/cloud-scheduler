@@ -40,11 +40,14 @@
 # - The cluster also provides public, org1, and internal network pools (these names are not standard, 
 #   but specific to the cluster and are named arbitrarily on the cluster itself).
 
+# Test clusters (FAKE)
+# nimbus-test/test.hostname.ca/Nimbus/10/2/50/32,64/x86,x86_64/public,private,testpool
+
 # The gridsn test cluster. Based on current gridsn configuration.
 # 28 VM slots: 23 private, 5 public (see $GLOBUS_LOCATION/etc/nimbus/workspace-service/network-pools/)
 # Memory: 512, 256, 256 (see $GLOBUS_LOCATION/etc/nimbus/workspace-service/vmm-pools/)
-gridsn/gridsn.phys.uvic.ca/Nimbus/28/1/10/512,256,256/x86/public,private
+gridsn/gridsn.phys.uvic.ca/Nimbus/28/1/10/256,256,256/x86/public,private
 
-# Test clusters (FAKE)
-nimbus-test/test.hostname.ca/Nimbus/10/2/50/32,64/x86,x86_64/public,private,testpool
+# The CanfarDev cluster. Updated 8/25/2009.
+canfardev/canfardev.dao.nrc.ca/Nimbus/100/1/10/3072,3072,3072/x86/private
 

@@ -7,4 +7,5 @@
 rm $1 *.log
 rm $1 *.pyc
 rm $1 tmp_*
+mv *.epr ./eprs
 

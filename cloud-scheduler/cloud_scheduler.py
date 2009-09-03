@@ -124,15 +124,19 @@ class SchedulingTh(threading.Thread):
         ## Full scheduler test
         ##############################################################################
 
-        # The main scheduling loop (currently runs for a fixed number of iterations
+	
+	# The main scheduling loop (currently runs for a fixed number of iterations
 	# for demo purposes)
-	for i in range (5):
+	for i in range (200):
+	    print_line("Scheduler Loop")
 
-	    # Query the job pool to get new unscheduled jobs
+	    ## Query the job pool to get new unscheduled jobs
             self.job_pool.job_queryCMD()
 
-	    # For each job in the unscheduled jobs list
-	    for job in self.job_pool:
+	    ## For each job in the unscheduled jobs list
+            print_line("Schedule all queued jobs")
+	    for job in self.job_pool.jobs:
+              
 	        print "(Scheduler) - Attempting to schedule job %s" % job.get_id()
 
 		# Find a resource that matches the job's requirements
@@ -150,8 +154,7 @@ class SchedulingTh(threading.Thread):
 		target_cluster.print_short()
 
 		# Start VM with job requirements on the selected resource
-		# Note: For now, using job ID as the VM name
-		create_ret = target_cluster.vm_create(job.id, job.req_network, \
+		create_ret = target_cluster.vm_create(job.req_image, job.req_network, \
 		  job.req_cpuarch, job.req_imageloc, job.req_memory)
 		
 		# If the VM create fails, continue to the next job
@@ -164,15 +167,17 @@ class SchedulingTh(threading.Thread):
 
 		# Mark job as scheduled
 		self.job_pool.schedule(job)
-            
+           
 	    #ENDFOR - Attempt to schedule each job in the job pool
             
-	    # Wait for a number of seconds
+	    ## Wait for a number of seconds
+	    print_line("Waiting")
 	    print "(Scheduler) - Waiting..."
-	    time.sleep(30)
+	    time.sleep(3)
 
-	    # Poll all started VMs
-	    print "(Scheduler) - Polling all running VMs..."
+	    ## Poll all started VMs
+	    print_line("Polling all running VMs")
+	    
 	    for cluster in self.resource_pool.resources:
 	        for vm in cluster.vms:
 		    ret_state = cluster.vm_poll(vm)
@@ -182,25 +187,65 @@ class SchedulingTh(threading.Thread):
 		    vm.print_short("\t")
 		    print "(Scheduler) - VM in '%s' state" % ret_state
 
-		    # If the VM is in an error state, destroy it
+		    # If the VM is in an error state, manually recreate it
 		    if ret_state == "Error":
-		        print "(Scheduler) - VM in error state. Destroying..."
-			destroy_ret = cluster.vm_destroy(vm)
+		        print "(Scheduler) - VM in error state. Recreating..."
 
+			# Store all VM fields
+			vm_name = vm.name
+			vm_network = vm.network
+			vm_cpuarch = vm.cpuarch
+			vm_imageloc = vm.imagelocation
+			vm_mem = vm.memory
+
+			# Destroy the VM
+		    	destroy_ret = cluster.vm_destroy(vm)
+		    	if (destroy_ret != 0):
+		    	    print "(Scheduler) - Destroying VM failed. Leaving VM in error state."
+		    	    continue
+		        # Find an available resource to recreate on 
+		        target_rsrc = self.resource_pool.get_resourceFF(vm_network, vm_cpuarch, vm_mem)
+                        if (target_rsrc == None):
+		            print "(Scheduler) - No resource found for recreation. Aborting recreate."
+		            continue
+		        # Recreate the VM on the new resource
+		        print "(Scheduler) - Open resource selected:"
+		        target_rsrc.print_short()
+		        create_ret = target_rsrc.vm_create(vm_name, vm_network, vm_cpuarch, vm_imageloc, vm_mem)
+	                if (create_ret != 0):
+		            print "(Scheduler) - Recreating VM failed. Leaving VM in error state."
+		            continue
+                    # ENDIF - if VM in error state
+
+		    ## CANNOT USE recreate or reboot because of poll loop bug.
+		    ## If the VM is in an error state, recreate it!
+		    #if ret_state == "Error":
+		    #    print "(Scheduler) - VM in error state. Recreating..."
+		    #	recreate_ret = cluster.vm_recreate(vm)
+  
+   			# If recreate fails, leave VM in error state (tbdestroyed)
+   		    #	if (recreate_ret != 0):
+		    #	    print "(Scheduler) - Recreating VM failed. Leaving" +\
+		    #	      "VM in error state"
+		    #	    continue
+
+		    ## If the VM is in an error state, destroy it
+		    #if ret_state == "Error":
+		    #   print "(Scheduler) - VM in error state. Destroying..."
+		    #	destroy_ret = cluster.vm_destroy(vm)
+ 
 			# If destroy fails, leave VM in error state to be destroyed later
-			if (destroy_ret != 0):
-			    print "(Scheduler) - Destroying VM failed"
-			    print "(Scheduler) - Leaving VM in error state"
-			    continue
-	            # TODO: Add case for vm_poll returning None? In this case,
-		    # the VM should be internally removed from vms lists.
-            
+		    #	if (destroy_ret != 0):
+		    #	    print "(Scheduler) - Destroying VM failed"
+		    #	    print "(Scheduler) - Leaving VM in error state"
+		    #	    continue
+	            
 	    #ENDFOR - Poll each running VM in the resource pool
 	
 	#ENDFOR - End of the demo-limited main scheduler loop
 	    
-        # After a set number of iterations, destroy all VMs and finish
-        print "(Scheduler) - Destroying all remaining VMs..."
+        ## After a set number of iterations, destroy all VMs and finish
+	print_line("Destroying all remaing VMs :-(")
 	for cluster in self.resource_pool.resources:
 	    for vm in cluster.vms:
 	        print "(Scheduler) - Destroying VM:"
@@ -214,8 +259,9 @@ class SchedulingTh(threading.Thread):
 	#ENDFOR - Attempt to destroy each remaining VM in the system
 
 
-
+##
 ## Functions
+##
 
 def main():
 
@@ -321,6 +367,13 @@ def read_cloud_config(config_file, rsrc_pool):
     print "Cloud configuration read succesfully from " + config_file 
     return (0)
     
+
+# Prints readable lined lines across the screen with message
+def print_line(msg):
+    msg_len = len(msg)
+    fill = "-" * (75-msg_len)
+    print "-----"+msg+fill
+
 
 ##
 ## Main Functionality

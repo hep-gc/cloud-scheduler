@@ -81,7 +81,7 @@ class VM:
     # type         - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
     # network      - (str) The network association the VM uses
     # cpuarch      - (str) The required CPU architecture of the VM
-    # imageloation - (str) The location of the image from which the VM was created
+    # imagelocation- (str) The location of the image from which the VM was created
     # memory       - (int) The memory used by the VM
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
@@ -367,15 +367,15 @@ class NimbusCluster(Cluster):
     # Nimbus VM states: Unstaged, Unpropagated, Propagated, Running, Paused, 
     # TransportReady, StagedOut, Corrupted, Cancelled.
     VM_STATES = {
-         "Unstaged"     : "Starting",
-         "Unpropagated" : "Starting",
-         "Propagated"   : "Starting",
-         "Running"      : "Running",
-	 "Paused"       : "Running",   # TODO: Include a paused state? Will CS support pausing?
+         "Unstaged"       : "Starting",
+         "Unpropagated"   : "Starting",
+         "Propagated"     : "Starting",
+         "Running"        : "Running",
+	 "Paused"         : "Running",   # TODO: Include a paused state? Will CS support pausing?
 	 "TransportReady" : "Running",
-	 "StagedOut"    : "Running",
-	 "Corrupted"    : "Error",
-	 "Cancelled"    : "Error",
+	 "StagedOut"      : "Running",
+	 "Corrupted"      : "Error",
+	 "Cancelled"      : "Error",
     }
     
     ## NimbusCluster specific instance methods
@@ -407,7 +407,7 @@ class NimbusCluster(Cluster):
 	print "(vm_create) - workspace create command prepared."
 	print "(vm_create) - Command: " + string.join(ws_cmd, " ")
 
-	# Execute the workspace create commdand: no wait, returns immediately. Dump
+	# Execute the workspace create commdand: returns immediately. Dump
 	# to vm_log
 	create_return = self.vm_execdump(ws_cmd, vm_log)
 	if (create_return != 0):
@@ -441,7 +441,71 @@ class NimbusCluster(Cluster):
 	print "(vm_create) - VM created and stored, cluster updated."
 	return create_return
 
-    
+
+    # TODO: Explain parameters, returns, and purpose
+    def vm_recreate(self, vm):
+        print 'dbg - Nimbus cloud destroy and create commands'
+
+	# Store VM attributes before destroy
+	vm_name    = vm.name
+	vm_id      = vm.id
+	vm_network = vm.network
+	vm_cpuarch = vm.cpuarch
+	vm_imagelocation = vm.imagelocation
+	vm_memory  = vm.memory
+
+        # Print VM parameters
+	print "(vm_recreate) - name: %s network: %s cpuarch: %s imageloc: %s memory: %d" \
+	  % (vm_name, vm_network, vm_cpuarch, vm_imagelocation, vm_memory)
+
+        # Call destroy on the given VM
+	print "(vm_recreate) - Destroying VM %s..." % vm_name
+	destroy_ret = self.vm_destroy(vm)
+	if (destroy_ret != 0):
+	    print "(vm_recreate) - Destroying VM failed. Aborting recreate."
+	    return destroy_ret
+	
+	# Call create with the given VM's parameters
+	print "(vm_recreate) - Recreating VM %s..." % vm_name
+        create_ret = self.vm_create(vm_name, vm_network, vm_cpuarch, \
+	  vm_imagelocation, vm_memory)
+	if (create_ret != 0):
+	    print "(vm_recreate) - Recreating VM %s failed. Aborting recreate."
+	    return create_ret
+
+        # Print success message and return
+	print "(vm_recreate) - VM %s successfully recreated." % vm_name
+	return create_ret
+   
+
+    # TODO: Explain parameters and returns
+    def vm_reboot(self, vm):
+        print 'dbg - Nimbus cloud reboot VM command'
+
+	# Create workspace reboot command as a list (priv. method)
+	ws_cmd = self.vmreboot_factory(vm.id)
+	print "(vm_reboot) - workspace reboot command prepared."
+	print "(vm_reboot) - Command: " + string.join(ws_cmd, " ")
+	
+	# Execute the reboot command: wait for return, stdout to log.
+	reboot_return = self.vm_execdump(ws_cmd, vm_log)
+
+	# Check reboot return code. If successful, continue. Otherwise, set
+	# VM state to "Error" and return.
+	if (reboot_return != 0):
+	    print "(vm_reboot) - Error in executing workspace reboot command."
+	    print "(vm_reboot) - VM failed to reboot. Setting VM to error state and returning error code."
+	    # Causes fatal exception. ??
+	    #print "(vm_reboot) - VM %s failed to reboot. Setting vm status to \'Error\' and returning error code." % vm.name
+	    vm.status = "Error"
+	    return reboot_return 
+	    
+	# Set state to initial default state "Starting" and return
+	vm.status = "Starting"
+	print "(vm_reboot) - workspace reboot command executed. VM rebooting..."
+	return reboot_return
+
+
     # TODO: Explain parameters and returns
     def vm_destroy(self, vm):
         print 'dbg - Nimbus cloud destroy command'
@@ -451,15 +515,16 @@ class NimbusCluster(Cluster):
 	print "(vm_destroy) - workspace destroy command prepared."
 	print "(vm_destroy) - Command: " + string.join(ws_cmd, " ")
 
-	# Execute the workspace command: no-wait, stdout to log.
+	# Execute the workspace command: wait for return, stdout to log.
 	destroy_return = self.vm_execdump(ws_cmd, vm_log)
         
 	# Check destroy return code. If successful, continue. Otherwise, set VM to 
 	# error state (wait, and the polling thread will attempt a destroy later)
 	if (destroy_return != 0):
 	    print "(vm_destroy) - Error in executing workspace destroy command."
-	    print "(vm_destroy) - VM %s (ID: %s) not correctly destroyed. Setting vm " + \
-	      "status to \'Error\' and returning error code." % (vm.name, vm.id)
+	    print "(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code."
+	    # Causes fatal exception, for some reason
+	    #print "(vm_destroy) - VM %s not correctly destroyed. Setting vm status to \'Error\' and returning error code." % vm.name
 	    vm.status = "Error"
 	    return destroy_return 
 	print "(vm_destroy) - workspace destroy command executed."
@@ -594,6 +659,10 @@ class NimbusCluster(Cluster):
           ]
 
         # Return the workspace command list
+	return ws_list
+    
+    def vmreboot_factory(self, epr_file):
+	ws_list = [ "workspace", "-e", epr_file, "--reboot"]
 	return ws_list
 
     def vmdestroy_factory(self, epr_file):

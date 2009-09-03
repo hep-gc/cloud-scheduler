@@ -63,8 +63,8 @@ class Job:
     #   repositories for this image name. Currently, imageloc MUST be set. 
     def __init__(self, id, network, cpuarch, image, imageloc, memory, cpucores, storage):
         print "dbg - New Job object created:"
-	print "(Job) - Name: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
-	  % (name, network, image, imageloc, memory)
+	print "(Job) - ID: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
+	  % (id, network, image, imageloc, memory)
 	
 	self.id = id
 	self.req_network  = network
@@ -97,7 +97,7 @@ class Job:
     #   status   - (str) A string indicating the job's new status.
     # Note: Status must be one of Scheduled, Unscheduled
     def set_status(self, status):
-        if not (status in statuses):
+        if not (status in self.statuses):
 	    print "(Job:set_status) - Error: incorrect status '%s' passed" % status
 	    print "Status must be one of: " + string.join(self.statuses, ", ")
 	    return
@@ -161,7 +161,10 @@ class JobPool:
           r"\s(\S*)\sVMMem:\s(\S*)\sOwner:\s(\S*)\sJobId:\s(\S*)"
 	
 	# The condor_q command to execute to retrieve jobs
+	# NOTE: name currently hardcoded - should add as constructor param and cmd_line input (parsed in main)
+	# TODO: Remove hardcoded job server name (take as cmd-line parameter in main?)
         condor_cmd = ["condor_q",
+	  "-name", "canfarpool.phys.uvic.ca",
           "-format", 'VMName: %s ',     'VMName',
           "-format", 'VMLoc: %s ',      'VMLoc',
           "-format", 'VMNetwork: %s ',  'VMNetwork',
@@ -211,8 +214,7 @@ class JobPool:
 		  % tmp_id
 		continue
             if self.has_job(self.scheduled_jobs, tmp_id):
-	        print "(job_queryCMD) - Job %s is already in the 'scheduled" +\
-		  "_jobs' list" % tmp_id
+	        print "(job_queryCMD) - Job %s is already in the 'scheduled_jobs' list" % tmp_id
 		continue
             
 	    # Check if job is Running (status == 'R'). If so, continue
@@ -222,7 +224,7 @@ class JobPool:
 	    # Create a new job from the parsed condor job line
 	    # Note: convert appropriate fields to integers
             new_job = Job(tmp_id, tmp_network, tmp_cpuarch, tmp_image, \
-	      tmp_imageloc, int(tmp_memory), DEF_CPUCORES, DEF_STORAGE)
+	      tmp_imageloc, int(tmp_memory), self.DEF_CPUCORES, self.DEF_STORAGE)
 
             # Add the new job to the JobPool's unscheduled jobs list ('jobs')
 	    self.jobs.append(new_job)
@@ -293,7 +295,6 @@ class JobPool:
 	self.print_sched_jobs()
 	self.print_unsched_jobs()
 
-
     # Print Scheduled Jobs (short)
     def print_sched_jobs(self):
         if len(self.scheduled_jobs) == 0:
@@ -311,7 +312,7 @@ class JobPool:
 	    return
 	else:
 	    print "Unscheduled jobs in %s:" % self.name
-	    for job in self.scheduled_jobs:
+	    for job in self.jobs:
 	        job.print_short("\t")
 
 
