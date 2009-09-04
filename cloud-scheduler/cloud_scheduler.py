@@ -21,6 +21,7 @@ import string # for debugging purposes
 from optparse import OptionParser
 import cloud_management
 import job_management
+import info_server
 
 ## GLOBAL VARIABLES
 
@@ -302,8 +303,8 @@ def main():
     #poller.start()
 
     # Create the Scheduling thread (pass resource pool)
-    scheduler = SchedulingTh(cloud_resources, job_pool)
-    scheduler.start()
+    #scheduler = SchedulingTh(cloud_resources, job_pool)
+    #scheduler.start()
 
     print "dbg - Scheduling and Polling threads started."
 
@@ -311,8 +312,23 @@ def main():
     # (Unnecessary? The scheduler and the poller are the only things that need
     # to remain running)
     print "dbg - Waiting for the scheduler to finish..."
-    scheduler.join()
+    #FIXME when merged to dev or master branch
+    #scheduler.join()
 
+    print "dbg - Starting Cloud Scheduler info server..."
+    info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
+    info_serv.daemon = True
+    info_serv.start()
+    print "dbg - Started Cloud Scheduler info server..."
+
+    #FIXME when merged to dev or master branch.
+    try: 
+        while True:
+            time.sleep(2)
+    except KeyboardInterrupt:
+        info_serv.stop()
+        print "dbg - Killing cloud_scheduler..."
+        raise SystemExit
 
 # Sets the command-line options for a passed in OptionParser object (via optparse)
 def set_options(parser):
