@@ -14,6 +14,7 @@
 ## Imports
 
 import sys
+import logging
 import getopt
 import threading
 import time   # for testing purposes only (sleeps)
@@ -27,6 +28,18 @@ import info_server
 
 usage_str = "cloud_scheduler [-c FILE | --cluster-config FILE] [-m SERVER | --MDS SERVER]"
 version_str = "Cloud Scheduler v 0.1"
+
+
+## LOGGING SETUP
+
+log = logging.getLogger("CloudLogger")
+log.setLevel(logging.DEBUG)
+log_handler = logging.StreamHandler()
+log_handler.setLevel(logging.DEBUG)
+log_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+log_handler.setFormatter(log_formatter)
+log.addHandler(log_handler)
+
 
 
 ## Thread Bodies
@@ -45,7 +58,7 @@ class PollingTh(threading.Thread):
 
     def run(self):
 	# TODO: Implement polling thread functionality here.
-        print "dbg - Poll - Starting polling thread..."
+        log.debug("Poll - Starting polling thread...")
 
 # Scheduling:
 # Scheduling thread will match jobs to available resources and start vms
@@ -58,7 +71,7 @@ class SchedulingTh(threading.Thread):
 	self.job_pool      = job_pool
 
     def run(self):
-        print "dbg - Sched - Starting scheduling thread..."
+        log.debug("Sched - Starting scheduling thread...")
         
 #	##############################################################################
 #       ## Initial tests:
@@ -134,11 +147,11 @@ class SchedulingTh(threading.Thread):
 	    ## Query the job pool to get new unscheduled jobs
             self.job_pool.job_queryCMD()
 
-	    ## For each job in the unscheduled jobs list
-            print_line("Schedule all queued jobs")
+## For each job in the unscheduled jobs list
+            log.info("Schedule all queued jobs")
 	    for job in self.job_pool.jobs:
               
-	        print "(Scheduler) - Attempting to schedule job %s" % job.get_id()
+	        log.debug("(Scheduler) - Attempting to schedule job %s" % job.get_id())
 
 		# Find a resource that matches the job's requirements
 		target_cluster = self.resource_pool.get_resourceFF(job.req_network, \
@@ -146,12 +159,12 @@ class SchedulingTh(threading.Thread):
 
 		# If no job fits, leave job in list and continue to next job
                 if (target_cluster == None):
-		    print "(Scheduler) - No resource to match job: %s" % job.get_id()
-		    print "(Scheduler) - Leaving job unscheduled, moving to next job"
+		    log.info("Scheduler - No resource to match job: %s" % job.get_id())
+		    log.info("Scheduler - Leaving job unscheduled, moving to next job")
 		    continue
 
 		# Print details of the resource selected
-		print "(Scheduler) - Open resource selected:"
+		log.info("Scheduler - Open resource selected:")
 		target_cluster.print_short()
 
 		# Start VM with job requirements on the selected resource
@@ -160,10 +173,10 @@ class SchedulingTh(threading.Thread):
 		
 		# If the VM create fails, continue to the next job
 	        if (create_ret != 0):
-		    print "(Scheduler) - Creating VM for job %s failed" % job.get_id()
-		    print "(Scheduler) - VM Create failed on cluster: "
+		    log.info("Scheduler - Creating VM for job %s failed" % job.get_id())
+		    log.info("Scheduler - VM Create failed on cluster: ")
 		    target_cluster.print_short()
-		    print "(Scheduler) - Leaving job unscheduled, moving to next job"
+		    log.info("Scheduler - Leaving job unscheduled, moving to next job")
 		    continue
 
 		# Mark job as scheduled
@@ -171,26 +184,25 @@ class SchedulingTh(threading.Thread):
            
 	    #ENDFOR - Attempt to schedule each job in the job pool
             
-	    ## Wait for a number of seconds
+	    # Wait for a number of seconds
 	    print_line("Waiting")
-	    print "(Scheduler) - Waiting..."
-	    time.sleep(3)
+	    log.info("Scheduler - Waiting...")
+	    time.sleep(30)
 
-	    ## Poll all started VMs
-	    print_line("Polling all running VMs")
-	    
+	    # Poll all started VMs
+	    log.info("Scheduler - Polling all running VMs...")
 	    for cluster in self.resource_pool.resources:
 	        for vm in cluster.vms:
 		    ret_state = cluster.vm_poll(vm)
 		    
 		    # Print polled VM's state and details
-		    print "(Scheduler) - Polled VM: "
+		    log.info("Scheduler - Polled VM: ")
 		    vm.print_short("\t")
-		    print "(Scheduler) - VM in '%s' state" % ret_state
+		    log.debug("(Scheduler) - VM in '%s' state" % ret_state)
 
 		    # If the VM is in an error state, manually recreate it
 		    if ret_state == "Error":
-		        print "(Scheduler) - VM in error state. Recreating..."
+		        log.debug("(Scheduler) - VM in error state. Recreating...")
 
 			# Store all VM fields
 			vm_name = vm.name
@@ -245,17 +257,17 @@ class SchedulingTh(threading.Thread):
 	
 	#ENDFOR - End of the demo-limited main scheduler loop
 	    
-        ## After a set number of iterations, destroy all VMs and finish
-	print_line("Destroying all remaing VMs :-(")
+    # After a set number of iterations, destroy all VMs and finish
+	log.debug("Destroying all remaining VMs :-(")
 	for cluster in self.resource_pool.resources:
 	    for vm in cluster.vms:
-	        print "(Scheduler) - Destroying VM:"
+	        log.debug("(Scheduler) - Destroying VM:")
 		vm.print_short("\t")
 
 		destroy_ret = cluster.vm_destroy(vm)
 		if destroy_ret != 0:
-		    print "(Scheduler) - Destroying VM failed. Continuing " +\
-		      "anyway... check VM logs"
+		    log.debug("(Scheduler) - Destroying VM failed. Continuing " +\
+		      "anyway... check VM logs")
         
 	#ENDFOR - Attempt to destroy each remaining VM in the system
 
@@ -306,28 +318,25 @@ def main():
     #scheduler = SchedulingTh(cloud_resources, job_pool)
     #scheduler.start()
 
-    print "dbg - Scheduling and Polling threads started."
+    log.debug("Scheduling and Polling threads started.")
 
     # Wait on the scheduler to finish before exiting main
     # (Unnecessary? The scheduler and the poller are the only things that need
     # to remain running)
-    print "dbg - Waiting for the scheduler to finish..."
-    #FIXME when merged to dev or master branch
-    #scheduler.join()
+    log.debug("Waiting for the scheduler to finish...")
+    scheduler.join()
 
-    print "dbg - Starting Cloud Scheduler info server..."
+    log.debug("Starting Cloud Scheduler info server...")
     info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
     info_serv.daemon = True
     info_serv.start()
-    print "dbg - Started Cloud Scheduler info server..."
+    log.debug("Started Cloud Scheduler info server...")
 
-    #FIXME when merged to dev or master branch.
     try: 
         while True:
             time.sleep(2)
     except KeyboardInterrupt:
         info_serv.stop()
-        print "dbg - Killing cloud_scheduler..."
         raise SystemExit
 
 # Sets the command-line options for a passed in OptionParser object (via optparse)
@@ -346,7 +355,7 @@ def set_options(parser):
 # (see the sample_cloud example configuration file for more information)
 def read_cloud_config(config_file, rsrc_pool):
 
-    print "Attempting to read cloud configuration file: " + config_file
+    log.debug("Attempting to read cloud configuration file: " + config_file)
 
     # Open config file for reading
     cloud_conf = open(config_file, 'r')
@@ -359,18 +368,18 @@ def read_cloud_config(config_file, rsrc_pool):
             continue
 
         cluster_attr = line.split('/') 
-        print "dbg - %s" % (cluster_attr)
+        log.debug("%s" % (cluster_attr))
 
         # Create a new cluster according to cloud_type
 	# TODO: A more dynamic format would be helpful here - current solution is hardcoded
         if "Nimbus" in cluster_attr:
-	    print "dbg - found new Nimbus cluster"
+	    log.debug("found new Nimbus cluster")
 	    new_cluster = cloud_management.NimbusCluster()
 	elif "OpenNebula" in cluster_attr:
-	    print "dbg - found new OpenNebula cluster"
+	    log.debug("found new OpenNebula cluster")
 	    new_cluster = cloud_management.Cluster()   # TODO: Use superclass for now
 	elif "Eucalyptus" in cluster_attr:
-	    print "dbg - found new Eucalyptus cluster"
+	    log.debug("found new Eucalyptus cluster")
 	    new_cluster = cloud_management.Cluster()   # TODO: Use superclass for now
 	
 	# Use superclass methods for population and print
@@ -380,7 +389,7 @@ def read_cloud_config(config_file, rsrc_pool):
         # Add the new cluster to a resource pool
         rsrc_pool.add_resource(new_cluster)
 
-    print "Cloud configuration read succesfully from " + config_file 
+    log.debug("Cloud configuration read succesfully from " + config_file )
     return (0)
     
 
