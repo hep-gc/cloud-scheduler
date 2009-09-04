@@ -87,13 +87,14 @@ class Job:
 	# Set the new job's status
 	self.status = self.statuses[0]
 
-    # Short Print
-    # Print a short string representing the job
-    # Parameters:
-    #   spacer  - (str) A string to prepend to each printed line
-    def print_short(self, spacer):
-        log.debug(spacer + "Job ID: %s, Image: %s, Image location: %s, CPU: %s, Memory: %d" \
+    # log_job_short
+    # Log a short string representing the job
+    def log_job_short(self):
+        log.debug("Job ID: %s, Image: %s, Image location: %s, CPU: %s, Memory: %d" \
 	  % (self.id, self.req_image, self.req_imageloc, self.req_cpuarch, self.req_memory))
+
+    def print_short(self, spacer):
+        log.warning("print_short is DEPRECATED use log_job_short instead")
 
     # Get ID
     # Returns the job's id string
@@ -299,8 +300,12 @@ class JobPool:
       # TODO: Write method
       log.debug( "Method not yet implemented")
 
-    # Print Job Lists (short)
     def print_jobs(self):
+        log.warning("print_jobs is DEPRECATED, use log_jobs instead")
+        log_jobs(self)
+
+    # Log Job Lists (short)
+    def log_jobs(self):
 	self.print_sched_jobs()
 	self.print_unsched_jobs()
 
@@ -312,7 +317,7 @@ class JobPool:
 	else:
 	    log.debug( "Scheduled jobs in %s:" % self.name)
 	    for job in self.scheduled_jobs:
-	        job.print_short("\t")
+	        job.log_job_short()
 
     # Print Unscheduled Jobs (short)
     def print_unsched_jobs(self):
@@ -322,7 +327,7 @@ class JobPool:
 	else:
 	    log.debug("Unscheduled jobs in %s:" % self.name)
 	    for job in self.jobs:
-	        job.print_short("\t")
+	        job.log_job_short()
 
 
     ## JobPool private methods
