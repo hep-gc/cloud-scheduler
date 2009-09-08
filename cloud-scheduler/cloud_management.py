@@ -149,7 +149,7 @@ class ResourcePool:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += i"%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
+                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
         return output
     
     # Return an arbitrary resource from the 'resources' list. Does not remove

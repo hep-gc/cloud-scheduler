@@ -310,13 +310,19 @@ def main():
     # TODO: Resolve issue of atomicity / reliability when 2 threads are working
     #       on the same resource pool data. Does it matter (best effort!)?
     
+    log.debug("Starting Cloud Scheduler info server...")
+    info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
+    info_serv.daemon = True
+    info_serv.start()
+    log.debug("Started Cloud Scheduler info server...")
+
     # Create the Polling thread (pass resource pool)
-    #poller = PollingTh(cloud_resources)
-    #poller.start()
+    poller = PollingTh(cloud_resources)
+    poller.start()
 
     # Create the Scheduling thread (pass resource pool)
-    #scheduler = SchedulingTh(cloud_resources, job_pool)
-    #scheduler.start()
+    scheduler = SchedulingTh(cloud_resources, job_pool)
+    scheduler.start()
 
     log.debug("Scheduling and Polling threads started.")
 
@@ -326,11 +332,6 @@ def main():
     log.debug("Waiting for the scheduler to finish...")
     scheduler.join()
 
-    log.debug("Starting Cloud Scheduler info server...")
-    info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
-    info_serv.daemon = True
-    info_serv.start()
-    log.debug("Started Cloud Scheduler info server...")
 
     try: 
         while True:
