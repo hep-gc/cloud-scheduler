@@ -141,7 +141,7 @@ class SchedulingTh(threading.Thread):
 	# The main scheduling loop (currently runs for a fixed number of iterations
 	# for demo purposes)
 	for i in range (200):
-	    print_line("Scheduler Loop")
+	    log_with_line("Scheduler Loop")
 
 	    ## Query the job pool to get new unscheduled jobs
             self.job_pool.job_queryCMD()
@@ -184,7 +184,7 @@ class SchedulingTh(threading.Thread):
 	    #ENDFOR - Attempt to schedule each job in the job pool
             
 	    # Wait for a number of seconds
-	    print_line("Waiting")
+	    log_with_line("Waiting")
 	    log.info("Scheduler - Waiting...")
 	    time.sleep(30)
 
@@ -213,19 +213,19 @@ class SchedulingTh(threading.Thread):
 			# Destroy the VM
 		    	destroy_ret = cluster.vm_destroy(vm)
 		    	if (destroy_ret != 0):
-		    	    print "(Scheduler) - Destroying VM failed. Leaving VM in error state."
+		    	    log.error("(Scheduler) - Destroying VM failed. Leaving VM in error state.")
 		    	    continue
 		        # Find an available resource to recreate on 
 		        target_rsrc = self.resource_pool.get_resourceFF(vm_network, vm_cpuarch, vm_mem)
                         if (target_rsrc == None):
-		            print "(Scheduler) - No resource found for recreation. Aborting recreate."
+		            log.error("(Scheduler) - No resource found for recreation. Aborting recreate.")
 		            continue
 		        # Recreate the VM on the new resource
-		        print "(Scheduler) - Open resource selected:"
+		        log.debug("(Scheduler) - Open resource selected:")
 		        target_rsrc.print_short()
 		        create_ret = target_rsrc.vm_create(vm_name, vm_network, vm_cpuarch, vm_imageloc, vm_mem)
 	                if (create_ret != 0):
-		            print "(Scheduler) - Recreating VM failed. Leaving VM in error state."
+		            log.error("(Scheduler) - Recreating VM failed. Leaving VM in error state.")
 		            continue
                     # ENDIF - if VM in error state
 
@@ -382,9 +382,14 @@ def read_cloud_config(config_file, rsrc_pool):
 
 # Prints readable lined lines across the screen with message
 def print_line(msg):
+    log.warning("print_line is DEPRECATED, use log_with_line instead")
+    log_with_line(msg)
+
+# logs readable lined lines across the screen with message
+def log_with_line(msg):
     msg_len = len(msg)
     fill = "-" * (75-msg_len)
-    print "-----"+msg+fill
+    log.debug("-----"+msg+fill)
 
 
 ##

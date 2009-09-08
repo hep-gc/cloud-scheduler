@@ -105,11 +105,15 @@ class VM:
 	# Set a status variable on new creation
 	self.status = "Starting"
 
+    def log_short(self):
+        log.debug( spacer + "VM Name: %s, ID: %s, Status: %s" % (self.name, self.id, self.status))
+
     # Print a short description of the VM
     # spacer - (str) a string to prepend to each VM line being printed
     def print_short(self, spacer):
-       log.debug( spacer + "VM Name: %s, ID: %s, Status: %s" \
-         % (self.name, self.id, self.status))
+        log.warning("print_short is DEPRECATED, use log_short instead")
+        self.log_short()
+
 
 
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
@@ -244,6 +248,7 @@ class Cluster:
         
     # Print cluster information
     def print_cluster(self):
+        log.warning("print_cluster is DEPRECATED")
         print "-" * 80
         print "Name:\t\t%s"        % self.name
         print "Address:\t%s"       % self.network_address
@@ -258,6 +263,7 @@ class Cluster:
     
     # Print a short form of cluster information
     def print_short(self):
+       
         log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
 	  % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
 	  self.memory))
