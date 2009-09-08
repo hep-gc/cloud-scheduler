@@ -146,9 +146,10 @@ class ResourcePool:
         output = "Resource pool " + self.name + ":\n"
         output += "%-15s  %-10s %-15s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS")
         if len(self.resources) == 0:
-            log.debug("Pool is empty...")
+            output += "Pool is empty..."
         else:
             for cluster in self.resources:
+                output += i"%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
         return output
     
     # Return an arbitrary resource from the 'resources' list. Does not remove
