@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# vim: set expandtab ts=4 sw=4:
 
 ## Auth.: Duncan Penfold-Brown. 8/07/2009.
 
@@ -52,7 +53,7 @@ class Job:
     req_imageloc = "default_imagelocation"   # is required
     req_memory   = 0
     req_cpucores = 0            # Currently not considered
-    req_storage  = 0		# Currently not considered
+    req_storage  = 0            # Currently not considered
 
 
     ## Instance Methods
@@ -72,20 +73,20 @@ class Job:
     #   repositories for this image name. Currently, imageloc MUST be set. 
     def __init__(self, id, network, cpuarch, image, imageloc, memory, cpucores, storage):
         log.debug("New Job object created:")
-	log.debug("(Job) - ID: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
-	  % (id, network, image, imageloc, memory))
-	
-	self.id = id
-	self.req_network  = network
-	self.req_cpuarch  = cpuarch
-	self.req_image    = image
-	self.req_imageloc = imageloc
+        log.debug("(Job) - ID: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
+          % (id, network, image, imageloc, memory))
+        
+        self.id = id
+        self.req_network  = network
+        self.req_cpuarch  = cpuarch
+        self.req_image    = image
+        self.req_imageloc = imageloc
         self.req_memory   = memory
-	self.req_cpucores = cpucores
-	self.req_storage  = storage
+        self.req_cpucores = cpucores
+        self.req_storage  = storage
 
-	# Set the new job's status
-	self.status = self.statuses[0]
+        # Set the new job's status
+        self.status = self.statuses[0]
 
     def print_short(self, spacer):
         log.warning("print_short is DEPRECATED use log_job_short instead")
@@ -95,7 +96,7 @@ class Job:
     # Log a short string representing the job
     def log_job_short(self):
         log.debug("Job ID: %s, Image: %s, Image location: %s, CPU: %s, Memory: %d" \
-	  % (self.id, self.req_image, self.req_imageloc, self.req_cpuarch, self.req_memory))
+          % (self.id, self.req_image, self.req_imageloc, self.req_cpuarch, self.req_memory))
 
 
     # Get ID
@@ -110,9 +111,9 @@ class Job:
     # Note: Status must be one of Scheduled, Unscheduled
     def set_status(self, status):
         if not (status in self.statuses):
-	    log.debug("(Job:set_status) - Error: incorrect status '%s' passed" % status)
-	    log.debug("Status must be one of: " + string.join(self.statuses, ", "))
-	    return
+            log.debug("(Job:set_status) - Error: incorrect status '%s' passed" % status)
+            log.debug("Status must be one of: " + string.join(self.statuses, ", "))
+            return
         self.status = status
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
@@ -156,7 +157,7 @@ class JobPool:
     #              or its creation time
     def __init__(self, name):
         log.debug("dbg - New JobPool %s created" % name)
-	self.name = name
+        self.name = name
         last_query = datetime.datetime.now()
 
 
@@ -167,16 +168,16 @@ class JobPool:
     def job_queryCMD(self):
         log.debug("dbg - JobPool job query method")
 
-	# The regular expression to match and parse the following condor cmd
-	# NOTE: This regexp MUST match the (correct) output format of the condor cmd
+        # The regular expression to match and parse the following condor cmd
+        # NOTE: This regexp MUST match the (correct) output format of the condor cmd
         job_regex = r"^VMName:\s(\S*)\sVMLoc:\s(\S*)\sVMNetwork:\s(\S*)\sVMCPUArch:" + \
           r"\s(\S*)\sVMMem:\s(\S*)\sOwner:\s(\S*)\sJobId:\s(\S*)"
-	
-	# The condor_q command to execute to retrieve jobs
-	# NOTE: name currently hardcoded - should add as constructor param and cmd_line input (parsed in main)
-	# TODO: Remove hardcoded job server name (take as cmd-line parameter in main?)
+        
+        # The condor_q command to execute to retrieve jobs
+        # NOTE: name currently hardcoded - should add as constructor param and cmd_line input (parsed in main)
+        # TODO: Remove hardcoded job server name (take as cmd-line parameter in main?)
         condor_cmd = ["condor_q",
-	  "-name", "canfarpool.phys.uvic.ca",
+          "-name", "canfarpool.phys.uvic.ca",
           "-format", 'VMName: %s ',     'VMName',
           "-format", 'VMLoc: %s ',      'VMLoc',
           "-format", 'VMNetwork: %s ',  'VMNetwork',
@@ -186,68 +187,68 @@ class JobPool:
           "-format", 'JobId: %s \\n',      'GlobalJobId',
         ]
 
-	# Execute the condor_cmd, storing the return in a string
-	(condor_ret, condor_out, condor_err) = \
-	  self.condor_execwait(condor_cmd)
-	
-	if (condor_ret != 0):
-	    log.error("(job_queryCMD) - Job query command failed. Printing stderr" + \
-	      "and returning...")
-	    log.error("STDERR:\n%s" % condor_err)
-	    return
-	
-	## Parse the correct condor output
-	log.debug("(job_queryCMD) - Job query command completed. Parsing output...")
+        # Execute the condor_cmd, storing the return in a string
+        (condor_ret, condor_out, condor_err) = \
+          self.condor_execwait(condor_cmd)
+        
+        if (condor_ret != 0):
+            log.error("(job_queryCMD) - Job query command failed. Printing stderr" + \
+              "and returning...")
+            log.error("STDERR:\n%s" % condor_err)
+            return
+        
+        ## Parse the correct condor output
+        log.debug("(job_queryCMD) - Job query command completed. Parsing output...")
 
-	# Strip the trailing newline from output and stderr
-	condor_out = condor_out.rstrip()
-	condor_err = condor_err.rstrip()
-	
-	# Split the command output into lines (each line corresponds to a job)
-	job_lines = condor_out.split("\n")
+        # Strip the trailing newline from output and stderr
+        condor_out = condor_out.rstrip()
+        condor_err = condor_err.rstrip()
+        
+        # Split the command output into lines (each line corresponds to a job)
+        job_lines = condor_out.split("\n")
 
-	for line in job_lines:
-	    # Check line validity (via regexp). If invalid, continue
+        for line in job_lines:
+            # Check line validity (via regexp). If invalid, continue
             match = re.search(job_regex, line)
-	    if not match:
-	        log.debug("(job_queryCMD) - Parsing condor output line failed" +\
-		  "Regexp failed to match.")
-		log.debug("(job_queryCMD) - Line '%s' failed to match" % line)
-		log.debug("(job_queryCMD) - Regexp to match: %s" % job_regex)
-		continue
-	    
-	    # Store match groups (regexp captures) locally, temporarily
-	    (tmp_image, tmp_imageloc, tmp_network, tmp_cpuarch, tmp_memory, \
-	      tmp_owner, tmp_id) = match.groups()
-	    
-	    # Check if job ID is already in the system. If so, continue
-	    if self.has_job(self.jobs, tmp_id):
-	        log.debug("(job_queryCMD) - Job %s is already in the 'jobs' list" \
-		  % tmp_id)
-		continue
-            if self.has_job(self.scheduled_jobs, tmp_id):
-	        log.debug("(job_queryCMD) - Job %s is already in the 'scheduled_jobs' list" % tmp_id)
-		continue
+            if not match:
+                log.debug("(job_queryCMD) - Parsing condor output line failed" +\
+                  "Regexp failed to match.")
+                log.debug("(job_queryCMD) - Line '%s' failed to match" % line)
+                log.debug("(job_queryCMD) - Regexp to match: %s" % job_regex)
+                continue
             
-	    # Check if job is Running (status == 'R'). If so, continue
+            # Store match groups (regexp captures) locally, temporarily
+            (tmp_image, tmp_imageloc, tmp_network, tmp_cpuarch, tmp_memory, \
+              tmp_owner, tmp_id) = match.groups()
+            
+            # Check if job ID is already in the system. If so, continue
+            if self.has_job(self.jobs, tmp_id):
+                log.debug("(job_queryCMD) - Job %s is already in the 'jobs' list" \
+                  % tmp_id)
+                continue
+            if self.has_job(self.scheduled_jobs, tmp_id):
+                log.debug("(job_queryCMD) - Job %s is already in the 'scheduled_jobs' list" % tmp_id)
+                continue
+            
+            # Check if job is Running (status == 'R'). If so, continue
             # TODO: Add status retrieval to condor cmd and parsing
-	    # ALT: If job is running, add to scheduled jobs list?
+            # ALT: If job is running, add to scheduled jobs list?
 
-	    # Create a new job from the parsed condor job line
-	    # Note: convert appropriate fields to integers
+            # Create a new job from the parsed condor job line
+            # Note: convert appropriate fields to integers
             new_job = Job(tmp_id, tmp_network, tmp_cpuarch, tmp_image, \
-	      tmp_imageloc, int(tmp_memory), self.DEF_CPUCORES, self.DEF_STORAGE)
+              tmp_imageloc, int(tmp_memory), self.DEF_CPUCORES, self.DEF_STORAGE)
 
             # Add the new job to the JobPool's unscheduled jobs list ('jobs')
-	    self.jobs.append(new_job)
+            self.jobs.append(new_job)
             log.debug("(job_queryCMD) - New job created successfully, added to jobs list.")
         
-	# When querying is finished, reset last query timestamp
+        # When querying is finished, reset last query timestamp
         last_query = datetime.datetime.now()
-	
-	# After parsing the new condor cmd, print updated job lists
+        
+        # After parsing the new condor cmd, print updated job lists
         log.debug("(job_queryCMD) - Updated job lists:")
-	self.log_jobs()
+        self.log_jobs()
         
 
     # Checks to see if the given job ID is in the given job list
@@ -260,10 +261,10 @@ class JobPool:
     #   False  - The job does not exist in the checked lists
     def has_job(self, job_list, job_id):
         for job in job_list:
-	    if (job_id == job.id):
-	        return True
-	
-	return False
+            if (job_id == job.id):
+                return True
+        
+        return False
 
     # Mark job scheduled
     # Makes all changes to a job to indicate that the job has been scheduled
@@ -273,13 +274,13 @@ class JobPool:
     #   job   - (Job object) The job to mark as scheduled
     def schedule(self, job):
         if not (job in self.jobs):
-	    log.error("(schedule) - Error: job %s not in unscheduled jobs list")
-	    log.error("(schedule) - Cannot mark job as scheduled. Returning")
-	    return
-	self.jobs.remove(job)
-	self.scheduled_jobs.append(job)
-	job.set_status("Scheduled")
-	log.debug( "(schedule) - Job %s marked as scheduled." % job.get_id())
+            log.error("(schedule) - Error: job %s not in unscheduled jobs list")
+            log.error("(schedule) - Cannot mark job as scheduled. Returning")
+            return
+        self.jobs.remove(job)
+        self.scheduled_jobs.append(job)
+        job.set_status("Scheduled")
+        log.debug( "(schedule) - Job %s marked as scheduled." % job.get_id())
     
     
     # Return an arbitrary subset of the jobs list (unscheduled jobs)
@@ -289,7 +290,7 @@ class JobPool:
     #   subset - (Job list) A list of the jobs selected from the 'jobs' list
     def jobs_subset(self, size):
         # TODO: Write method
-	log.debug( "Method not yet implemented")
+        log.debug( "Method not yet implemented")
 
     # Return a subset of size 'size' of the highest priority jobs from the list
     # of unscheduled jobs
@@ -319,12 +320,12 @@ class JobPool:
     # log scheduled jobs (short)
     def log_sched_jobs(self):
         if len(self.scheduled_jobs) == 0:
-	    log.debug( "Scheduled job list in %s is empty" % self.name)
-	    return
-	else:
-	    log.debug( "Scheduled jobs in %s:" % self.name)
-	    for job in self.scheduled_jobs:
-	        job.log_job_short()
+            log.debug( "Scheduled job list in %s is empty" % self.name)
+            return
+        else:
+            log.debug( "Scheduled jobs in %s:" % self.name)
+            for job in self.scheduled_jobs:
+                job.log_job_short()
 
     # Print Unscheduled Jobs (short)
     def print_unsched_jobs(self):
@@ -334,12 +335,12 @@ class JobPool:
     # log Unscheduled Jobs (short)
     def log_unsched_jobs(self):
         if len(self.jobs) == 0:
-	    log.debug( "Unscheduled job list in %s is empty" % self.name)
-	    return
-	else:
-	    log.debug("Unscheduled jobs in %s:" % self.name)
-	    for job in self.jobs:
-	        job.log_job_short()
+            log.debug( "Unscheduled job list in %s is empty" % self.name)
+            return
+        else:
+            log.debug("Unscheduled jobs in %s:" % self.name)
+            for job in self.jobs:
+                job.log_job_short()
 
 
     ## JobPool private methods
@@ -356,10 +357,10 @@ class JobPool:
     # The return of this function is a 3-tuple
     def condor_execwait(self, cmd):
         sp = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, \
-	  stderr=subprocess.PIPE)
-	ret = sp.wait()
-	(out, err) = sp.communicate(input=None)
-	return (ret, out, err)
+          stderr=subprocess.PIPE)
+        ret = sp.wait()
+        (out, err) = sp.communicate(input=None)
+        return (ret, out, err)
 
 
 
@@ -390,11 +391,11 @@ class JobSet:
     #   set_time - (datetime) The time at which the job set was created
     def __init__(self, name, pool):
         log.debug("New JobSet %s created" % name)
-	self.name = name
+        self.name = name
         set_time = datetime.datetime.now()
-	# Take a slice (subset) of the passed in JobPool
+        # Take a slice (subset) of the passed in JobPool
         # TODO: Call a JobPool method (random subset, highpriority, etc.)
-	#       Choose (parameter?): priority or arbitrary?
+        #       Choose (parameter?): priority or arbitrary?
 
     
     # Drop a job from the job set (leave in the JobPool)
@@ -406,10 +407,10 @@ class JobSet:
     #   2     - Job failed to drop
     def drop_job(self, job):
         if not (job in self.job_set):
-	    log.error("(drop_job) passed job not in job set...")
-	    return (1)
-	self.job_set.remove(job)
-	return (0)
+            log.error("(drop_job) passed job not in job set...")
+            return (1)
+        self.job_set.remove(job)
+        return (0)
 
     # Print a short form list of the job set
     def print_short(self):
@@ -419,11 +420,11 @@ class JobSet:
     # log a short form list of the job set
     def log_short(self):
         if len(self.job_set) == 0:
-	    log.debug("Job set %s is empty..." % self.name)
-	    return
-	else:
-	    log.debug("Job set %s:" % self.name)
-	    for job in self.job_set:
-	        job.log_job_short("\t")
+            log.debug("Job set %s is empty..." % self.name)
+            return
+        else:
+            log.debug("Job set %s:" % self.name)
+            for job in self.job_set:
+                job.log_job_short("\t")
 
 

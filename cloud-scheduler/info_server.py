@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# vim: set expandtab ts=4 sw=4:
 
 ## Auth: Patrick Armstrong. 8/28/2009.
 ##
