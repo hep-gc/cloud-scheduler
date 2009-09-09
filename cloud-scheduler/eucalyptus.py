@@ -6,6 +6,8 @@ import logging
 import subprocess
 import re
 
+log = logging.getLogger("CloudLogger")
+
 class EucalyptusCluster(cloud_management.Cluster):
     
     configScript = '' # this script sets the enviroment varables eucalyptus needs.
@@ -16,7 +18,7 @@ class EucalyptusCluster(cloud_management.Cluster):
         cloud_management.Cluster.populate(self, attr_list)
         self.configScript = getConfigScriptName(self.network_address)
         command = 'ec2-describe-availability-zones verbose'
-        logging.info(self.name + ' Identifing instance types')
+        log.info(self.name + ' Identifing instance types')
         response = self.callEC2(command)
         if response:
             for line in response:
@@ -42,7 +44,7 @@ class EucalyptusCluster(cloud_management.Cluster):
             raise Exception('No Instance Types match requirements')
 
         command = 'ec2-run-instances ' + getImageId(vm_imagelocation) + ' -t ' + imageType
-        logging.info(self.name + ' Creating VM \n' + command)
+        log.info(self.name + ' Creating VM \n' + command)
         response = self.callEC2(command)
         
         results = re.findall('INSTANCE\s+(\S+)\s+\S+\s+\d+.\d+.\d+.\d+\s+\d+.\d+.\d+.\d+\s+(\S+)\s+\S+\s+\S+\s+\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[-+]\d{4}',response[1])
@@ -55,18 +57,18 @@ class EucalyptusCluster(cloud_management.Cluster):
             self.vms.append(vm)
             self.vm_slots -= 1
             self.memory[memoryEntry] -= vm_mem
-            logging.info(self.name + ' VM ' + str(id) + ' Created')
+            log.info(self.name + ' VM ' + str(id) + ' Created')
         else:
             raise Exception('Error Creating VM ' + response)
 
     def vm_poll(self, vm):
         command = 'ec2-describe-instances ' + vm.id
-        logging.info(self.name + ' Polling VM ' + str(vm.name))
+        log.info(self.name + ' Polling VM ' + str(vm.name))
         response = self.callEC2(command)
         status = 'Error'
         # deal with non existant VM
         if response == ['']:
-            logging.info(self.name + ' VM ' + str(vm.name) + ' Not found VM likely shutdown')
+            log.info(self.name + ' VM ' + str(vm.name) + ' Not found VM likely shutdown')
             return status
         results = re.findall('INSTANCE\s+(\S+)\s+\S+\s+\d+.\d+.\d+.\d+\s+\d+.\d+.\d+.\d+\s+(\S+)\s+(?:\S+\s+)?\S+\s+\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[-+]\d{4}',response[1])
         if results and results[0][0] == vm.id:
@@ -75,7 +77,7 @@ class EucalyptusCluster(cloud_management.Cluster):
                 status = 'Running'
             elif state == 'pending':
                 status = 'Starting'
-            logging.info(self.name + ' VM ' + str(vm.name) + ' STATUS ' + status + ' (EUCA ' + state + ')')
+            log.info(self.name + ' VM ' + str(vm.name) + ' STATUS ' + status + ' (EUCA ' + state + ')')
             return status
         else:
             raise Exception('Error getting VM state ' + response)
@@ -83,12 +85,12 @@ class EucalyptusCluster(cloud_management.Cluster):
         
     def vm_destroy(self, vm):
         command = 'ec2-terminate-instances ' + vm.id
-        logging.info(self.name + ' Destroying VM ' + str(vm.name))
+        log.info(self.name + ' Destroying VM ' + str(vm.name))
         response = self.callEC2(command)
         result = re.findall('INSTANCE\t+(\S+)\trunning\tshutting-down',response[0]) 
 
         if result and result[0] == vm.id:
-            logging.info(self.name + ' VM ' + str(vm.name) + ' Shutting Down')
+            log.info(self.name + ' VM ' + str(vm.name) + ' Shutting Down')
             self.vm_slots += 1
             self.memory[vm.mementry] += vm.memory
             self.vms.remove(vm)

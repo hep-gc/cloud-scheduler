@@ -6,15 +6,14 @@ import re
 import cloud_management
 import logging
 
-oneLog = 'oneCloud.log'
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s: %(message)s", filename=oneLog, filemode='a')
+log = logging.getLogger("CloudLogger")
 
 class OpenNebulaCluster(cloud_management.Cluster):
     
     def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem, vm_scratchSpace):
 
         template = 'NAME = ' + vm_name + '\nCPU = .1\nMEMORY = ' + str(vm_mem) + '\nOS = [bootloader = "/usr/bin/pygrub"]\nDISK = [source = "' + vm_imagelocation + '", target = "sda", readonly = "no"]\nNIC = [NETWORK = "test"]\nREQUIREMENTS = "ARCH = ' + vm_cpuarch + '"'
-        logging.info(self.name + ' Creating VM \n' + template)
+        log.info(self.name + ' Creating VM \n' + template)
         response = self.getProxy().one.vmallocate('', template)
         if response[0]:
             id = response[1]
@@ -25,19 +24,19 @@ class OpenNebulaCluster(cloud_management.Cluster):
             self.vms.append(vm)
             self.vm_slots -= 1
             self.memory[memoryEntry] -= vm_mem
-            logging.info(self.name + ' VM ' + str(id) + ' Created')
+            log.info(self.name + ' VM ' + str(id) + ' Created')
         else:
             raise Exception(response[1])
     
     def vm_poll(self, vm):
-        logging.info(self.name + ' Polling VM ' + str(vm.name))
+        log.info(self.name + ' Polling VM ' + str(vm.name))
         response = self.getProxy().one.vmget_info('', int(vm.id))
         if response[0]:
             results = re.findall('STATE\s+: (\S+)\s+LCM STATE\s+: (\S+)', response[1])
             if len(results) == 1 and len(results[0]) == 2:
                 state = results[0][0]
                 lcmstate = results[0][1]
-                logging.info(self.name + ' VM ' + str(vm.name) + ' STATUS ' +  status(state, lcmstate) + ' (ONE ' + oneStatus(state, lcmstate) + ')') 
+                log.info(self.name + ' VM ' + str(vm.name) + ' STATUS ' +  status(state, lcmstate) + ' (ONE ' + oneStatus(state, lcmstate) + ')') 
                 return status(state, lcmstate)
                     
             raise Exception('Error Parsing VM state')
@@ -45,12 +44,12 @@ class OpenNebulaCluster(cloud_management.Cluster):
             raise Exception(response[1])
 
     def vm_destroy(self, vm):
-        logging.info(self.name + ' Destroying VM ' + str(vm.name)) 
+        log.info(self.name + ' Destroying VM ' + str(vm.name)) 
         pollResponse = self.vm_poll(vm)
         if pollResponse == 'Running':
             destroyResponse = self.getProxy().one.vmaction('', 'shutdown', int(vm.id))
             if destroyResponse[0]:
-                logging.info(self.name + ' VM ' + str(vm.name) + ' Shutting Down') 
+                log.info(self.name + ' VM ' + str(vm.name) + ' Shutting Down') 
                 self.vm_slots += 1
                 self.memory[vm.mementry] += vm.memory
                 self.vms.remove(vm)

@@ -48,12 +48,6 @@ vm_log = open(vm_logfile, 'w')
 # Create a python logger
 log = logging.getLogger("CloudLogger")
 
-nimbus_logfile = "nimbus.log"
-logging.basicConfig(level=logging.DEBUG, 
-                    format="%(asctime)s - %(levelname)s: %(message)s",
-                    filename=nimbus_logfile, 
-                    filemode='a')
-
 ##
 ## CLASSES
 ##
