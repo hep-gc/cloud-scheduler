@@ -70,6 +70,11 @@ class SchedulingTh(threading.Thread):
         threading.Thread.__init__(self)
         self.resource_pool = resource_pool
         self.job_pool      = job_pool
+        self.quit          = False
+
+    def stop(self):
+        log.debug("Wating for scheduling loop to end")
+        self.quit = True
 
     def run(self):
         log.debug("Sched - Starting scheduling thread...")
@@ -144,6 +149,11 @@ class SchedulingTh(threading.Thread):
         # for demo purposes)
         for i in range (200):
             log_with_line("Scheduler Loop")
+
+            ## Check whether we're supposed to exit
+            if self.quit:
+                log.debug("Quitting scheduler thread")
+                break
 
             ## Query the job pool to get new unscheduled jobs
             self.job_pool.job_queryCMD()
@@ -331,13 +341,14 @@ def main():
     # (Unnecessary? The scheduler and the poller are the only things that need
     # to remain running)
     log.debug("Waiting for the scheduler to finish...")
-    scheduler.join()
+    #scheduler.join()
 
 
     try: 
         while True:
             time.sleep(2)
     except KeyboardInterrupt:
+        scheduler.stop()
         info_serv.stop()
         raise SystemExit
 
