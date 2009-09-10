@@ -341,16 +341,17 @@ def main():
     # (Unnecessary? The scheduler and the poller are the only things that need
     # to remain running)
     log.debug("Waiting for the scheduler to finish...")
-    #scheduler.join()
-
 
     try: 
-        while True:
+        while scheduler.isAlive():
             time.sleep(2)
-    except KeyboardInterrupt:
-        scheduler.stop()
-        info_serv.stop()
-        raise SystemExit
+    except (SystemExit, KeyboardInterrupt):
+        log.info("Exiting normally due to KeyboardInterrupt or SystemExit")
+
+    # Clean up out threads
+    scheduler.stop()
+    info_serv.stop()
+    sys.exit()
 
 # Sets the command-line options for a passed in OptionParser object (via optparse)
 def set_options(parser):
