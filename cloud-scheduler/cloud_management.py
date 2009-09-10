@@ -620,9 +620,18 @@ class NimbusCluster(Cluster):
     # Returns:
     #    ret   - The return value of the executed command
     def vm_execdump(self, cmd, out):
-        sp = Popen(cmd, executable="workspace", shell=False, stdout=out, stderr=out)
-        ret = sp.wait()
-        return ret
+        try:
+            sp = Popen(cmd, executable="workspace", shell=False, stdout=out, stderr=out)
+            ret = sp.wait()
+            return ret
+        except OSError:
+            log.error("Couldn't run the following command: '%s' Are the Nimbus binaries in your $PATH?" 
+                      % string.join(cmd, " "))
+            raise SystemExit
+        except:
+            log.error("Couldn't run %s command." % cmd)
+            raise
+       
    
     # As above, a function to encapsulate command execution via Popen.
     # vm_execwait executes the given cmd list, waits for the process to finish,

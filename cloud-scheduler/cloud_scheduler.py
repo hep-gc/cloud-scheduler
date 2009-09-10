@@ -158,7 +158,7 @@ class SchedulingTh(threading.Thread):
             ## Query the job pool to get new unscheduled jobs
             self.job_pool.job_queryCMD()
 
-## For each job in the unscheduled jobs list
+            ## For each job in the unscheduled jobs list
             log.info("Schedule all queued jobs")
             for job in self.job_pool.jobs:
               

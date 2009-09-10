@@ -356,11 +356,19 @@ class JobPool:
     #    err   - The STDERR of the executed command
     # The return of this function is a 3-tuple
     def condor_execwait(self, cmd):
-        sp = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, \
-          stderr=subprocess.PIPE)
-        ret = sp.wait()
-        (out, err) = sp.communicate(input=None)
-        return (ret, out, err)
+        try:
+            sp = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, \
+                     stderr=subprocess.PIPE)
+            ret = sp.wait()
+            (out, err) = sp.communicate(input=None)
+            return (ret, out, err)
+        except OSError:
+            log.error("Couldn't run the following command: '%s' Are the Condor binaries in your $PATH?" 
+                      % string.join(cmd, " "))
+            raise SystemExit
+        except:
+            log.error("Couldn't run %s command." % string.join(cmd, " "))
+            raise
 
 
 
