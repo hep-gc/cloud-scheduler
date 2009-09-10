@@ -101,7 +101,7 @@ class VM:
         self.status = "Starting"
 
     def log_short(self):
-        log.debug( spacer + "VM Name: %s, ID: %s, Status: %s" % (self.name, self.id, self.status))
+        log.debug("VM Name: %s, ID: %s, Status: %s" % (self.name, self.id, self.status))
 
     # Print a short description of the VM
     # spacer - (str) a string to prepend to each VM line being printed
