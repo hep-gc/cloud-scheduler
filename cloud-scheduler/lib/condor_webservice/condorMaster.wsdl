@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions name="condorMaster"
+ targetNamespace="urn:condor"
+ xmlns:tns="urn:condor"
+ xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+ xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+ xmlns:condor="urn:condor"
+ xmlns:SOAP="http://schemas.xmlsoap.org/wsdl/soap/"
+ xmlns:MIME="http://schemas.xmlsoap.org/wsdl/mime/"
+ xmlns:DIME="http://schemas.xmlsoap.org/ws/2002/04/dime/wsdl/"
+ xmlns:WSDL="http://schemas.xmlsoap.org/wsdl/"
+ xmlns="http://schemas.xmlsoap.org/wsdl/">
+
+<types>
+
+ <schema targetNamespace="urn:condor"
+  xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+  xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:condor="urn:condor"
+  xmlns="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="unqualified"
+  attributeFormDefault="unqualified">
+  <import namespace="http://schemas.xmlsoap.org/soap/encoding/"/>
+  <simpleType name="StatusCode">
+   <restriction base="xsd:string">
+    <enumeration value="SUCCESS"/><!-- enum const = 0 -->
+    <enumeration value="FAIL"/><!-- enum const = 1 -->
+    <enumeration value="INVALIDTRANSACTION"/><!-- enum const = 2 -->
+    <enumeration value="UNKNOWNCLUSTER"/><!-- enum const = 3 -->
+    <enumeration value="UNKNOWNJOB"/><!-- enum const = 4 -->
+    <enumeration value="UNKNOWNFILE"/><!-- enum const = 5 -->
+    <enumeration value="INCOMPLETE"/><!-- enum const = 6 -->
+    <enumeration value="INVALIDOFFSET"/><!-- enum const = 7 -->
+    <enumeration value="ALREADYEXISTS"/><!-- enum const = 8 -->
+   </restriction>
+  </simpleType>
+  <simpleType name="ClassAdAttrType">
+   <restriction base="xsd:string">
+    <enumeration value="INTEGER-ATTR"/><!-- enum const = 110 -->
+    <enumeration value="FLOAT-ATTR"/><!-- enum const = 102 -->
+    <enumeration value="STRING-ATTR"/><!-- enum const = 115 -->
+    <enumeration value="EXPRESSION-ATTR"/><!-- enum const = 120 -->
+    <enumeration value="BOOLEAN-ATTR"/><!-- enum const = 98 -->
+    <enumeration value="UNDEFINED-ATTR"/><!-- enum const = 117 -->
+    <enumeration value="ERROR-ATTR"/><!-- enum const = 101 -->
+   </restriction>
+  </simpleType>
+  <complexType name="Status">
+   <sequence>
+     <element name="code" type="condor:StatusCode" minOccurs="1" maxOccurs="1"/>
+     <element name="message" type="xsd:string" minOccurs="0" maxOccurs="1" nillable="true"/>
+     <element name="next" type="condor:Status" minOccurs="0" maxOccurs="1" nillable="true"/>
+   </sequence>
+  </complexType>
+  <complexType name="ClassAdStructAttr">
+   <sequence>
+     <element name="name" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
+     <element name="type" type="condor:ClassAdAttrType" minOccurs="1" maxOccurs="1"/>
+     <element name="value" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
+   </sequence>
+  </complexType>
+  <complexType name="ClassAdStruct">
+   <sequence>
+    <element name="item" type="condor:ClassAdStructAttr" minOccurs="0" maxOccurs="unbounded" nillable="true"/>
+   </sequence>
+  </complexType>
+  <complexType name="ClassAdStructArray">
+   <sequence>
+    <element name="item" type="condor:ClassAdStruct" minOccurs="0" maxOccurs="unbounded" nillable="true"/>
+   </sequence>
+  </complexType>
+  <complexType name="ClassAdStructAndStatus">
+   <sequence>
+     <element name="status" type="condor:Status" minOccurs="1" maxOccurs="1"/>
+     <element name="classAd" type="condor:ClassAdStruct" minOccurs="0" maxOccurs="1" nillable="true"/>
+   </sequence>
+  </complexType>
+  <complexType name="ClassAdStructArrayAndStatus">
+   <sequence>
+     <element name="status" type="condor:Status" minOccurs="1" maxOccurs="1"/>
+     <element name="classAdArray" type="condor:ClassAdStructArray" minOccurs="0" maxOccurs="1" nillable="true"/>
+   </sequence>
+  </complexType>
+  <complexType name="StringAndStatus">
+   <sequence>
+     <element name="status" type="condor:Status" minOccurs="1" maxOccurs="1"/>
+     <element name="message" type="xsd:string" minOccurs="0" maxOccurs="1" nillable="true"/>
+   </sequence>
+  </complexType>
+  <!-- operation request element -->
+  <element name="getVersionString">
+   <complexType>
+    <sequence>
+    </sequence>
+   </complexType>
+  </element>
+  <!-- operation response element -->
+  <element name="getVersionStringResponse">
+   <complexType>
+    <sequence>
+     <element name="response" type="condor:StringAndStatus" minOccurs="1" maxOccurs="1"/>
+    </sequence>
+   </complexType>
+  </element>
+  <!-- operation request element -->
+  <element name="getPlatformString">
+   <complexType>
+    <sequence>
+    </sequence>
+   </complexType>
+  </element>
+  <!-- operation response element -->
+  <element name="getPlatformStringResponse">
+   <complexType>
+    <sequence>
+     <element name="response" type="condor:StringAndStatus" minOccurs="1" maxOccurs="1"/>
+    </sequence>
+   </complexType>
+  </element>
+ </schema>
+
+</types>
+
+<message name="getVersionString">
+ <part name="parameters" element="condor:getVersionString"/>
+</message>
+
+<message name="getVersionStringResponse">
+ <part name="parameters" element="condor:getVersionStringResponse"/>
+</message>
+
+<message name="getPlatformString">
+ <part name="parameters" element="condor:getPlatformString"/>
+</message>
+
+<message name="getPlatformStringResponse">
+ <part name="parameters" element="condor:getPlatformStringResponse"/>
+</message>
+
+<portType name="condorMasterPortType">
+ <operation name="getVersionString">
+  <documentation>Service definition of function condor__getVersionString</documentation>
+  <input message="tns:getVersionString"/>
+  <output message="tns:getVersionStringResponse"/>
+ </operation>
+ <operation name="getPlatformString">
+  <documentation>Service definition of function condor__getPlatformString</documentation>
+  <input message="tns:getPlatformString"/>
+  <output message="tns:getPlatformStringResponse"/>
+ </operation>
+</portType>
+
+<binding name="condorMaster" type="tns:condorMasterPortType">
+ <SOAP:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+ <operation name="getVersionString">
+  <SOAP:operation soapAction=""/>
+  <input>
+     <SOAP:body parts="parameters" use="literal"/>
+  </input>
+  <output>
+     <SOAP:body parts="parameters" use="literal"/>
+  </output>
+ </operation>
+ <operation name="getPlatformString">
+  <SOAP:operation soapAction=""/>
+  <input>
+     <SOAP:body parts="parameters" use="literal"/>
+  </input>
+  <output>
+     <SOAP:body parts="parameters" use="literal"/>
+  </output>
+ </operation>
+</binding>
+
+<service name="condorMaster">
+ <documentation>gSOAP 2.7.10 generated service definition</documentation>
+ <port name="condorMaster" binding="tns:condorMaster">
+  <SOAP:address location="http://localhost:80"/>
+ </port>
+</service>
+
+</definitions>

@@ -7,3 +7,15 @@ The sample_cloud file is a configuration file of the format currently being proc
 For more documentation on the cloud scheduler, please refer to the following wiki pages:
 
 https://wiki.gridx1.ca/twiki/bin/view/Main/VirtualizationProjectHome#Cloud_Scheduling
+
+Prerequisites:
+pyXML
+suds (https://fedorahosted.org/suds/)
+
+
+You can install these on RHEL5 (and clones) with the following
+
+# yum install PyXML
+# wget 'https://fedorahosted.org/suds/attachment/wiki/WikiStart/python-suds-0.3.6-1.el5.noarch.rpm?format=raw'
+# yum localinstall python-suds-0.3.6-1.el5.noarch.rpm?format=raw
+
