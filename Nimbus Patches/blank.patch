@@ -1,0 +1,15 @@
+Index: DefaultBindDisks.java
+===================================================================
+RCS file: /home/globdev/CVS/globus-packages/workspace/vm/service/service/java/source/src/org/globus/workspace/service/binding/defaults/DefaultBindDisks.java,v
+retrieving revision 1.1
+diff -u -r1.1 DefaultBindDisks.java
+--- DefaultBindDisks.java	8 Sep 2008 20:06:16 -0000	1.1
++++ DefaultBindDisks.java	12 May 2009 20:54:54 -0000
+@@ -238,6 +238,7 @@
+         partition.setImagemount(file.getMountAs());
+         partition.setRootdisk(false);
+         partition.setReadwrite(true);
++        partition.setBlankspace(megabytes);
+ 
+         return partition;
+     }
