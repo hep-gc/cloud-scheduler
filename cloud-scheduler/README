@@ -25,4 +25,3 @@ On Max OS X, using Macports, you can install these with the following:
 (say you're using python 2.6)
 
 # sudo port install py26-xml py26-suds
-

@@ -24,6 +24,8 @@ import subprocess
 import string
 import re
 import logging
+import sys
+from suds.client import Client
 
 ##
 ## LOGGING
@@ -149,6 +151,7 @@ class JobPool:
     jobs = []
     scheduled_jobs = []
 
+
     ## Instance Methods
 
     # Constructor
@@ -160,6 +163,53 @@ class JobPool:
         self.name = name
         last_query = datetime.datetime.now()
 
+        _condor_url   = "http://canfarpool.phys.uvic.ca:8080"
+        _schedd_wsdl  = "file://" + sys.path[0] \
+                        + "/lib/condor_webservice/condorSchedd.wsdl"
+        self.condor_schedd = Client(_schedd_wsdl, location=_condor_url)
+
+    def job_querySOAP(self):
+        log.debug("Quering job pool with Condor SOAP API")
+
+        try:
+            job_ads = self.condor_schedd.service.getJobAds(None, None)
+        except:
+            log.error("job_querySOAP - There was a problem connecting to the Condor scheduler Webservice.")
+            raise
+            sys.exit()
+
+        if job_ads.status.code == "SUCCESS" and job_ads.classAdArray:
+            # convert ugly data structure from soap into array of dictionaries
+            classads = []
+            for soap_classad in job_ads.classAdArray.item:
+                new_classad = {}
+                for attribute in soap_classad.item:
+                    new_classad[attribute.name] = attribute.value
+                classads.append(new_classad)
+
+            # Check and see if there are any new classads
+            for classad in classads:
+                if self.has_job(self.jobs, classad['GlobalJobId']):
+                    log.debug("job_querySOAP - Job %s is already in the jobs list" % classad['GlobalJobId'])
+                    continue
+                if self.has_job(self.scheduled_jobs, classad['GlobalJobId']):
+                    log.debug("job_querySOAP - Job %s is already scheduled" % classad['GlobalJobId'])
+                    continue
+
+                new_job = Job(classad['GlobalJobId'], classad['VMNetwork'],
+                              classad['VMCPUArch'],   classad['VMName'], 
+                              classad['VMLoc'],       int(classad['VMMem']),
+                              self.DEF_CPUCORES,      self.DEF_STORAGE,)
+                self.jobs.append(new_job)
+                log.debug("job_querySOAP - New job created successfully,"
+                          + " added to jobs list.")
+
+        # When querying is finished, reset last query timestamp
+        last_query = datetime.datetime.now()
+
+        # print updated job lists
+        log.debug("job_querySOAP - Updated job lists:")
+        self.log_jobs()
 
     # Query Job Scheduler via command line condor tools
     # Gets a list of jobs from the job scheduler, and updates internal scheduled
