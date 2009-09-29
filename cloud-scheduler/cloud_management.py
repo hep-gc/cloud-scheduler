@@ -36,10 +36,9 @@ import nimbus_xml
 ## GLOBALS
 ##
 
-## Log files
-#  TODO: Revise logging issue: vm commands and internal messages in the same log
-#  Currently: vm command stdout is dumped to a file, and all debug information 
-#             is printed to screen.
+##
+## LOGGING
+##
 
 # Create a file to dump vm command outputs in to.
 vm_logfile = "vm.log"
@@ -264,7 +263,6 @@ class Cluster:
     
     # Print a short form of cluster information
     def print_short(self):
-       
         log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
           % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
           self.memory))
@@ -276,7 +274,7 @@ class Cluster:
         else:
             log.debug("CLUSTER %s running VMs:" % (self.name))
             for vm in self.vms:
-                vm.print_short("\t")
+                vm.log_short("\t")
     
 
     # VM manipulation methods
@@ -297,6 +295,14 @@ class Cluster:
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
+    def vm_recreate(self, vm):
+        log.debug('This method should be defined by all subclasses of Cluster\n')
+        assert 0, 'Must define workspace_recreate'
+    
+    def vm_reboot(self, vm):
+        log.debug('This method should be defined by all subclasses of Cluster\n')
+        assert 0, 'Must define workspace_reboot'
+    
     def vm_destroy(self, vm):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_destroy'
@@ -304,8 +310,6 @@ class Cluster:
     def vm_poll(self, vm):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_poll'
-        
-    ## More potential functions: vm_move, vm_pause, vm_resume, etc.
 
 
     ## Private VM methods
@@ -380,7 +384,7 @@ class NimbusCluster(Cluster):
          "Unpropagated"   : "Starting",
          "Propagated"     : "Starting",
          "Running"        : "Running",
-         "Paused"         : "Running",   # TODO: Include a paused state? Will CS support pausing?
+         "Paused"         : "Running",   
          "TransportReady" : "Running",
          "StagedOut"      : "Running",
          "Corrupted"      : "Error",

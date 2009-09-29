@@ -12,10 +12,12 @@ Prerequisites:
 pyXML
 suds (https://fedorahosted.org/suds/)
 
-
 You can install these on RHEL5 (and clones) with the following
 
 # yum install PyXML
 # wget 'https://fedorahosted.org/suds/attachment/wiki/WikiStart/python-suds-0.3.6-1.el5.noarch.rpm?format=raw'
 # yum localinstall python-suds-0.3.6-1.el5.noarch.rpm?format=raw
+
+
+Nimbus Virtual Workspaces (http://workspace.globus.org/)
 

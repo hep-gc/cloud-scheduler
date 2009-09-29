@@ -2,6 +2,7 @@
 # vim: set expandtab ts=4 sw=4:
 
 ## Auth.: Duncan Penfold-Brown. 8/07/2009.
+## Auth.: Patrick Armstrong
 
 ## JOB SCHEDULER MANAGEMENT
 ##
@@ -32,7 +33,6 @@ from suds.client import Client
 ##
 
 log = logging.getLogger("CloudLogger")
-
 
 
 ##
@@ -169,7 +169,7 @@ class JobPool:
         self.condor_schedd = Client(_schedd_wsdl, location=_condor_url)
 
     def job_querySOAP(self):
-        log.debug("Quering job pool with Condor SOAP API")
+        log.debug("Querying job pool with Condor SOAP API")
 
         try:
             job_ads = self.condor_schedd.service.getJobAds(None, None)
@@ -214,7 +214,6 @@ class JobPool:
     # Query Job Scheduler via command line condor tools
     # Gets a list of jobs from the job scheduler, and updates internal scheduled
     # and unscheduled job lists with the scheduler information.
-    # TODO: Add method job_querySOAP using SOAP calls and the Condor SOAP API
     def job_queryCMD(self):
         log.debug("dbg - JobPool job query method")
 

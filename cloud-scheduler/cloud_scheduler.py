@@ -196,12 +196,12 @@ class SchedulingTh(threading.Thread):
            
             #ENDFOR - Attempt to schedule each job in the job pool
             
-            # Wait for a number of seconds
+            ## Wait for a number of seconds
             log_with_line("Waiting")
             log.info("Scheduler - Waiting...")
             time.sleep(30)
 
-            # Poll all started VMs
+            ## Poll all started VMs
             log.info("Scheduler - Polling all running VMs...")
             for cluster in self.resource_pool.resources:
                 for vm in cluster.vms:
@@ -269,7 +269,7 @@ class SchedulingTh(threading.Thread):
         
         #ENDFOR - End of the demo-limited main scheduler loop
             
-    # After a set number of iterations, destroy all VMs and finish
+    ## After a set number of iterations, destroy all VMs and finish
         log.debug("Destroying all remaining VMs :-(")
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
@@ -322,6 +322,7 @@ def main():
     # TODO: Resolve issue of atomicity / reliability when 2 threads are working
     #       on the same resource pool data. Does it matter (best effort!)?
     
+    # Start the cloud scheduler info server for RPCs
     log.debug("Starting Cloud Scheduler info server...")
     info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
     info_serv.daemon = True
