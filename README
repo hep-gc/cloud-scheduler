@@ -1,0 +1,6 @@
+This repository holds various projects used in the HEP-GC-CANFAR project:
+
+cloud-scheduler - A tool to boot condor VMs suited to specific job requirements
+OpenVPN Scripts - Scipts we use for our VPN installation
+VM Scripts - Various scripts we use for managing Nimbus VMs on the client
+Nimbus Patches - Patches for Nimbus that have not yet landed upstream
