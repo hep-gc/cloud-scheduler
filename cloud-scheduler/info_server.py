@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# vim: set expandtab ts=4 sw=4:
 
 ## Auth: Patrick Armstrong. 8/28/2009.
 ##
@@ -11,12 +12,16 @@
 ##
 ## IMPORTS
 ##
+import logging
 import threading
 import time
 import socket
 import sys
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
+
+
+log = logging.getLogger("CloudLogger")
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
@@ -45,7 +50,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
 
             self.server.register_instance(externalFunctions())
         except:
-            print "Couldn't start info server:", sys.exc_info()[0]
+            log.error("Couldn't start info server:", sys.exc_info()[0])
             raise SystemExit
 
     def run(self):
@@ -55,7 +60,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
             try:
                 self.server.handle_request()
                 if self.done:
-                    print 'Killing info server...'
+                    log.info("Killing info server...")
                     break
             except socket.timeout:
                 pass

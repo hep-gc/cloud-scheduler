@@ -1,11 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# vim: set expandtab ts=4 sw=4:
 
 ## A script containing a factory for creating workspace metadata files
 ## for Nimbus workspace commands.
 
 
 import xml.dom.ext
-import xml.dom.minidom	
+import xml.dom.minidom  
 
 # TODO: Change all populated xml values to variables (all hardcoded values
 #       should be global variables, as for the namespace vars)
@@ -62,7 +63,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     # Create and add the nic level-3 child
     nic_el = doc.createElementNS(log_nmspc, "log:nic")
     networking_el.appendChild(nic_el)
-	
+    
     # Create and add the name level-4 child
     log_name_el = doc.createElementNS(log_nmspc, "log:name")
     nic_el.appendChild(log_name_el)
