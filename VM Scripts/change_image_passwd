@@ -5,7 +5,7 @@
 EXPECTED_ARGUMENTS=1
 SCRIPT_NAME=`basename $0`
 
-if [ $USER != "root" ]; then
+if [ $UID != "0" ]; then
 
     echo "This script needs to be run as root"
     exit 1
@@ -21,6 +21,18 @@ fi
 
 read -s -p "New VM Root Password: " NEWPASSWD
 echo
+read -s -p "Re-enter new VM Root Password: " NEWPASSWD_2
+echo
+if [ "$NEWPASSWD" != "$NEWPASSWD_2" ]; then
+	echo "Passwords do not match.  Operation cancelled."
+	exit 1
+fi
+
+echo
+
+# Find the chroot executable
+CHROOT_EXEC=`which chroot`
+echo "Using ${CHROOT_EXEC}"
 
 IMAGE_FILE=$1
 
@@ -71,8 +83,8 @@ echo done
 
 
 echo -n Setting password...
-/usr/sbin/chroot ${MOUNTPOINT} echo ${NEWPASSWD} |\
-/usr/sbin/chroot ${MOUNTPOINT} passwd --stdin root > /dev/null
+${CHROOT_EXEC} ${MOUNTPOINT} echo ${NEWPASSWD} |\
+${CHROOT_EXEC} ${MOUNTPOINT} passwd --stdin root > /dev/null
 echo done
 
 echo -n "Unmounting file..."
