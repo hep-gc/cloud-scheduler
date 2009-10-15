@@ -147,13 +147,10 @@ class SchedulingTh(threading.Thread):
         
         # The main scheduling loop (currently runs for a fixed number of iterations
         # for demo purposes)
-        for i in range (200):
+        #for i in range (200):
+	
+	while (not self.quit)
             log_with_line("Scheduler Loop")
-
-            ## Check whether we're supposed to exit
-            if self.quit:
-                log.debug("Quitting scheduler thread")
-                break
 
             ## Query the job pool to get new unscheduled jobs
             #self.job_pool.job_queryCMD()
@@ -199,7 +196,7 @@ class SchedulingTh(threading.Thread):
             ## Wait for a number of seconds
             log_with_line("Waiting")
             log.info("Scheduler - Waiting...")
-            time.sleep(30)
+            time.sleep(3)
 
             ## Poll all started VMs
             log.info("Scheduler - Polling all running VMs...")
@@ -267,9 +264,12 @@ class SchedulingTh(threading.Thread):
                     
             #ENDFOR - Poll each running VM in the resource pool
         
-        #ENDFOR - End of the demo-limited main scheduler loop
-            
-    ## After a set number of iterations, destroy all VMs and finish
+        #ENDFOR - End of the main scheduler loop
+
+        # Exit the scheduling thread - clean up VMs and exit
+	log.debug("Exiting scheduler thread")
+
+        # Destroy all VMs and finish
         log.debug("Destroying all remaining VMs :-(")
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
@@ -344,16 +344,18 @@ def main():
     # to remain running)
     log.debug("Waiting for the scheduler to finish...")
 
+    # Wait for keyboard input to exit the cloud scheduler
     try: 
         while scheduler.isAlive():
             time.sleep(2)
     except (SystemExit, KeyboardInterrupt):
         log.info("Exiting normally due to KeyboardInterrupt or SystemExit")
 
-    # Clean up out threads
+    # Clean up out threads (shuts down all running VMs)
     scheduler.stop()
     info_serv.stop()
     sys.exit()
+
 
 # Sets the command-line options for a passed in OptionParser object (via optparse)
 def set_options(parser):
