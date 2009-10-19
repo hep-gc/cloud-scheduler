@@ -1,5 +1,0 @@
-These config files and scripts are for use with OpenVPN. THey automativally update resolv.conf and update a DNS server.
-
-For more documentation, please see:
-
-https://wiki.gridx1.ca/twiki/bin/view/Main/OpenVPNCloudSetup
