@@ -149,7 +149,7 @@ class SchedulingTh(threading.Thread):
         # for demo purposes)
         #for i in range (200):
 	
-	while (not self.quit)
+	while (not self.quit):
             log_with_line("Scheduler Loop")
 
             ## Query the job pool to get new unscheduled jobs
