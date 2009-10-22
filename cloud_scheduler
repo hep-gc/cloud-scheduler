@@ -21,9 +21,9 @@ import threading
 import time   # for testing purposes only (sleeps)
 import string # for debugging purposes
 from optparse import OptionParser
-import cloud_management
-import job_management
-import info_server
+import cloudscheduler.cloud_management as cloud_management
+import cloudscheduler.job_management as job_management
+import cloudscheduler.info_server as info_server
 
 ## GLOBAL VARIABLES
 
@@ -149,7 +149,7 @@ class SchedulingTh(threading.Thread):
         # for demo purposes)
         #for i in range (200):
 	
-	while (not self.quit)
+        while (not self.quit):
             log_with_line("Scheduler Loop")
 
             ## Query the job pool to get new unscheduled jobs

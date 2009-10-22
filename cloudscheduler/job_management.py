@@ -27,6 +27,7 @@ import re
 import logging
 import sys
 from suds.client import Client
+from cloudscheduler.utilities import determine_path
 
 ##
 ## LOGGING
@@ -164,8 +165,8 @@ class JobPool:
         last_query = datetime.datetime.now()
 
         _condor_url   = "http://canfarpool.phys.uvic.ca:8080"
-        _schedd_wsdl  = "file://" + sys.path[0] \
-                        + "/lib/condor_webservice/condorSchedd.wsdl"
+        _schedd_wsdl  = "file://" + determine_path() \
+                        + "/wsdl/condorSchedd.wsdl"
         self.condor_schedd = Client(_schedd_wsdl, location=_condor_url)
 
     def job_querySOAP(self):

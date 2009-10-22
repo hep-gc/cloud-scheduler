@@ -1,4 +1,6 @@
-This directory contains the developing cloud scheduler. 
+Cloud Scheduler 0.3
+
+## INTRODUCTION
 
 Cloud management functions and structures are kept in the cloud_management.py file. Cloud scheduler functionality is kept in the cloud_scheduler.py file.
 
@@ -8,7 +10,8 @@ For more documentation on the cloud scheduler, please refer to the following wik
 
 https://wiki.gridx1.ca/twiki/bin/view/Main/VirtualizationProjectHome#Cloud_Scheduling
 
-Prerequisites:
+## PREREQUISITES
+
 pyXML
 suds (https://fedorahosted.org/suds/)
 
@@ -22,4 +25,12 @@ You can install these on RHEL5 (and clones) with the following
 On Mac OS X, using Macports, you can install these with the following:
 (say you're using python 2.6)
 # sudo port install py26-xml py26-suds
+
+## INSTALL
+
+To install cloud scheduler, as root, run:
+
+# python setup.py install
+
+
 
