@@ -25,6 +25,7 @@ import threading
 import time   # for testing purposes only (sleeps)
 import string # for debugging purposes
 from optparse import OptionParser
+import ConfigParser
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
 import cloudscheduler.info_server as info_server
@@ -379,34 +380,51 @@ def read_cloud_config(config_file, rsrc_pool):
 
     log.debug("Attempting to read cloud configuration file: " + config_file)
 
-    # Open config file for reading
-    cloud_conf = open(config_file, 'r')
+    cloud_config = ConfigParser.ConfigParser()
+    cloud_config.read(config_file)
+
 
     # Read in config file, parse into Cluster objects
-    for line in cloud_conf:
+    for cluster in cloud_config.sections():
         
-        # Check for commented or blank lines
-        if line[0] == "#" or line == "\n" :
-            continue
-
-        cluster_attr = line.split('/') 
-        log.debug("%s" % (cluster_attr))
-
         # Create a new cluster according to cloud_type
-        # TODO: A more dynamic format would be helpful here - current solution is hardcoded
-        if "Nimbus" in cluster_attr:
-            log.debug("found new Nimbus cluster")
-            new_cluster = cloud_management.NimbusCluster()
-        elif "OpenNebula" in cluster_attr:
-            log.debug("found new OpenNebula cluster")
-            new_cluster = cloud_management.Cluster()   # TODO: Use superclass for now
-        elif "Eucalyptus" in cluster_attr:
-            log.debug("found new Eucalyptus cluster")
-            new_cluster = cloud_management.Cluster()   # TODO: Use superclass for now
+        if cloud_config.get(cluster, "type") == "Nimbus":
+            new_cluster = cloud_management.NimbusCluster(name = cluster,
+                           host = cloud_config.get(cluster, "host"),
+                           type = cloud_config.get(cluster, "type"),
+                           memory = map(int, cloud_config.get(cluster, "memory").split(",")),
+                           cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
+                           networks = cloud_config.get(cluster, "networks").split(","),
+                           vm_slots = cloud_config.getint(cluster, "vm_slots"),
+                           cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
+                           storage = cloud_config.getint(cluster, "storage"),
+                           )
+
+        elif cloud_config.get(cluster, "type") == "OpenNebula":
+            new_cluster = cloud_management.Cluster(name = cluster,
+                           host = cloud_config.get(cluster, "host"),
+                           type = cloud_config.get(cluster, "type"),
+                           memory = map(int, cloud_config.get(cluster, "memory")),
+                           cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
+                           networks = cloud_config.get(cluster, "networks").split(","),
+                           vm_slots = cloud_config.getint(cluster, "vm_slots"),
+                           cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
+                           storage = cloud_config.getint(cluster, "storage"),
+                           )
+
+        elif cloud_config.get(cluster, "type") == "Eucalyptus":
+            new_cluster = cloud_management.Cluster(name = cluster,
+                           host = cloud_config.get(cluster, "host"),
+                           type = cloud_config.get(cluster, "type"),
+                           memory = map(int, cloud_config.get(cluster, "memory")),
+                           cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
+                           networks = cloud_config.get(cluster, "networks").split(","),
+                           vm_slots = cloud_config.getint(cluster, "vm_slots"),
+                           cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
+                           storage = cloud_config.getint(cluster, "storage"),
+                           )
         
-        # Use superclass methods for population and print
-        new_cluster.populate(cluster_attr)
-        new_cluster.print_cluster()
+
         
         # Add the new cluster to a resource pool
         rsrc_pool.add_resource(new_cluster)
