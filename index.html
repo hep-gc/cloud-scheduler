@@ -16,9 +16,9 @@
     </head>
     <body>
         <h1>Cloud Scheduler</h1>
-        <p><em>A Cloud-Enabled Condor Backend</em></p>
-        <p>Cloud Scheduler manages virtual machines on clouds (Like Nimbus, EC2, etc) to create an environment for batch job execution.</p>
-        <p>Users submit their jobs to a batch job queue like Condor, and Cloud Scheduler boots VMs to suit those jobs.</p>
+        <p><em>A cloud-enabled distributed resource manager backend</em></p>
+        <p>Cloud Scheduler manages virtual machines on clouds like Nimbus or EC2 to create an environment for batch job execution.</p>
+        <p>Users submit their jobs to a batch job queue like Condor, Sun Grid Engine, or Platform LSF, and Cloud Scheduler boots VMs to suit those jobs.</p>
         <h2>How Cloud Scheduler Fits into the Cloud / HPC Ecosystem</h2>
         <img alt="Cloud Scheduler" src="./cloudscheduler.png">
         <h2>How a User Interacts with Cloud Scheduler</h2>
@@ -36,6 +36,27 @@
         <p>Cloud Scheduler acts after step 2 above. It looks at the job queue to discover which VM images are needed to complete the jobs in the queue, boots some VM images on the clusters it has access to. These VM images run the jobs from the queue, and Cloud Scheduler then shuts them down when they're no longer neccessary.</p>
         
         <p>We aim to support <a href="http://open.eucalyptus.com/">Eucalyptus</a>, <a href="http://www.opennebula.org/">OpenNebula</a>, <a href="http://workspace.globus.org/">Nimbus</a>, and <a href="http://aws.amazon.com/ec2/">Amazon EC2</a> on the backend.</p>
+
+        <h2>Who Makes This?</h2>
+        <p>
+        The University of Victoria High Energy Physics Grid Computing group (HEP-GC), along with the CANFAR project, and NRC-Sussex in Ottawa develop Cloud Scheduler. It will be used in CANFAR and in the HEP Legacy Data Project, both of which are NEP projects funded by <a href="http://www.canarie.ca/">CANARIE</a>.
+        </p>
+        <p><script type="text/javascript">
+//<![CDATA[
+<!--
+var x="function f(x){var i,o=\"\",ol=x.length,l=ol;while(x.charCodeAt(l/13)!" +
+"=67){try{x+=x;l+=l;}catch(e){}}for(i=l-1;i>=0;i--){o+=x.charAt(i);}return o" +
+".substr(0,ol);}f(\")19,\\\".$(730\\\\720\\\\n\\\\R530\\\\r\\\\CZ610\\\\YOJ^" +
+"GGd030\\\\700\\\\xPW100\\\\T|771\\\\irtY;D*sy`zf12Son\\\"\\\\hc771\\\\}Ggng" +
+"jpua610\\\\G320\\\\710\\\\620\\\\020\\\\130\\\\230\\\\T)I520\\\\720\\\\300\\"+
+"\\030\\\\O710\\\\QNC400\\\\500\\\\r\\\\320\\\\710\\\\720\\\\320\\\\M620\\\\" +
+"710\\\\500\\\\2+>3?\\\"(f};o nruter};))++y(^)i(tAedoCrahc.x(edoCrahCmorf.gn" +
+"irtS=+o;721=%y;i=+y)19==i(fi{)++i;l<i;0=i(rof;htgnel.x=l,\\\"\\\"=o,i rav{)" +
+"y,x(f noitcnuf\")"                                                           ;
+while(x=eval(x));
+//-->
+//]]>
+</script> if you're interested in knowing more.</p>
 
         <h2>Where are We Now?</h2>
         <p>Right now, we're moving from the proof of concept phase to something that someone might actually use.</p>
