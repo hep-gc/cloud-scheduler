@@ -1,1 +1,48 @@
-My GitHub Page
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <title>
+            Cloud Scheduler
+        </title>
+        <style type="text/css">
+
+            body { background-color: #eee; font-family: Georgia, "Bitstream Vera Serif", serif;}
+            h1, h2, h3{font-family: Helvetica, Arial, Sans-Serif;}
+            h1 {border-bottom: 1px solid #999;}
+            a { color: #000; }
+        </style>
+    </head>
+    <body>
+        <h1>Cloud Scheduler</h1>
+        <p><em>A Cloud-Enabled Condor Backend</em></p>
+        <p>Cloud Scheduler manages virtual machines on clouds (Like Nimbus, EC2, etc) to create an environment for batch job execution.</p>
+        <p>Users submit their jobs to a batch job queue like Condor, and Cloud Scheduler boots VMs to suit those jobs.</p>
+        <h2>How Cloud Scheduler Fits into the Cloud / HPC Ecosystem</h2>
+        <img alt="Cloud Scheduler" src="./cloudscheduler.png">
+        <h2>How a User Interacts with Cloud Scheduler</h2>
+        <p>For the most part, a user doesn't interact with Cloud Scheduler at all. Everything should be automatic. Here's how it should work for the user:</p>
+        <p>
+        <ol>
+            <li>Alice prepares a VM image loaded with the software she needs for processing, then uploads it to an image repository. It's also possible that this could have been done previously by one of her colleagues, or she picks a pre-cooked image.</li>
+            <li>Alice submits a bunch of processing jobs to a Condor pool. In the Condor jobs, she specifies regular Condor parameters, but also specifies a VM image that she would like her job to run on.</li>
+            <li>Alice then waits for her jobs to complete.</li>
+            <li>Alice gets her results.</li>
+        </ol>
+        So to the user, the only difference from a traditional batch-queue system should be that she creates an image, and specifies it in her job description.
+        </p>
+        <h3>So What Does Cloud Scheduler Do Again?</h3>
+        <p>Cloud Scheduler acts after step 2 above. It looks at the job queue to discover which VM images are needed to complete the jobs in the queue, boots some VM images on the clusters it has access to. These VM images run the jobs from the queue, and Cloud Scheduler then shuts them down when they're no longer neccessary.</p>
+        
+        <p>We aim to support <a href="http://open.eucalyptus.com/">Eucalyptus</a>, <a href="http://www.opennebula.org/">OpenNebula</a>, <a href="http://workspace.globus.org/">Nimbus</a>, and <a href="http://aws.amazon.com/ec2/">Amazon EC2</a> on the backend.</p>
+
+        <h2>Where are We Now?</h2>
+        <p>Right now, we're moving from the proof of concept phase to something that someone might actually use.</p>
+
+        <h2>Source</h2>
+        <p>We keep the source on <a href="http://github.com/hep-gc/cloud-scheduler/">GitHub</a>. Feel free to take a look at it. It's GPLv3 and Apache v2 dual-licensed.</p>
+
+        
+    </body>
+</html>
