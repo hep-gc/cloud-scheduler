@@ -96,13 +96,9 @@ class Job:
         # Set the new job's status
         self.status = self.statuses[0]
 
-    def print_short(self, spacer):
-        log.warning("print_short is DEPRECATED use log_job_short instead")
-        log_job_short(self)
-
-    # log_job_short
+    # log
     # Log a short string representing the job
-    def log_job_short(self):
+    def log(self):
         log.debug("Job ID: %s, Image: %s, Image location: %s, CPU: %s, Memory: %d" \
           % (self.id, self.req_image, self.req_imageloc, self.req_cpuarch, self.req_memory))
 
@@ -423,19 +419,10 @@ class JobPool:
       # TODO: Write method
       log.debug( "jobs_priorityset - Method not yet implemented")
 
-    def print_jobs(self):
-        log.warning("print_jobs is DEPRECATED, use log_jobs instead")
-        log_jobs(self)
-
     # Log Job Lists (short)
     def log_jobs(self):
         self.log_sched_jobs()
         self.log_unsched_jobs()
-
-    # Print Scheduled Jobs (short)
-    def print_sched_jobs(self):
-        log.warning("print_sched_jobs is DEPRECATED, use log_sched_jobs instead")
-        log_sched_jobs(self)
 
     # log scheduled jobs (short)
     def log_sched_jobs(self):
@@ -446,11 +433,6 @@ class JobPool:
             log.debug( "Scheduled jobs in %s:" % self.name)
             for job in self.scheduled_jobs:
                 job.log_job_short()
-
-    # Print Unscheduled Jobs (short)
-    def print_unsched_jobs(self):
-        log.warning("print_unsched_jobs is DEPRECATED, use log_unshed_jobs instead")
-        log_unsched_jobs(self)
 
     # log Unscheduled Jobs (short)
     def log_unsched_jobs(self):
@@ -540,13 +522,8 @@ class JobSet:
         self.job_set.remove(job)
         return (0)
 
-    # Print a short form list of the job set
-    def print_short(self):
-        log.warning("print_short is DEPRECATED, use log_short instead")
-        log_short(self)
-
     # log a short form list of the job set
-    def log_short(self):
+    def log(self):
         if len(self.job_set) == 0:
             log.debug("Job set %s is empty..." % self.name)
             return

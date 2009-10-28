@@ -103,14 +103,8 @@ class VM:
         # Set a status variable on new creation
         self.status = "Starting"
 
-    def log_short(self):
+    def log(self):
         log.debug("VM Name: %s, ID: %s, Status: %s" % (self.name, self.id, self.status))
-
-    # Print a short description of the VM
-    # spacer - (str) a string to prepend to each VM line being printed
-    def print_short(self, spacer):
-        log.warning("print_short is DEPRECATED, use log_short instead")
-        self.log_short()
 
 
 
@@ -134,9 +128,8 @@ class ResourcePool:
     def add_resource(self, cluster):
         self.resources.append(cluster)
 
-    # Print the name and address of every cluster in the resource pool
-    def print_pool(self, ):
-        log.warning("print_pool is DEPRECATED, use get_pool_info instead")
+    # Log the name and address of every cluster in the resource pool
+    def log_pool(self, ):
         log.debug(self.get_pool_info())
 
     # Print the name and address of every cluster in the resource pool
@@ -147,7 +140,7 @@ class ResourcePool:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
+                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.type, cluster.network_address)
         return output
     
     # Return an arbitrary resource from the 'resources' list. Does not remove
@@ -173,7 +166,7 @@ class ResourcePool:
     #         Otherwise, returns the 'None' object
     def get_resourceFF(self, network, cpuarch, memory):
         if len(self.resources) == 0:
-            print "Pool is empty... Cannot return FF resource"
+            log.debug("Pool is empty... Cannot return FF resource")
             return None
         
         for cluster in self.resources:
@@ -224,28 +217,27 @@ class Cluster:
 
         
     # Print cluster information
-    def print_cluster(self):
-        log.warning("print_cluster is DEPRECATED")
-        print "-" * 80
-        print "Name:\t\t%s"        % self.name
-        print "Address:\t%s"       % self.network_address
-        print "Type:\t\t%s"        % self.cloud_type
-        print "VM Slots:\t%s"      % self.vm_slots
-        print "CPU Cores:\t%s"     % self.cpu_cores
-        print "Storage:\t%s"       % self.storageGB
-        print "Memory:\t\t%s"      % self.memory
-        print "CPU Archs:\t%s"     % string.join(self.cpu_archs, ", ")
-        print "Network Pools:\t%s" % string.join(self.network_pools, ", ")      
-        print "-" * 80
+    def log_cluster(self):
+        log.debug("-" * 30 + 
+            "Name:\t\t%s\n"        % self.name +
+            "Address:\t%s\n"       % self.network_address +
+            "Type:\t\t%s\n"        % self.type +
+             "VM Slots:\t%s\n"      % self.vm_slots +
+             "CPU Cores:\t%s\n"     % self.cpu_cores +
+             "Storage:\t%s\n"       % self.storageGB +
+             "Memory:\t\t%s\n"      % self.memory +
+             "CPU Archs:\t%s\n"     % string.join(self.cpu_archs, ", ") +
+             "Network Pools:\t%s\n" % string.join(self.network_pools, ", ") +
+             "-" * 30)
     
     # Print a short form of cluster information
-    def print_short(self):
+    def log(self):
         log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
-          % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
+          % (self.name, self.network_address, self.type, self.vm_slots, \
           self.memory))
 
     # Print the cluster 'vms' list (via VM print)
-    def print_vms(self):
+    def log_vms(self):
         if len(self.vms) == 0:
             log.debug("CLUSTER %s has no running VMs..." % (self.name))
         else:
