@@ -4,8 +4,11 @@ Cloud management functions and structures are kept in the cloud_management.py fi
 
 The sample_cloud file is a configuration file of the format currently being processed by the cloud scheduler. The file contains an explanation of its data formatting.
 
-For more documentation on the cloud scheduler, please refer to the following wiki pages:
 
+A high level explanation of the cloud schduler is available from:
+http://hep-gc.github.com/cloud-scheduler/
+
+For more documentation on the cloud scheduler, please refer to the following wiki pages:
 https://wiki.gridx1.ca/twiki/bin/view/Main/VirtualizationProjectHome#Cloud_Scheduling
 
 Prerequisites:
