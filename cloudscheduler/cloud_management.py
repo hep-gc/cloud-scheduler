@@ -202,53 +202,26 @@ class ResourcePool:
 
 class Cluster:
    
-    ## Instance variables (preset to defaults)
-    name            = 'default-cluster'
-    network_address = '0.0.0.0'
-    cloud_type      = 'default-type'
-    vm_slots        = 0
-    cpu_cores       = 0
-    storageGB       = 0
-    
-    # A list of the memory available on each cluster worker node
-    memory = []
-    # A list of the network pools made available to VMs
-    network_pools = []
-    # A list of the available CPU architectures on the cluster
-    cpu_archs = [] 
-    # Running vms list (uses best-effort internal representation of resources)
-    # A list of VM objects
-    vms = []
-    
     
     ## Instance methods
 
     # Constructor
-    def __init__(self, ):
-        log.debug("New Cluster created")
+    def __init__(self, name="Dummy Cluster", host="localhost", type="Dummy",
+                 memory=[], cpu_archs=[], networks=[], vm_slots=0,
+                 cpu_cores=0, storage=0):
+        self.name = name
+        self.network_address = host
+        self.cloud_type = type
+        self.memory = memory
+        self.cpu_archs = cpu_archs
+        self.network_pools = networks
+        self.vm_slots = vm_slots
+        self.cpu_cores = cpu_cores
+        self.storageGB = storage
+        self.vms = [] # List of running VMs
 
-    # Set Cluster attributes from a parameter list
-    def populate(self, attr_list):
-        (self.name, self.network_address, self.cloud_type, self.vm_slots, self.cpu_cores, \
-          self.storageGB, memory, cpu_archs, network_pools) = attr_list;
-        
-        # Strip the newline from the last config line item (network_pools string)
-        network_pools = network_pools.rstrip("\n")
+        log.debug("New cluster %s created" % self.name)
 
-        # Split strings into lists for list fields (memory, cpuarchs, networkpools)
-        self.memory = memory.split(",")
-        self.cpu_archs = cpu_archs.split(",")
-        self.network_pools = network_pools.split(",")
-        
-        # Convert numerical fields to ints
-        self.vm_slots = int(self.vm_slots)
-        self.cpu_cores = int(self.cpu_cores)
-        self.storageGB = int(self.storageGB)
-        # Set all self.memory values to ints (iterate through memory list)
-        for i in range(len(self.memory)):
-            self.memory[i] = int(self.memory[i])
-            
-        log.debug("Cluster populated successfully")
         
     # Print cluster information
     def print_cluster(self):
@@ -395,12 +368,6 @@ class NimbusCluster(Cluster):
          "Cancelled"      : "Error",
     }
     
-    ## NimbusCluster specific instance methods
-    
-    # Overridden constructor
-    def __init__(self, ):
-        log.debug("New NimbusCluster created")
-
     
     # TODO: Explain parameters and returns
     def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation,\

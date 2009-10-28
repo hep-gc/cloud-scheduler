@@ -1,0 +1,64 @@
+# This is a sample config file for phase1 of the cloud scheduler
+
+#[nameofcluster] 
+#  host: hostname.of.machine # the publicly accesible IP address or hostname
+#                              of the cluster headnode
+#  type: CloudSoftware       # the cloud software being used on the cluster. 
+#                              eg. Nimbus, Eucalyptus, OpenNebula
+#  vm_slots: N	             # The maximum number of VMs that can be run on
+#                              the cluster at any one time
+#  cpu_cores: N              # The number of CPU cores per machine on the 
+#                              cluster worker nodes
+#  storage: N                # The amount of storage (in GB) available on the
+#                              cluster worker nodes
+#  memory: N,N               # A comma separated list of the memory (MB)
+#                              available to VMs on each cluster worker node
+#  cpu_archs: xxx            # A comma separated list of the CPU architectures
+#                              available on the cluster worker nodes.
+#                              Currently supports x86, x86_64.
+#  networks: private         # A comma separated list of the network pools
+#                              on the cluster (from which VMs may lease
+#                              network slots)
+# 
+# Example:
+#[test_cluster01]
+#    host: tc01.somewhere.ca
+#    type: Nimbus
+#    vm_slots: 10
+#    cpu_cores: 4
+#    storage: 50
+#    memory: 1024,512,512
+#    cpu_archs: x86,x86_64
+#    networks: private,org1,internal
+#
+# The above config line describes the following cluster:
+# - test_cluster01 can be reached at the hostname tc01.somewhere.ca, and is running Nimbus cloud software.
+# - It has 10 available network slots (the sum from all pools) for VMs to lease, so may support up to
+#   10 running VMs at one time. 
+# - Each worker-node of the cluster has quadcore CPUs, and at least 50 GB of storage space for VMs to 
+#   use (total, not per VM). 
+# - The cluster has three worker nodes, with 1024, 512, and 512 MB of memory, respectively. 
+# - The cluster has both x86 and x86_64 processors. 
+# - The cluster also provides public, org1, and internal network pools (these names are not standard, 
+#   but specific to the cluster and are named arbitrarily on the cluster itself).
+
+[canfardev]
+host: canfardev.dao.nrc.ca
+type: Nimbus
+vm_slots: 10
+cpu_cores: 1
+storage: 10
+memory: 3072,3072,3072
+cpu_archs: x86
+networks: private
+
+[vmcgs27]
+host: vmcgs27.phys.uvic.ca
+type: Eucalyptus
+vm_slots: 10
+cpu_cores: 1
+storage: 10
+memory: 512
+cpu_archs: x86
+networks: private
+
