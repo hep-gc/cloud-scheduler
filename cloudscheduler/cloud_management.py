@@ -207,7 +207,7 @@ class Cluster:
                  cpu_cores=0, storage=0):
         self.name = name
         self.network_address = host
-        self.cloud_type = type
+        self.type = type
         self.memory = memory
         self.cpu_archs = cpu_archs
         self.network_pools = networks

@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+# vim: set expandtab ts=4 sw=4:
+
+# Copyright (C) 2009 University of Victoria
+# You may distribute under the terms of either the GNU General Public
+# License or the Apache v2 License, as specified in the README file.
+
+## Auth.: Patrick Armstrong
+
+import os
+import sys
+import ConfigParser
+
+# Cloud Scheduler Options Module.
+
+condor_webservice_url = "http://localhost:8080"
+cloud_resource_config = None
+log_level = "INFO"
+log_location = None
+log_stdout = False
+log_max_size = None
+
+
+
+# setup will look for a configuration file specified on the command line,
+# or in ~/.cloudscheduler.conf or /etc/cloudscheduler.conf
+def setup(path=None):
+
+    global condor_webservice_url
+    global cloud_resource_config
+    global log_level
+    global log_location
+    global log_stdout
+    global log_max_size
+
+    homedir = os.path.expanduser('~')
+
+    # Find config file
+    if not path:
+        if os.path.exists(homedir + "/.cloudscheduler.conf"):
+            path = homedir + "/.cloudscheduler.conf"
+        elif os.path.exists("/etc/cloudscheduler.conf"):
+            path = "/etc/cloudscheduler.conf"
+        else:
+            print "Configuration file problem: There doesn't seem to be " \
+                  "a configuration file. " \
+                  "You can specify one with the --config-file parameter, " \
+                  "or put one in ~/.clouscheduler.conf or "\
+                  "/etc/cloudscheduler.conf"
+            sys.exit(1)
+    
+    # Read config file
+    config_file = ConfigParser.ConfigParser()
+    try:
+        config_file.read(path)
+    except IOError:
+        print "Configuration file problem: There was a problem reading " \
+              "%(path)s. Check that it is readable, and that it exists. "
+        sys.exit(1)
+    except:
+        print "Configuration file problem: There is something wrong with " \
+              "your config file."
+        sys.exit(1)   
+
+    if config_file.has_option("global", "condor_webservice_url"):
+        condor_webservice_url = config_file.get("global",
+                                                "condor_webservice_url")
+
+    if config_file.has_option("global", "cloud_resource_config"):
+        cloud_resource_config = config_file.get("global",
+                                                "cloud_resource_config")
+
+    if config_file.has_option("logging", "log_level"):
+        log_level = config_file.get("logging", "log_level")
+
+    if config_file.has_option("logging", "log_location"):
+        log_location = config_file.get("logging", "log_location")
+
+    if config_file.has_option("logging", "log_stdout"):
+        log_stdout = config_file.getboolean("logging", "log_stdout")
+
+    if config_file.has_option("logging", "log_max_size"):
+        try:
+            log_max_size = config_file.getint("logging", "log_max_size")
+        except ValueError:
+            print "Configuration file problem: log_max_size must be an " \
+                  "integer value in bytes."
+            sys.exit(1)
+

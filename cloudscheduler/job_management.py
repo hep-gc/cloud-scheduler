@@ -32,6 +32,7 @@ import logging
 import sys
 from suds.client import Client
 from cloudscheduler.utilities import determine_path
+import cloudscheduler.config as config
 
 ##
 ## LOGGING
@@ -143,15 +144,15 @@ class JobPool:
     # last_query - A timestamp for the last time the scheduler was queried,
     #              or its creation time
     def __init__(self, name):
-        log.debug("dbg - New JobPool %s created" % name)
+        log.debug("New JobPool %s created" % name)
         self.name = name
         self.last_query = datetime.datetime.now()
 
         # TODO: Make condor_url dynamic (cmd line parameter)?
-        _condor_url   = "http://canfarpool.phys.uvic.ca:8080"
         _schedd_wsdl  = "file://" + determine_path() \
                         + "/wsdl/condorSchedd.wsdl"
-        self.condor_schedd = Client(_schedd_wsdl, location=_condor_url)
+        self.condor_schedd = Client(_schedd_wsdl, 
+                                    location=config.condor_webservice_url)
 
 
     def job_querySOAP(self):
