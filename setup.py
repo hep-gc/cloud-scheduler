@@ -3,11 +3,6 @@
 
 from distutils.core import setup
 
-#This is a list of files to install, and where
-#(relative to the 'root' dir, where setup.py is)
-#You could be more specific.
-files = ["wsdl/*"]
-
 setup(name = "Cloud Scheduler",
     version = "0.3",
     description = "Cloud Scheduler is a cloud-enabled Condor backend. It boots VMs to suit the jobs you submit to your Condor pool",
@@ -15,7 +10,7 @@ setup(name = "Cloud Scheduler",
     author_email = "dpb@uvic.ca",
     url = "http://github.com/hep-gc/cloud-scheduler",
     packages = ['cloudscheduler'],
-    package_data = {'cloudscheduler' : files },
-    #'runner' is in the root.
+    package_data = {'cloudscheduler' : ["wsdl/*"] },
+    data_files = [('/etc/cloudscheduler', ["main.conf", "cloud.conf"])],
     scripts = ["cloud_scheduler", "cloud_status"],
 ) 

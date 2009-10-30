@@ -13,6 +13,7 @@ import ConfigParser
 
 # Cloud Scheduler Options Module.
 
+# Set default values
 condor_webservice_url = "http://localhost:8080"
 cloud_resource_config = None
 log_level = "INFO"
@@ -37,16 +38,16 @@ def setup(path=None):
 
     # Find config file
     if not path:
-        if os.path.exists(homedir + "/.cloudscheduler.conf"):
-            path = homedir + "/.cloudscheduler.conf"
-        elif os.path.exists("/etc/cloudscheduler.conf"):
-            path = "/etc/cloudscheduler.conf"
+        if os.path.exists(homedir + "/.cloudscheduler/main.conf"):
+            path = homedir + "/.cloudscheduler/main.conf"
+        elif os.path.exists("/etc/cloudscheduler/main.conf"):
+            path = "/etc/cloudscheduler/main.conf"
         else:
             print "Configuration file problem: There doesn't seem to be " \
                   "a configuration file. " \
                   "You can specify one with the --config-file parameter, " \
-                  "or put one in ~/.clouscheduler.conf or "\
-                  "/etc/cloudscheduler.conf"
+                  "or put one in ~/.clouscheduler/main.conf or "\
+                  "/etc/cloudscheduler/main.conf"
             sys.exit(1)
     
     # Read config file
