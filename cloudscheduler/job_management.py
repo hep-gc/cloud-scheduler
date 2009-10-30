@@ -52,23 +52,12 @@ class Job:
     # A list of possible statuses for internal job representation
     statuses = ["Unscheduled", "Scheduled"]
     
-    # All job fields
-    id = "default_jobID"
-    status       = statuses[0]  # Set initial status to 'Unscheduled'            
-    req_network  = "default_network"
-    req_cpuarch  = "x86"
-    req_image    = "default_image"           # Currently not considered. Imageloc
-    req_imageloc = "default_imagelocation"   # is required
-    req_memory   = 0
-    req_cpucores = 0            # Currently not considered
-    req_storage  = 0            # Currently not considered
-
-
     ## Instance Methods
 
     # Constructor
     # Parameters:
     # id       - (str) The ID of the job (via condor). Functions as name.
+    # vmtype   - (str) The VMType field specified in job submission files. (Part of Requirements)
     # network  - (str) The network association the job requires. TODO: Should support "any"
     # cpuarch  - (str) The CPU architecture the job requires in its run environment
     # image    - (str) The name of the image the job is to run on
@@ -79,12 +68,11 @@ class Job:
     # NOTE: The image field is used as a name field for the image the job will
     #   run on. The cloud scheduler will eventually be able to search a set of 
     #   repositories for this image name. Currently, imageloc MUST be set. 
-    def __init__(self, id, network, cpuarch, image, imageloc, memory, cpucores, storage):
-        log.debug("New Job object created:")
-        log.debug("(Job) - ID: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
-          % (id, network, image, imageloc, memory))
-        
+    def __init__(self, id="default_jobID", vmtype="default_vmtype",
+	         network="default_network", cpuarch="x86", image="default_image",
+	         imageloc="default_imagelocation", memory=0, cpucores=0, storage=0):
         self.id = id
+        self.req_vmtype   = vmtype
         self.req_network  = network
         self.req_cpuarch  = cpuarch
         self.req_image    = image
@@ -95,6 +83,10 @@ class Job:
 
         # Set the new job's status
         self.status = self.statuses[0]
+	
+	log.debug("New Job object created:")
+        log.debug("(Job) - ID: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
+          % (id, network, image, imageloc, memory))
 
     def print_short(self, spacer):
         log.warning("print_short is DEPRECATED use log_job_short instead")
@@ -138,12 +130,7 @@ class JobPool:
     # The 'jobs' list holds all unscheduled jobs in the system. When a job is
     # scheduled by any scheduler that job is moved to 'scheduled_jobs'.
 
-    # ISSUE: How to represent scheduler having started resources for a job, but
-    # that job not having started on those resources?
-    # Need to avoid thrashing, and starting resources for idle jobs simply because
-    # the job scheduler hasn't had time to push them to resources yet.
-    #
-    # Sol'n: We only need to worry about whether or not the cloud scheduler (CS)
+    # We only need to worry about whether or not the cloud scheduler (CS)
     # has seen a job and has checked the new job against its scheduling policy.
     # So, when a job is seen by the CS, the CS takes whatever scheduling action
     # it needs to according to policy, then marks the job as "scheduled." This is
@@ -162,7 +149,7 @@ class JobPool:
     def __init__(self, name):
         log.debug("dbg - New JobPool %s created" % name)
         self.name = name
-        last_query = datetime.datetime.now()
+        self.last_query = datetime.datetime.now()
 
         # TODO: Make condor_url dynamic (cmd line parameter)?
         _condor_url   = "http://canfarpool.phys.uvic.ca:8080"
@@ -185,7 +172,7 @@ class JobPool:
         # If the query succeeds and there are jobs present, process them
         if job_ads.status.code == "SUCCESS" and job_ads.classAdArray:
             
-            # Convert ugly data structure from soap into array of dictionaries
+            # Convert ugly data structure from soap into list of dictionaries
             classads = []
             for soap_classad in job_ads.classAdArray.item:
                 new_classad = {}
@@ -194,18 +181,24 @@ class JobPool:
                 classads.append(new_classad)
             
             # Create a new list for the jobs in the condor queue
-            # TODO: INEFFICIENT. Should create a jobs list straight from the ClassAdAndArray
-            #       structure returned from getJobAds call (can't find structure details).
-            #       Don't want to run this loop twice, and having a list of Job instances from the
-            #       condor queue makes this very simple.
+            # TODO: INEFFICIENT. Should create a jobs list straight from the ClassAdStructArrayAndStatus
+            #       Don't want to run this loop twice, but want list of Job instances from condor queue.
             #       10/26: ClassAdStructArrayAndStatus too messy for now
             condor_jobs = []
             for classad in classads:
-                con_job = Job(classad['GlobalJobId'], classad['VMNetwork'],
-                              classad['VMCPUArch'],   classad['VMName'], 
-                              classad['VMLoc'],       int(classad['VMMem']),
-                              self.DEF_CPUCORES,      self.DEF_STORAGE,)
+                # Create Jobs from the classAd data
+                # TODO: If values from VM fields are not present, substitute defaults
+                con_job = Job(id = classad['GlobalJobId'],
+                            vmtype  = parse_classAd_requirements(classad['Requirements'])
+                            network = classad['VMNetwork'],
+                            cpuarch = classad['VMCPUArch'],
+                            image   = classad['VMName'],
+                            imageloc= classad['VMLoc'],
+                            memory  = int(classad['VMMem']),
+                            cpucores= int(classad['VMCPUCores']),
+                            storage = int(classad['VMStorage']),)
                 condor_jobs.append(con_job)
+                
             log.debug("job_querySOAP - Jobs read from condor scheduler, stored in condor jobs list")
             
 
@@ -213,11 +206,14 @@ class JobPool:
             #  - remove finished jobs (job in system, not in condor_jobs)
             #  - ignore jobs already in the system (job in system, also in condor_jobs)
             for sys_job in (self.jobs + self.scheduled_jobs):
-                # If the system job is not in the condor queue, the job has finished/ been removed.
+                # If the system job is not in the condor queue, the job has finished / been removed.
                 if not (self.has_job(condor_jobs, sys_job.id)):
                     self.remove_system_job(sys_job)
                     log.debug("job_querySOAP - Job %s finished or removed. Cleared"
                               + " job from system." % sys_job.id)
+                    # TODO: Check bug here - removing an element from a list while 
+                    #       iterating through that list messes things up.
+                
                 # Otherwise, the system job is in the condor queue - remove it from condor_jobs
                 else:
                     self.remove_job_by_id(condor_jobs, sys_job.id)
@@ -245,90 +241,33 @@ class JobPool:
     # Gets a list of jobs from the job scheduler, and updates internal scheduled
     # and unscheduled job lists with the scheduler information.
     def job_queryCMD(self):
-        log.debug("dbg - JobPool job query method")
-
-        # The regular expression to match and parse the following condor cmd
-        # NOTE: This regexp MUST match the (correct) output format of the condor cmd
-        job_regex = r"^VMName:\s(\S*)\sVMLoc:\s(\S*)\sVMNetwork:\s(\S*)\sVMCPUArch:" + \
-          r"\s(\S*)\sVMMem:\s(\S*)\sOwner:\s(\S*)\sJobId:\s(\S*)"
+        log.warning("job_queryCMD is DEPRECATED... using job_querySOAP instead."
+	            + " Note that this requires the condor SOAP API (wsdl files).")
+        job_querySOAP(self)
+    
+    
+    ## JobPool Private methods (Support methods)
+    
+    # Parse classAd Requirements string.
+    # Takes the Requirements string from a condor job classad and retrieves the
+    # VMType string.
+    # NOTE: Could be expanded to return a name=>value dictionary of all Requirements
+    #       fields. (Not currently necessary).
+    # Parameters:
+    #   requirements - (str) The Requirements string from a condor job classAd
+    def parse_classAd_requirements(self, requirements):
         
-        # The condor_q command to execute to retrieve jobs
-        # NOTE: name currently hardcoded - should add as constructor param and cmd_line input (parsed in main)
-        # TODO: Remove hardcoded job server name (take as cmd-line parameter in main?)
-        condor_cmd = ["condor_q",
-          "-name", "canfarpool.phys.uvic.ca",
-          "-format", 'VMName: %s ',     'VMName',
-          "-format", 'VMLoc: %s ',      'VMLoc',
-          "-format", 'VMNetwork: %s ',  'VMNetwork',
-          "-format", 'VMCPUArch: %s ',  'VMCPUArch',
-          "-format", 'VMMem: %s ',      'VMMem',
-          "-format", 'Owner: %s ',      'Owner',
-          "-format", 'JobId: %s \\n',      'GlobalJobId',
-        ]
-
-        # Execute the condor_cmd, storing the return in a string
-        (condor_ret, condor_out, condor_err) = \
-          self.condor_execwait(condor_cmd)
-        
-        if (condor_ret != 0):
-            log.error("(job_queryCMD) - Job query command failed. Printing stderr" + \
-              "and returning...")
-            log.error("STDERR:\n%s" % condor_err)
-            return
-        
-        ## Parse the correct condor output
-        log.debug("(job_queryCMD) - Job query command completed. Parsing output...")
-
-        # Strip the trailing newline from output and stderr
-        condor_out = condor_out.rstrip()
-        condor_err = condor_err.rstrip()
-        
-        # Split the command output into lines (each line corresponds to a job)
-        job_lines = condor_out.split("\n")
-
-        for line in job_lines:
-            # Check line validity (via regexp). If invalid, continue
-            match = re.search(job_regex, line)
-            if not match:
-                log.debug("(job_queryCMD) - Parsing condor output line failed" +\
-                  "Regexp failed to match.")
-                log.debug("(job_queryCMD) - Line '%s' failed to match" % line)
-                log.debug("(job_queryCMD) - Regexp to match: %s" % job_regex)
-                continue
-            
-            # Store match groups (regexp captures) locally, temporarily
-            (tmp_image, tmp_imageloc, tmp_network, tmp_cpuarch, tmp_memory, \
-              tmp_owner, tmp_id) = match.groups()
-            
-            # Check if job ID is already in the system. If so, continue
-            if self.has_job(self.jobs, tmp_id):
-                log.debug("(job_queryCMD) - Job %s is already in the 'jobs' list" \
-                  % tmp_id)
-                continue
-            if self.has_job(self.scheduled_jobs, tmp_id):
-                log.debug("(job_queryCMD) - Job %s is already in the 'scheduled_jobs' list" % tmp_id)
-                continue
-            
-            # Check if job is Running (status == 'R'). If so, continue
-            # TODO: Add status retrieval to condor cmd and parsing
-            # ALT: If job is running, add to scheduled jobs list?
-
-            # Create a new job from the parsed condor job line
-            # Note: convert appropriate fields to integers
-            new_job = Job(tmp_id, tmp_network, tmp_cpuarch, tmp_image, \
-              tmp_imageloc, int(tmp_memory), self.DEF_CPUCORES, self.DEF_STORAGE)
-
-            # Add the new job to the JobPool's unscheduled jobs list ('jobs')
-            self.jobs.append(new_job)
-            log.debug("(job_queryCMD) - New job created successfully, added to jobs list.")
-        
-        # When querying is finished, reset last query timestamp
-        last_query = datetime.datetime.now()
-        
-        # After parsing the new condor cmd, print updated job lists
-        log.debug("(job_queryCMD) - Updated job lists:")
-        self.log_jobs()
-        
+        req_re = "(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
+        match = re.search(req_re, requirements)
+        if match:
+            log.debug("parse_classAd_requirements - VMType parsed from"
+                      + "Requirements string: %s" % match.group('vm_type'))
+            return match.group('vm_type')
+        else:
+            log.warning("parse_classAd_requirements - No VMType specified in"
+                        + "job description. Using default.")
+            return "default_VMType"
+	
 
     # Remove System Job
     # Attempts to remove a given job from the JobPool unscheduled
@@ -349,7 +288,7 @@ class JobPool:
             log.debug("remove_system_job - Removing job %s from scheduled jobs"
                       + " list." % job.id)
         else:
-            log.error("remove_system_job - Job does not exist in system."
+            log.warning("remove_system_job - Job does not exist in system."
                       + " Doing nothing.")
     
     # Remove job by id
@@ -367,7 +306,7 @@ class JobPool:
                 job_list.remove(job)
                 removed = True
         if not removed:
-            log.error("remove_job_by_id - Job %s does not exist in given list."
+            log.warning("remove_job_by_id - Job %s does not exist in given list."
                       + " Doing nothing." % job_id)
 
     
