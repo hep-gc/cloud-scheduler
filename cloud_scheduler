@@ -18,6 +18,7 @@
 
 ## Imports
 
+import os
 import sys
 import logging
 import getopt
@@ -383,15 +384,21 @@ def read_cloud_config(config_file, rsrc_pool):
 
     log.debug("Attempting to read cloud configuration file: " + config_file)
 
+    # Check for config files with ~ in the path
+    config_file = os.path.expanduser(config_file)
+
     cloud_config = ConfigParser.ConfigParser()
     cloud_config.read(config_file)
+
 
 
     # Read in config file, parse into Cluster objects
     for cluster in cloud_config.sections():
 
+        cloud_type = cloud_config.get(cluster, "type")
+
         # Create a new cluster according to cloud_type
-        if cloud_config.get(cluster, "type") == "Nimbus":
+        if cloud_type == "Nimbus":
             new_cluster = cloud_management.NimbusCluster(name = cluster,
                            host = cloud_config.get(cluster, "host"),
                            type = cloud_config.get(cluster, "type"),
@@ -403,7 +410,7 @@ def read_cloud_config(config_file, rsrc_pool):
                            storage = cloud_config.getint(cluster, "storage"),
                            )
 
-        elif cloud_config.get(cluster, "type") == "OpenNebula":
+        elif cloud_type == "OpenNebula":
             new_cluster = cloud_management.Cluster(name = cluster,
                            host = cloud_config.get(cluster, "host"),
                            type = cloud_config.get(cluster, "type"),
@@ -415,7 +422,7 @@ def read_cloud_config(config_file, rsrc_pool):
                            storage = cloud_config.getint(cluster, "storage"),
                            )
 
-        elif cloud_config.get(cluster, "type") == "Eucalyptus":
+        elif cloud_type == "Eucalyptus":
             new_cluster = cloud_management.Cluster(name = cluster,
                            host = cloud_config.get(cluster, "host"),
                            type = cloud_config.get(cluster, "type"),
