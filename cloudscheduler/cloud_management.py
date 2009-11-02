@@ -72,32 +72,39 @@ class VM:
     # Constructor
     # name         - (str) The name of the vm (arbitrary)
     # id           - (str) The id tag for the VM. Whatever is used to access the vm
-    #              - by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
+    #                by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
+    # vmtype       - (str) The condor VMType attribute for the VM
     # clusteraddr  - (str) The address of the cluster hosting the VM
-    # type         - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
+    # cloud_type   - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
     # network      - (str) The network association the VM uses
     # cpuarch      - (str) The required CPU architecture of the VM
     # imagelocation- (str) The location of the image from which the VM was created
     # memory       - (int) The memory used by the VM
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
-    def __init__(self, name, id, clusteraddr, type, network, cpuarch, imagelocation,\
-      memory, mementry):
-        log.debug("New VM object created:")
-        log.debug("VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
-          % (name, id, clusteraddr, imagelocation, memory))
+    def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType", 
+            clusteraddr="default_hostname", cloudtype="Nimbus", network="public",
+            cpuarch="x86", imagelocation="default_imageloc", memory=0, mementry=0,
+            cpucores=0, storage=0):
         self.name = name
         self.id = id
+        self.vmtype = vmtype
         self.clusteraddr = clusteraddr
-        self.type = type
+        self.cloudtype = cloudtype
         self.network = network
         self.cpuarch = cpuarch
         self.imagelocation = imagelocation
         self.memory = memory
         self.mementry = mementry
+        self.cpucores = cpucores
+        self.storage = storage
 
         # Set a status variable on new creation
         self.status = "Starting"
+        
+        log.debug("New VM object created:")
+        log.debug("VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
+          % (name, id, clusteraddr, imagelocation, memory))
 
     def log(self):
         log.debug("VM Name: %s, ID: %s, Status: %s" % (self.name, self.id, self.status))
@@ -255,8 +262,8 @@ class Cluster:
     #       - OpenNebula (and Eucalyptus?) vm_ids are names/numbers
     # TODO: Explain all params
     
-    def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, \
-      vm_mem):
+    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch, 
+            vm_imagelocation, vm_mem, vm_cores, vm_storage):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
@@ -358,8 +365,8 @@ class NimbusCluster(Cluster):
     
     
     # TODO: Explain parameters and returns
-    def vm_create(self, vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation,\
-      vm_mem):
+    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
+            vm_imagelocation, vm_mem, vm_cores, vm_storage):
         
         log.debug("Nimbus cloud create command")
 
@@ -402,8 +409,11 @@ class NimbusCluster(Cluster):
         log.debug("(vm_create) - vm_create - Memory entry found in given cluster: %d" % vm_mementry)
         
         # Create a VM object to represent the newly created VM
-        new_vm = VM(vm_name, vm_epr, self.network_address, self.cloud_type, \
-          vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_mem, vm_mementry)
+        new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type, 
+            clusteraddr = self.network_address, cloudtype = self.cloud_type, 
+            network = vm_networkassoc, cpuarch = vm_cpuarch, 
+            imagelocation = vm_imagelocation, memory = vm_mem, 
+            mementry = vm_mementry, cpucores = vm_cores, storage = vm_storage)
         
         # Add the new VM object to the cluster's vms list And check out required resources
         self.vms.append(new_vm)
@@ -420,10 +430,13 @@ class NimbusCluster(Cluster):
         # Store VM attributes before destroy
         vm_name    = vm.name
         vm_id      = vm.id
+        vm_type    = vm.vmtype
         vm_network = vm.network
         vm_cpuarch = vm.cpuarch
         vm_imagelocation = vm.imagelocation
         vm_memory  = vm.memory
+        vm_cores   = vm.cpucores
+        vm_storage = vm.storage
 
         # Print VM parameters
         log.debug("(vm_recreate) - name: %s network: %s cpuarch: %s imageloc: %s memory: %d" \
@@ -535,6 +548,7 @@ class NimbusCluster(Cluster):
         #print "(vm_poll) - STDOUT: %s" % poll_out
         log.debug("(vm_poll) - Parsing polling output...")
 
+        #STATE_RE = "State:\s(\w*)$"
         match = re.search(self.STATE_RE, poll_out)
         if match:
             tmp_state = match.group(1)

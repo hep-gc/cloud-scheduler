@@ -117,8 +117,10 @@ class SchedulingTh(threading.Thread):
                 target_cluster.log()
 
                 # Start VM with job requirements on the selected resource
-                create_ret = target_cluster.vm_create(job.req_image, job.req_network, \
-                  job.req_cpuarch, job.req_imageloc, job.req_memory)
+                create_ret = target_cluster.vm_create(job.req_image, 
+                        job.req_vmtype, job.req_network, job.req_cpuarch, 
+                        job.req_imageloc, job.req_memory, job.req_cpucores,
+                        job.req_storage)
                 
                 # If the VM create fails, continue to the next job
                 if (create_ret != 0):
@@ -139,6 +141,7 @@ class SchedulingTh(threading.Thread):
             time.sleep(3)
 
             ## Poll all started VMs
+            # TODO: Fix bug here: this loops polls every running VM twice
             log.info("Scheduler - Polling all running VMs...")
             for cluster in self.resource_pool.resources:
                 for vm in cluster.vms:
@@ -155,10 +158,13 @@ class SchedulingTh(threading.Thread):
 
                         # Store all VM fields
                         vm_name = vm.name
+                        vm_type = vm.vmtype
                         vm_network = vm.network
                         vm_cpuarch = vm.cpuarch
                         vm_imageloc = vm.imagelocation
                         vm_mem = vm.memory
+                        vm_cores = vm.cpucores
+                        vm_storage = vm.storage
 
                         # Destroy the VM
                         destroy_ret = cluster.vm_destroy(vm)
@@ -190,24 +196,13 @@ class SchedulingTh(threading.Thread):
                     #       print "(Scheduler) - Recreating VM failed. Leaving" +\
                     #         "VM in error state"
                     #       continue
-
-                    ## If the VM is in an error state, destroy it
-                    #if ret_state == "Error":
-                    #   print "(Scheduler) - VM in error state. Destroying..."
-                    #   destroy_ret = cluster.vm_destroy(vm)
- 
-                        # If destroy fails, leave VM in error state to be destroyed later
-                    #   if (destroy_ret != 0):
-                    #       print "(Scheduler) - Destroying VM failed"
-                    #       print "(Scheduler) - Leaving VM in error state"
-                    #       continue
                     
             #ENDFOR - Poll each running VM in the resource pool
         
         #ENDFOR - End of the main scheduler loop
 
         # Exit the scheduling thread - clean up VMs and exit
-	log.debug("Exiting scheduler thread")
+        log.debug("Exiting scheduler thread")
 
         # Destroy all VMs and finish
         log.debug("Destroying all remaining VMs :-(")
