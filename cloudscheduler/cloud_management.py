@@ -44,10 +44,6 @@ import nimbus_xml
 ## LOGGING
 ##
 
-# Create a file to dump vm command outputs in to.
-vm_logfile = "vm.log"
-vm_log = open(vm_logfile, 'w')
-
 # Create a python logger
 log = logging.getLogger("CloudLogger")
 
@@ -383,9 +379,8 @@ class NimbusCluster(Cluster):
         log.debug("vm_create - workspace create command prepared.")
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
-        # Execute the workspace create commdand: returns immediately. Dump
-        # to vm_log
-        create_return = self.vm_execdump(ws_cmd, vm_log)
+        # Execute the workspace create commdand: returns immediately.
+        (create_return, None, None) = self.vm_execwait(ws_cmd)
         if (create_return != 0):
             log.debug("vm_create - Error in executing workspace create command.")
             log.debug("vm-create - VM %s (ID: %s) not created. Returning error code." \
@@ -420,7 +415,7 @@ class NimbusCluster(Cluster):
 
     # TODO: Explain parameters, returns, and purpose
     def vm_recreate(self, vm):
-        print 'dbg - Nimbus cloud destroy and create commands'
+        log.debug("Recreating a Nimbus VM request")
 
         # Store VM attributes before destroy
         vm_name    = vm.name
@@ -431,46 +426,46 @@ class NimbusCluster(Cluster):
         vm_memory  = vm.memory
 
         # Print VM parameters
-        print "(vm_recreate) - name: %s network: %s cpuarch: %s imageloc: %s memory: %d" \
-          % (vm_name, vm_network, vm_cpuarch, vm_imagelocation, vm_memory)
+        log.debug("(vm_recreate) - name: %s network: %s cpuarch: %s imageloc: %s memory: %d" \
+          % (vm_name, vm_network, vm_cpuarch, vm_imagelocation, vm_memory))
 
         # Call destroy on the given VM
-        print "(vm_recreate) - Destroying VM %s..." % vm_name
+        log.debug("(vm_recreate) - Destroying VM %s..." % vm_name)
         destroy_ret = self.vm_destroy(vm)
         if (destroy_ret != 0):
-            print "(vm_recreate) - Destroying VM failed. Aborting recreate."
+            log.warning("(vm_recreate) - Destroying VM failed. Aborting recreate.")
             return destroy_ret
         
         # Call create with the given VM's parameters
-        print "(vm_recreate) - Recreating VM %s..." % vm_name
+        log.debug("(vm_recreate) - Recreating VM %s..." % vm_name)
         create_ret = self.vm_create(vm_name, vm_network, vm_cpuarch, \
           vm_imagelocation, vm_memory)
         if (create_ret != 0):
-            print "(vm_recreate) - Recreating VM %s failed. Aborting recreate."
+            log.warning("(vm_recreate) - Recreating VM %s failed. Aborting recreate.")
             return create_ret
 
         # Print success message and return
-        print "(vm_recreate) - VM %s successfully recreated." % vm_name
+        log.debug("(vm_recreate) - VM %s successfully recreated." % vm_name)
         return create_ret
    
 
     # TODO: Explain parameters and returns
     def vm_reboot(self, vm):
-        print 'dbg - Nimbus cloud reboot VM command'
+        log.debug("dbg - Nimbus cloud reboot VM command")
 
         # Create workspace reboot command as a list (priv. method)
         ws_cmd = self.vmreboot_factory(vm.id)
-        print "(vm_reboot) - workspace reboot command prepared."
-        print "(vm_reboot) - Command: " + string.join(ws_cmd, " ")
+        log.debug("(vm_reboot) - workspace reboot command prepared.")
+        log.debug("(vm_reboot) - Command: " + string.join(ws_cmd, " "))
         
-        # Execute the reboot command: wait for return, stdout to log.
-        reboot_return = self.vm_execdump(ws_cmd, vm_log)
+        # Execute the reboot command: wait for return
+        (reboot_return, None, None) = self.vm_execwait(ws_cmd)
 
         # Check reboot return code. If successful, continue. Otherwise, set
         # VM state to "Error" and return.
         if (reboot_return != 0):
-            print "(vm_reboot) - Error in executing workspace reboot command."
-            print "(vm_reboot) - VM failed to reboot. Setting VM to error state and returning error code."
+            log.warning)"(vm_reboot) - Error in executing workspace reboot command.")
+            log.warning("(vm_reboot) - VM failed to reboot. Setting VM to error state and returning error code.")
             # Causes fatal exception. ??
             #print "(vm_reboot) - VM %s failed to reboot. Setting vm status to \'Error\' and returning error code." % vm.name
             vm.status = "Error"
@@ -478,7 +473,7 @@ class NimbusCluster(Cluster):
             
         # Set state to initial default state "Starting" and return
         vm.status = "Starting"
-        print "(vm_reboot) - workspace reboot command executed. VM rebooting..."
+        log.debug("(vm_reboot) - workspace reboot command executed. VM rebooting...")
         return reboot_return
 
 
@@ -492,7 +487,7 @@ class NimbusCluster(Cluster):
         log.debug("(vm_destroy) - Command: " + string.join(ws_cmd, " "))
 
         # Execute the workspace command: wait for return, stdout to log.
-        destroy_return = self.vm_execdump(ws_cmd, vm_log)
+        (destroy_return, None, None) = self.vm_execwait(ws_cmd)
         
         # Check destroy return code. If successful, continue. Otherwise, set VM to 
         # error state (wait, and the polling thread will attempt a destroy later)
@@ -575,7 +570,6 @@ class NimbusCluster(Cluster):
         # stdin, stdout, and stderr params set the filehandles for streams. PIPE opens a pipe to stream
         # (PIPE streams are accessed via popen_object.stdin/out/err)
         # Can also specify a filehandle or file object, or None (default).
-        # At present, dumps all stdout and stderr to a logfile, 'vm_log'
         sp = Popen(cmd, executable="workspace", shell=False)
     
     # A command execution with stdout and stderr output destination specified as a filehandle.
@@ -606,16 +600,14 @@ class NimbusCluster(Cluster):
     # in given parameters.
     # Parameters:
     #    (cmd as above)
-    #    out   - A string to store the STDOUT of the executed command 
-    #    err   - A string to store the STDERR of the executed command
     # Returns:
     #    ret   - The return value of the executed command
     #    out   - The STDOUT of the executed command
     #    err   - The STDERR of the executed command
     # The return of this function is a 3-tuple
     def vm_execwait(self, cmd):
-        sp = Popen(cmd, executable="workspace", shell=False, stdout=subprocess.PIPE, \
-          stderr=subprocess.PIPE)
+        sp = Popen(cmd, executable="workspace", shell=False,
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         ret = sp.wait()
         (out, err) = sp.communicate(input=None)
         return (ret, out, err)
