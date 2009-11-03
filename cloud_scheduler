@@ -395,13 +395,13 @@ def read_cloud_config(config_file, rsrc_pool):
     # Read in config file, parse into Cluster objects
     for cluster in cloud_config.sections():
 
-        cloud_type = cloud_config.get(cluster, "type")
+        cloud_type = cloud_config.get(cluster, "cloud_type")
 
         # Create a new cluster according to cloud_type
         if cloud_type == "Nimbus":
             new_cluster = cloud_management.NimbusCluster(name = cluster,
                            host = cloud_config.get(cluster, "host"),
-                           type = cloud_config.get(cluster, "type"),
+                           cloud_type = cloud_config.get(cluster, "cloud_type"),
                            memory = map(int, cloud_config.get(cluster, "memory").split(",")),
                            cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
                            networks = cloud_config.get(cluster, "networks").split(","),
@@ -413,7 +413,7 @@ def read_cloud_config(config_file, rsrc_pool):
         elif cloud_type == "OpenNebula":
             new_cluster = cloud_management.Cluster(name = cluster,
                            host = cloud_config.get(cluster, "host"),
-                           type = cloud_config.get(cluster, "type"),
+                           cloud_type = cloud_config.get(cluster, "cloud_type"),
                            memory = map(int, cloud_config.get(cluster, "memory")),
                            cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
                            networks = cloud_config.get(cluster, "networks").split(","),
@@ -425,7 +425,7 @@ def read_cloud_config(config_file, rsrc_pool):
         elif cloud_type == "Eucalyptus":
             new_cluster = cloud_management.Cluster(name = cluster,
                            host = cloud_config.get(cluster, "host"),
-                           type = cloud_config.get(cluster, "type"),
+                           cloud_type = cloud_config.get(cluster, "cloud_type"),
                            memory = map(int, cloud_config.get(cluster, "memory")),
                            cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
                            networks = cloud_config.get(cluster, "networks").split(","),
