@@ -93,10 +93,9 @@ class SchedulingTh(threading.Thread):
 
             ## Query the job pool to get new unscheduled jobs
             # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
-            #self.job_pool.job_queryCMD()
             self.job_pool.job_querySOAP()
 
-            ## For each job in the unscheduled jobs list
+            ## Attempt to schedule all unscheduled jobs
             log.info("Schedule all queued jobs")
             for job in self.job_pool.jobs:
               
@@ -140,7 +139,35 @@ class SchedulingTh(threading.Thread):
             log.info("Scheduler - Waiting...")
             time.sleep(3)
 
-            ## Poll all started VMs
+            ## Clear all un-needed VMs from the system
+            # NOTE: This could be incorporated into the poll loop below.
+            # For the sake of clarity, it is not.
+            
+            # Gather all system jobs' required VM types
+            required_vmtypes = []
+            for job in (self.job_pool.jobs + self.job_pool.scheduled_jobs):
+                if job.req_vmtype not in required_vmtypes:
+                    required_vmtypes.append(job.req_vmtype)
+            
+            # Remove all VMs with a type not required by current system jobs
+            for cluster in self.resource_pool.resources:
+                # Use alternative loop structure to avoid unsafe remove operation
+                # (move backwards through the list - removes don't affect later list elements)
+                i = len(cluster.vms)
+                while (i != 0):
+                    i = i-1
+                    # If VM is not required, destroy it
+                    if (cluster.vms[i].vmtype not in required_vmtypes):
+                        destroy_ret = cluster.vm_destroy(cluster.vms[i])
+                        if (destroy_ret != 0):
+                            log.error("(Scheduler) - Destroying VM failed in attempt"
+                                      + " to clear un-needed VM. Leaving VM.")
+                            continue
+                    #ENDWHILE - Check all VMs on a cluster
+                    
+            #ENDFOR - Clear all unneeded VMs from the system
+
+            ## Poll all remaining system VMs
             # TODO: Fix bug here: this loops polls every running VM twice
             log.info("Scheduler - Polling all running VMs...")
             for cluster in self.resource_pool.resources:
@@ -189,7 +216,7 @@ class SchedulingTh(threading.Thread):
                     ## CANNOT USE recreate or reboot because of poll loop bug.
                     ## If the VM is in an error state, recreate it!
                     #if ret_state == "Error":
-                    #    print "(Scheduler) - VM in error state. Recreating..."
+                    #   print "(Scheduler) - VM in error state. Recreating..."
                     #   recreate_ret = cluster.vm_recreate(vm)
   
                         # If recreate fails, leave VM in error state (tbdestroyed)

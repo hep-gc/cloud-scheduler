@@ -182,8 +182,6 @@ class JobPool:
             
             # Create a new list for the jobs in the condor queue
             # TODO: INEFFICIENT. Should create a jobs list straight from the ClassAdStructArrayAndStatus
-            #       Don't want to run this loop twice, but want list of Job instances from condor queue.
-            #       10/26: ClassAdStructArrayAndStatus too messy for now
             condor_jobs = []
             for classad in classads:
                 # Create Jobs from the classAd data
