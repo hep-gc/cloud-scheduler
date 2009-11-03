@@ -183,7 +183,7 @@ class JobPool:
                 # Create Jobs from the classAd data
                 # TODO: If values from VM fields are not present, substitute defaults
                 con_job = Job(id = classad['GlobalJobId'],
-                            vmtype  = parse_classAd_requirements(classad['Requirements'])
+                            vmtype  = parse_classAd_requirements(classad['Requirements']),
                             network = classad['VMNetwork'],
                             cpuarch = classad['VMCPUArch'],
                             image   = classad['VMName'],

@@ -143,7 +143,7 @@ class ResourcePool:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.type, cluster.network_address)
+                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
         return output
     
     # Return an arbitrary resource from the 'resources' list. Does not remove
@@ -386,8 +386,8 @@ class NimbusCluster(Cluster):
         log.debug("vm_create - workspace create command prepared.")
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
-        # Execute the workspace create commdand: returns immediately.
-        (create_return, None, None) = self.vm_execwait(ws_cmd)
+        # Execute the workspace create command: returns immediately.
+        create_return = self.vm_execute(ws_cmd)
         if (create_return != 0):
             log.debug("vm_create - Error in executing workspace create command.")
             log.debug("vm-create - VM %s (ID: %s) not created. Returning error code." \
@@ -472,12 +472,12 @@ class NimbusCluster(Cluster):
         log.debug("(vm_reboot) - Command: " + string.join(ws_cmd, " "))
         
         # Execute the reboot command: wait for return
-        (reboot_return, None, None) = self.vm_execwait(ws_cmd)
+        reboot_return = self.vm_execute(ws_cmd)
 
         # Check reboot return code. If successful, continue. Otherwise, set
         # VM state to "Error" and return.
         if (reboot_return != 0):
-            log.warning)"(vm_reboot) - Error in executing workspace reboot command.")
+            log.warning("(vm_reboot) - Error in executing workspace reboot command.")
             log.warning("(vm_reboot) - VM failed to reboot. Setting VM to error state and returning error code.")
             # Causes fatal exception. ??
             #print "(vm_reboot) - VM %s failed to reboot. Setting vm status to \'Error\' and returning error code." % vm.name
@@ -500,7 +500,7 @@ class NimbusCluster(Cluster):
         log.debug("(vm_destroy) - Command: " + string.join(ws_cmd, " "))
 
         # Execute the workspace command: wait for return, stdout to log.
-        (destroy_return, None, None) = self.vm_execwait(ws_cmd)
+        destroy_return = self.vm_execute(ws_cmd)
         
         # Check destroy return code. If successful, continue. Otherwise, set VM to 
         # error state (wait, and the polling thread will attempt a destroy later)
@@ -579,12 +579,11 @@ class NimbusCluster(Cluster):
     #    ws_cmd   - The command to be executed, as a list of strings (commands
     #               created by the _factory methods).
     def vm_execute(self, cmd):
-        # Execute a no-wait workspace command with the passed cmd list.
-        # Returns immediately to parent program. Subprocess continues to execute, writing to stdout.
-        # stdin, stdout, and stderr params set the filehandles for streams. PIPE opens a pipe to stream
-        # (PIPE streams are accessed via popen_object.stdin/out/err)
-        # Can also specify a filehandle or file object, or None (default).
+        # Execute a workspace command with the passed cmd list. Wait for return,
+        # and return return value.
         sp = Popen(cmd, executable="workspace", shell=False)
+        ret = sp.wait()
+        return ret
     
     # A command execution with stdout and stderr output destination specified as a filehandle.
     # Waits on the command to finish, and returns the command's return code.
