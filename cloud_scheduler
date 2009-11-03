@@ -113,7 +113,7 @@ class SchedulingTh(threading.Thread):
 
                 # Print details of the resource selected
                 log.info("Scheduler - Open resource selected:")
-                target_cluster.print_short()
+                target_cluster.log()
 
                 # Start VM with job requirements on the selected resource
                 create_ret = target_cluster.vm_create(job.req_image, 
@@ -125,7 +125,7 @@ class SchedulingTh(threading.Thread):
                 if (create_ret != 0):
                     log.info("Scheduler - Creating VM for job %s failed" % job.get_id())
                     log.info("Scheduler - VM Create failed on cluster: ")
-                    target_cluster.print_short()
+                    target_cluster.log()
                     log.info("Scheduler - Leaving job unscheduled, moving to next job")
                     continue
 
@@ -176,7 +176,7 @@ class SchedulingTh(threading.Thread):
                     
                     # Print polled VM's state and details
                     log.info("Scheduler - Polled VM: ")
-                    vm.log_short()
+                    vm.log()
                     log.debug("(Scheduler) - VM in '%s' state" % ret_state)
 
                     # If the VM is in an error state, manually recreate it
@@ -205,9 +205,8 @@ class SchedulingTh(threading.Thread):
                             continue
                         # Recreate the VM on the new resource
                         log.debug("(Scheduler) - Open resource selected:")
-                        target_rsrc.print_short()
-                        create_ret = target_rsrc.vm_create(vm_name, vm_type, vm_network, vm_cpuarch,
-                            vm_imageloc, vm_mem, vm_cores, vm_storage)
+                        target_rsrc.log()
+                        create_ret = target_rsrc.vm_create(vm_name, vm_network, vm_cpuarch, vm_imageloc, vm_mem)
                         if (create_ret != 0):
                             log.error("(Scheduler) - Recreating VM failed. Leaving VM in error state.")
                             continue
@@ -237,7 +236,8 @@ class SchedulingTh(threading.Thread):
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 log.debug("(Scheduler) - Destroying VM:")
-                vm.log_short()
+                vm.log()
+
                 destroy_ret = cluster.vm_destroy(vm)
                 if destroy_ret != 0:
                     log.debug("(Scheduler) - Destroying VM failed. Continuing " +\
@@ -278,8 +278,8 @@ def main():
 
     # TODO: Add code to query an MDS to get initial cluster/cloud information
     
-    # Print the resource pool
-    cloud_resources.print_pool()
+    # Log the resource pool
+    cloud_resources.log_pool()
 
     # TODO: Resolve issue of atomicity / reliability when 2 threads are working
     #       on the same resource pool data. Does it matter (best effort!)?
@@ -390,15 +390,10 @@ def read_cloud_config(config_file, rsrc_pool):
     return (0)
     
 
-# Prints readable lined lines across the screen with message
-def print_line(msg):
-    log.warning("print_line is DEPRECATED, use log_with_line instead")
-    log_with_line(msg)
-
 # logs readable lined lines across the screen with message
 def log_with_line(msg):
     msg_len = len(msg)
-    fill = "-" * (75-msg_len)
+    fill = "-" * (40-msg_len)
     log.debug("-----"+msg+fill)
 
 
