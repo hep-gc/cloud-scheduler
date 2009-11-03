@@ -84,9 +84,9 @@ class Job:
         # Set the new job's status
         self.status = self.statuses[0]
 	
-	log.debug("New Job object created:")
-        log.debug("(Job) - ID: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
-          % (id, network, image, imageloc, memory))
+        log.debug("New Job object created:")
+        log.debug("(Job) - ID: %s, VM Type: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
+          % (id, vmtype, network, image, imageloc, memory))
 
     # log
     # Log a short string representing the job

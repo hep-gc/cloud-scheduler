@@ -47,7 +47,6 @@ log_handler.setFormatter(log_formatter)
 log.addHandler(log_handler)
 
 
-
 ## Thread Bodies
 
 # Polling:
@@ -141,29 +140,32 @@ class SchedulingTh(threading.Thread):
 
             ## Clear all un-needed VMs from the system
             # NOTE: This could be incorporated into the poll loop below.
-            # For the sake of clarity, it is not.
             
             # Gather all system jobs' required VM types
+            log.info("Scheduler - Gathering required VM types from system jobs.")
             required_vmtypes = []
             for job in (self.job_pool.jobs + self.job_pool.scheduled_jobs):
                 if job.req_vmtype not in required_vmtypes:
                     required_vmtypes.append(job.req_vmtype)
+            log.debug("Scheduler - Required VM types: " + ", ".join(required_vmtypes))
             
             # Remove all VMs with a type not required by current system jobs
+            log.info("Scheduler - Removing unneeded VMs...")
             for cluster in self.resource_pool.resources:
                 # Use alternative loop structure to avoid unsafe remove operation
                 # (move backwards through the list - removes don't affect later list elements)
                 i = len(cluster.vms)
                 while (i != 0):
-                    i = i-1
+                    i = i-1   
                     # If VM is not required, destroy it
                     if (cluster.vms[i].vmtype not in required_vmtypes):
+                        log.debug("Scheduler - VM type not required. Destroying VM:")
+                        cluster.vms[i].log()
                         destroy_ret = cluster.vm_destroy(cluster.vms[i])
                         if (destroy_ret != 0):
-                            log.error("(Scheduler) - Destroying VM failed in attempt"
-                                      + " to clear un-needed VM. Leaving VM.")
+                            log.error("(Scheduler) - Destroying VM failed in attempt to clear un-needed VM. Leaving VM.")
                             continue
-                    #ENDWHILE - Check all VMs on a cluster
+                #ENDWHILE - Check all VMs on a cluster
                     
             #ENDFOR - Clear all unneeded VMs from the system
 

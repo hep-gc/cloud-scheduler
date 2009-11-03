@@ -107,7 +107,7 @@ class VM:
           % (name, id, clusteraddr, imagelocation, memory))
 
     def log(self):
-        log.debug("VM Name: %s, ID: %s, Status: %s" % (self.name, self.id, self.status))
+        log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s" % (self.name, self.id, self.vmtype, self.status))
 
 
 
