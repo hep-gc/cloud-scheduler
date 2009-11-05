@@ -202,7 +202,7 @@ class Cluster:
     ## Instance methods
 
     # Constructor
-    def __init__(self, name="Dummy Cluster", host="localhost", type="Dummy",
+    def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0):
         self.name = name
@@ -224,7 +224,7 @@ class Cluster:
         log.debug("-" * 30 + 
             "Name:\t\t%s\n"        % self.name +
             "Address:\t%s\n"       % self.network_address +
-            "Type:\t\t%s\n"        % self.type +
+            "Type:\t\t%s\n"        % self.cloud_type +
              "VM Slots:\t%s\n"      % self.vm_slots +
              "CPU Cores:\t%s\n"     % self.cpu_cores +
              "Storage:\t%s\n"       % self.storageGB +
@@ -236,7 +236,7 @@ class Cluster:
     # Print a short form of cluster information
     def log(self):
         log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
-          % (self.name, self.network_address, self.type, self.vm_slots, \
+          % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
           self.memory))
 
     # Print the cluster 'vms' list (via VM print)
