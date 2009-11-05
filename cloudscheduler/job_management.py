@@ -85,14 +85,14 @@ class Job:
         self.status = self.statuses[0]
 	
         log.debug("New Job object created:")
-        log.debug("(Job) - ID: %s, VM Type: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
+        log.debug("Job - ID: %s, VM Type: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
           % (id, vmtype, network, image, imageloc, memory))
 
     # log
     # Log a short string representing the job
     def log(self):
-        log.debug("Job ID: %s, Image: %s, Image location: %s, CPU: %s, Memory: %d" \
-          % (self.id, self.req_image, self.req_imageloc, self.req_cpuarch, self.req_memory))
+        log.debug("Job ID: %s, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
+          % (self.id, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory))
 
 
     # Get ID
@@ -183,7 +183,7 @@ class JobPool:
                 # Create Jobs from the classAd data
                 # TODO: If values from VM fields are not present, substitute defaults
                 con_job = Job(id = classad['GlobalJobId'],
-                            vmtype  = parse_classAd_requirements(classad['Requirements']),
+                            vmtype  = self.parse_classAd_requirements(classad['Requirements']),
                             network = classad['VMNetwork'],
                             cpuarch = classad['VMCPUArch'],
                             image   = classad['VMName'],
@@ -203,25 +203,36 @@ class JobPool:
                 # If the system job is not in the condor queue, the job has finished / been removed.
                 if not (self.has_job(condor_jobs, sys_job.id)):
                     self.remove_system_job(sys_job)
-                    log.debug("job_querySOAP - Job %s finished or removed. Cleared"
-                              + " job from system." % sys_job.id)
+                    log.debug("job_querySOAP - Job %s finished or removed. Cleared job from system."
+                              % sys_job.id)
                     # TODO: Check bug here - removing an element from a list while 
                     #       iterating through that list messes things up.
                 
                 # Otherwise, the system job is in the condor queue - remove it from condor_jobs
                 else:
                     self.remove_job_by_id(condor_jobs, sys_job.id)
-                    log.debug("job_querySOAP - Job %s already in the system."
-                              + " Ignoring job." % sys_job.id)
+                    log.debug("job_querySOAP - Job %s already in the system. Ignoring job."
+                              % sys_job.id)
 
             # Add remaining condor jobs (new to the system) to the unscheduled jobs list
             for job in condor_jobs:
                 self.jobs.append(job)
                 log.debug("job_querySOAP - New job %s added to unscheduled jobs list" % job.id)
 
-        else:
+        # Otherwise, if the query succeeds but there are no jobs in the queue
+        elif job_ads.status.code == "SUCCESS" and not job_ads.classAdArray:
             log.debug("job_querySOAP - Job query (status: %s) returned no results." 
                       % job_ads.status.code)
+            # Remove all jobs from the system (all have finished or have been removed)
+            log.debug("job_querySOAP - Removing all jobs from the system...")
+            for sys_job in (self.jobs + self.scheduled_jobs):
+                self.remove_system_job(sys_job)
+                log.debug("job_querySOAP -\tJob %s finished or removed. Cleared job from system."
+                          % sys_job.id)
+         
+        # Otherwise, log an error
+        else:
+            log.error("job_querySOAP - Job query (status: %s) failed." % job_ads.status.code)
         
         # When querying is finished, reset last query timestamp
         last_query = datetime.datetime.now()
@@ -274,13 +285,13 @@ class JobPool:
         # Check unscheduled jobs list 'jobs'
         if job in self.jobs:
             self.jobs.remove(job)
-            log.debug("remove_system_job - Removing job %s from unscheduled"
-                      + " jobs list." % job.id)
+            log.debug("remove_system_job - Removing job %s from unscheduled jobs list"
+                      % job.id)
         # Check scheduled jobs list 'scheduled_jobs'
         elif job in self.scheduled_jobs:
             self.scheduled_jobs.remove(job)
-            log.debug("remove_system_job - Removing job %s from scheduled jobs"
-                      + " list." % job.id)
+            log.debug("remove_system_job - Removing job %s from scheduled jobs list."
+                      % job.id)
         else:
             log.warning("remove_system_job - Job does not exist in system."
                       + " Doing nothing.")
@@ -300,8 +311,8 @@ class JobPool:
                 job_list.remove(job)
                 removed = True
         if not removed:
-            log.warning("remove_job_by_id - Job %s does not exist in given list."
-                      + " Doing nothing." % job_id)
+            log.warning("remove_job_by_id - Job %s does not exist in given list. Doing nothing."
+                        % job_id)
 
     
     # Checks to see if the given job ID is in the given job list
@@ -327,13 +338,13 @@ class JobPool:
     #   job   - (Job object) The job to mark as scheduled
     def schedule(self, job):
         if not (job in self.jobs):
-            log.error("(schedule) - Error: job %s not in unscheduled jobs list")
+            log.error("(schedule) - Error: job %s not in unscheduled jobs list" % job.id)
             log.error("(schedule) - Cannot mark job as scheduled. Returning")
             return
         self.jobs.remove(job)
         self.scheduled_jobs.append(job)
         job.set_status("Scheduled")
-        log.debug( "(schedule) - Job %s marked as scheduled." % job.get_id())
+        log.debug("(schedule) - Job %s marked as scheduled." % job.get_id())
     
     
     # Return an arbitrary subset of the jobs list (unscheduled jobs)
@@ -343,7 +354,7 @@ class JobPool:
     #   subset - (Job list) A list of the jobs selected from the 'jobs' list
     def jobs_subset(self, size):
         # TODO: Write method
-        log.debug( "jobs_subset - Method not yet implemented")
+        log.debug("jobs_subset - Method not yet implemented")
 
     # Return a subset of size 'size' of the highest priority jobs from the list
     # of unscheduled jobs
@@ -354,7 +365,9 @@ class JobPool:
     #            length 'size)
     def jobs_priorityset(self, size):
       # TODO: Write method
-      log.debug( "jobs_priorityset - Method not yet implemented")
+      log.debug("jobs_priorityset - Method not yet implemented")
+
+    ## Log methods
 
     # Log Job Lists (short)
     def log_jobs(self):
@@ -364,22 +377,22 @@ class JobPool:
     # log scheduled jobs (short)
     def log_sched_jobs(self):
         if len(self.scheduled_jobs) == 0:
-            log.debug( "Scheduled job list in %s is empty" % self.name)
+            log.debug("Scheduled job list in %s is empty" % self.name)
             return
         else:
-            log.debug( "Scheduled jobs in %s:" % self.name)
+            log.debug("Scheduled jobs in %s:" % self.name)
             for job in self.scheduled_jobs:
-                job.log_job_short()
+                job.log()
 
-    # log Unscheduled Jobs (short)
+    # log unscheduled Jobs (short)
     def log_unsched_jobs(self):
         if len(self.jobs) == 0:
-            log.debug( "Unscheduled job list in %s is empty" % self.name)
+            log.debug("Unscheduled job list in %s is empty" % self.name)
             return
         else:
             log.debug("Unscheduled jobs in %s:" % self.name)
             for job in self.jobs:
-                job.log_job_short()
+                job.log()
 
 
     ## JobPool private methods
@@ -467,6 +480,6 @@ class JobSet:
         else:
             log.debug("Job set %s:" % self.name)
             for job in self.job_set:
-                job.log_job_short("\t")
+                job.log()
 
 

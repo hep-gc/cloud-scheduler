@@ -75,7 +75,7 @@ class VM:
     #                by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
     # vmtype       - (str) The condor VMType attribute for the VM
     # clusteraddr  - (str) The address of the cluster hosting the VM
-    # cloud_type   - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
+    # cloudtype   - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
     # network      - (str) The network association the VM uses
     # cpuarch      - (str) The required CPU architecture of the VM
     # imagelocation- (str) The location of the image from which the VM was created
@@ -83,7 +83,7 @@ class VM:
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
     def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType", 
-            clusteraddr="default_hostname", cloudtype="Nimbus", network="public",
+            clusteraddr="default_hostname", cloudtype="def_cloudtype", network="public",
             cpuarch="x86", imagelocation="default_imageloc", memory=0, mementry=0,
             cpucores=0, storage=0):
         self.name = name
@@ -143,7 +143,7 @@ class ResourcePool:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
+                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.type, cluster.network_address)
         return output
     
     # Return an arbitrary resource from the 'resources' list. Does not remove
@@ -207,7 +207,7 @@ class Cluster:
                  cpu_cores=0, storage=0):
         self.name = name
         self.network_address = host
-        self.cloud_type = type
+        self.type = type
         self.memory = memory
         self.cpu_archs = cpu_archs
         self.network_pools = networks
@@ -410,7 +410,7 @@ class NimbusCluster(Cluster):
         
         # Create a VM object to represent the newly created VM
         new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type, 
-            clusteraddr = self.network_address, cloudtype = self.cloud_type, 
+            clusteraddr = self.network_address, cloudtype = self.type, 
             network = vm_networkassoc, cpuarch = vm_cpuarch, 
             imagelocation = vm_imagelocation, memory = vm_mem, 
             mementry = vm_mementry, cpucores = vm_cores, storage = vm_storage)
