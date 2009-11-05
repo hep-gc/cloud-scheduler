@@ -143,7 +143,7 @@ class ResourcePool:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.type, cluster.network_address)
+                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
         return output
     
     # Return an arbitrary resource from the 'resources' list. Does not remove
@@ -207,7 +207,7 @@ class Cluster:
                  cpu_cores=0, storage=0):
         self.name = name
         self.network_address = host
-        self.type = type
+        self.cloud_type = cloud_type
         self.memory = memory
         self.cpu_archs = cpu_archs
         self.network_pools = networks
@@ -225,13 +225,13 @@ class Cluster:
             "Name:\t\t%s\n"        % self.name +
             "Address:\t%s\n"       % self.network_address +
             "Type:\t\t%s\n"        % self.cloud_type +
-             "VM Slots:\t%s\n"      % self.vm_slots +
-             "CPU Cores:\t%s\n"     % self.cpu_cores +
-             "Storage:\t%s\n"       % self.storageGB +
-             "Memory:\t\t%s\n"      % self.memory +
-             "CPU Archs:\t%s\n"     % string.join(self.cpu_archs, ", ") +
-             "Network Pools:\t%s\n" % string.join(self.network_pools, ", ") +
-             "-" * 30)
+            "VM Slots:\t%s\n"      % self.vm_slots +
+            "CPU Cores:\t%s\n"     % self.cpu_cores +
+            "Storage:\t%s\n"       % self.storageGB +
+            "Memory:\t\t%s\n"      % self.memory +
+            "CPU Archs:\t%s\n"     % string.join(self.cpu_archs, ", ") +
+            "Network Pools:\t%s\n" % string.join(self.network_pools, ", ") +
+            "-" * 30)
     
     # Print a short form of cluster information
     def log(self):

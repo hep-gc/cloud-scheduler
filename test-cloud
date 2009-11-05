@@ -1,0 +1,32 @@
+# Example:
+#[test_cluster01]
+#    host: tc01.somewhere.ca
+#    cloud_type: Nimbus
+#    vm_slots: 10
+#    cpu_cores: 4
+#    storage: 50
+#    memory: 1024,512,512
+#    cpu_archs: x86,x86_64
+#    networks: private,org1,internal
+#
+
+[canfardev]
+host: canfardev.dao.nrc.ca
+cloud_type: Nimbus
+vm_slots: 10
+cpu_cores: 1
+storage: 10
+memory: 3072,3072,3072
+cpu_archs: x86
+networks: private
+
+[vmcgs27]
+host: vmcgs27.phys.uvic.ca
+cloud_type: Eucalyptus
+vm_slots: 10
+cpu_cores: 1
+storage: 10
+memory: 512
+cpu_archs: x86
+networks: private
+
