@@ -20,7 +20,7 @@ log_level = "INFO"
 log_location = None
 log_stdout = False
 log_max_size = None
-info_server_port = 8111
+info_server_portx = 8111
 
 
 # setup will look for a configuration file specified on the command line,
@@ -29,6 +29,7 @@ def setup(path=None):
 
     global condor_webservice_url
     global cloud_resource_config
+    global info_server_port
     global log_level
     global log_location
     global log_stdout
@@ -73,7 +74,7 @@ def setup(path=None):
 
     if config_file.has_option("global", "info_server_port"):
         try:
-            log_max_size = config_file.getint("global", "info_server_port")
+            info_server_port = config_file.getint("global", "info_server_port")
         except ValueError:
             print "Configuration file problem: info_server_port must be an " \
                   "integer value."
