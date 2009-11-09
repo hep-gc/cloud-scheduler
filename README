@@ -27,16 +27,14 @@ figuration information, logging information, and default cloud resource config-
 uration options. 
 
 The cloud scheduler config file can be manually specified on the command line 
-when the cloud scheduler is run (the [-f FILE | --config-file=FILE] option), or
-can be stored in  the following locations:
+when the cloud scheduler is run via the [-f FILE | --config-file=FILE] option, 
+or can be stored in  the following locations:
     ~/.cloudscheduler/main.conf
     /etc/cloudscheduler/main.conf
 
 Note: the cloud scheduler will attempt first to get the general configuration
 file from the command-line, then from the ~/... directory, and finally from the
-/etc/... directory. So, the command-line specified file takes precedence over 
-the directory files, and the home directory file takes precedence over the /etc
-directory file.
+/etc/... directory.
 
 
     - The cloud resource configuration file
