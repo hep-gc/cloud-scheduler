@@ -1,13 +1,55 @@
-Cloud Scheduler 0.3
+Cloud Scheduler 0.1
 
 ## INTRODUCTION
-Cloud management functions and structures are kept in the cloud_management.py file. Cloud scheduler functionality is kept in the cloud_scheduler.py file.
+The cloud scheduler: a cloud-enabled distributed resource manager.
 
-The sample_cloud file is a configuration file of the format currently being processed by the cloud scheduler. The file contains an explanation of its data formatting.
+The cloud scheduler manages virtual machines on clouds configured with Nimbus, 
+OpenNebula, Eucalyptus or EC2 interfaces to create an environment for batch 
+job execution. Users submit their jobs to a batch job queue like Condor, Sun 
+Grid Engine, or Platform LSF, and Cloud Scheduler boots VMs to suit those jobs,
+creating a malleable, virtual environment for efficient job execution.
 
-For more documentation on the cloud scheduler, please refer to the following wiki pages:
+For more documentation on the cloud scheduler, please refer to the cloud 
+scheduler information pages:
+    - http://wiki.github.com/hep-gc/cloud-scheduler
+    - https://wiki.gridx1.ca/twiki/bin/view/Main/VirtualizationProjectHome#Cloud_Scheduling
 
-https://wiki.gridx1.ca/twiki/bin/view/Main/VirtualizationProjectHome#Cloud_Scheduling
+
+## Configuration
+There are two configuration files that define the function of the cloud scheduler. 
+These are:
+
+    - The general cloud scheduler configuration file
+
+The general (or central) cloud scheduler configuration file contains fields for
+defining cloud scheduler program functionality, including Condor job pool con-
+figuration information, logging information, and default cloud resource config-
+uration options. 
+
+The cloud scheduler config file can be manually specified on the command line 
+when the cloud scheduler is run (the [-f FILE | --config-file=FILE] option), or
+can be stored in  the following locations:
+    ~/.cloudscheduler/main.conf
+    /etc/cloudscheduler/main.conf
+
+Note: the cloud scheduler will attempt first to get the general configuration
+file from the command-line, then from the ~/... directory, and finally from the
+/etc/... directory. So, the command-line specified file takes precedence over 
+the directory files, and the home directory file takes precedence over the /etc
+directory file.
+
+
+    - The cloud resource configuration file
+
+The cloud resource configuration file contains information on the cloud-enabled
+clusters that the cloud scheduler will use as resources. Clusters in this con-
+figuration file will be used by the cloud scheduler to create and manage VMs.
+See the cloud.conf file for an explanation of cluster configuration parameters.
+
+The cloud resource config file can be specified on the command-line with the
+[-c | --cloud-config=FILE] option. If the cloud resource config file is not
+specified on the command line, it will be taken from the location given in the
+cloud_resource_config field of the main.conf.
 
 
 ## PREREQUISITES

@@ -410,7 +410,7 @@ class NimbusCluster(Cluster):
         
         # Create a VM object to represent the newly created VM
         new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type, 
-            clusteraddr = self.network_address, cloudtype = self.type, 
+            clusteraddr = self.network_address, cloudtype = self.cloud_type, 
             network = vm_networkassoc, cpuarch = vm_cpuarch, 
             imagelocation = vm_imagelocation, memory = vm_mem, 
             mementry = vm_mementry, cpucores = vm_cores, storage = vm_storage)
