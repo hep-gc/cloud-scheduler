@@ -21,6 +21,7 @@
 import os
 import sys
 import logging
+import logging.handlers
 import getopt
 import threading
 import time   # for testing purposes only (sleeps)

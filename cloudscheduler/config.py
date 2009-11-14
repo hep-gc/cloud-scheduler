@@ -20,7 +20,7 @@ log_level = "INFO"
 log_location = None
 log_stdout = False
 log_max_size = None
-info_server_portx = 8111
+info_server_port = 8111
 
 
 # setup will look for a configuration file specified on the command line,
