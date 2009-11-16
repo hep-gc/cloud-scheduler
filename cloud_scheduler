@@ -213,7 +213,7 @@ class SchedulingTh(threading.Thread):
                         # Recreate the VM on the new resource
                         log.debug("(Scheduler) - Open resource selected:")
                         target_rsrc.log()
-                        create_ret = target_rsrc.vm_create(vm_name, vm_network, vm_cpuarch, vm_imageloc, vm_mem)
+                        create_ret = target_rsrc.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, vm_imageloc, vm_mem, vm_cores, vm_storage)
                         if (create_ret != 0):
                             log.error("(Scheduler) - Recreating VM failed. Leaving VM in error state.")
                             continue
@@ -390,8 +390,6 @@ def read_cloud_config(config_file, rsrc_pool):
 
     cloud_config = ConfigParser.ConfigParser()
     cloud_config.read(config_file)
-
-
 
     # Read in config file, parse into Cluster objects
     for cluster in cloud_config.sections():

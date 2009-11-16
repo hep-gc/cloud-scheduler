@@ -390,7 +390,7 @@ class NimbusCluster(Cluster):
         create_return = self.vm_execute(ws_cmd)
         if (create_return != 0):
             log.debug("vm_create - Error in executing workspace create command.")
-            log.debug("vm-create - VM %s (ID: %s) not created. Returning error code." \
+            log.debug("vm_create - VM %s (ID: %s) not created. Returning error code." \
               % (vm_name, vm_epr))
             return create_return
         log.debug("(vm_create) - workspace create command executed.")
@@ -451,8 +451,8 @@ class NimbusCluster(Cluster):
         
         # Call create with the given VM's parameters
         log.debug("(vm_recreate) - Recreating VM %s..." % vm_name)
-        create_ret = self.vm_create(vm_name, vm_network, vm_cpuarch, \
-          vm_imagelocation, vm_memory)
+        create_ret = self.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, \
+          vm_imagelocation, vm_memory, vm_cores, vm_storage)
         if (create_ret != 0):
             log.warning("(vm_recreate) - Recreating VM %s failed. Aborting recreate.")
             return create_ret
