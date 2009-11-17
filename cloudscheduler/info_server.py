@@ -24,6 +24,7 @@ import sys
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
+import cloudscheduler.config as config
 
 log = logging.getLogger("CloudLogger")
 
@@ -42,29 +43,33 @@ class CloudSchedulerInfoServer(threading.Thread,):
 
         #set up server
         try:
-            self.server = SimpleXMLRPCServer(("localhost", 8000), requestHandler=RequestHandler, logRequests=False)
+            self.server = SimpleXMLRPCServer(("localhost",
+                                              config.info_server_port),
+                                              requestHandler=RequestHandler, 
+                                              logRequests=False)
             self.server.socket.settimeout(1)
             self.server.register_introspection_functions()
-
-            # Register an instance; all the methods of the instance are
-            # published as XML-RPC methods
-            class externalFunctions:
-                def get_cloud_resources(self):
-                    return cloud_resources.get_pool_info()
-
-            self.server.register_instance(externalFunctions())
         except:
             log.error("Couldn't start info server:", sys.exc_info()[0])
-            raise SystemExit
+            sys.exit(1)
+
+        # Register an instance; all the methods of the instance are
+        # published as XML-RPC methods
+        class externalFunctions:
+            def get_cloud_resources(self):
+                return cloud_resources.get_pool_info()
+
+        self.server.register_instance(externalFunctions())
 
     def run(self):
 
         # Run the server's main loop
+        log.info("Started info server on port %s" % config.info_server_port)
         while self.server:
             try:
                 self.server.handle_request()
                 if self.done:
-                    log.info("Killing info server...")
+                    log.debug("Killing info server...")
                     break
             except socket.timeout:
                 pass

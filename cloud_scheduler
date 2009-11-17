@@ -18,45 +18,50 @@
 
 ## Imports
 
+import os
 import sys
 import logging
+import logging.handlers
 import getopt
 import threading
 import time   # for testing purposes only (sleeps)
 import string # for debugging purposes
 from optparse import OptionParser
-import cloud_management
-import job_management
-import info_server
+import ConfigParser
+
+import cloudscheduler.cloud_management as cloud_management
+import cloudscheduler.job_management as job_management
+import cloudscheduler.info_server as info_server
+import cloudscheduler.config as config
 
 ## GLOBAL VARIABLES
 
-usage_str = "cloud_scheduler [-c FILE | --cluster-config FILE] [-m SERVER | --MDS SERVER]"
+usage_str = "cloud_scheduler [-f FILE | --config-file] [-c FILE | --cluster-config FILE] [-m SERVER | --MDS SERVER]"
 version_str = "Cloud Scheduler v 0.1"
 
 
 ## LOGGING SETUP
 
 log = logging.getLogger("CloudLogger")
-log.setLevel(logging.DEBUG)
-log_handler = logging.StreamHandler()
-log_handler.setLevel(logging.DEBUG)
-log_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-log_handler.setFormatter(log_formatter)
-log.addHandler(log_handler)
-
-
+LEVELS = {'DEBUG': logging.DEBUG,
+          'INFO': logging.INFO,
+          'WARNING': logging.WARNING,
+          'ERROR': logging.ERROR,
+          'CRITICAL': logging.CRITICAL,}
+class NullHandler(logging.Handler):
+    def emit(self, record):
+        pass
 
 ## Thread Bodies
 
 # Polling:
 # The resource & running vm polling thread. Inherits from Thread class.
 # Polling thread will iterate through the resource pool, updating resource
-#   status based on vm_poll calls to each vm in a cluster's 'vms' list (of 
+#   status based on vm_poll calls to each vm in a cluster's 'vms' list (of
 #   running vms)
 # Constructed with argument 'resource_pool'
 class PollingTh(threading.Thread):
-    
+
     def __init__(self, resource_pool):
         threading.Thread.__init__(self)
         self.resource_pool = resource_pool
@@ -69,7 +74,7 @@ class PollingTh(threading.Thread):
 # Scheduling thread will match jobs to available resources and start vms
 # (for now, will contain test create/destroy functions)
 class SchedulingTh(threading.Thread):
-    
+
     def __init__(self, resource_pool, job_pool):
         threading.Thread.__init__(self)
         self.resource_pool = resource_pool
@@ -82,88 +87,22 @@ class SchedulingTh(threading.Thread):
 
     def run(self):
         log.debug("Sched - Starting scheduling thread...")
-        
-#       ##############################################################################
-#       ## Initial tests:
-#       ##############################################################################
-#
-#       # Simulate job requirements for VMs (simple parameters only)
-#       # Scan through resource pool to find fitting cluster
-#       # Start a VM with simulated parameters on fitting cluster
-#
-#       # VM create parameters (name, networktype, cpuarch, imageloc, mem)
-#       # Note: These are the only currently used fields that would be retrieved
-#       #       from the job scheduler + job description files
-#       req_name = "test-vm-nimbus-01"
-#       req_network = "public"
-#       req_cpuarch = "x86"
-#       req_imageloc = "file://sl53base_i386.img"
-#       req_mem = 128
-#
-#       ## Create
-#       
-#       # Create a VM (DRYRUN) on first cluster in resource pool's 'resources' list
-#       print "dbg - Sched - Selecting a first-fit resource for test run."
-#       print "dbg - Sched - Simulated job VM parameters: "
-#       print "\tname: %s\n\tnetwork assoc.: %s\n\tcpu arch.: %s\n\timage: %s\n\tmemory: %d" \
-#         % (req_name, req_network, req_cpuarch, req_imageloc, req_mem)
-#       #target_rsrc = self.resource_pool.get_resource()
-#       target_rsrc = self.resource_pool.get_resourceFF(req_network, req_cpuarch, req_mem)
-#       print "dbg - Sched - open resource selected:"
-#       target_rsrc.print_short()
-#       target_rsrc.vm_create(req_name, req_network, req_cpuarch, req_imageloc, req_mem)
-#
-#       # Check that create is reflected internally
-#       print "dbg - Sched - Print updated cluster information (after create):"
-#       target_rsrc.print_short()
-#       target_rsrc.print_vms()
-#       
-#       ## Poll...
-#       # Poll every 5 seconds for 30 seconds (as a test)
-#       for i in range(5):
-#           time.sleep(5)
-#           ret_state = target_rsrc.vm_poll(target_rsrc.vms[0])
-#           print "dbg - Sched - Polled VM, state:\t%s" % ret_state
-#           if ret_state == "Error":
-#               print "dbg - Sched - VM is in Error state. Polling stopped. Moving to destroy."
-#               break
-#           elif ret_state == None:
-#               print "dbg - Sched - VM has been destroyed. Polling stopped"
-#               break
-#        
-#       ## Destroy...
-#
-#       # Call vm_destroy on the first entry in the target resource's 'vms' list
-#       print "dbg - Sched - Attempting to destroy created VM..."
-#       target_rsrc.vm_destroy(target_rsrc.vms[0])
-#       
-#       print "dbg - Sched - Print updated cluster information (after destroy):"
-#       target_rsrc.print_short()
-#       target_rsrc.print_vms()
-#
-#       ##############################################################################
-#       ##############################################################################
 
-        ##############################################################################
-        ## Full scheduler test
-        ##############################################################################
+        ########################################################################
+        ## Full scheduler loop
+        ########################################################################
 
-        
-        # The main scheduling loop (currently runs for a fixed number of iterations
-        # for demo purposes)
-        #for i in range (200):
-	
-	while (not self.quit):
+        while (not self.quit):
             log_with_line("Scheduler Loop")
 
             ## Query the job pool to get new unscheduled jobs
-            #self.job_pool.job_queryCMD()
+            # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
             self.job_pool.job_querySOAP()
 
-            ## For each job in the unscheduled jobs list
+            ## Attempt to schedule all unscheduled jobs
             log.info("Schedule all queued jobs")
             for job in self.job_pool.jobs:
-              
+
                 log.debug("(Scheduler) - Attempting to schedule job %s" % job.get_id())
 
                 # Find a resource that matches the job's requirements
@@ -178,39 +117,73 @@ class SchedulingTh(threading.Thread):
 
                 # Print details of the resource selected
                 log.info("Scheduler - Open resource selected:")
-                target_cluster.print_short()
+                target_cluster.log()
 
                 # Start VM with job requirements on the selected resource
-                create_ret = target_cluster.vm_create(job.req_image, job.req_network, \
-                  job.req_cpuarch, job.req_imageloc, job.req_memory)
-                
+                create_ret = target_cluster.vm_create(job.req_image,
+                        job.req_vmtype, job.req_network, job.req_cpuarch,
+                        job.req_imageloc, job.req_memory, job.req_cpucores,
+                        job.req_storage)
+
                 # If the VM create fails, continue to the next job
                 if (create_ret != 0):
                     log.info("Scheduler - Creating VM for job %s failed" % job.get_id())
                     log.info("Scheduler - VM Create failed on cluster: ")
-                    target_cluster.print_short()
+                    target_cluster.log()
                     log.info("Scheduler - Leaving job unscheduled, moving to next job")
                     continue
 
                 # Mark job as scheduled
                 self.job_pool.schedule(job)
-           
+
             #ENDFOR - Attempt to schedule each job in the job pool
-            
+
             ## Wait for a number of seconds
             log_with_line("Waiting")
             log.info("Scheduler - Waiting...")
             time.sleep(3)
 
-            ## Poll all started VMs
+            ## Clear all un-needed VMs from the system
+            # NOTE: This could be incorporated into the poll loop below.
+
+            # Gather all system jobs' required VM types
+            log.info("Scheduler - Gathering required VM types from system jobs.")
+            required_vmtypes = []
+            for job in (self.job_pool.jobs + self.job_pool.scheduled_jobs):
+                if job.req_vmtype not in required_vmtypes:
+                    required_vmtypes.append(job.req_vmtype)
+            log.debug("Scheduler - Required VM types: " + ", ".join(required_vmtypes))
+
+            # Remove all VMs with a type not required by current system jobs
+            log.info("Scheduler - Removing unneeded VMs...")
+            for cluster in self.resource_pool.resources:
+                # Use alternative loop structure to avoid unsafe remove operation
+                # (move backwards through the list - removes don't affect later list elements)
+                i = len(cluster.vms)
+                while (i != 0):
+                    i = i-1
+                    # If VM is not required, destroy it
+                    if (cluster.vms[i].vmtype not in required_vmtypes):
+                        log.debug("Scheduler - VM type not required. Destroying VM:")
+                        cluster.vms[i].log()
+                        destroy_ret = cluster.vm_destroy(cluster.vms[i])
+                        if (destroy_ret != 0):
+                            log.error("(Scheduler) - Destroying VM failed in attempt to clear un-needed VM. Leaving VM.")
+                            continue
+                #ENDWHILE - Check all VMs on a cluster
+
+            #ENDFOR - Clear all unneeded VMs from the system
+
+            ## Poll all remaining system VMs
+            # TODO: Fix bug here: this loops polls every running VM twice
             log.info("Scheduler - Polling all running VMs...")
             for cluster in self.resource_pool.resources:
                 for vm in cluster.vms:
                     ret_state = cluster.vm_poll(vm)
-                    
+
                     # Print polled VM's state and details
                     log.info("Scheduler - Polled VM: ")
-                    vm.print_short("\t")
+                    vm.log()
                     log.debug("(Scheduler) - VM in '%s' state" % ret_state)
 
                     # If the VM is in an error state, manually recreate it
@@ -219,25 +192,28 @@ class SchedulingTh(threading.Thread):
 
                         # Store all VM fields
                         vm_name = vm.name
+                        vm_type = vm.vmtype
                         vm_network = vm.network
                         vm_cpuarch = vm.cpuarch
                         vm_imageloc = vm.imagelocation
                         vm_mem = vm.memory
+                        vm_cores = vm.cpucores
+                        vm_storage = vm.storage
 
                         # Destroy the VM
                         destroy_ret = cluster.vm_destroy(vm)
                         if (destroy_ret != 0):
                             log.error("(Scheduler) - Destroying VM failed. Leaving VM in error state.")
                             continue
-                        # Find an available resource to recreate on 
+                        # Find an available resource to recreate on
                         target_rsrc = self.resource_pool.get_resourceFF(vm_network, vm_cpuarch, vm_mem)
                         if (target_rsrc == None):
                             log.error("(Scheduler) - No resource found for recreation. Aborting recreate.")
                             continue
                         # Recreate the VM on the new resource
                         log.debug("(Scheduler) - Open resource selected:")
-                        target_rsrc.print_short()
-                        create_ret = target_rsrc.vm_create(vm_name, vm_network, vm_cpuarch, vm_imageloc, vm_mem)
+                        target_rsrc.log()
+                        create_ret = target_rsrc.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, vm_imageloc, vm_mem, vm_cores, vm_storage)
                         if (create_ret != 0):
                             log.error("(Scheduler) - Recreating VM failed. Leaving VM in error state.")
                             continue
@@ -246,45 +222,34 @@ class SchedulingTh(threading.Thread):
                     ## CANNOT USE recreate or reboot because of poll loop bug.
                     ## If the VM is in an error state, recreate it!
                     #if ret_state == "Error":
-                    #    print "(Scheduler) - VM in error state. Recreating..."
+                    #   print "(Scheduler) - VM in error state. Recreating..."
                     #   recreate_ret = cluster.vm_recreate(vm)
-  
+
                         # If recreate fails, leave VM in error state (tbdestroyed)
                     #   if (recreate_ret != 0):
                     #       print "(Scheduler) - Recreating VM failed. Leaving" +\
                     #         "VM in error state"
                     #       continue
 
-                    ## If the VM is in an error state, destroy it
-                    #if ret_state == "Error":
-                    #   print "(Scheduler) - VM in error state. Destroying..."
-                    #   destroy_ret = cluster.vm_destroy(vm)
- 
-                        # If destroy fails, leave VM in error state to be destroyed later
-                    #   if (destroy_ret != 0):
-                    #       print "(Scheduler) - Destroying VM failed"
-                    #       print "(Scheduler) - Leaving VM in error state"
-                    #       continue
-                    
             #ENDFOR - Poll each running VM in the resource pool
-        
+
         #ENDFOR - End of the main scheduler loop
 
         # Exit the scheduling thread - clean up VMs and exit
-	log.debug("Exiting scheduler thread")
+        log.debug("Exiting scheduler thread")
 
         # Destroy all VMs and finish
         log.debug("Destroying all remaining VMs :-(")
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 log.debug("(Scheduler) - Destroying VM:")
-                vm.print_short("\t")
+                vm.log()
 
                 destroy_ret = cluster.vm_destroy(vm)
                 if destroy_ret != 0:
                     log.debug("(Scheduler) - Destroying VM failed. Continuing " +\
                       "anyway... check VM logs")
-        
+
         #ENDFOR - Attempt to destroy each remaining VM in the system
 
 
@@ -297,37 +262,74 @@ def main():
     # Create a parser and process commandline arguments
     parser = OptionParser(usage=usage_str, version=version_str)
     set_options(parser)
-    (options, args) = parser.parse_args()
+    (cli_options, args) = parser.parse_args()
+
+    # Look for global configuration file, and initialize config
+    if (cli_options.config_file):
+        config.setup(path=cli_options.config_file)
+    else:
+        config.setup()
+
+    # Set up logging
+    log.setLevel(LEVELS[config.log_level])
+    log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
+                                      "- %(message)s")
+    if config.log_stdout:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(log_formatter)
+        log.addHandler(stream_handler)
+
+    if config.log_location:
+        file_handler = None
+        if config.log_max_size:
+            file_handler = logging.handlers.RotatingFileHandler(
+                                            config.log_location,
+                                            maxBytes=config.log_max_size)
+        else:
+            file_handler = logging.handlers.RotatingFileHandler(
+                                            config.log_location,)
+
+        file_handler.setFormatter(log_formatter)
+        log.addHandler(file_handler)
+
+    if not config.log_location and not config.log_stdout:
+        null_handler = NullHandler()
+        log.addHandler(null_handler)
+
+
+    # Command line options take precedence, so replace config file
+    # option with command line option
+    if cli_options.cloud_conffile:
+        config.cloud_resource_config = cli_options.cloud_conffile
 
     # If the neither the cloud conffile or the MDS server are passed to obtain
     # initial cluster information, print usage and exit the system.
-    if (not options.cloud_conffile) and (not options.mds_server):
+    if (not config.cloud_resource_config) and (not cli_options.mds_server):
         print "ERROR - main - No cloud or cluster information sources provided"
         parser.print_help()
         sys.exit(1)
-    
+
     # Create a resource pool
-    cloud_resources = cloud_management.ResourcePool("TestRsrcPool")
+    cloud_resources = cloud_management.ResourcePool("Resource Pool")
 
     # Create a job pool
-    job_pool = job_management.JobPool("TestJobPool")
-    
-    # If the cluster config option was passed, read in the config file
-    if options.cloud_conffile:
-        if read_cloud_config(options.cloud_conffile, cloud_resources):
-            print "ERROR - main - Reading cloud configuration file failed. Exiting..."
+    job_pool = job_management.JobPool("Job Pool")
+
+    # Read in the config file, if we're using one
+    if config.cloud_resource_config:
+        if read_cloud_config(config.cloud_resource_config, cloud_resources):
+            print "ERROR - Reading cloud configuration file failed. Exiting..."
             sys.exit(1)
 
     # TODO: Add code to query an MDS to get initial cluster/cloud information
-    
-    # Print the resource pool
-    cloud_resources.print_pool()
+
+    # Log the resource pool
+    cloud_resources.log_pool()
 
     # TODO: Resolve issue of atomicity / reliability when 2 threads are working
     #       on the same resource pool data. Does it matter (best effort!)?
-    
+
     # Start the cloud scheduler info server for RPCs
-    log.debug("Starting Cloud Scheduler info server...")
     info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
     info_serv.daemon = True
     info_serv.start()
@@ -344,12 +346,10 @@ def main():
     log.debug("Scheduling and Polling threads started.")
 
     # Wait on the scheduler to finish before exiting main
-    # (Unnecessary? The scheduler and the poller are the only things that need
-    # to remain running)
     log.debug("Waiting for the scheduler to finish...")
 
     # Wait for keyboard input to exit the cloud scheduler
-    try: 
+    try:
         while scheduler.isAlive():
             time.sleep(2)
     except (SystemExit, KeyboardInterrupt):
@@ -366,11 +366,17 @@ def set_options(parser):
 
     # Option attributes: action, type, dest, help. See optparse documentation.
     # Defaults: action=store, type=string, dest=[name of the option] help=none
-    parser.add_option("-c", "--cloud-config", dest="cloud_conffile", metavar="FILE", \
-      help="Designate a config file from which cloud cluster information is obtained")
+    parser.add_option("-f", "--config-file", dest="config_file",
+                      metavar="FILE",
+                      help="Designate a config file for Cloud Scheduler")
+    parser.add_option("-c", "--cloud-config", dest="cloud_conffile",
+                      metavar="FILE",
+                      help="Designate a config file from which cloud cluster "
+                           "information is obtained")
 
-    parser.add_option("-m", "--MDS", dest="mds_server", metavar="SERVER", \
-      help="Designate an MDS server from which cloud cluster information is obtained")
+    parser.add_option("-m", "--MDS", dest="mds_server", metavar="SERVER",
+                      help="Designate an MDS server from which cloud cluster "
+                           "information is obtained")
 
 # Reads in a cmdline passed configuration file containing cloud cluster information
 # Stores cluster information in the ResourcePool parameter rsrc_pool
@@ -379,51 +385,67 @@ def read_cloud_config(config_file, rsrc_pool):
 
     log.debug("Attempting to read cloud configuration file: " + config_file)
 
-    # Open config file for reading
-    cloud_conf = open(config_file, 'r')
+    # Check for config files with ~ in the path
+    config_file = os.path.expanduser(config_file)
+
+    cloud_config = ConfigParser.ConfigParser()
+    cloud_config.read(config_file)
 
     # Read in config file, parse into Cluster objects
-    for line in cloud_conf:
-        
-        # Check for commented or blank lines
-        if line[0] == "#" or line == "\n" :
-            continue
+    for cluster in cloud_config.sections():
 
-        cluster_attr = line.split('/') 
-        log.debug("%s" % (cluster_attr))
+        cloud_type = cloud_config.get(cluster, "cloud_type")
 
         # Create a new cluster according to cloud_type
-        # TODO: A more dynamic format would be helpful here - current solution is hardcoded
-        if "Nimbus" in cluster_attr:
-            log.debug("found new Nimbus cluster")
-            new_cluster = cloud_management.NimbusCluster()
-        elif "OpenNebula" in cluster_attr:
-            log.debug("found new OpenNebula cluster")
-            new_cluster = cloud_management.Cluster()   # TODO: Use superclass for now
-        elif "Eucalyptus" in cluster_attr:
-            log.debug("found new Eucalyptus cluster")
-            new_cluster = cloud_management.Cluster()   # TODO: Use superclass for now
-        
-        # Use superclass methods for population and print
-        new_cluster.populate(cluster_attr)
-        new_cluster.print_cluster()
-        
+        if cloud_type == "Nimbus":
+            new_cluster = cloud_management.NimbusCluster(name = cluster,
+                           host = cloud_config.get(cluster, "host"),
+                           cloud_type = cloud_config.get(cluster, "cloud_type"),
+                           memory = map(int, cloud_config.get(cluster, "memory").split(",")),
+                           cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
+                           networks = cloud_config.get(cluster, "networks").split(","),
+                           vm_slots = cloud_config.getint(cluster, "vm_slots"),
+                           cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
+                           storage = cloud_config.getint(cluster, "storage"),
+                           )
+
+        elif cloud_type == "OpenNebula":
+            new_cluster = cloud_management.Cluster(name = cluster,
+                           host = cloud_config.get(cluster, "host"),
+                           cloud_type = cloud_config.get(cluster, "cloud_type"),
+                           memory = map(int, cloud_config.get(cluster, "memory")),
+                           cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
+                           networks = cloud_config.get(cluster, "networks").split(","),
+                           vm_slots = cloud_config.getint(cluster, "vm_slots"),
+                           cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
+                           storage = cloud_config.getint(cluster, "storage"),
+                           )
+
+        elif cloud_type == "Eucalyptus":
+            new_cluster = cloud_management.Cluster(name = cluster,
+                           host = cloud_config.get(cluster, "host"),
+                           cloud_type = cloud_config.get(cluster, "cloud_type"),
+                           memory = map(int, cloud_config.get(cluster, "memory")),
+                           cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
+                           networks = cloud_config.get(cluster, "networks").split(","),
+                           vm_slots = cloud_config.getint(cluster, "vm_slots"),
+                           cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
+                           storage = cloud_config.getint(cluster, "storage"),
+                           )
+
+
+
         # Add the new cluster to a resource pool
         rsrc_pool.add_resource(new_cluster)
 
     log.debug("Cloud configuration read succesfully from " + config_file )
     return (0)
-    
 
-# Prints readable lined lines across the screen with message
-def print_line(msg):
-    log.warning("print_line is DEPRECATED, use log_with_line instead")
-    log_with_line(msg)
 
 # logs readable lined lines across the screen with message
 def log_with_line(msg):
     msg_len = len(msg)
-    fill = "-" * (75-msg_len)
+    fill = "-" * (40-msg_len)
     log.debug("-----"+msg+fill)
 
 

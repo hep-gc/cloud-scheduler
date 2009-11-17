@@ -7,5 +7,6 @@
 rm $1 *.log
 rm $1 *.pyc
 rm $1 tmp_*
+rm $1 cloudscheduler/*.pyc
 mv *.epr ./eprs
 
