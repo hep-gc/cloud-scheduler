@@ -34,6 +34,9 @@ import sys
 import logging
 import string
 import re
+import os
+import ConfigParser
+
 import nimbus_xml
 
 ##
@@ -126,6 +129,64 @@ class ResourcePool:
     def __init__(self, name):
         log.debug("New ResourcePool " + name + " created")
         self.name = name
+
+    # Read in defined clouds from cloud definition file
+    def setup(self, config_file):
+        log.debug("Reading cloud definition file %s" % config_file)
+        # Check for config files with ~ in the path
+        config_file = os.path.expanduser(config_file)
+
+        cloud_config = ConfigParser.ConfigParser()
+        cloud_config.read(config_file)
+
+        # Read in config file, parse into Cluster objects
+        for cluster in cloud_config.sections():
+
+            cloud_type = cloud_config.get(cluster, "cloud_type")
+
+            # Create a new cluster according to cloud_type
+            if cloud_type == "Nimbus":
+                new_cluster = NimbusCluster(name = cluster,
+                               host = cloud_config.get(cluster, "host"),
+                               cloud_type = cloud_config.get(cluster, "cloud_type"),
+                               memory = map(int, cloud_config.get(cluster, "memory").split(",")),
+                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
+                               networks = cloud_config.get(cluster, "networks").split(","),
+                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
+                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
+                               storage = cloud_config.getint(cluster, "storage"),
+                               )
+
+            elif cloud_type == "OpenNebula":
+                new_cluster = Cluster(name = cluster,
+                               host = cloud_config.get(cluster, "host"),
+                               cloud_type = cloud_config.get(cluster, "cloud_type"),
+                               memory = map(int, cloud_config.get(cluster, "memory")),
+                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
+                               networks = cloud_config.get(cluster, "networks").split(","),
+                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
+                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
+                               storage = cloud_config.getint(cluster, "storage"),
+                               )
+
+            elif cloud_type == "Eucalyptus":
+                new_cluster = Cluster(name = cluster,
+                               host = cloud_config.get(cluster, "host"),
+                               cloud_type = cloud_config.get(cluster, "cloud_type"),
+                               memory = map(int, cloud_config.get(cluster, "memory")),
+                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
+                               networks = cloud_config.get(cluster, "networks").split(","),
+                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
+                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
+                               storage = cloud_config.getint(cluster, "storage"),
+                               )
+
+            # Add the new cluster to a resource pool
+            self.add_resource(new_cluster)
+
+
+
+
 
     # Add a cluster resource to the pool's resource list
     def add_resource(self, cluster):

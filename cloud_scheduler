@@ -311,15 +311,10 @@ def main():
 
     # Create a resource pool
     cloud_resources = cloud_management.ResourcePool("Resource Pool")
+    cloud_resources.setup(config.cloud_resource_config)
 
     # Create a job pool
     job_pool = job_management.JobPool("Job Pool")
-
-    # Read in the config file, if we're using one
-    if config.cloud_resource_config:
-        if read_cloud_config(config.cloud_resource_config, cloud_resources):
-            print "ERROR - Reading cloud configuration file failed. Exiting..."
-            sys.exit(1)
 
     # TODO: Add code to query an MDS to get initial cluster/cloud information
 
@@ -377,69 +372,6 @@ def set_options(parser):
     parser.add_option("-m", "--MDS", dest="mds_server", metavar="SERVER",
                       help="Designate an MDS server from which cloud cluster "
                            "information is obtained")
-
-# Reads in a cmdline passed configuration file containing cloud cluster information
-# Stores cluster information in the ResourcePool parameter rsrc_pool
-# (see the sample_cloud example configuration file for more information)
-def read_cloud_config(config_file, rsrc_pool):
-
-    log.debug("Attempting to read cloud configuration file: " + config_file)
-
-    # Check for config files with ~ in the path
-    config_file = os.path.expanduser(config_file)
-
-    cloud_config = ConfigParser.ConfigParser()
-    cloud_config.read(config_file)
-
-    # Read in config file, parse into Cluster objects
-    for cluster in cloud_config.sections():
-
-        cloud_type = cloud_config.get(cluster, "cloud_type")
-
-        # Create a new cluster according to cloud_type
-        if cloud_type == "Nimbus":
-            new_cluster = cloud_management.NimbusCluster(name = cluster,
-                           host = cloud_config.get(cluster, "host"),
-                           cloud_type = cloud_config.get(cluster, "cloud_type"),
-                           memory = map(int, cloud_config.get(cluster, "memory").split(",")),
-                           cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                           networks = cloud_config.get(cluster, "networks").split(","),
-                           vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                           cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                           storage = cloud_config.getint(cluster, "storage"),
-                           )
-
-        elif cloud_type == "OpenNebula":
-            new_cluster = cloud_management.Cluster(name = cluster,
-                           host = cloud_config.get(cluster, "host"),
-                           cloud_type = cloud_config.get(cluster, "cloud_type"),
-                           memory = map(int, cloud_config.get(cluster, "memory")),
-                           cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                           networks = cloud_config.get(cluster, "networks").split(","),
-                           vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                           cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                           storage = cloud_config.getint(cluster, "storage"),
-                           )
-
-        elif cloud_type == "Eucalyptus":
-            new_cluster = cloud_management.Cluster(name = cluster,
-                           host = cloud_config.get(cluster, "host"),
-                           cloud_type = cloud_config.get(cluster, "cloud_type"),
-                           memory = map(int, cloud_config.get(cluster, "memory")),
-                           cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                           networks = cloud_config.get(cluster, "networks").split(","),
-                           vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                           cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                           storage = cloud_config.getint(cluster, "storage"),
-                           )
-
-
-
-        # Add the new cluster to a resource pool
-        rsrc_pool.add_resource(new_cluster)
-
-    log.debug("Cloud configuration read succesfully from " + config_file )
-    return (0)
 
 
 # logs readable lined lines across the screen with message

@@ -6,6 +6,7 @@ import tempfile
 import ConfigParser
 
 import cloudscheduler.config
+import cloudscheduler.cloud_management
 
 class ConfigParserSetsCorrectValues(unittest.TestCase):
 
@@ -66,6 +67,84 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def tearDown(self):
         os.remove(self.configfilename)
+
+class ResourcePoolSetup(unittest.TestCase):
+
+    def setUp(self):
+
+        # set values for each option
+        self.cloud_name0 = "example0"
+        self.host0 = "cloud.example.com"
+        self.cloud_type0 = "Nimbus"
+        self.vm_slots0 = 100
+        self.cpu_cores0 = 4
+        self.storage0 = 1000
+        self.memory0 = 2048
+        self.cpu_archs0 = "x86"
+        self.networks0 = "private"
+
+        self.cloud_name1 = "example1"
+        self.host1 = "cloud.example.com"
+        self.cloud_type1 = "Nimbus"
+        self.vm_slots1 = 100
+        self.cpu_cores1 = 4
+        self.storage1 = 1000
+        self.memory1 = 2048
+        self.cpu_archs1 = "x86"
+        self.networks1 = "private"
+
+        # build config file
+        (self.configfile, self.configfilename) = tempfile.mkstemp()
+        testconfig = ConfigParser.RawConfigParser()
+
+        testconfig.add_section(self.cloud_name0)
+        testconfig.set(self.cloud_name0, 'host', self.host0)
+        testconfig.set(self.cloud_name0, 'cloud_type', self.cloud_type0)
+        testconfig.set(self.cloud_name0, 'vm_slots', self.vm_slots0)
+        testconfig.set(self.cloud_name0, 'cpu_cores', self.cpu_cores0)
+        testconfig.set(self.cloud_name0, 'storage', self.storage0)
+        testconfig.set(self.cloud_name0, 'memory', self.memory0)
+        testconfig.set(self.cloud_name0, 'cpu_archs', self.cpu_archs0)
+        testconfig.set(self.cloud_name0, 'networks', self.networks0)
+
+        testconfig.add_section(self.cloud_name1)
+        testconfig.set(self.cloud_name1, 'host', self.host1)
+        testconfig.set(self.cloud_name1, 'cloud_type', self.cloud_type1)
+        testconfig.set(self.cloud_name1, 'vm_slots', self.vm_slots1)
+        testconfig.set(self.cloud_name1, 'cpu_cores', self.cpu_cores1)
+        testconfig.set(self.cloud_name1, 'storage', self.storage1)
+        testconfig.set(self.cloud_name1, 'memory', self.memory1)
+        testconfig.set(self.cloud_name1, 'cpu_archs', self.cpu_archs1)
+        testconfig.set(self.cloud_name1, 'networks', self.networks1)
+
+        # write temporary config file
+        configfile = open(self.configfilename, 'wb')
+        testconfig.write(configfile)
+        configfile.close()
+        cloudscheduler.config.setup(path=self.configfilename)
+
+        self.test_pool = cloudscheduler.cloud_management.ResourcePool("Test Pool")
+        self.test_pool.setup(self.configfilename)
+
+    def test_cluster_is_created(self):
+
+        # Check that cloud_name0 is found
+        found_cluster0 = False
+        for cluster in self.test_pool.resources:
+            if cluster.name == self.cloud_name0:
+                found_cluster0 = True
+        self.assertTrue(found_cluster0)
+
+        # Check that cloud_name1 is found
+        found_cluster1 = False
+        for cluster in self.test_pool.resources:
+            if cluster.name == self.cloud_name1:
+                found_cluster1 = True
+        self.assertTrue(found_cluster1)
+
+    def tearDown(self):
+        os.remove(self.configfilename)
+
 
 if __name__ == '__main__':
     unittest.main()
