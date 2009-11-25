@@ -39,16 +39,16 @@ def setup(path=None):
 
     # Find config file
     if not path:
-        if os.path.exists(homedir + "/.cloudscheduler/cloud-scheduler.conf"):
-            path = homedir + "/.cloudscheduler/cloud-scheduler.conf"
-        elif os.path.exists("/etc/cloudscheduler/cloud-scheduler.conf"):
-            path = "/etc/cloudscheduler/cloud-scheduler.conf"
+        if os.path.exists(homedir + "/.cloudscheduler/cloud_scheduler.conf"):
+            path = homedir + "/.cloudscheduler/cloud_scheduler.conf"
+        elif os.path.exists("/etc/cloudscheduler/cloud_scheduler.conf"):
+            path = "/etc/cloudscheduler/cloud_scheduler.conf"
         else:
             print "Configuration file problem: There doesn't seem to be " \
                   "a configuration file. " \
                   "You can specify one with the --config-file parameter, " \
-                  "or put one in ~/.clouscheduler/cloud-scheduler.conf or "\
-                  "/etc/cloudscheduler/cloud-scheduler.conf"
+                  "or put one in ~/.clouscheduler/cloud_scheduler.conf or "\
+                  "/etc/cloudscheduler/cloud_scheduler.conf"
             sys.exit(1)
     
     # Read config file

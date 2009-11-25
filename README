@@ -11,7 +11,7 @@ creating a malleable, virtual environment for efficient job execution.
 
 For more documentation on the cloud scheduler, please refer to the cloud 
 scheduler information pages:
-    - http://wiki.github.com/hep-gc/cloud-scheduler
+    - http://wiki.github.com/hep-gc/cloud_scheduler
     - https://wiki.gridx1.ca/twiki/bin/view/Main/VirtualizationProjectHome#Cloud_Scheduling
 
 
