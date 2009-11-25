@@ -31,6 +31,8 @@ import re
 import logging
 import sys
 from suds.client import Client
+from urllib2 import URLError
+
 from cloudscheduler.utilities import determine_path
 import cloudscheduler.config as config
 
@@ -161,10 +163,19 @@ class JobPool:
         # Get job classAds from the condor scheduler
         try:
             job_ads = self.condor_schedd.service.getJobAds(None, None)
+        except URLError, e:
+            log.error("job_querySOAP - There was a problem connecting to the "
+                      "Condor scheduler web service (%s) for the following "
+                      "reason: %s"
+                      % (config.condor_webservice_url, e.reason[1]))
+            return
         except:
-            log.error("job_querySOAP - There was a problem connecting to the Condor scheduler Webservice.")
+            log.error("job_querySOAP - There was a problem connecting to the "
+                      "Condor scheduler web service (%s) for the following "
+                      "reason: "
+                      % (config.condor_webservice_url))
             raise
-            sys.exit()
+            sys.exit(1)
 
         # If the query succeeds and there are jobs present, process them
         if job_ads.status.code == "SUCCESS" and job_ads.classAdArray:
