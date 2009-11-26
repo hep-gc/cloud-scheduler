@@ -111,6 +111,8 @@ class VM:
 
     def log(self):
         log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s" % (self.name, self.id, self.vmtype, self.status))
+    def get_vm_info(self):
+        return "VM Name: %s, ID: %s, Type: %s, Status: %s" % (self.name, self.id, self.vmtype, self.status)
 
 
 
@@ -391,6 +393,9 @@ class Cluster:
         log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
           % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
           self.memory))
+    def get_cluster_info_short(self):
+        return "CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
+          % (self.name, self.network_address, self.cloud_type, self.vm_slots, self.memory)
 
     # Print the cluster 'vms' list (via VM print)
     def log_vms(self):
@@ -400,6 +405,15 @@ class Cluster:
             log.debug("CLUSTER %s running VMs:" % (self.name))
             for vm in self.vms:
                 vm.log_short("\t")
+    def get_cluster_vms_info(self):
+        if len(self.vms) == 0:
+            return "CLUSTER %s has no running VMs..." % (self.name)
+        else:
+            output = "CLUSTER %s running VMs:" % (self.name)
+            for vm in self.vms:
+                output += "\n" + vm.get_vm_info()
+                return output
+
     
     
     ## Support methods

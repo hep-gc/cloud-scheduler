@@ -58,6 +58,16 @@ class CloudSchedulerInfoServer(threading.Thread,):
         class externalFunctions:
             def get_cloud_resources(self):
                 return cloud_resources.get_pool_info()
+            def get_cluster_resources(self):
+                output = "Clusters in resource pool:\n"
+                for cluster in cloud_resources.resources:
+                    output += cluster.get_cluster_info_short()
+                return output
+            def get_cluster_vm_resources(self):
+                output = "VMs in cluster:\n"
+                for cluster in cloud_resources.resources:
+                    output += cluster.get_cluster_vms_info()
+                return output
 
         self.server.register_instance(externalFunctions())
 
