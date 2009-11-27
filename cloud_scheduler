@@ -29,7 +29,6 @@ import string # for debugging purposes
 from optparse import OptionParser
 import ConfigParser
 
-import cloudscheduler.ec2 as ec2
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
 import cloudscheduler.info_server as info_server
