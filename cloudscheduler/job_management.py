@@ -142,13 +142,12 @@ class Job:
         req_re = "(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
         match = re.search(req_re, requirements)
         if match:
-            log.debug("parse_classAd_requirements - VMType parsed from"
-                      + "Requirements string: %s" % match.group('vm_type'))
+            log.debug("parse_classAd_requirements - VMType parsed from "
+              + "Requirements string: %s" % match.group('vm_type'))
             return match.group('vm_type')
         else:
-            log.debug("parse_classAd_requirements - No Requirements string"
-                        + "received. String is not null. Using string value: %s")
-                        % requirements
+            log.debug("parse_classAd_requirements - No Requirements string received." 
+              + " String is not null. Using string value: %s" % requirements)
             return requirements
 
 
@@ -217,17 +216,22 @@ class JobPool:
             for soap_classad in job_ads.classAdArray.item:
                 new_classad = {}
                 for attribute in soap_classad.item:
-                    new_classad[attribute.name] = attribute.value
+                    attribute_key = str(attribute.name)
+                    new_classad[attribute_key] = attribute.value
                 classads.append(new_classad)
             
             # Create a new list for the jobs in the condor queue
             # TODO: INEFFICIENT. Should create a jobs list straight from the ClassAdStructArrayAndStatus
             condor_jobs = []
             for classad in classads:
+                # TODO: Remove inefficient cutting down of dictionary. Need a better way to access
+                #       Job parameters via classAd (DIRECT ACCESS!)
+                job_dict = self.make_job_dict(classad)
+                
                 # Create Jobs from the classAd data
                 # Note: using the '**' operator, which calls a named-parameter function with the values
                 # of dictionary keys of the same name (as the function parameters)
-                con_job = Job(**classad)
+                con_job = Job(**job_dict)
                 condor_jobs.append(con_job)
                 
             log.debug("job_querySOAP - Jobs read from condor scheduler, stored in condor jobs list")
@@ -289,6 +293,45 @@ class JobPool:
     
     
     ## JobPool Private methods (Support methods)
+    
+    # Create a dictionary for Job creation from a full Condor classAd job dictionary
+    # If a key for a required job parameter does not exist, add nothing to the new
+    # job dictionary (non-present parameters will invoke the default function parameter
+    # value).
+    # Parameters:
+    #   job_classad (dict) - A dictionary of ALL the Condor job classad fields
+    # Return:
+    #   Returns a dictionary of the Job object parameters the exist in the given
+    #   Condor job classad
+    #
+    # TODO: This needs to be replaced with something more efficient.
+    def make_job_dict(self, job_classad):
+        log.debug("make_job_dict - Cutting Condor classad dictionary into Job dictionary.")
+        
+        job = {}
+        
+        # Check for all required Job fields. Add to job dict. if present.
+        if ('GlobalJobId' in job_classad):
+            job['GlobalJobId'] = job_classad['GlobalJobId']
+        if ('Requirements' in job_classad):
+            job['Requirements'] = job_classad['Requirements']
+        if ('VMNetwork' in job_classad):
+            job['VMNetwork'] = job_classad['VMNetwork']
+        if ('VMCPUArch' in job_classad):
+            job['VMCPUArch'] = job_classad['VMCPUArch']
+        if ('VMName' in job_classad):
+            job['VMName'] = job_classad['VMName']
+        if ('VMLoc' in job_classad):
+            job['VMLoc'] = job_classad['VMLoc']
+        if ('VMMem' in job_classad):
+            job['VMMem'] = job_classad['VMMem']
+        if ('VMCPUCores' in job_classad):
+            job['VMCPUCores'] = job_classad['VMCPUCores']    
+        if ('VMStorage' in job_classad):
+            job['VMStorage'] = job_classad['VMStorage']
+        
+        return job
+    
     
     # Remove System Job
     # Attempts to remove a given job from the JobPool unscheduled

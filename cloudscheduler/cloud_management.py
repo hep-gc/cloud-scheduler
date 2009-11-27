@@ -110,7 +110,7 @@ class VM:
           % (name, id, clusteraddr, imagelocation, memory))
 
     def log(self):
-        log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s" % (self.name, self.id, self.vmtype, self.status))
+        log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
 
 
 
@@ -269,7 +269,7 @@ class ResourcePool:
     # Parameters: (as for get_resource methods)
     # Return: a list of Cluster objects representing clusters that meet given
     #         requirements for network, cpu, memory, and storage
-    def get_fitting_clusters(self, network, cpuarch, memory, cpucores, storage):
+    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage):
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return list of fitting resources")
             return []

@@ -184,7 +184,6 @@ class SchedulingTh(threading.Thread):
                     # Print polled VM's state and details
                     log.info("Scheduler - Polled VM: ")
                     vm.log()
-                    log.debug("(Scheduler) - VM in '%s' state" % ret_state)
 
                     ## If the VM is in an error state, manually recreate it
                     if ret_state == "Error":
