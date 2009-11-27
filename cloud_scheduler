@@ -106,7 +106,7 @@ class SchedulingTh(threading.Thread):
                 log.debug("(Scheduler) - Attempting to schedule job %s" % job.get_id())
 
                 # Find a resource that matches the job's requirements
-                target_cluster = self.resource_pool.get_resourceFF(job.req_network, \
+                target_cluster = self.resource_pool.get_resourceBF(job.req_network, \
                   job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
 
                 # If no job fits, leave job in list and continue to next job
@@ -205,8 +205,8 @@ class SchedulingTh(threading.Thread):
                         if (destroy_ret != 0):
                             log.error("(Scheduler) - Destroying VM failed. Leaving VM in error state.")
                             continue
-                        # Find an available resource to recreate on
-                        target_rsrc = self.resource_pool.get_resourceFF(vm_network, vm_cpuarch, vm_mem, vm_cores, vm_storage)
+                        # Find an available, balanced resource to recreate on
+                        target_rsrc = self.resource_pool.get_resourceBF(vm_network, vm_cpuarch, vm_mem, vm_cores, vm_storage)
                         if (target_rsrc == None):
                             log.error("(Scheduler) - No resource found for recreation. Aborting recreate.")
                             continue

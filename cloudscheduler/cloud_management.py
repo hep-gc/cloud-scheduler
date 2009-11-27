@@ -280,10 +280,10 @@ class ResourcePool:
             if (cluster.vm_slots <= 0):
                 continue
             # If the cluster does not have the required CPU architecture
-            if not (cpuarch in cluster.cpu_archs):
+            if (cpuarch not in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
-            if not (network in cluster.network_pools):
+            if (network not in cluster.network_pools):
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):

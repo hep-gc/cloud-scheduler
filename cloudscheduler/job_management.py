@@ -135,7 +135,7 @@ class Job:
         
         # Check for None parameter. Return default string if None.
         if (requirements == None):
-            log.debug("parse_classAd_requirements - No VMType specified. Using default."
+            log.debug("parse_classAd_requirements - No VMType specified. Using default.")
             return "Default VMType"
         
         # Match against the Requirements string
