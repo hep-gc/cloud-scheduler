@@ -34,9 +34,6 @@ import sys
 import logging
 import string
 import re
-import os
-import ConfigParser
-
 import nimbus_xml
 
 ##
@@ -115,7 +112,6 @@ class VM:
         return "VM Name: %s, ID: %s, Type: %s, Status: %s" % (self.name, self.id, self.vmtype, self.status)
 
 
-
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
 # classes). Consists of a name and a list.
 
@@ -132,72 +128,9 @@ class ResourcePool:
         log.debug("New ResourcePool " + name + " created")
         self.name = name
 
-    # Read in defined clouds from cloud definition file
-    def setup(self, config_file):
-        log.debug("Reading cloud definition file %s" % config_file)
-        # Check for config files with ~ in the path
-        config_file = os.path.expanduser(config_file)
-
-        cloud_config = ConfigParser.ConfigParser()
-        cloud_config.read(config_file)
-
-        # Read in config file, parse into Cluster objects
-        for cluster in cloud_config.sections():
-
-            cloud_type = cloud_config.get(cluster, "cloud_type")
-
-            # Create a new cluster according to cloud_type
-            if cloud_type == "Nimbus":
-                new_cluster = NimbusCluster(name = cluster,
-                               host = cloud_config.get(cluster, "host"),
-                               cloud_type = cloud_config.get(cluster, "cloud_type"),
-                               memory = map(int, cloud_config.get(cluster, "memory").split(",")),
-                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                               networks = cloud_config.get(cluster, "networks").split(","),
-                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                               storage = cloud_config.getint(cluster, "storage"),
-                               )
-
-            elif cloud_type == "OpenNebula":
-                new_cluster = Cluster(name = cluster,
-                               host = cloud_config.get(cluster, "host"),
-                               cloud_type = cloud_config.get(cluster, "cloud_type"),
-                               memory = map(int, cloud_config.get(cluster, "memory")),
-                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                               networks = cloud_config.get(cluster, "networks").split(","),
-                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                               storage = cloud_config.getint(cluster, "storage"),
-                               )
-
-            elif cloud_type == "Eucalyptus":
-                new_cluster = Cluster(name = cluster,
-                               host = cloud_config.get(cluster, "host"),
-                               cloud_type = cloud_config.get(cluster, "cloud_type"),
-                               memory = map(int, cloud_config.get(cluster, "memory")),
-                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                               networks = cloud_config.get(cluster, "networks").split(","),
-                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                               storage = cloud_config.getint(cluster, "storage"),
-                               )
-
-            # Add the new cluster to a resource pool
-            self.add_resource(new_cluster)
-        #END For
-
-
     # Add a cluster resource to the pool's resource list
     def add_resource(self, cluster):
         self.resources.append(cluster)
-        
-    # Log a list of clusters.
-    # Supports independently logging a list of clusters for specific ResourcePool
-    # functionality (such a printing intermediate working cluster lists)
-    def log_list(self, clusters):
-        for cluster in clusters:
-            cluster.log()
 
     # Log the name and address of every cluster in the resource pool
     def log_pool(self, ):
@@ -213,7 +146,11 @@ class ResourcePool:
             for cluster in self.resources:
                 output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
         return output
-    
+    def get_cluster(self, cluster_name):
+        for cluster in self.resources:
+            if cluster.name == cluster_name:
+                return cluster
+        return None
     # Return an arbitrary resource from the 'resources' list. Does not remove
     # the returned element from the list.
     # (Currently, the first cluster in the list is returned)
@@ -231,11 +168,11 @@ class ResourcePool:
     #    network  - the network assoication required by the VM
     #    cpuarch  - the cpu architecture that the VM must run on
     #    memory   - the amount of memory (RAM) the VM requires
-    #    cpucores  - the number of cores that a VM requires (dedicated? or general?)
-    #    storage   - the amount of scratch space the VM requires
-    # Return: returns a Cluster object if one is found that fits VM requirments
+    #    TODO: storage   - the amount of scratch space the VM requires
+    #    TODO: cpucores  - the number of cores that a VM requires (dedicated? or general?)
+    # Return: returns a Cluster object if one is found that vits VM requirments
     #         Otherwise, returns the 'None' object
-    def get_resourceFF(self, network, cpuarch, memory, cpucores, storage):
+    def get_resourceFF(self, network, cpuarch, memory):
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return FF resource")
             return None
@@ -244,20 +181,14 @@ class ResourcePool:
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
                 continue
+            # If the cluster has no sufficient memory entries for the VM
+            if (cluster.find_mementry(memory) < 0):
+                continue
             # If the cluster does not have the required CPU architecture
             if not (cpuarch in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
             if not (network in cluster.network_pools):
-                continue
-            # If the cluster has no sufficient memory entries for the VM
-            if (cluster.find_mementry(memory) < 0):
-                continue
-            # If the cluster does not have sufficient CPU cores
-            if (cpucores > cluster.cpu_cores):
-                continue
-            # If the cluster does not have sufficient storage capacity
-            if (storage > cluster.storageGB):
                 continue
             
             # Return the cluster as an available resource (meets all job reqs)
@@ -267,92 +198,11 @@ class ResourcePool:
         return None
 
 
-    # Returns a list of Clusters that fit the given VM/Job requirements
-    # Parameters: (as for get_resource methods)
-    # Return: a list of Cluster objects representing clusters that meet given
-    #         requirements for network, cpu, memory, and storage
-    def get_fitting_clusters(self, network, cpuarch, memory, cpucores, storage):
-        if len(self.resources) == 0:
-            log.debug("Pool is empty... Cannot return list of fitting resources")
-            return []
-        
-        fitting_clusters = []
-        for cluster in self.resources:
-            # If the cluster has no open VM slots
-            if (cluster.vm_slots <= 0):
-                continue
-            # If the cluster does not have the required CPU architecture
-            if not (cpuarch in cluster.cpu_archs):
-                continue
-            # If required network is NOT in cluster's network associations
-            if not (network in cluster.network_pools):
-                continue
-            # If the cluster has no sufficient memory entries for the VM
-            if (cluster.find_mementry(memory) < 0):
-                continue
-            # If the cluster does not have sufficient CPU cores
-            if (cpucores > cluster.cpu_cores):
-                continue
-            # If the cluster does not have sufficient storage capacity
-            if (storage > cluster.storageGB):
-                continue
-            # Add cluster to the list to be returned (meets all job reqs)
-            fitting_clusters.append(cluster)
-
-        # Return the list clusters that fit given requirements
-        log.debug("List of fitting clusters: ")
-        self.log_list(fitting_clusters)
-        return fitting_clusters
-        
-    
-    # Returns a resource that fits given requirements and fits some balance
-    # criteria between clusters (for example, lowest current load or most free
-    # resources of the fitting clusters).
-    # Built to support "Cluster-Balanced Fit Scheduling"
-    # Note: Currently, we are considering the "most balanced" cluster to be that
-    # with the fewest running VMs on it. This is to minimize and balance network
-    # traffic to clusters, among other reasons.
-    # Other possible metrics are: 
-    #   - Most amount of free space for VMs (vm slots, memory, cpu cores..);
-    #   - etc.
-    # Parameters:
-    #    network  - the network assoication required by the VM
-    #    cpuarch  - the cpu architecture that the VM must run on
-    #    memory   - the amount of memory (RAM) the VM requires
-    #    cpucores  - the number of cores that a VM requires (dedicated? or general?)
-    #    storage   - the amount of scratch space the VM requires
-    # Return: returns a Cluster object if one is found that fits VM requirments
-    #         Otherwise, returns the 'None' object
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage):
-        
-        # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage)
-        
-        # If list is empty (no resources fit), return None
-        if len(fitting_clusters) == 0:
-            log.debug("No clusters fit requirements. Fitting resources list is empty.")
-            return None
-        
-        # Iterate through fitting clusters - save "most balanced" cluster. (LINEAR search)
-        # Note: mb_cluster stands for "most balanced cluster"
-        mb_cluster = fitting_clusters.pop()
-        mb_cluster_vms = mb_cluster.num_vms()
-        for cluster in fitting_clusters:
-            # If considered cluster has fewer running VMs, set it as the most balanced cluster
-            if (cluster.num_vms() < mb_cluster_vms):
-                mb_cluster = cluster
-                mb_cluster_vms = cluster.num_vms()
-        
-        # Return the most balanced cluster after considering all fitting clusters.
-        log.debug("Most balanced cluster: ")
-        mb_cluster.log()
-        return mb_cluster
-
-
 # The Cluster superclass, containing all general cluster instance variables
 # and Cluster interface methods (stubs for implementation in subclasses).
 
 class Cluster:
+   
     
     ## Instance methods
 
@@ -373,7 +223,7 @@ class Cluster:
 
         log.debug("New cluster %s created" % self.name)
 
-    
+        
     # Print cluster information
     def log_cluster(self):
         log.debug("-" * 30 + 
@@ -396,7 +246,6 @@ class Cluster:
     def get_cluster_info_short(self):
         return "CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
           % (self.name, self.network_address, self.cloud_type, self.vm_slots, self.memory)
-
     # Print the cluster 'vms' list (via VM print)
     def log_vms(self):
         if len(self.vms) == 0:
@@ -413,17 +262,11 @@ class Cluster:
             for vm in self.vms:
                 output += "\n" + vm.get_vm_info()
                 return output
-
-    
-    
-    ## Support methods
-    
-    # Returns the number of VMs running on the cluster (in accordance
-    # to the vms[] list)
-    def num_vms(self):
-        return len(self.vms)
-
-
+    def get_vm(self, vm_id):
+        for vm in self.vms:
+            if vm_id == vm.id:
+                return vm
+        return None
     # VM manipulation methods
     #-!------------------------------------------------------------------------
     # NOTE: In implementing subclasses of Cluster, the following method prototypes

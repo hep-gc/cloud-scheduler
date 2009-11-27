@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # vim: set expandtab ts=4 sw=4:
 
 # Copyright (C) 2009 University of Victoria
@@ -24,16 +24,10 @@ def main(argv=None):
     parser.add_option("-p", "--port", dest="port", metavar="FILE",
                       help="Pick a custom port to connect to Cloud Scheduler"
                            "information server")
-    parser.add_option("-a", "--all-cluster", action="store_true", 
-                      dest="all_cluster", default=False, 
-                      help="Get All clusters in Cloud Scheduler")
-    parser.add_option("-c", "--cluster", dest="cluster_name", metavar="FILE", 
-                      help="Get Information on a cluster")
-    parser.add_option("-m", "--virtual-machines",action="store_true", 
-                      dest="vms", default=False, 
-                      help="Get all VMs in Cloud Scheduler")
-    parser.add_option("-n", "--vm-info", dest="vm_name", metavar="FILE", 
-                      help="Get information on a virtual machine")
+    parser.add_option("-a", "--all-cluster", action="store_true", dest="all_cluster", default=False, help="Get All clusters in Cloud Scheduler")
+    parser.add_option("-c", "--cluster", dest="cluster_name", metavar="NAME", help="Get Information on a cluster")
+    parser.add_option("-m", "--virtual-machines",action="store_true", dest="vms", default=False, help="Get all VMs in Cloud Scheduler")
+    parser.add_option("-n", "--vm-info", dest="vm_id", metavar="ID", help="Get information on a virtual machine")
 
     (cli_options, args) = parser.parse_args()
 
@@ -62,10 +56,10 @@ def main(argv=None):
             print s.get_cluster_resources()
         if cli_options.vms:
             print s.get_cluster_vm_resources()
-        if cli_options.vm_name:
-            print "Fetching info for vm name: %s" % cli_options.vm_name
-        if cli_options.cluster_name:
-            print "Fetching info for cluster: %s" % cli_options.cluster_name
+        if cli_options.vm_id and cli_options.cluster_name:
+            print s.get_vm_info(cli_options.cluster_name, cli_options.vm_id)
+        if cli_options.cluster_name and not cli_options.vm_id:
+            print s.get_cluster_info(cli_options.cluster_name)
 
     except socket.error:
         print "%s: couldn't connect to cloud scheduler at %s on port %s."\
