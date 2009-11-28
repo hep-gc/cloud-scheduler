@@ -76,9 +76,10 @@ class Job:
     #
     # TODO: Set default job properties in the cloud scheduler main config file
     #      (Have option to set them there, and default values) 
-    def __init__(self, GlobalJobId="None", Requirements=None,
+    def __init__(self, GlobalJobId="None", Requirements="canfarbase",
 	         VMNetwork="private", VMCPUArch="x86", VMName="Default Image",
-	         VMLoc="None", VMMem=512, VMCPUCores=1, VMStorage=1):
+	         VMLoc="http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.dev.img.gz", 
+             VMMem=512, VMCPUCores=1, VMStorage=1):
         self.id = GlobalJobId
         self.req_vmtype   = self.parse_classAd_requirements(Requirements)
         self.req_network  = VMNetwork
