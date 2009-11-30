@@ -26,7 +26,6 @@ except ImportError:
               "You can install it from your package manager, or get it from "
               "http://code.google.com/p/boto/")
 
-
 import nimbus_xml
 
 ##
@@ -583,6 +582,14 @@ class NimbusCluster(ICluster):
 
 class EC2Cluster(ICluster):
     
+    VM_STATES = {
+            "running" : "Running",
+            "pending" : "Starting",
+            "shutting-down" : "Shutdown",
+            "termimated" : "Shutdown",
+    }
+
+    ERROR = 1
 
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], cpu_archs=[], networks=[], vm_slots=0,
@@ -599,12 +606,25 @@ class EC2Cluster(ICluster):
             log.error("Cannot connect to cluster %s "
                       "because you haven't specified an access_key_id or "
                       "a secret_access_key" % self.name)
-            #TODO: Handle this better
+            #return None
 
-        self.access_key_id =  access_key_id
+        self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
 
-        if self.cloud_type == "Eucalyptus":
+
+        if self.cloud_type == "AmazonEC2":
+            try:
+                self.connection = boto.connect_ec2(
+                                      aws_access_key_id=self.access_key_id,
+                                      aws_secret_access_key=self.secret_access_key,
+                                      )
+                log.info("Created a connection to Amazon EC2")
+            except boto.exception.EC2ResponseError, e:
+                log.error("Couldn't connect to Amazon EC2 because: %s" % e.error_message)
+                return None
+
+        elif self.cloud_type == "Eucalyptus":
+            #TODO: Test this with a real Eucalyptus cluster
             region = boto.ec2.regioninfo.RegionInfo(name=self.name,
                                                  endpoint=self.network_address)
             self.connection = boto.connect_ec2(
@@ -616,13 +636,9 @@ class EC2Cluster(ICluster):
                                   path="/services/Eucalyptus",
                                   )
             log.info("Created a connection to Eucalyptus (%s)" % self.name)
+            #TODO: provide more helpful error message
 
-        elif self.cloud_type == "AmazonEC2":
-            self.connection = boto.connect_ec2(
-                                  aws_access_key_id=self.access_key_id,
-                                  aws_secret_access_key=self.secret_access_key,
-                                  )
-            log.info("Created a connection to Amazon EC2")
+
         elif self.cloud_type == "OpenNebula":
 
             log.error("OpenNebula support isn't ready yet.")
@@ -630,33 +646,64 @@ class EC2Cluster(ICluster):
         else:
             log.error("EC2Cluster don't know how to handle a %s cluster." %
                       self.cloud_type)
+            return None
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch, 
                   vm_imagelocation, vm_mem, vm_cores, vm_storage):
 
         log.debug("Trying to boot %s on %s" % (vm_name, self.network_address))
 
-        images = self.connection.get_all_images(image_ids=[vm_name])
-        reservation = images[0].run(1,1,)
-        instance_id = reservation.instances[0].id
-        log.debug("Booted VM %s" % instance_id)
-        #TODO: check for VMs that have NOT booted.
+        try:
+            images = self.connection.get_all_images(image_ids=[vm_name])
+            reservation = images[0].run(1,1,)
+            instance = reservation.instances[0]
+            log.debug("Booted VM %s" % instance.id)
+        except boto.exception.EC2ResponseError, e:
+            log.error("Couldn't boot VM because: %s" % e.error_message)
+            return self.ERROR
 
-        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type,
+        new_vm = VM(name = vm_name, id = instance.id, vmtype = vm_type,
                     clusteraddr = self.network_address, cloudtype = self.cloud_type,
                     network = vm_networkassoc, cpuarch = vm_cpuarch, 
                     imagelocation = vm_imagelocation, memory = vm_mem,
                     mementry = "FIXME", cpucores = vm_cores, storage = vm_storage)
 
+        new_vm.status = self.VM_STATES.get(instance.state, "Starting")
         self.vms.append(new_vm)
 
-        #TODO: return whether this is actually successful
         return 0
 
-    def vm_poll(self, vm):
-        log.debug("ec2 vm_poll called")
 
-        
+    def vm_poll(self, vm):
+        log.debug("Polling vm with instance id %s" % vm.id)
+        # We should only get on reservation, and one instance back
+        try:
+            reservations = self.connection.get_all_instances([vm.id])
+            instance = reservations[0].instances[0]
+        except boto.exception.EC2ResponseError, e:
+            log.error("Couldn't update status because: %s" % e.error_message)
+            return vm.status
+
+        vm.status = self.VM_STATES.get(instance.state, "Starting")
+
+        return vm.status
+
+
     def vm_destroy(self, vm):
-        log.debug("ec2 vm_destroy called")
+        log.debug("Destroying vm with instance id %s" % vm.id)
+
+        # Kill VM on EC2
+        try:
+            reservations = self.connection.get_all_instances([vm.id])
+            instance = reservations[0].instances[0]
+            instance.stop()
+        except boto.exception.EC2ResponseError, e:
+            log.error("Couldn't destroy vm because: %s" % e.error_message)
+            return self.ERROR
+
+        # Delete references to this VM
+        self.resource_return(vm)
+        self.vms.remove(vm)
+
+        return 0
 

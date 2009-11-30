@@ -96,7 +96,8 @@ class ResourcePool:
                 continue
 
             # Add the new cluster to a resource pool
-            self.add_resource(new_cluster)
+            if new_cluster:
+                self.add_resource(new_cluster)
         #END For
 
 
