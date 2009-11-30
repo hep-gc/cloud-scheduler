@@ -59,37 +59,43 @@ class Job:
 
     # Constructor
     # Parameters:
-    # id       - (str) The ID of the job (via condor). Functions as name.
-    # vmtype   - (str) The VMType field specified in job submission files. (Part of Requirements)
-    # network  - (str) The network association the job requires. TODO: Should support "any"
-    # cpuarch  - (str) The CPU architecture the job requires in its run environment
-    # image    - (str) The name of the image the job is to run on
-    # imageloc - (str) The location (URL) of the image the job is to run on
-    # memory   - (int) The amount of memory in MB the job requires
-    # cpucores - (int) The number of cpu cores the job requires
-    # storage  - (int) The amount of storage space the job requires
+    # GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
+    # Requirements - (str) The Requirements string given in the job submission file:
+    #                VMType field parsed from Requirements. Can also be a simple VMType
+    #                string (will not be parsed, but will be treated as given).
+    # VMNetwork  - (str) The network association the job requires. TODO: Should support "any"
+    # VMCPUArch  - (str) The CPU architecture the job requires in its run environment
+    # VMName     - (str) The name of the image the job is to run on
+    # VMLoc      - (str) The location (URL) of the image the job is to run on
+    # VMMem      - (int) The amount of memory in MB the job requires
+    # VMCPUCores - (int) The number of cpu cores the job requires
+    # VMStorage  - (int) The amount of storage space the job requires
     # NOTE: The image field is used as a name field for the image the job will
     #   run on. The cloud scheduler will eventually be able to search a set of 
-    #   repositories for this image name. Currently, imageloc MUST be set. 
-    def __init__(self, id="default_jobID", vmtype="default_vmtype",
-	         network="default_network", cpuarch="x86", image="default_image",
-	         imageloc="default_imagelocation", memory=0, cpucores=0, storage=0):
-        self.id = id
-        self.req_vmtype   = vmtype
-        self.req_network  = network
-        self.req_cpuarch  = cpuarch
-        self.req_image    = image
-        self.req_imageloc = imageloc
-        self.req_memory   = memory
-        self.req_cpucores = cpucores
-        self.req_storage  = storage
+    #   repositories for this image name. Currently, imageloc MUST be set.
+    #
+    # TODO: Set default job properties in the cloud scheduler main config file
+    #      (Have option to set them there, and default values) 
+    def __init__(self, GlobalJobId="None", Requirements="canfarbase",
+	         VMNetwork="private", VMCPUArch="x86", VMName="Default Image",
+	         VMLoc="http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.dev.img.gz", 
+             VMMem=512, VMCPUCores=1, VMStorage=1):
+        self.id = GlobalJobId
+        self.req_vmtype   = self.parse_classAd_requirements(Requirements)
+        self.req_network  = VMNetwork
+        self.req_cpuarch  = VMCPUArch
+        self.req_image    = VMName
+        self.req_imageloc = VMLoc
+        self.req_memory   = int(VMMem)
+        self.req_cpucores = int(VMCPUCores)
+        self.req_storage  = int(VMStorage)
 
         # Set the new job's status
         self.status = self.statuses[0]
 	
         log.debug("New Job object created:")
         log.debug("Job - ID: %s, VM Type: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
-          % (id, vmtype, network, image, imageloc, memory))
+          % (self.id, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_memory))
 
     # log
     # Log a short string representing the job
@@ -115,16 +121,42 @@ class Job:
             return
         self.status = status
 
+
+    # Parse classAd Requirements string.
+    # Takes the Requirements string from a condor job classad and retrieves the
+    # VMType string. Checks for other inputs (Null or VMType string alone)
+    # NOTE: Could be expanded to return a name=>value dictionary of all Requirements
+    #       fields. (Not currently necessary).
+    # Parameters:
+    #   requirements - (str) The Requirements string from a condor job classAd, or a
+    #                  VMType string, or None (the null object)
+    #
+    # TODO: Change return of default VM type to a default set in cloud scheduler main.conf!
+    def parse_classAd_requirements(self, requirements):
+        
+        # Check for None parameter. Return default string if None.
+        if (requirements == None):
+            log.debug("parse_classAd_requirements - No VMType specified. Using default.")
+            return "Default VMType"
+        
+        # Match against the Requirements string
+        req_re = "(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
+        match = re.search(req_re, requirements)
+        if match:
+            log.debug("parse_classAd_requirements - VMType parsed from "
+              + "Requirements string: %s" % match.group('vm_type'))
+            return match.group('vm_type')
+        else:
+            log.debug("parse_classAd_requirements - No Requirements string received." 
+              + " String is not null. Using string value: %s" % requirements)
+            return requirements
+
+
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
 # complete. Keeps scheduled and unscheduled jobs.
 class JobPool:
 
-    ## Instance Variables
-
-    # Default constant variables for Job creation.
-    # TODO: Remove when these options are supported
-    DEF_CPUCORES   = 1
-    DEF_STORAGE    = 0
+    ## Instance Variables:
 
     # The 'jobs' list holds all unscheduled jobs in the system. When a job is
     # scheduled by any scheduler that job is moved to 'scheduled_jobs'.
@@ -185,24 +217,22 @@ class JobPool:
             for soap_classad in job_ads.classAdArray.item:
                 new_classad = {}
                 for attribute in soap_classad.item:
-                    new_classad[attribute.name] = attribute.value
+                    attribute_key = str(attribute.name)
+                    new_classad[attribute_key] = attribute.value
                 classads.append(new_classad)
             
             # Create a new list for the jobs in the condor queue
             # TODO: INEFFICIENT. Should create a jobs list straight from the ClassAdStructArrayAndStatus
             condor_jobs = []
             for classad in classads:
+                # TODO: Remove inefficient cutting down of dictionary. Need a better way to access
+                #       Job parameters via classAd (DIRECT ACCESS!)
+                job_dict = self.make_job_dict(classad)
+                
                 # Create Jobs from the classAd data
-                # TODO: If values from VM fields are not present, substitute defaults
-                con_job = Job(id = classad['GlobalJobId'],
-                            vmtype  = self.parse_classAd_requirements(classad['Requirements']),
-                            network = classad['VMNetwork'],
-                            cpuarch = classad['VMCPUArch'],
-                            image   = classad['VMName'],
-                            imageloc= classad['VMLoc'],
-                            memory  = int(classad['VMMem']),
-                            cpucores= int(classad['VMCPUCores']),
-                            storage = int(classad['VMStorage']),)
+                # Note: using the '**' operator, which calls a named-parameter function with the values
+                # of dictionary keys of the same name (as the function parameters)
+                con_job = Job(**job_dict)
                 condor_jobs.append(con_job)
                 
             log.debug("job_querySOAP - Jobs read from condor scheduler, stored in condor jobs list")
@@ -265,27 +295,45 @@ class JobPool:
     
     ## JobPool Private methods (Support methods)
     
-    # Parse classAd Requirements string.
-    # Takes the Requirements string from a condor job classad and retrieves the
-    # VMType string.
-    # NOTE: Could be expanded to return a name=>value dictionary of all Requirements
-    #       fields. (Not currently necessary).
+    # Create a dictionary for Job creation from a full Condor classAd job dictionary
+    # If a key for a required job parameter does not exist, add nothing to the new
+    # job dictionary (non-present parameters will invoke the default function parameter
+    # value).
     # Parameters:
-    #   requirements - (str) The Requirements string from a condor job classAd
-    def parse_classAd_requirements(self, requirements):
+    #   job_classad (dict) - A dictionary of ALL the Condor job classad fields
+    # Return:
+    #   Returns a dictionary of the Job object parameters the exist in the given
+    #   Condor job classad
+    #
+    # TODO: This needs to be replaced with something more efficient.
+    def make_job_dict(self, job_classad):
+        log.debug("make_job_dict - Cutting Condor classad dictionary into Job dictionary.")
         
-        req_re = "(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
-        match = re.search(req_re, requirements)
-        if match:
-            log.debug("parse_classAd_requirements - VMType parsed from"
-                      + "Requirements string: %s" % match.group('vm_type'))
-            return match.group('vm_type')
-        else:
-            log.warning("parse_classAd_requirements - No VMType specified in"
-                        + "job description. Using default.")
-            return "default_VMType"
-	
-
+        job = {}
+        
+        # Check for all required Job fields. Add to job dict. if present.
+        if ('GlobalJobId' in job_classad):
+            job['GlobalJobId'] = job_classad['GlobalJobId']
+        if ('Requirements' in job_classad):
+            job['Requirements'] = job_classad['Requirements']
+        if ('VMNetwork' in job_classad):
+            job['VMNetwork'] = job_classad['VMNetwork']
+        if ('VMCPUArch' in job_classad):
+            job['VMCPUArch'] = job_classad['VMCPUArch']
+        if ('VMName' in job_classad):
+            job['VMName'] = job_classad['VMName']
+        if ('VMLoc' in job_classad):
+            job['VMLoc'] = job_classad['VMLoc']
+        if ('VMMem' in job_classad):
+            job['VMMem'] = job_classad['VMMem']
+        if ('VMCPUCores' in job_classad):
+            job['VMCPUCores'] = job_classad['VMCPUCores']    
+        if ('VMStorage' in job_classad):
+            job['VMStorage'] = job_classad['VMStorage']
+        
+        return job
+    
+    
     # Remove System Job
     # Attempts to remove a given job from the JobPool unscheduled
     # or scheduled job lists.
