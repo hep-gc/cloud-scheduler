@@ -36,7 +36,7 @@ import cloudscheduler.config as config
 
 ## GLOBAL VARIABLES
 
-usage_str = "cloud_scheduler [-f FILE | --config-file] [-c FILE | --cluster-config FILE] [-m SERVER | --MDS SERVER]"
+usage_str = "cloud_scheduler [-f FILE | --config-file] [-c FILE | --cloud-config FILE] [-m SERVER | --MDS SERVER]"
 version_str = "Cloud Scheduler v 0.1"
 
 
@@ -271,6 +271,9 @@ def main():
 
     # Set up logging
     log.setLevel(LEVELS[config.log_level])
+    # TODO: Requires Python 2.5+
+    #log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
+    #                                  "- %(funcName)s: %(message)s")
     log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
                                       "- %(message)s")
     if config.log_stdout:

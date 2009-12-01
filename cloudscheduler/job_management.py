@@ -60,9 +60,7 @@ class Job:
     # Constructor
     # Parameters:
     # GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
-    # Requirements - (str) The Requirements string given in the job submission file:
-    #                VMType field parsed from Requirements. Can also be a simple VMType
-    #                string (will not be parsed, but will be treated as given).
+    # VMType     - (str) The VMType required by the job (set in VM's condor_config file)
     # VMNetwork  - (str) The network association the job requires. TODO: Should support "any"
     # VMCPUArch  - (str) The CPU architecture the job requires in its run environment
     # VMName     - (str) The name of the image the job is to run on
@@ -76,12 +74,12 @@ class Job:
     #
     # TODO: Set default job properties in the cloud scheduler main config file
     #      (Have option to set them there, and default values) 
-    def __init__(self, GlobalJobId="None", Requirements="canfarbase",
-	         VMNetwork="private", VMCPUArch="x86", VMName="Default Image",
+    def __init__(self, GlobalJobId="None", VMType="canfarbase",
+	         VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
 	         VMLoc="http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.dev.img.gz", 
              VMMem=512, VMCPUCores=1, VMStorage=1):
         self.id = GlobalJobId
-        self.req_vmtype   = self.parse_classAd_requirements(Requirements)
+        self.req_vmtype   = VMType
         self.req_network  = VMNetwork
         self.req_cpuarch  = VMCPUArch
         self.req_image    = VMName
@@ -94,10 +92,9 @@ class Job:
         self.status = self.statuses[0]
 	
         log.debug("New Job object created:")
-        log.debug("Job - ID: %s, VM Type: %s, Network: %s, Image:%s, Image Location: %s, Memory: %d" \
+        log.debug("Job - ID: %s, VM Type: %s, Network: %s, Image: %s, Image Location: %s, Memory: %d" \
           % (self.id, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_memory))
 
-    # log
     # Log a short string representing the job
     def log(self):
         log.debug("Job ID: %s, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
@@ -120,36 +117,6 @@ class Job:
             log.debug("Status must be one of: " + string.join(self.statuses, ", "))
             return
         self.status = status
-
-
-    # Parse classAd Requirements string.
-    # Takes the Requirements string from a condor job classad and retrieves the
-    # VMType string. Checks for other inputs (Null or VMType string alone)
-    # NOTE: Could be expanded to return a name=>value dictionary of all Requirements
-    #       fields. (Not currently necessary).
-    # Parameters:
-    #   requirements - (str) The Requirements string from a condor job classAd, or a
-    #                  VMType string, or None (the null object)
-    #
-    # TODO: Change return of default VM type to a default set in cloud scheduler main.conf!
-    def parse_classAd_requirements(self, requirements):
-        
-        # Check for None parameter. Return default string if None.
-        if (requirements == None):
-            log.debug("parse_classAd_requirements - No VMType specified. Using default.")
-            return "Default VMType"
-        
-        # Match against the Requirements string
-        req_re = "(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
-        match = re.search(req_re, requirements)
-        if match:
-            log.debug("parse_classAd_requirements - VMType parsed from "
-              + "Requirements string: %s" % match.group('vm_type'))
-            return match.group('vm_type')
-        else:
-            log.debug("parse_classAd_requirements - No Requirements string received." 
-              + " String is not null. Using string value: %s" % requirements)
-            return requirements
 
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
@@ -315,7 +282,11 @@ class JobPool:
         if ('GlobalJobId' in job_classad):
             job['GlobalJobId'] = job_classad['GlobalJobId']
         if ('Requirements' in job_classad):
-            job['Requirements'] = job_classad['Requirements']
+            vmtype = self.parse_classAd_requirements(job_classad['Requirements'])
+            # If vmtype exists (is not None), store it in job dictionary
+            if (vmtype):
+                job['VMType'] = vmtype
+            # else, no VMType field in Job dictionary. Job constructor uses its default value. 
         if ('VMNetwork' in job_classad):
             job['VMNetwork'] = job_classad['VMNetwork']
         if ('VMCPUArch' in job_classad):
@@ -333,6 +304,28 @@ class JobPool:
         
         return job
     
+    # Parse classAd Requirements string.
+    # Takes the Requirements string from a condor job classad and retrieves the
+    # VMType string. Returns null object if no VMtype is specified.
+    # NOTE: Could be expanded to return a name=>value dictionary of all Requirements
+    #       fields. (Not currently necessary).
+    # Parameters:
+    #   requirements - (str) The Requirements string from a condor job classAd, or a
+    #                  VMType string, or None (the null object)
+    # Return:
+    #   The VMType string or None (null object)
+    def parse_classAd_requirements(self, requirements):
+               
+        # Match against the Requirements string
+        req_re = "(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
+        match = re.search(req_re, requirements)
+        if match:
+            log.debug("parse_classAd_requirements - VMType parsed from "
+              + "Requirements string: %s" % match.group('vm_type'))
+            return match.group('vm_type')
+        else:
+            log.debug("parse_classAd_requirements - No VMType specified. Returning None.")
+            return None
     
     # Remove System Job
     # Attempts to remove a given job from the JobPool unscheduled
