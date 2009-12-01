@@ -50,7 +50,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
             self.server.socket.settimeout(1)
             self.server.register_introspection_functions()
         except:
-            log.error("Couldn't start info server:", sys.exc_info()[0])
+            log.error("Couldn't start info server: %s" % sys.exc_info()[0])
             sys.exit(1)
 
         # Register an instance; all the methods of the instance are
