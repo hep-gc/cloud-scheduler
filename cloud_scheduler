@@ -175,7 +175,6 @@ class SchedulingTh(threading.Thread):
             #ENDFOR - Clear all unneeded VMs from the system
 
             ## Poll all remaining system VMs
-            # TODO: Fix bug here: this loops polls every running VM twice
             log.info("Scheduler - Polling all running VMs...")
             for cluster in self.resource_pool.resources:
                 for vm in cluster.vms:

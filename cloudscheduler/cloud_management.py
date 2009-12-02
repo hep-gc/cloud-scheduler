@@ -479,9 +479,8 @@ class Cluster:
     # EXPAND HERE as checkout/return become more complex
     def resource_checkout(self, vm):
         self.vm_slots -= 1
-        # NOTE: Currently, memory checking out is not supported
         # ISSUE: No way to know what mementry a VM is running on
-        # self.memory[vm.mementry] -= vm.memory
+        self.memory[vm.mementry] -= vm.memory
 
     # Returns the resources taken by the passed in VM to the Cluster's internal
     # storage.
@@ -489,9 +488,8 @@ class Cluster:
     # Notes: (as for checkout)
     def resource_return(self, vm):
         self.vm_slots += 1
-        # NOTE: Currently, memory checking out is not supported
         # ISSUE: No way to know what mementry a VM is running on
-        # self.memory[vm.mementry] += vm.memory       
+        self.memory[vm.mementry] += vm.memory       
 
 
 ## Implements cloud management functionality with the Nimbus service as part of
