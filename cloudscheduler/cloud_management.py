@@ -36,11 +36,13 @@ log = logging.getLogger("CloudLogger")
 ##
 
 
+# A class that stores and organises a list of Cluster resources
+
 class ResourcePool:
-    
-    ## Instance variables    
+
+    ## Instance variables
     resources = []
-    
+
     ## Instance methods
 
     # Constructor
@@ -104,7 +106,7 @@ class ResourcePool:
     # Add a cluster resource to the pool's resource list
     def add_resource(self, cluster):
         self.resources.append(cluster)
-        
+
     # Log a list of clusters.
     # Supports independently logging a list of clusters for specific ResourcePool
     # functionality (such a printing intermediate working cluster lists)
@@ -126,7 +128,7 @@ class ResourcePool:
             for cluster in self.resources:
                 output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
         return output
-    
+
     # Return an arbitrary resource from the 'resources' list. Does not remove
     # the returned element from the list.
     # (Currently, the first cluster in the list is returned)
@@ -134,9 +136,9 @@ class ResourcePool:
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return resource.")
             return None
-        
+
         return (self.resources[0])
-    
+
     # Return the first resource that fits the passed in VM requirements. Does
     # not remove the element returned.
     # Built to support "First-fit" scheduling.
@@ -152,7 +154,7 @@ class ResourcePool:
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return FF resource")
             return None
-        
+
         for cluster in self.resources:
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
@@ -172,10 +174,10 @@ class ResourcePool:
             # If the cluster does not have sufficient storage capacity
             if (storage > cluster.storageGB):
                 continue
-            
+
             # Return the cluster as an available resource (meets all job reqs)
             return cluster
-        
+
         # If no clusters are found (no clusters can host the required VM)
         return None
 
@@ -188,7 +190,7 @@ class ResourcePool:
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return list of fitting resources")
             return []
-        
+
         fitting_clusters = []
         for cluster in self.resources:
             # If the cluster has no open VM slots
@@ -216,8 +218,8 @@ class ResourcePool:
         log.info("List of fitting clusters: ")
         self.log_list(fitting_clusters)
         return fitting_clusters
-        
-    
+
+
     # Returns a resource that fits given requirements and fits some balance
     # criteria between clusters (for example, lowest current load or most free
     # resources of the fitting clusters).
@@ -225,7 +227,7 @@ class ResourcePool:
     # Note: Currently, we are considering the "most balanced" cluster to be that
     # with the fewest running VMs on it. This is to minimize and balance network
     # traffic to clusters, among other reasons.
-    # Other possible metrics are: 
+    # Other possible metrics are:
     #   - Most amount of free space for VMs (vm slots, memory, cpu cores..);
     #   - etc.
     # Parameters:
@@ -237,15 +239,15 @@ class ResourcePool:
     # Return: returns a Cluster object if one is found that fits VM requirments
     #         Otherwise, returns the 'None' object
     def get_resourceBF(self, network, cpuarch, memory, cpucores, storage):
-        
+
         # Get a list of fitting clusters
         fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage)
-        
+
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
             log.debug("No clusters fit requirements. Fitting resources list is empty.")
             return None
-        
+
         # Iterate through fitting clusters - save "most balanced" cluster. (LINEAR search)
         # Note: mb_cluster stands for "most balanced cluster"
         mb_cluster = fitting_clusters.pop()
@@ -255,6 +257,6 @@ class ResourcePool:
             if (cluster.num_vms() < mb_cluster_vms):
                 mb_cluster = cluster
                 mb_cluster_vms = cluster.num_vms()
-        
+
         # Return the most balanced cluster after considering all fitting clusters.
         return mb_cluster

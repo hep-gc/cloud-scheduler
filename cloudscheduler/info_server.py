@@ -45,7 +45,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
         try:
             self.server = SimpleXMLRPCServer(("localhost",
                                               config.info_server_port),
-                                              requestHandler=RequestHandler, 
+                                              requestHandler=RequestHandler,
                                               logRequests=False)
             self.server.socket.settimeout(1)
             self.server.register_introspection_functions()

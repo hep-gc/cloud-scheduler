@@ -10,7 +10,7 @@
 
 
 import xml.dom.ext
-import xml.dom.minidom  
+import xml.dom.minidom
 
 # TODO: Change all populated xml values to variables (all hardcoded values
 #       should be global variables, as for the namespace vars)
@@ -28,20 +28,20 @@ XML_OUT = "tmp_nimbus_metadata.xml"
 
 
 def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
-    
+
     # Namespace variables for populating the xml file
     root_nmspc = "http://www.globus.org/2008/06/workspace/metadata"
     def_nmspc  = "http://www.globus.org/2008/06/workspace/metadata/definition"
     log_nmspc  = "http://www.globus.org/2008/06/workspace/metadata/logistics"
     jsdl_nmspc = "http://schemas.ggf.org/jsdl/2005/11/jsdl"
     xsi_nmspc  = "http://www.w3.org/2001/XMLSchema-instance"
-        
+
     # Create document
     doc = xml.dom.minidom.Document()
 
     # Create the VirtualWorkspace (root) element
     vws_el = doc.createElementNS(root_nmspc, "VirtualWorkspace")
-    
+
     # Set document attributes (namespaces)
     vws_el.setAttribute("xmlns", root_nmspc)
     vws_el.setAttribute("xmlns:def", def_nmspc)
@@ -67,7 +67,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     # Create and add the nic level-3 child
     nic_el = doc.createElementNS(log_nmspc, "log:nic")
     networking_el.appendChild(nic_el)
-    
+
     # Create and add the name level-4 child
     log_name_el = doc.createElementNS(log_nmspc, "log:name")
     nic_el.appendChild(log_name_el)
@@ -100,7 +100,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     # CPUArchitectureName level-4
     CPUArchName_el = doc.createElementNS(jsdl_nmspc, "jsdl:CPUArchitectureName")
     CPUArch_el.appendChild(CPUArchName_el)
-    
+
     # VMM level-3
     VMM_el = doc.createElementNS(def_nmspc, "def:VMM")
     requirements_el.appendChild(VMM_el)
@@ -108,7 +108,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     # type level-4
     type_el = doc.createElementNS(def_nmspc, "def:type")
     VMM_el.appendChild(type_el)
-    
+
     # version level-4
     version_el = doc.createElementNS(def_nmspc, "def:version")
     VMM_el.appendChild(version_el)
@@ -133,7 +133,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     permissions_el = doc.createElementNS(def_nmspc, "def:permissions")
     rootVBD_el.appendChild(permissions_el)
 
-   
+
     ##
     ## Set field values (separate from tree structure)
     ##
@@ -166,7 +166,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     # TODO: mountAs  may need to change (automatically / parameter?)
     mountAs_txt = doc.createTextNode(VM_MOUNT)
     mountAs_el.appendChild(mountAs_txt)
-    
+
     permissions_txt = doc.createTextNode(VM_PERMISSIONS)
     permissions_el.appendChild(permissions_txt)
 
@@ -174,7 +174,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     ## (NOTE: Overwrites previous file)
     file_name = XML_OUT
     xml_out = open(file_name, "w")
-    
+
     # Note: toprettyxml causes parse errors with Sax
     #xml_out.write(doc.toprettyxml(encoding="utf-8"))
     xml_out.write(doc.toxml(encoding="utf-8"))

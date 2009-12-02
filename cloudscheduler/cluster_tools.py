@@ -66,7 +66,7 @@ class VM:
     # memory       - (int) The memory used by the VM
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
-    def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType", 
+    def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType",
             clusteraddr="default_hostname", cloudtype="def_cloudtype", network="public",
             cpuarch="x86", imagelocation="default_imageloc", memory=0, mementry=0,
             cpucores=0, storage=0):
@@ -85,9 +85,9 @@ class VM:
 
         # Set a status variable on new creation
         self.status = "Starting"
-        
+
         log.info("New VM object created:")
-        log.info("Name: %s, id: %s, host: %s, image: %s, memory: %d" \
+        log.info("VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
           % (name, id, clusteraddr, imagelocation, memory))
 
     def log(self):
@@ -102,16 +102,16 @@ class VM:
 
 ## The ICluster interface provides the basic structure for cluster information,
 ## and provides the framework (interface) for cloud management functionality.
-## Each of its subclasses should should correspond to a specific implementation 
-## for cloud management functionality. That is, each subclass should implement 
-## the functions in the ICluster interface according to a specific software. 
+## Each of its subclasses should should correspond to a specific implementation
+## for cloud management functionality. That is, each subclass should implement
+## the functions in the ICluster interface according to a specific software.
 
 class ICluster:
-    
+
     ## Instance methods
 
     # Constructor
-    def __init__(self, name="Dummy Cluster", host="localhost", 
+    def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0):
         self.name = name
@@ -127,10 +127,10 @@ class ICluster:
 
         log.info("New cluster %s created" % self.name)
 
-    
+
     # Print cluster information
     def log_cluster(self):
-        log.info("-" * 30 + 
+        log.info("-" * 30 +
             "Name:\t\t%s\n"        % self.name +
             "Address:\t%s\n"       % self.network_address +
             "Type:\t\t%s\n"        % self.cloud_type +
@@ -141,7 +141,7 @@ class ICluster:
             "CPU Archs:\t%s\n"     % string.join(self.cpu_archs, ", ") +
             "Network Pools:\t%s\n" % string.join(self.network_pools, ", ") +
             "-" * 30)
-    
+
     # Print a short form of cluster information
     def log(self):
         log.info("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
@@ -156,10 +156,10 @@ class ICluster:
             log.info("CLUSTER %s running VMs:" % (self.name))
             for vm in self.vms:
                 vm.log_short("\t")
-    
-    
+
+
     ## Support methods
-    
+
     # Returns the number of VMs running on the cluster (in accordance
     # to the vms[] list)
     def num_vms(self):
@@ -178,8 +178,8 @@ class ICluster:
     #       - Nimbus vm_ids are epr files
     #       - OpenNebula (and Eucalyptus?) vm_ids are names/numbers
     # TODO: Explain all params
-    
-    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch, 
+
+    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
             vm_imagelocation, vm_mem, vm_cores, vm_storage):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
@@ -187,22 +187,22 @@ class ICluster:
     def vm_recreate(self, vm):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_recreate'
-    
+
     def vm_reboot(self, vm):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_reboot'
-    
+
     def vm_destroy(self, vm):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_destroy'
-    
+
     def vm_poll(self, vm):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_poll'
 
 
     ## Private VM methods
-    
+
     # Finds a memory entry in the Cluster's 'memory' list which supports the
     # requested amount of memory for the VM. If multiple memory entries fit
     # the request, returns the first suitable entry. Returns an exact fit if
@@ -215,13 +215,13 @@ class ICluster:
         # Check for exact fit
         if (memory in self.memory):
            return self.memory.index(memory)
-        
+
         # Scan for any fit
         for i in range(len(self.memory)):
            if self.memory[i] >= memory:
                return i
-        
-        # If no entries found, return error code. 
+
+        # If no entries found, return error code.
         return(-1)
 
     # Checks out resources taken by a VM in creation from the internal rep-
@@ -247,7 +247,7 @@ class ICluster:
         log.info("Returning resources used by VM %s to Cluster %s" % (vm.name, self.name))
         self.vm_slots += 1
         # ISSUE: No way to know what mementry a VM is running on
-        self.memory[vm.mementry] += vm.memory       
+        self.memory[vm.mementry] += vm.memory
 
 
 ## Implements cloud management functionality with the Nimbus service as part of
@@ -256,44 +256,44 @@ class ICluster:
 class NimbusCluster(ICluster):
 
     ## NimbusCluster specific instance variables
-    
+
     # Nimbus global state finding regexp (parsing Poll output)
     STATE_RE = "State:\s(\w*)$"
 
     # Global Nimbus command variables
     VM_DURATION = "1000"
     VM_TARGETSTATE = "Running"
-   
+
     # A dictionary mapping Nimbus states to global states (see VM class comments
     # for the global state information)
-    # Nimbus VM states: Unstaged, Unpropagated, Propagated, Running, Paused, 
+    # Nimbus VM states: Unstaged, Unpropagated, Propagated, Running, Paused,
     # TransportReady, StagedOut, Corrupted, Cancelled.
     VM_STATES = {
          "Unstaged"       : "Starting",
          "Unpropagated"   : "Starting",
          "Propagated"     : "Starting",
          "Running"        : "Running",
-         "Paused"         : "Running",   
+         "Paused"         : "Running",
          "TransportReady" : "Running",
          "StagedOut"      : "Running",
          "Corrupted"      : "Error",
          "Cancelled"      : "Error",
     }
-    
-    
+
+
     # TODO: Explain parameters and returns
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
             vm_imagelocation, vm_mem, vm_cores, vm_storage):
-        
+
         log.debug("Nimbus cloud create command")
 
         # Create a workspace metadata xml file from passed parameters
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
           vm_cpuarch, vm_imagelocation)
-        
+
         # Set a timestamp for VM creation
         now = datetime.datetime.now()
-        
+
         # Create an EPR file name (unique with timestamp)
         vm_epr = "nimbusVM_" + now.isoformat() + ".epr"
 
@@ -312,29 +312,29 @@ class NimbusCluster(ICluster):
             return create_return
         log.debug("(vm_create) - workspace create command executed.")
 
-        # Find the memory entry in the Cluster 'memory' list which _create will be 
+        # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
         # NOTE: currently obsolete, as memory checkout is disabled (8/03/2009)
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
             # At this point, there should always be a valid mementry, as the ResourcePool
-            # get_resource methods have selected this cluster based on having an open 
+            # get_resource methods have selected this cluster based on having an open
             # memory entry that fits VM requirements.
             log.error("(vm_create) - Cluster memory list has no sufficient memory " +\
               "entries (Not supposed to happen). Returning error.")
         log.debug("(vm_create) - vm_create - Memory entry found in given cluster: %d" % vm_mementry)
-        
+
         # Create a VM object to represent the newly created VM
-        new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type, 
-            clusteraddr = self.network_address, cloudtype = self.cloud_type, 
-            network = vm_networkassoc, cpuarch = vm_cpuarch, 
-            imagelocation = vm_imagelocation, memory = vm_mem, 
+        new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type,
+            clusteraddr = self.network_address, cloudtype = self.cloud_type,
+            network = vm_networkassoc, cpuarch = vm_cpuarch,
+            imagelocation = vm_imagelocation, memory = vm_mem,
             mementry = vm_mementry, cpucores = vm_cores, storage = vm_storage)
-        
+
         # Add the new VM object to the cluster's vms list And check out required resources
         self.vms.append(new_vm)
         self.resource_checkout(new_vm)
-        
+
         log.debug("(vm_create) - VM created and stored, cluster updated.")
         return create_return
 
@@ -364,7 +364,7 @@ class NimbusCluster(ICluster):
         if (destroy_ret != 0):
             log.warning("(vm_recreate) - Destroying VM failed. Aborting recreate.")
             return destroy_ret
-        
+
         # Call create with the given VM's parameters
         log.debug("(vm_recreate) - Recreating VM %s..." % vm_name)
         create_ret = self.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, \
@@ -376,7 +376,7 @@ class NimbusCluster(ICluster):
         # Print success message and return
         log.debug("(vm_recreate) - VM %s successfully recreated." % vm_name)
         return create_ret
-   
+
 
     # TODO: Explain parameters and returns
     def vm_reboot(self, vm):
@@ -386,7 +386,7 @@ class NimbusCluster(ICluster):
         ws_cmd = self.vmreboot_factory(vm.id)
         log.debug("(vm_reboot) - workspace reboot command prepared.")
         log.debug("(vm_reboot) - Command: " + string.join(ws_cmd, " "))
-        
+
         # Execute the reboot command: wait for return
         reboot_return = self.vm_execute(ws_cmd)
 
@@ -398,8 +398,8 @@ class NimbusCluster(ICluster):
             # Causes fatal exception. ??
             #print "(vm_reboot) - VM %s failed to reboot. Setting vm status to \'Error\' and returning error code." % vm.name
             vm.status = "Error"
-            return reboot_return 
-            
+            return reboot_return
+
         # Set state to initial default state "Starting" and return
         vm.status = "Starting"
         log.debug("(vm_reboot) - workspace reboot command executed. VM rebooting...")
@@ -409,7 +409,7 @@ class NimbusCluster(ICluster):
     # TODO: Explain parameters and returns
     def vm_destroy(self, vm):
         log.debug('Nimbus cloud destroy command')
-        
+
         # Create the workspace command with destroy option as a list (priv.)
         ws_cmd = self.vmdestroy_factory(vm.id)
         log.debug("(vm_destroy) - workspace destroy command prepared.")
@@ -417,8 +417,8 @@ class NimbusCluster(ICluster):
 
         # Execute the workspace command: wait for return, stdout to log.
         destroy_return = self.vm_execute(ws_cmd)
-        
-        # Check destroy return code. If successful, continue. Otherwise, set VM to 
+
+        # Check destroy return code. If successful, continue. Otherwise, set VM to
         # error state (wait, and the polling thread will attempt a destroy later)
         if (destroy_return != 0):
             log.warning("(vm_destroy) - Error in executing workspace destroy command.")
@@ -426,7 +426,7 @@ class NimbusCluster(ICluster):
             # Causes fatal exception, for some reason
             #print "(vm_destroy) - VM %s not correctly destroyed. Setting vm status to \'Error\' and returning error code." % vm.name
             vm.status = "Error"
-            return destroy_return 
+            return destroy_return
         log.debug("(vm_destroy) - workspace destroy command executed.")
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
@@ -440,7 +440,7 @@ class NimbusCluster(ICluster):
     # TODO: Explain parameters and returns
     def vm_poll(self, vm):
         log.debug('Nimbus cloud poll command')
-        
+
         # Create workspace poll command
         ws_cmd = self.vmpoll_factory(vm.id)
         log.debug("(vm_poll) - Nimbus poll command created:\n%s" % string.join(ws_cmd, " "))
@@ -459,7 +459,7 @@ class NimbusCluster(ICluster):
 
             # Return the VM status as a string (exit this method)
             return vm.status
-        
+
         # Print output, and parse the VM status from it
         #print "(vm_poll) - STDOUT: %s" % poll_out
         log.debug("(vm_poll) - Parsing polling output...")
@@ -500,7 +500,7 @@ class NimbusCluster(ICluster):
         sp = Popen(cmd, executable="workspace", shell=False)
         ret = sp.wait()
         return ret
-    
+
     # A command execution with stdout and stderr output destination specified as a filehandle.
     # Waits on the command to finish, and returns the command's return code.
     # Parameters:
@@ -515,17 +515,17 @@ class NimbusCluster(ICluster):
             ret = sp.wait()
             return ret
         except OSError:
-            log.error("Couldn't run the following command: '%s' Are the Nimbus binaries in your $PATH?" 
+            log.error("Couldn't run the following command: '%s' Are the Nimbus binaries in your $PATH?"
                       % string.join(cmd, " "))
             raise SystemExit
         except:
             log.error("Couldn't run %s command." % cmd)
             raise
-       
-   
+
+
     # As above, a function to encapsulate command execution via Popen.
     # vm_execwait executes the given cmd list, waits for the process to finish,
-    # and returns the return code of the process. STDOUT and STDERR are stored 
+    # and returns the return code of the process. STDOUT and STDERR are stored
     # in given parameters.
     # Parameters:
     #    (cmd as above)
@@ -541,14 +541,14 @@ class NimbusCluster(ICluster):
         (out, err) = sp.communicate(input=None)
         return (ret, out, err)
 
-    
-    # The following _factory methods take the given parameters and return a list 
+
+    # The following _factory methods take the given parameters and return a list
     # representing the corresponding workspace command.
 
     def vmcreate_factory(self, epr_file, metadata_file, duration, mem, \
       deploy_state):
 
-        ws_list = ["workspace", 
+        ws_list = ["workspace",
            "-z", "none",
            "--poll-delay", "200",
            "--deploy",
@@ -561,12 +561,12 @@ class NimbusCluster(ICluster):
            "--deploy-state", deploy_state,   # Running, Paused, etc.
            "--nosubscriptions",              # Causes the command to start workspace and return immediately
            #"--exit-state", "Running",       # Running, Paused, Propagated - hard set.
-           # "--dryrun",                     
+           # "--dryrun",
           ]
 
         # Return the workspace command list
         return ws_list
-    
+
     def vmreboot_factory(self, epr_file):
         ws_list = [ "workspace", "-e", epr_file, "--reboot"]
         return ws_list
@@ -581,7 +581,7 @@ class NimbusCluster(ICluster):
 
 
 class EC2Cluster(ICluster):
-    
+
     VM_STATES = {
             "running" : "Running",
             "pending" : "Starting",
@@ -648,7 +648,7 @@ class EC2Cluster(ICluster):
                       self.cloud_type)
             return None
 
-    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch, 
+    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
                   vm_imagelocation, vm_mem, vm_cores, vm_storage):
 
         log.debug("Trying to boot %s on %s" % (vm_name, self.network_address))
@@ -664,7 +664,7 @@ class EC2Cluster(ICluster):
 
         new_vm = VM(name = vm_name, id = instance.id, vmtype = vm_type,
                     clusteraddr = self.network_address, cloudtype = self.cloud_type,
-                    network = vm_networkassoc, cpuarch = vm_cpuarch, 
+                    network = vm_networkassoc, cpuarch = vm_cpuarch,
                     imagelocation = vm_imagelocation, memory = vm_mem,
                     mementry = "FIXME", cpucores = vm_cores, storage = vm_storage)
 
