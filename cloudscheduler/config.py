@@ -39,18 +39,18 @@ def setup(path=None):
 
     # Find config file
     if not path:
-        if os.path.exists(homedir + "/.cloudscheduler/main.conf"):
-            path = homedir + "/.cloudscheduler/main.conf"
-        elif os.path.exists("/etc/cloudscheduler/main.conf"):
-            path = "/etc/cloudscheduler/main.conf"
+        if os.path.exists(homedir + "/.cloudscheduler/cloud_scheduler.conf"):
+            path = homedir + "/.cloudscheduler/cloud_scheduler.conf"
+        elif os.path.exists("/etc/cloudscheduler/cloud_scheduler.conf"):
+            path = "/etc/cloudscheduler/cloud_scheduler.conf"
         else:
             print "Configuration file problem: There doesn't seem to be " \
                   "a configuration file. " \
                   "You can specify one with the --config-file parameter, " \
-                  "or put one in ~/.clouscheduler/main.conf or "\
-                  "/etc/cloudscheduler/main.conf"
+                  "or put one in ~/.clouscheduler/cloud_scheduler.conf or "\
+                  "/etc/cloudscheduler/cloud_scheduler.conf"
             sys.exit(1)
-    
+
     # Read config file
     config_file = ConfigParser.ConfigParser()
     try:
@@ -62,7 +62,7 @@ def setup(path=None):
     except:
         print "Configuration file problem: There is something wrong with " \
               "your config file."
-        sys.exit(1)   
+        sys.exit(1)
 
     if config_file.has_option("global", "condor_webservice_url"):
         condor_webservice_url = config_file.get("global",
@@ -84,7 +84,7 @@ def setup(path=None):
         log_level = config_file.get("logging", "log_level")
 
     if config_file.has_option("logging", "log_location"):
-        log_location = config_file.get("logging", "log_location")
+        log_location = os.path.expanduser(config_file.get("logging", "log_location"))
 
     if config_file.has_option("logging", "log_stdout"):
         log_stdout = config_file.getboolean("logging", "log_stdout")
