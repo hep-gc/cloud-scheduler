@@ -105,13 +105,14 @@ class VM:
         # Set a status variable on new creation
         self.status = "Starting"
         
-        log.debug("New VM object created:")
-        log.debug("VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
+        log.info("New VM object created:")
+        log.info("Name: %s, id: %s, host: %s, image: %s, memory: %d" \
           % (name, id, clusteraddr, imagelocation, memory))
 
     def log(self):
+        log.info("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
+    def log_dbg(self):
         log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
-
 
 
 # A simple class for storing a list of Cluster type resources (or Cluster sub-
@@ -127,12 +128,12 @@ class ResourcePool:
     # Constructor
     # name   - The name of the ResourcePool being created
     def __init__(self, name):
-        log.debug("New ResourcePool " + name + " created")
+        log.info("New ResourcePool " + name + " created")
         self.name = name
 
     # Read in defined clouds from cloud definition file
     def setup(self, config_file):
-        log.debug("Reading cloud definition file %s" % config_file)
+        log.info("Reading cloud configuration file %s" % config_file)
         # Check for config files with ~ in the path
         config_file = os.path.expanduser(config_file)
 
@@ -298,7 +299,7 @@ class ResourcePool:
             fitting_clusters.append(cluster)
 
         # Return the list clusters that fit given requirements
-        log.debug("List of fitting clusters: ")
+        log.info("List of fitting clusters: ")
         self.log_list(fitting_clusters)
         return fitting_clusters
         
@@ -342,8 +343,6 @@ class ResourcePool:
                 mb_cluster_vms = cluster.num_vms()
         
         # Return the most balanced cluster after considering all fitting clusters.
-        log.debug("Most balanced cluster: ")
-        mb_cluster.log()
         return mb_cluster
 
 
@@ -369,12 +368,12 @@ class Cluster:
         self.storageGB = storage
         self.vms = [] # List of running VMs
 
-        log.debug("New cluster %s created" % self.name)
+        log.info("New cluster %s created" % self.name)
 
     
     # Print cluster information
     def log_cluster(self):
-        log.debug("-" * 30 + 
+        log.info("-" * 30 + 
             "Name:\t\t%s\n"        % self.name +
             "Address:\t%s\n"       % self.network_address +
             "Type:\t\t%s\n"        % self.cloud_type +
@@ -388,16 +387,16 @@ class Cluster:
     
     # Print a short form of cluster information
     def log(self):
-        log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
+        log.info("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
           % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
           self.memory))
 
     # Print the cluster 'vms' list (via VM print)
     def log_vms(self):
         if len(self.vms) == 0:
-            log.debug("CLUSTER %s has no running VMs..." % (self.name))
+            log.info("CLUSTER %s has no running VMs..." % (self.name))
         else:
-            log.debug("CLUSTER %s running VMs:" % (self.name))
+            log.info("CLUSTER %s running VMs:" % (self.name))
             for vm in self.vms:
                 vm.log_short("\t")
     
@@ -478,6 +477,7 @@ class Cluster:
     # Note: vm_slots is automatically decremeneted by one (1).
     # EXPAND HERE as checkout/return become more complex
     def resource_checkout(self, vm):
+        log.info("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
         self.vm_slots -= 1
         # ISSUE: No way to know what mementry a VM is running on
         self.memory[vm.mementry] -= vm.memory
@@ -487,6 +487,7 @@ class Cluster:
     # Parameters: (as for checkout() )
     # Notes: (as for checkout)
     def resource_return(self, vm):
+        log.info("Returning resources used by VM %s to Cluster %s" % (vm.name, self.name))
         self.vm_slots += 1
         # ISSUE: No way to know what mementry a VM is running on
         self.memory[vm.mementry] += vm.memory       
@@ -548,11 +549,11 @@ class NimbusCluster(Cluster):
         # Execute the workspace create command: returns immediately.
         create_return = self.vm_execute(ws_cmd)
         if (create_return != 0):
-            log.debug("vm_create - Error in executing workspace create command.")
-            log.debug("vm_create - VM %s (ID: %s) not created. Returning error code." \
+            log.warning("vm_create - Error in executing workspace create command.")
+            log.warning("vm_create - VM %s (ID: %s) not created. Returning error code." \
               % (vm_name, vm_epr))
             return create_return
-        log.debug("(vm_create) - workspace create command executed.")
+        log.debug("vm_create - workspace create command executed.")
 
         # Find the memory entry in the Cluster 'memory' list which _create will be 
         # subtracted from
@@ -562,10 +563,10 @@ class NimbusCluster(Cluster):
             # At this point, there should always be a valid mementry, as the ResourcePool
             # get_resource methods have selected this cluster based on having an open 
             # memory entry that fits VM requirements.
-            log.debug("(vm_create) - Cluster memory list has no sufficient memory " +\
+            log.error("vm_create - Cluster memory list has no sufficient memory " +\
               "entries (Not supposed to happen). Returning error.")
             return (1)
-        log.debug("(vm_create) - vm_create - Memory entry found in given cluster: %d" % vm_mementry)
+        log.debug("vm_create - Memory entry found in given cluster: %d" % vm_mementry)
         
         # Create a VM object to represent the newly created VM
         new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type, 
@@ -578,7 +579,7 @@ class NimbusCluster(Cluster):
         self.vms.append(new_vm)
         self.resource_checkout(new_vm)
         
-        log.debug("(vm_create) - VM created and stored, cluster updated.")
+        log.debug("vm_create - VM created and stored, cluster updated.")
         return create_return
 
 
@@ -664,8 +665,8 @@ class NimbusCluster(Cluster):
         # Check destroy return code. If successful, continue. Otherwise, set VM to 
         # error state (wait, and the polling thread will attempt a destroy later)
         if (destroy_return != 0):
-            log.debug("(vm_destroy) - Error in executing workspace destroy command.")
-            log.debug("(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code.")
+            log.warning("(vm_destroy) - Error in executing workspace destroy command.")
+            log.warning("(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code.")
             # Causes fatal exception, for some reason
             #print "(vm_destroy) - VM %s not correctly destroyed. Setting vm status to \'Error\' and returning error code." % vm.name
             vm.status = "Error"
@@ -695,7 +696,7 @@ class NimbusCluster(Cluster):
 
         # Check the poll command return
         if (poll_return != 0):
-            log.debug("(vm_poll) - Failed polling VM %s (ID: %s)" % (vm.name, vm.id))
+            log.warning("(vm_poll) - Failed polling VM %s (ID: %s)" % (vm.name, vm.id))
             #print "(vm_poll) - STDERR: %s" % poll_err
             log.debug("(vm_poll) - Setting VM status to \'Error\'")
             vm.status = "Error"
@@ -716,12 +717,12 @@ class NimbusCluster(Cluster):
                 vm.status = self.VM_STATES[tmp_state]
                 log.debug("(vm_poll) - VM state: %s" % vm.status)
             else:
-                log.debug("(vm_poll) - Error: state %s not in VM_STATES." % tmp_state)
+                log.error("(vm_poll) - Error: state %s not in VM_STATES." % tmp_state)
                 log.debug("(vm_poll) - Setting VM status to \'Error\'")
                 vm.status = "Error"
 
         else:
-            log.debug("(vm_poll) - Parsing output failed. No regex match. Setting VM status to \'Error\'")
+            log.warning("(vm_poll) - Parsing output failed. No regex match. Setting VM status to \'Error\'")
             vm.status = "Error"
 
         # Return the VM status as a string
