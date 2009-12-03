@@ -662,11 +662,20 @@ class EC2Cluster(ICluster):
             log.error("Couldn't boot VM because: %s" % e.error_message)
             return self.ERROR
 
+        vm_mementry = self.find_mementry(vm_mem)
+        if (vm_mementry < 0):
+            # At this point, there should always be a valid mementry, as the ResourcePool
+            # get_resource methods have selected this cluster based on having an open
+            # memory entry that fits VM requirements.
+            log.debug("Cluster memory list has no sufficient memory " +\
+              "entries (Not supposed to happen). Returning error.")
+        log.debug("vm_create - Memory entry found in given cluster: %d" % vm_mementry)
+
         new_vm = VM(name = vm_name, id = instance.id, vmtype = vm_type,
                     clusteraddr = self.network_address, cloudtype = self.cloud_type,
                     network = vm_networkassoc, cpuarch = vm_cpuarch,
                     imagelocation = vm_imagelocation, memory = vm_mem,
-                    mementry = "FIXME", cpucores = vm_cores, storage = vm_storage)
+                    mementry = vm_mementry, cpucores = vm_cores, storage = vm_storage)
 
         new_vm.status = self.VM_STATES.get(instance.state, "Starting")
         self.vms.append(new_vm)
