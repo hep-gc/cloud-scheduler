@@ -36,7 +36,7 @@ import cloudscheduler.config as config
 
 ## GLOBAL VARIABLES
 
-usage_str = "cloud_scheduler [-f FILE | --config-file] [-c FILE | --cluster-config FILE] [-m SERVER | --MDS SERVER]"
+usage_str = "cloud_scheduler [-f FILE | --config-file] [-c FILE | --cloud-config FILE] [-m SERVER | --MDS SERVER]"
 version_str = "Cloud Scheduler v 0.1"
 
 
@@ -68,7 +68,7 @@ class PollingTh(threading.Thread):
 
     def run(self):
         # TODO: Implement polling thread functionality here.
-        log.debug("Poll - Starting polling thread...")
+        log.info("Starting polling thread...")
 
 # Scheduling:
 # Scheduling thread will match jobs to available resources and start vms
@@ -82,11 +82,11 @@ class SchedulingTh(threading.Thread):
         self.quit          = False
 
     def stop(self):
-        log.debug("Wating for scheduling loop to end")
+        log.debug("Waiting for scheduling loop to end")
         self.quit = True
 
     def run(self):
-        log.debug("Sched - Starting scheduling thread...")
+        log.info("Starting scheduling thread...")
 
         ########################################################################
         ## Full scheduler loop
@@ -97,13 +97,14 @@ class SchedulingTh(threading.Thread):
 
             ## Query the job pool to get new unscheduled jobs
             # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
+            log.debug("Querying Condor job pool (via SOAP)")
             self.job_pool.job_querySOAP()
 
             ## Attempt to schedule all unscheduled jobs
-            log.info("Schedule all queued jobs")
+            log.debug("Attempt to schedule all queued jobs")
             for job in self.job_pool.jobs:
 
-                log.debug("(Scheduler) - Attempting to schedule job %s" % job.get_id())
+                log.info("Attempting to schedule job: %s" % job.id)
 
                 # Find a resource that matches the job's requirements
                 target_cluster = self.resource_pool.get_resourceBF(job.req_network, \
@@ -111,15 +112,16 @@ class SchedulingTh(threading.Thread):
 
                 # If no job fits, leave job in list and continue to next job
                 if (target_cluster == None):
-                    log.info("Scheduler - No resource to match job: %s" % job.get_id())
-                    log.info("Scheduler - Leaving job unscheduled, moving to next job")
+                    log.info("No resource to match job: %s" % job.id)
+                    log.info("Leaving job unscheduled, moving to next job")
                     continue
 
                 # Print details of the resource selected
-                log.info("Scheduler - Open resource selected:")
+                log.info("Open resource selected for job %s:" % job.id)
                 target_cluster.log()
 
                 # Start VM with job requirements on the selected resource
+                log.info("Creating VM for job %s on targeted resource" % job.id)
                 create_ret = target_cluster.vm_create(job.req_image,
                         job.req_vmtype, job.req_network, job.req_cpuarch,
                         job.req_imageloc, job.req_memory, job.req_cpucores,
@@ -127,10 +129,9 @@ class SchedulingTh(threading.Thread):
 
                 # If the VM create fails, continue to the next job
                 if (create_ret != 0):
-                    log.info("Scheduler - Creating VM for job %s failed" % job.get_id())
-                    log.info("Scheduler - VM Create failed on cluster: ")
+                    log.info("Creating VM for job %s failed on cluster: " % job.id)
                     target_cluster.log()
-                    log.info("Scheduler - Leaving job unscheduled, moving to next job")
+                    log.info("Leaving job unscheduled, moving to next job")
                     continue
 
                 # Mark job as scheduled
@@ -139,23 +140,23 @@ class SchedulingTh(threading.Thread):
             #ENDFOR - Attempt to schedule each job in the job pool
 
             ## Wait for a number of seconds
-            log_with_line("Waiting")
-            log.info("Scheduler - Waiting...")
-            time.sleep(3)
+            #log_with_line("Waiting")
+            #log.debug("Scheduler - Waiting...")
+            #time.sleep(3)
 
             ## Clear all un-needed VMs from the system
             # NOTE: This could be incorporated into the poll loop below.
 
             # Gather all system jobs' required VM types
-            log.info("Scheduler - Gathering required VM types from system jobs.")
+            log.debug("Gathering required VM types from system jobs.")
             required_vmtypes = []
             for job in (self.job_pool.jobs + self.job_pool.scheduled_jobs):
                 if job.req_vmtype not in required_vmtypes:
                     required_vmtypes.append(job.req_vmtype)
-            log.debug("Scheduler - Required VM types: " + ", ".join(required_vmtypes))
+            log.debug("Required VM types: " + ", ".join(required_vmtypes))
 
             # Remove all VMs with a type not required by current system jobs
-            log.info("Scheduler - Removing unneeded VMs...")
+            log.debug("Removing unneeded VMs...")
             for cluster in self.resource_pool.resources:
                 # Use alternative loop structure to avoid unsafe remove operation
                 # (move backwards through the list - removes don't affect later list elements)
@@ -164,30 +165,29 @@ class SchedulingTh(threading.Thread):
                     i = i-1
                     # If VM is not required, destroy it
                     if (cluster.vms[i].vmtype not in required_vmtypes):
-                        log.debug("Scheduler - VM type not required. Destroying VM:")
+                        log.info("VM type %s not required. Destroying VM:" % cluster.vms[i].vmtype)
                         cluster.vms[i].log()
                         destroy_ret = cluster.vm_destroy(cluster.vms[i])
                         if (destroy_ret != 0):
-                            log.error("(Scheduler) - Destroying VM failed in attempt to clear un-needed VM. Leaving VM.")
+                            log.error("Destroying VM failed in attempt to clear an un-needed VM. Leaving VM.")
                             continue
                 #ENDWHILE - Check all VMs on a cluster
 
             #ENDFOR - Clear all unneeded VMs from the system
 
             ## Poll all remaining system VMs
-            # TODO: Fix bug here: this loops polls every running VM twice
-            log.info("Scheduler - Polling all running VMs...")
+            log.debug("Polling all running VMs...")
             for cluster in self.resource_pool.resources:
                 for vm in cluster.vms:
                     ret_state = cluster.vm_poll(vm)
 
                     # Print polled VM's state and details
-                    log.info("Scheduler - Polled VM: ")
-                    vm.log()
+                    log.debug("Polled VM: ")
+                    vm.log_dbg()
 
                     ## If the VM is in an error state, manually recreate it
                     if ret_state == "Error":
-                        log.debug("(Scheduler) - VM in error state. Recreating...")
+                        log.info("VM %s in error state. Recreating..." % vm.name)
 
                         # Store all VM fields
                         vm_name = vm.name
@@ -202,19 +202,19 @@ class SchedulingTh(threading.Thread):
                         # Destroy the VM
                         destroy_ret = cluster.vm_destroy(vm)
                         if (destroy_ret != 0):
-                            log.error("(Scheduler) - Destroying VM failed. Leaving VM in error state.")
+                            log.error("Destroying VM failed. Leaving VM in error state.")
                             continue
                         # Find an available, balanced resource to recreate on
                         target_rsrc = self.resource_pool.get_resourceBF(vm_network, vm_cpuarch, vm_mem, vm_cores, vm_storage)
                         if (target_rsrc == None):
-                            log.error("(Scheduler) - No resource found for recreation. Aborting recreate.")
+                            log.info("No resource found for recreation. Aborting recreate.")
                             continue
                         # Recreate the VM on the new resource
-                        log.debug("(Scheduler) - Open resource selected:")
+                        log.info("Open resource selected for recreate:")
                         target_rsrc.log()
                         create_ret = target_rsrc.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, vm_imageloc, vm_mem, vm_cores, vm_storage)
                         if (create_ret != 0):
-                            log.error("(Scheduler) - Recreating VM failed. Leaving VM in error state.")
+                            log.error("Recreating VM failed. Leaving VM in error state.")
                             continue
                     # ENDIF - if VM in error state
 
@@ -235,19 +235,18 @@ class SchedulingTh(threading.Thread):
         #ENDFOR - End of the main scheduler loop
 
         # Exit the scheduling thread - clean up VMs and exit
-        log.debug("Exiting scheduler thread")
+        log.info("Exiting scheduler thread")
 
         # Destroy all VMs and finish
         log.debug("Destroying all remaining VMs :-(")
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
-                log.debug("(Scheduler) - Destroying VM:")
+                log.info("Destroying VM:")
                 vm.log()
 
                 destroy_ret = cluster.vm_destroy(vm)
                 if destroy_ret != 0:
-                    log.debug("(Scheduler) - Destroying VM failed. Continuing " +\
-                      "anyway... check VM logs")
+                    log.error("Destroying VM failed. Continuing anyway... check VM logs")
 
         #ENDFOR - Attempt to destroy each remaining VM in the system
 
@@ -257,6 +256,8 @@ class SchedulingTh(threading.Thread):
 ##
 
 def main():
+    # Log entry message (for timestamp in log)
+    log.info("Cloud Scheduler system starting...")
 
     # Create a parser and process commandline arguments
     parser = OptionParser(usage=usage_str, version=version_str)
@@ -271,8 +272,11 @@ def main():
 
     # Set up logging
     log.setLevel(LEVELS[config.log_level])
+    # TODO: Requires Python 2.5+
+    #log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
+    #                                  "- %(funcName)s: %(message)s")
     log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
-                                      "- %(message)s")
+                                      "- %(lineno)d - %(message)s")
     if config.log_stdout:
         stream_handler = logging.StreamHandler()
         stream_handler.setFormatter(log_formatter)
@@ -308,12 +312,12 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    # Create a job pool
+    job_pool = job_management.JobPool("Job Pool")
+
     # Create a resource pool
     cloud_resources = cloud_management.ResourcePool("Resource Pool")
     cloud_resources.setup(config.cloud_resource_config)
-
-    # Create a job pool
-    job_pool = job_management.JobPool("Job Pool")
 
     # TODO: Add code to query an MDS to get initial cluster/cloud information
 
@@ -327,7 +331,7 @@ def main():
     info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
     info_serv.daemon = True
     info_serv.start()
-    log.debug("Started Cloud Scheduler info server...")
+    log.info("Started Cloud Scheduler info server...")
 
     # Create the Polling thread (pass resource pool)
     poller = PollingTh(cloud_resources)
@@ -337,11 +341,6 @@ def main():
     scheduler = SchedulingTh(cloud_resources, job_pool)
     scheduler.start()
 
-    log.debug("Scheduling and Polling threads started.")
-
-    # Wait on the scheduler to finish before exiting main
-    log.debug("Waiting for the scheduler to finish...")
-
     # Wait for keyboard input to exit the cloud scheduler
     try:
         while scheduler.isAlive():
@@ -350,6 +349,7 @@ def main():
         log.info("Exiting normally due to KeyboardInterrupt or SystemExit")
 
     # Clean up out threads (shuts down all running VMs)
+    log.info("System exiting gracefully")
     scheduler.stop()
     info_serv.stop()
     sys.exit()

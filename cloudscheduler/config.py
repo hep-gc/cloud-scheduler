@@ -50,7 +50,7 @@ def setup(path=None):
                   "or put one in ~/.clouscheduler/cloud_scheduler.conf or "\
                   "/etc/cloudscheduler/cloud_scheduler.conf"
             sys.exit(1)
-    
+
     # Read config file
     config_file = ConfigParser.ConfigParser()
     try:
@@ -62,7 +62,7 @@ def setup(path=None):
     except:
         print "Configuration file problem: There is something wrong with " \
               "your config file."
-        sys.exit(1)   
+        sys.exit(1)
 
     if config_file.has_option("global", "condor_webservice_url"):
         condor_webservice_url = config_file.get("global",
