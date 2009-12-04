@@ -353,6 +353,8 @@ def main():
     log.info("System exiting gracefully")
     scheduler.stop()
     info_serv.stop()
+    scheduler.join()
+    info_serv.join()
     sys.exit()
 
 
