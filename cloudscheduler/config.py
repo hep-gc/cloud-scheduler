@@ -47,7 +47,7 @@ def setup(path=None):
             print "Configuration file problem: There doesn't seem to be " \
                   "a configuration file. " \
                   "You can specify one with the --config-file parameter, " \
-                  "or put one in ~/.clouscheduler/cloud_scheduler.conf or "\
+                  "or put one in ~/.cloudscheduler/cloud_scheduler.conf or "\
                   "/etc/cloudscheduler/cloud_scheduler.conf"
             sys.exit(1)
 
