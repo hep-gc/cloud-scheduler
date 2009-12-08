@@ -72,7 +72,7 @@ def main(argv=None):
                % (sys.argv[0], server_hostname, server_port)
         print "Is the cloud scheduler running on port %s?" % server_port
     except:
-        print "Unexpected error: ", sys.exc_info()[0]
+        print "Unexpected error: ", sys.exc_info()[0], sys.exc_info()[1]
         print "Is the cloud scheduler running on port %s?" % server_port
 
 

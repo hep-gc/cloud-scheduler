@@ -25,6 +25,8 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
 import cloudscheduler.config as config
+import cluster_tools
+import simplejson as json
 
 log = logging.getLogger("CloudLogger")
 
@@ -71,6 +73,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
             def get_cluster_info(self, cluster_name):
                 output = "Cluster Info: %s\n" % cluster_name
                 cluster = cloud_resources.get_cluster(cluster_name)
+                print "get cluster (name) returned something"
                 if cluster:
                     output += cluster.get_cluster_info_short()
                 else:
@@ -107,3 +110,31 @@ class CloudSchedulerInfoServer(threading.Thread,):
 
     def stop(self):
         self.done = True
+
+class VMJSONEncoder(json.JSONEncoder):
+    def default(self, vm):
+        if not isinstance (vm, VM):
+           log.error("Cannot use VMJSONEncoder on non VM object")
+           return
+        return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
+                'clusteraddr': vm.clusteraddr, 'cloudtype': vm.cloudtype,
+                'network': vm.network, 'cpuarch': vm.cpuarch,
+                'imagelocation': vm.imagelocation, 'memory': vm.memory,
+                'mementry': vm.mementry, 'cpucores': vm.cpucores,
+                'storage': vm.storage, 'status': vm.status}
+
+class ClusterJSONEncoder(json.JSONEncoder):
+    def default(self, cluster):
+        if not isinstance (cluster, Cluster):
+           log.error("Cannot use ClusterJSONEncoder on non Cluster object")
+           return
+        vmEncodes = []
+        for vm in cluster.vms:
+            vmEncodes.append(VMJSONEncoder().encode(vm))
+        return {'name': cluster.name, 'network_address': cluster.network_address,
+                'cloud_type': cluster.cloud_type, 'memory': memory, 
+                'cpu_archs': cluster.cpu_archs, 
+                'network_pools': cluster.network_pools, 
+                'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
+                'storageGB': cluster.storageGB, 'vms': vmEncodes}
+

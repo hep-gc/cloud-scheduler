@@ -197,7 +197,7 @@ class ResourcePool:
             for cluster in self.resources:
                 output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
         return output
-    
+    # Return cluster that matches cluster_name 
     def get_cluster(self, cluster_name):
         for cluster in self.resources:
             if cluster.name == cluster_name:
@@ -251,6 +251,8 @@ class ResourcePool:
                 continue
             # If the cluster does not have sufficient storage capacity
             if (storage > cluster.storageGB):
+                continue
+            
             # Return the cluster as an available resource (meets all job reqs)
             return cluster
 
@@ -383,6 +385,7 @@ class Cluster:
         log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
           % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
           self.memory))
+    # Return a short form of cluster information
     def get_cluster_info_short(self):
         return "CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
           % (self.name, self.network_address, self.cloud_type, self.vm_slots, self.memory)
@@ -394,6 +397,7 @@ class Cluster:
             log.debug("CLUSTER %s running VMs:" % (self.name))
             for vm in self.vms:
                 vm.log_short("\t")
+    # Return information about running VMs on Cluster
     def get_cluster_vms_info(self):
         if len(self.vms) == 0:
             return "CLUSTER %s has no running VMs..." % (self.name)
@@ -401,7 +405,8 @@ class Cluster:
             output = "CLUSTER %s running VMs:" % (self.name)
             for vm in self.vms:
                 output += "\n" + vm.get_vm_info()
-                return output
+            return output
+    # Get VM with id 
     def get_vm(self, vm_id):
         for vm in self.vms:
             if vm_id == vm.id:
@@ -821,4 +826,3 @@ class NimbusCluster(Cluster):
         ws_list = [ "workspace", "-e", epr_file, "--rpquery"]
         return ws_list
 
-    
