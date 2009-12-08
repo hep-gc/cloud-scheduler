@@ -1,4 +1,4 @@
-Cloud Scheduler 0.1
+Cloud Scheduler 0.2
 
 ## INTRODUCTION
 The cloud scheduler: a cloud-enabled distributed resource manager.
@@ -53,17 +53,23 @@ cloud_scheduler
 ## PREREQUISITES
 pyXML
 suds (https://fedorahosted.org/suds/)
+boto (For EC2 support: http://code.google.com/p/boto/)
 
 You can install these on RHEL5 (and clones) with the following
 
 # yum install PyXML
-# wget 'https://fedorahosted.org/suds/attachment/wiki/WikiStart/python-suds-0.3.6-1.el5.noarch.rpm?format=raw'
-# yum localinstall python-suds-0.3.6-1.el5.noarch.rpm?format=raw
-
+#
+# wget 'https://fedorahosted.org/suds/attachment/wiki/WikiStart/python-suds-0.3.6-1.el5.noarch.rpm?format=raw' -O python-suds.el5.noarch.rpm
+# yum localinstall python-suds.el5.noarch.rpm
+#
+# wget http://boto.googlecode.com/files/boto-1.8d.tar.gz
+# tar xvf boto-1.8d.tar.gz
+# cd boto-1.8d
+# python setup.py install
 
 On Mac OS X, using Macports, you can install these with the following:
 (say you're using python 2.6)
-# sudo port install py26-xml py26-suds
+# sudo port install py26-xml py26-suds py26-boto
 
 
 ## INSTALL

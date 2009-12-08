@@ -19,6 +19,7 @@ import subprocess
 import datetime
 import sys
 import os
+import sys
 import logging
 import string
 import re
@@ -127,7 +128,14 @@ class ResourcePool:
         config_file = os.path.expanduser(config_file)
 
         cloud_config = ConfigParser.ConfigParser()
-        cloud_config.read(config_file)
+        try:
+            cloud_config.read(config_file)
+        except ConfigParser.ParsingError:
+            print >> sys.stderr, "Cloud config problem: Couldn't " \
+                  "parse your cloud config file. Check for spaces " \
+                  "before or after variables."
+            raise
+
 
         # Read in config file, parse into Cluster objects
         for cluster in cloud_config.sections():
