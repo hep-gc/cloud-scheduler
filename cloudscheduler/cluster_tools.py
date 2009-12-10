@@ -10,10 +10,12 @@
 ## This file contains the VM class, ICluster interface, as well as the
 ## implementations of this interface.
 
+import os
 import re
 import string
 import logging
 import datetime
+import tempfile
 import subprocess
 
 log = logging.getLogger("CloudLogger")
@@ -295,7 +297,8 @@ class NimbusCluster(ICluster):
         now = datetime.datetime.now()
 
         # Create an EPR file name (unique with timestamp)
-        vm_epr = "nimbusVM_" + now.isoformat() + ".epr"
+        (epr_handle, vm_epr) = tempfile.mkstemp()
+        os.close(epr_handle)
 
         # Create the workspace command as a list (private method)
         ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, self.VM_DURATION, vm_mem, \
@@ -311,6 +314,9 @@ class NimbusCluster(ICluster):
               % (vm_name, vm_epr))
             return create_return
         log.debug("(vm_create) - workspace create command executed.")
+
+        log.debug("vm_create - Deleting temporary Nimbus Metadata file")
+        os.remove(vm_metadata)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
