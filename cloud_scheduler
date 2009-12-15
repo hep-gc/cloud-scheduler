@@ -142,8 +142,8 @@ class SchedulingTh(threading.Thread):
 
             ## Wait for a number of seconds
             #log_with_line("Waiting")
-            #log.debug("Scheduler - Waiting...")
-            #time.sleep(3)
+            log.debug("Scheduler - Waiting...")
+            time.sleep(1)
 
             ## Clear all un-needed VMs from the system
             # NOTE: This could be incorporated into the poll loop below.
