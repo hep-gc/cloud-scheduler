@@ -24,6 +24,9 @@ def main(argv=None):
     parser.add_option("-p", "--port", dest="port", metavar="FILE",
                       help="Pick a custom port to connect to Cloud Scheduler"
                            "information server")
+    parser.add_option("-d", "--developer-information", action="store_true",
+                      dest="dev_info", default=False,
+                      help="Show developer information about cloud_scheduler")
     (cli_options, args) = parser.parse_args()
 
     # Initialize config
@@ -47,6 +50,10 @@ def main(argv=None):
         s = xmlrpclib.ServerProxy("http://%s:%s" %
                                   (server_hostname, server_port))
         print s.get_cloud_resources()
+
+        if (cli_options.dev_info):
+            print s.get_developer_information()
+
     except socket.error:
         print "%s: couldn't connect to cloud scheduler at %s on port %s."\
                % (sys.argv[0], server_hostname, server_port)

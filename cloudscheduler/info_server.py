@@ -58,6 +58,15 @@ class CloudSchedulerInfoServer(threading.Thread,):
         class externalFunctions:
             def get_cloud_resources(self):
                 return cloud_resources.get_pool_info()
+            def get_developer_information(self):
+                try:
+                    from guppy import hpy
+                    h = hpy()
+                    heap = h.heap()
+                    return str(heap)
+                except:
+                    return "You need to have Guppy installed to get developer " \
+                           "information" 
 
         self.server.register_instance(externalFunctions())
 
