@@ -33,11 +33,12 @@ import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
 import cloudscheduler.info_server as info_server
 import cloudscheduler.config as config
+import cloudscheduler.__version__ as version
 
 ## GLOBAL VARIABLES
 
 usage_str = "cloud_scheduler [-f FILE | --config-file] [-c FILE | --cloud-config FILE] [-m SERVER | --MDS SERVER]"
-version_str = "Cloud Scheduler v 0.1"
+version_str = "Cloud Scheduler " + version.version
 
 
 ## LOGGING SETUP
@@ -141,8 +142,8 @@ class SchedulingTh(threading.Thread):
 
             ## Wait for a number of seconds
             #log_with_line("Waiting")
-            #log.debug("Scheduler - Waiting...")
-            #time.sleep(3)
+            log.debug("Scheduler - Waiting...")
+            time.sleep(1)
 
             ## Clear all un-needed VMs from the system
             # NOTE: This could be incorporated into the poll loop below.
@@ -352,6 +353,8 @@ def main():
     log.info("System exiting gracefully")
     scheduler.stop()
     info_serv.stop()
+    scheduler.join()
+    info_serv.join()
     sys.exit()
 
 

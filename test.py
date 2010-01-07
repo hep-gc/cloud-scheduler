@@ -2,11 +2,15 @@
 
 import unittest
 import os
+import sys
 import tempfile
 import ConfigParser
+from cStringIO import StringIO
 
 import cloudscheduler.config
 import cloudscheduler.cloud_management
+
+held, sys.stderr = sys.stderr, StringIO() # Hide stderr
 
 class ConfigParserSetsCorrectValues(unittest.TestCase):
 
@@ -64,6 +68,19 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_log_max_size(self):
         self.assertEqual(int(self.log_max_size), cloudscheduler.config.log_max_size)
+
+    def test_for_spaces_before_values(self):
+
+        config_with_spaces = '''[global]
+ condor_webservice_url = "localhost"
+        '''
+
+        configfile = open(self.configfilename, 'wb')
+        configfile.write(config_with_spaces)
+        configfile.close()
+
+        self.assertRaises(ConfigParser.ParsingError,
+                          cloudscheduler.config.setup, path=self.configfilename)
 
     def tearDown(self):
         os.remove(self.configfilename)
@@ -141,6 +158,20 @@ class ResourcePoolSetup(unittest.TestCase):
             if cluster.name == self.cloud_name1:
                 found_cluster1 = True
         self.assertTrue(found_cluster1)
+
+    def test_for_spaces_before_values(self):
+
+        config_with_spaces = '''[cluster]
+ host = "localhost"
+        '''
+
+        configfile = open(self.configfilename, 'wb')
+        configfile.write(config_with_spaces)
+        configfile.close()
+
+        self.assertRaises(ConfigParser.ParsingError,
+                          self.test_pool.setup,
+                          self.configfilename)
 
     def tearDown(self):
         os.remove(self.configfilename)
