@@ -4,7 +4,6 @@
 # scheduler.
 # Usage: ./cs_clean.sh [-i : confirm all file deletions]
 
-rm $1 *.log
 rm $1 *.pyc
 rm $1 tmp_*
 rm $1 cloudscheduler/*.pyc
