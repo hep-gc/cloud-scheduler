@@ -292,6 +292,10 @@ class NimbusCluster(ICluster):
         # Create a workspace metadata xml file from passed parameters
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
           vm_cpuarch, vm_imagelocation)
+        
+        #
+        # TODO: Create the vm_deploymentrequest file here. Will take Duration, Memory, etc.
+        #
 
         # Set a timestamp for VM creation
         now = datetime.datetime.now()
@@ -301,6 +305,9 @@ class NimbusCluster(ICluster):
         os.close(epr_handle)
 
         # Create the workspace command as a list (private method)
+        #
+        # TODO: Change the factory call - give it deployment request file instead
+        #
         ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, self.VM_DURATION, vm_mem, \
           self.VM_TARGETSTATE)
         log.debug("vm_create - workspace create command prepared.")
@@ -550,7 +557,10 @@ class NimbusCluster(ICluster):
 
     # The following _factory methods take the given parameters and return a list
     # representing the corresponding workspace command.
-
+    
+    #
+    # TODO: Change factory to build a command that uses a deployment request file.
+    #
     def vmcreate_factory(self, epr_file, metadata_file, duration, mem, \
       deploy_state):
 

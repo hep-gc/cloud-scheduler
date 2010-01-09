@@ -113,10 +113,14 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     version_el = doc.createElementNS(def_nmspc, "def:version")
     VMM_el.appendChild(version_el)
 
+    #
+    # TODO: Add code for setting up a blankSpace parition somewhere below (blankspacePartition: partitionName, mountAs)
+    #
+
     # diskCollection level-2
     diskCollection_el = doc.createElementNS(def_nmspc, "def:diskCollection")
     definition_el.appendChild(diskCollection_el)
-
+    
     # rootVBD level-3
     rootVBD_el = doc.createElementNS(def_nmspc, "def:rootVBD")
     diskCollection_el.appendChild(rootVBD_el)
@@ -169,6 +173,10 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
 
     permissions_txt = doc.createTextNode(VM_PERMISSIONS)
     permissions_el.appendChild(permissions_txt)
+    
+    #
+    # TODO: Set the blankspacePartition values here (all hardcoded values)
+    #
 
     ## Create output file. Write xml. Close file.
     (xml_out, file_name) = tempfile.mkstemp()
