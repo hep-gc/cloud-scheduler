@@ -36,7 +36,6 @@ log = logging.getLogger("CloudLogger")
 ## CLASSES
 ##
 
-
 # A class that stores and organises a list of Cluster resources
 
 class ResourcePool:
