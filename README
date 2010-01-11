@@ -42,14 +42,14 @@ file from the command-line, then from the ~/... directory, and finally from the
 The cloud resource configuration file contains information on the cloud-enabled
 clusters that the cloud scheduler will use as resources. Clusters in this con-
 figuration file will be used by the cloud scheduler to create and manage VMs.
-See the cloud.conf file for an explanation of cluster configuration parameters.
+See the cloud_resources.conf file for an explanation of cluster configuration parameters.
 
 The cloud resource config file can be specified on the command-line with the
 [-c | --cloud-config=FILE] option. If the cloud resource config file is not
 specified on the command line, it will be taken from the location given in the
-cloud_resource_config field of the cloud_scheduler.conf.
+cloud_resource_config field of the cloud_scheduler.conf file.
 
-cloud_scheduler
+
 ## PREREQUISITES
 pyXML
 suds (https://fedorahosted.org/suds/)

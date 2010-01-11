@@ -9,6 +9,8 @@
 ## for Nimbus workspace commands.
 
 
+import os
+import tempfile
 import xml.dom.ext
 import xml.dom.minidom
 
@@ -23,8 +25,6 @@ VIRT_TYPE = "Xen"
 VIRT_VERSION = "3"
 VM_MOUNT = "sda"
 VM_PERMISSIONS = "ReadWrite"
-
-XML_OUT = "tmp_nimbus_metadata.xml"
 
 
 def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
@@ -113,10 +113,14 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     version_el = doc.createElementNS(def_nmspc, "def:version")
     VMM_el.appendChild(version_el)
 
+    #
+    # TODO: Add code for setting up a blankSpace parition somewhere below (blankspacePartition: partitionName, mountAs)
+    #
+
     # diskCollection level-2
     diskCollection_el = doc.createElementNS(def_nmspc, "def:diskCollection")
     definition_el.appendChild(diskCollection_el)
-
+    
     # rootVBD level-3
     rootVBD_el = doc.createElementNS(def_nmspc, "def:rootVBD")
     diskCollection_el.appendChild(rootVBD_el)
@@ -169,16 +173,18 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
 
     permissions_txt = doc.createTextNode(VM_PERMISSIONS)
     permissions_el.appendChild(permissions_txt)
+    
+    #
+    # TODO: Set the blankspacePartition values here (all hardcoded values)
+    #
 
     ## Create output file. Write xml. Close file.
-    ## (NOTE: Overwrites previous file)
-    file_name = XML_OUT
-    xml_out = open(file_name, "w")
+    (xml_out, file_name) = tempfile.mkstemp()
 
     # Note: toprettyxml causes parse errors with Sax
     #xml_out.write(doc.toprettyxml(encoding="utf-8"))
-    xml_out.write(doc.toxml(encoding="utf-8"))
-    xml_out.close()
+    os.write(xml_out, doc.toxml(encoding="utf-8"))
+    os.close(xml_out)
 
     # Print document (in pretty)
     # print (doc.toprettyxml(encoding="utf-8"))

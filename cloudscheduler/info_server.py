@@ -110,6 +110,15 @@ class CloudSchedulerInfoServer(threading.Thread,):
                 return output
             def get_json_resource(self):
                 return ResourcePoolJSONEncoder().encode(cloud_resources)
+            def get_developer_information(self):
+                try:
+                    from guppy import hpy
+                    h = hpy()
+                    heap = h.heap()
+                    return str(heap)
+                except:
+                    return "You need to have Guppy installed to get developer " \
+                           "information" 
 
         self.server.register_instance(externalFunctions())
 
