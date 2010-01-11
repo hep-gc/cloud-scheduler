@@ -26,6 +26,7 @@ from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
 import cloudscheduler.config as config
 import cluster_tools
+import cloud_management
 import simplejson as json
 
 log = logging.getLogger("CloudLogger")
@@ -92,6 +93,23 @@ class CloudSchedulerInfoServer(threading.Thread,):
                 else:
                     output += "VM with id: %s not found.\n" % vm_id
                 return output
+            def get_json_vm(self, cluster_name, vm_id):
+                output = "{}"
+                cluster = cloud_resources.get_cluster(cluster_name)
+                vm = None
+                if cluster:
+                    vm = cluster.get_vm(vm_id)
+                    if vm:
+                        output = VMJSONEncoder().encode(vm)
+                return output
+            def get_json_cluster(self, cluster_name):
+                output = "{}"
+                cluster = cloud_resources.get_cluster(cluster_name)
+                if cluster:
+                    output = ClusterJSONEncoder().encode(cluster)
+                return output
+            def get_json_resource(self):
+                return ResourcePoolJSONEncoder().encode(cloud_resources)
 
         self.server.register_instance(externalFunctions())
 
@@ -125,7 +143,7 @@ class VMJSONEncoder(json.JSONEncoder):
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
-        if not isinstance (cluster, Cluster):
+        if not isinstance (cluster, ICluster):
            log.error("Cannot use ClusterJSONEncoder on non Cluster object")
            return
         vmEncodes = []
@@ -138,3 +156,12 @@ class ClusterJSONEncoder(json.JSONEncoder):
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
                 'storageGB': cluster.storageGB, 'vms': vmEncodes}
 
+class ResourcePoolJSONEncoder(json.JSONEncoder):
+    def default(self, res_pool):
+        if not isinstance (res_pool, ResourcePool):
+           log.error("Cannot use ResourcePoolJSONEncoder on non ResourcePool Object")
+           return
+        pool = []
+        for cluster in res_pool.resources:
+            pool.append(ClusterJSONEncoder().encode(cluster))
+        return {'resources': pool}

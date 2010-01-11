@@ -34,7 +34,8 @@ def main(argv=None):
                       help="Get all VMs in Cloud Scheduler")
     parser.add_option("-n", "--vm-info", dest="vm_id", metavar="ID", 
                       help="Get information on a virtual machine")
-
+    parser.add_option("-j", "--json", dest="json", action="store_true",
+                      default=False, help="Get JSON output")
     (cli_options, args) = parser.parse_args()
 
     # Initialize config
@@ -57,7 +58,8 @@ def main(argv=None):
     try:
         s = xmlrpclib.ServerProxy("http://%s:%s" %
                                   (server_hostname, server_port))
-        print s.get_cloud_resources()
+        if not cli_options.json and not cli_options.cluster_name:
+            print s.get_cloud_resources()
         if cli_options.all_cluster:
             print s.get_cluster_resources()
         if cli_options.vms:
@@ -66,6 +68,12 @@ def main(argv=None):
             print s.get_vm_info(cli_options.cluster_name, cli_options.vm_id)
         if cli_options.cluster_name and not cli_options.vm_id:
             print s.get_cluster_info(cli_options.cluster_name)
+        if cli_options.json and cli_options.all_cluster:
+            print s.get_json_resource()
+        if cli_options.json and cli_options.vm_id and cli_options.cluster_name:
+            print s.get_json_vm(cli_options.cluster_name, cli_options.vm_id)
+        if cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
+            print s.get_json_cluster(cli_options.cluster_name)
 
     except socket.error:
         print "%s: couldn't connect to cloud scheduler at %s on port %s."\
