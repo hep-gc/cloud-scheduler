@@ -74,7 +74,6 @@ class CloudSchedulerInfoServer(threading.Thread,):
             def get_cluster_info(self, cluster_name):
                 output = "Cluster Info: %s\n" % cluster_name
                 cluster = cloud_resources.get_cluster(cluster_name)
-                print "get cluster (name) returned something"
                 if cluster:
                     output += cluster.get_cluster_info_short()
                 else:
