@@ -61,24 +61,27 @@ def main(argv=None):
     try:
         s = xmlrpclib.ServerProxy("http://%s:%s" %
                                   (server_hostname, server_port))
-        if not cli_options.json and not cli_options.cluster_name:
-            print s.get_cloud_resources()
         if cli_options.all_cluster:
             print s.get_cluster_resources()
-        if cli_options.vms:
+        elif cli_options.vms:
             print s.get_cluster_vm_resources()
-        if cli_options.vm_id and cli_options.cluster_name:
+        elif cli_options.vm_id and cli_options.cluster_name:
             print s.get_vm_info(cli_options.cluster_name, cli_options.vm_id)
-        if cli_options.cluster_name and not cli_options.vm_id:
+        elif cli_options.vm_id and not cli_options.cluster_name:
+            print "Please provide -c cluster_name with vm ID"
+        elif cli_options.cluster_name and not cli_options.vm_id:
             print s.get_cluster_info(cli_options.cluster_name)
-        if cli_options.json and cli_options.all_cluster:
+        elif cli_options.json and cli_options.all_cluster:
             print s.get_json_resource()
-        if cli_options.json and cli_options.vm_id and cli_options.cluster_name:
+        elif cli_options.json and cli_options.vm_id and cli_options.cluster_name:
             print s.get_json_vm(cli_options.cluster_name, cli_options.vm_id)
-        if cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
+        elif cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
             print s.get_json_cluster(cli_options.cluster_name)
-        if (cli_options.dev_info):
+        elif (cli_options.dev_info):
             print s.get_developer_information()
+        else:
+            print s.get_cloud_resources()
+
 
     except socket.error:
         print "%s: couldn't connect to cloud scheduler at %s on port %s."\
