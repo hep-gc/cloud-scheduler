@@ -283,8 +283,9 @@ class NimbusCluster(ICluster):
     STATE_RE = "State:\s(\w*)$"
 
     # Global Nimbus command variables
-    VM_DURATION = "1000"
+    VM_DURATION = "10080"
     VM_TARGETSTATE = "Running"
+    VM_NODES = "1"
 
     # A dictionary mapping Nimbus states to global states (see VM class comments
     # for the global state information)
@@ -311,11 +312,11 @@ class NimbusCluster(ICluster):
 
         # Create a workspace metadata xml file from passed parameters
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
-          vm_cpuarch, vm_imagelocation)
+                vm_cpuarch, vm_imagelocation)
         
-        #
-        # TODO: Create the vm_deploymentrequest file here. Will take Duration, Memory, etc.
-        #
+        # Create a deployment request file from given parameters
+        vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
+                self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES)
 
         # Set a timestamp for VM creation
         now = datetime.datetime.now()
@@ -325,11 +326,7 @@ class NimbusCluster(ICluster):
         os.close(epr_handle)
 
         # Create the workspace command as a list (private method)
-        #
-        # TODO: Change the factory call - give it deployment request file instead
-        #
-        ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, self.VM_DURATION, vm_mem, \
-          self.VM_TARGETSTATE)
+        ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest)
         log.debug("vm_create - workspace create command prepared.")
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
@@ -347,7 +344,6 @@ class NimbusCluster(ICluster):
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
-        # NOTE: currently obsolete, as memory checkout is disabled (8/03/2009)
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
             # At this point, there should always be a valid mementry, as the ResourcePool
@@ -577,12 +573,7 @@ class NimbusCluster(ICluster):
 
     # The following _factory methods take the given parameters and return a list
     # representing the corresponding workspace command.
-    
-    #
-    # TODO: Change factory to build a command that uses a deployment request file.
-    #
-    def vmcreate_factory(self, epr_file, metadata_file, duration, mem, \
-      deploy_state):
+    def vmcreate_factory(self, epr_file, metadata_file, request_file):
 
         ws_list = ["workspace",
            "-z", "none",
@@ -590,12 +581,13 @@ class NimbusCluster(ICluster):
            "--deploy",
            "--file", epr_file,
            "--metadata", metadata_file,
-           "--trash-at-shutdown",
-           "-s", "https://" + self.network_address  + ":8443/wsrf/services/WorkspaceFactoryService",
-           "--deploy-duration", duration,    # minutes
-           "--deploy-mem", str(mem),         # megabytes (convert from int)
-           "--deploy-state", deploy_state,   # Running, Paused, etc.
+           "--request", request_file,
+           "-s", "https://" + self.network_address + ":8443/wsrf/services/WorkspaceFactoryService",
            "--nosubscriptions",              # Causes the command to start workspace and return immediately
+           #"--trash-at-shutdown",
+           #"--deploy-duration", duration,    # minutes
+           #"--deploy-mem", str(mem),         # megabytes (convert from int)
+           #"--deploy-state", deploy_state,   # Running, Paused, etc.
            #"--exit-state", "Running",       # Running, Paused, Propagated - hard set.
            # "--dryrun",
           ]

@@ -25,8 +25,9 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
 import cloudscheduler.config as config
-import cluster_tools
-import cloud_management
+from cluster_tools import ICluster
+from cluster_tools import VM
+from cloud_management import ResourcePool
 import simplejson as json
 
 log = logging.getLogger("CloudLogger")
@@ -158,7 +159,7 @@ class ClusterJSONEncoder(json.JSONEncoder):
         for vm in cluster.vms:
             vmEncodes.append(VMJSONEncoder().encode(vm))
         return {'name': cluster.name, 'network_address': cluster.network_address,
-                'cloud_type': cluster.cloud_type, 'memory': memory, 
+                'cloud_type': cluster.cloud_type, 'memory': cluster.memory, 
                 'cpu_archs': cluster.cpu_archs, 
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 

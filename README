@@ -1,4 +1,4 @@
-Cloud Scheduler 0.2
+Cloud Scheduler 0.3
 
 ## INTRODUCTION
 The cloud scheduler: a cloud-enabled distributed resource manager.
@@ -79,7 +79,6 @@ To install cloud scheduler, as root, run:
 
 
 ## LICENSE
-LICENSING
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of either:
