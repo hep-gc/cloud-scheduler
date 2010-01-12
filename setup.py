@@ -1,10 +1,10 @@
 # setup.py - standard distutils setup file for Cloud Scheduler
-
-
+import sys
 from distutils.core import setup
+import cloudscheduler.__version__ as version
 
 setup(name = "Cloud Scheduler",
-    version = "0.1",
+    version = version.version,
     description = "Cloud Scheduler is a cloud-enabled Condor backend. It boots VMs to suit the jobs you submit to your Condor pool",
     author = "Duncan Penfold-Brown, Chris Usher, Patrick Armstrong, Ian Gable at University of Victoria",
     author_email = "dpb@uvic.ca",

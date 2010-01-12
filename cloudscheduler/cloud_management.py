@@ -15,9 +15,10 @@
 ##
 
 import os
+import sys
 import logging
-import ConfigParser
 
+import ConfigParser
 import cluster_tools
 
 ##
@@ -34,7 +35,6 @@ log = logging.getLogger("CloudLogger")
 ##
 ## CLASSES
 ##
-
 
 # A class that stores and organises a list of Cluster resources
 
@@ -58,7 +58,14 @@ class ResourcePool:
         config_file = os.path.expanduser(config_file)
 
         cloud_config = ConfigParser.ConfigParser()
-        cloud_config.read(config_file)
+        try:
+            cloud_config.read(config_file)
+        except ConfigParser.ParsingError:
+            print >> sys.stderr, "Cloud config problem: Couldn't " \
+                  "parse your cloud config file. Check for spaces " \
+                  "before or after variables."
+            raise
+
 
         # Read in config file, parse into Cluster objects
         for cluster in cloud_config.sections():

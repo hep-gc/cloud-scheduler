@@ -10,10 +10,12 @@
 ## This file contains the VM class, ICluster interface, as well as the
 ## implementations of this interface.
 
+import os
 import re
 import string
 import logging
 import datetime
+import tempfile
 import subprocess
 
 log = logging.getLogger("CloudLogger")
@@ -261,8 +263,9 @@ class NimbusCluster(ICluster):
     STATE_RE = "State:\s(\w*)$"
 
     # Global Nimbus command variables
-    VM_DURATION = "1000"
+    VM_DURATION = "10080"
     VM_TARGETSTATE = "Running"
+    VM_NODES = "1"
 
     # A dictionary mapping Nimbus states to global states (see VM class comments
     # for the global state information)
@@ -289,17 +292,21 @@ class NimbusCluster(ICluster):
 
         # Create a workspace metadata xml file from passed parameters
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
-          vm_cpuarch, vm_imagelocation)
+                vm_cpuarch, vm_imagelocation)
+        
+        # Create a deployment request file from given parameters
+        vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
+                self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES)
 
         # Set a timestamp for VM creation
         now = datetime.datetime.now()
 
         # Create an EPR file name (unique with timestamp)
-        vm_epr = "nimbusVM_" + now.isoformat() + ".epr"
+        (epr_handle, vm_epr) = tempfile.mkstemp()
+        os.close(epr_handle)
 
         # Create the workspace command as a list (private method)
-        ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, self.VM_DURATION, vm_mem, \
-          self.VM_TARGETSTATE)
+        ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest)
         log.debug("vm_create - workspace create command prepared.")
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
@@ -312,9 +319,11 @@ class NimbusCluster(ICluster):
             return create_return
         log.debug("(vm_create) - workspace create command executed.")
 
+        log.debug("vm_create - Deleting temporary Nimbus Metadata file")
+        os.remove(vm_metadata)
+
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
-        # NOTE: currently obsolete, as memory checkout is disabled (8/03/2009)
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
             # At this point, there should always be a valid mementry, as the ResourcePool
@@ -544,9 +553,7 @@ class NimbusCluster(ICluster):
 
     # The following _factory methods take the given parameters and return a list
     # representing the corresponding workspace command.
-
-    def vmcreate_factory(self, epr_file, metadata_file, duration, mem, \
-      deploy_state):
+    def vmcreate_factory(self, epr_file, metadata_file, request_file):
 
         ws_list = ["workspace",
            "-z", "none",
@@ -554,12 +561,13 @@ class NimbusCluster(ICluster):
            "--deploy",
            "--file", epr_file,
            "--metadata", metadata_file,
-           "--trash-at-shutdown",
-           "-s", "https://" + self.network_address  + ":8443/wsrf/services/WorkspaceFactoryService",
-           "--deploy-duration", duration,    # minutes
-           "--deploy-mem", str(mem),         # megabytes (convert from int)
-           "--deploy-state", deploy_state,   # Running, Paused, etc.
+           "--request", request_file,
+           "-s", "https://" + self.network_address + ":8443/wsrf/services/WorkspaceFactoryService",
            "--nosubscriptions",              # Causes the command to start workspace and return immediately
+           #"--trash-at-shutdown",
+           #"--deploy-duration", duration,    # minutes
+           #"--deploy-mem", str(mem),         # megabytes (convert from int)
+           #"--deploy-state", deploy_state,   # Running, Paused, etc.
            #"--exit-state", "Running",       # Running, Paused, Propagated - hard set.
            # "--dryrun",
           ]
@@ -615,28 +623,34 @@ class EC2Cluster(ICluster):
         if self.cloud_type == "AmazonEC2":
             try:
                 self.connection = boto.connect_ec2(
-                                      aws_access_key_id=self.access_key_id,
-                                      aws_secret_access_key=self.secret_access_key,
-                                      )
+                                   aws_access_key_id=self.access_key_id,
+                                   aws_secret_access_key=self.secret_access_key,
+                                   )
                 log.info("Created a connection to Amazon EC2")
+
             except boto.exception.EC2ResponseError, e:
-                log.error("Couldn't connect to Amazon EC2 because: %s" % e.error_message)
+                log.error("Couldn't connect to Amazon EC2 because: %s" %
+                                                                e.error_message)
                 return None
 
         elif self.cloud_type == "Eucalyptus":
-            #TODO: Test this with a real Eucalyptus cluster
-            region = boto.ec2.regioninfo.RegionInfo(name=self.name,
+            try:
+                region = boto.ec2.regioninfo.RegionInfo(name=self.name,
                                                  endpoint=self.network_address)
-            self.connection = boto.connect_ec2(
-                                  aws_access_key_id=self.access_key_id,
-                                  aws_secret_access_key=self.secret_access_key,
-                                  is_secure=False,
-                                  region=region,
-                                  port=8773,
-                                  path="/services/Eucalyptus",
-                                  )
-            log.info("Created a connection to Eucalyptus (%s)" % self.name)
-            #TODO: provide more helpful error message
+                self.connection = boto.connect_ec2(
+                                   aws_access_key_id=self.access_key_id,
+                                   aws_secret_access_key=self.secret_access_key,
+                                   is_secure=False,
+                                   region=region,
+                                   port=8773,
+                                   path="/services/Eucalyptus",
+                                   )
+                log.info("Created a connection to Eucalyptus (%s)" % self.name)
+
+            except boto.exception.EC2ResponseError, e:
+                log.error("Couldn't connect to Amazon EC2 because: %s" %
+                                                               e.error_message)
+                return None
 
 
         elif self.cloud_type == "OpenNebula":
@@ -645,8 +659,9 @@ class EC2Cluster(ICluster):
             raise NotImplementedError
         else:
             log.error("EC2Cluster don't know how to handle a %s cluster." %
-                      self.cloud_type)
+                                                               self.cloud_type)
             return None
+
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
                   vm_imagelocation, vm_mem, vm_cores, vm_storage):
@@ -654,28 +669,49 @@ class EC2Cluster(ICluster):
         log.debug("Trying to boot %s on %s" % (vm_name, self.network_address))
 
         try:
-            images = self.connection.get_all_images(image_ids=[vm_name])
-            reservation = images[0].run(1,1,)
-            instance = reservation.instances[0]
-            log.debug("Booted VM %s" % instance.id)
+            image = None
+            if not "Eucalyptus" == self.cloud_type:
+                image = self.connection.get_image(vm_name)
+
+            else: #HACK: for some reason Eucalyptus won't respond properly to
+                  #      get_image("whateverimg"). Use a linear search until
+                  #      this is fixed
+                  # This is Eucalyptus bug #495670
+                  # https://bugs.launchpad.net/eucalyptus/+bug/495670
+                images = self.connection.get_all_images()
+                for potential_match in images:
+                    if potential_match.id == vm_name:
+                        image = potential_match
+
+            if image:
+                reservation = image.run(1,1,)
+                instance = reservation.instances[0]
+                log.debug("Booted VM %s" % instance.id)
+            else:
+                log.error("Couldn't find image %s on %s" % (vm_name, self.host))
+                return self.ERROR
+
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't boot VM because: %s" % e.error_message)
             return self.ERROR
 
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
-            # At this point, there should always be a valid mementry, as the ResourcePool
-            # get_resource methods have selected this cluster based on having an open
-            # memory entry that fits VM requirements.
+            # At this point, there should always be a valid mementry, as the
+            # ResourcePool get_resource methods have selected this cluster
+            # based on having an open  memory entry that fits VM requirements.
             log.debug("Cluster memory list has no sufficient memory " +\
-              "entries (Not supposed to happen). Returning error.")
-        log.debug("vm_create - Memory entry found in given cluster: %d" % vm_mementry)
+                      "entries (Not supposed to happen). Returning error.")
+            return self.ERROR
+        log.debug("vm_create - Memory entry found in given cluster: %d" %
+                                                                    vm_mementry)
 
         new_vm = VM(name = vm_name, id = instance.id, vmtype = vm_type,
-                    clusteraddr = self.network_address, cloudtype = self.cloud_type,
-                    network = vm_networkassoc, cpuarch = vm_cpuarch,
-                    imagelocation = vm_imagelocation, memory = vm_mem,
-                    mementry = vm_mementry, cpucores = vm_cores, storage = vm_storage)
+                    clusteraddr = self.network_address,
+                    cloudtype = self.cloud_type, network = vm_networkassoc,
+                    cpuarch = vm_cpuarch, imagelocation = vm_imagelocation,
+                    memory = vm_mem, mementry = vm_mementry,
+                    cpucores = vm_cores, storage = vm_storage)
 
         new_vm.status = self.VM_STATES.get(instance.state, "Starting")
         self.vms.append(new_vm)
