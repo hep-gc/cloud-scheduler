@@ -277,7 +277,7 @@ def main():
     #log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
     #                                  "- %(funcName)s: %(message)s")
     log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
-                                      "- %(lineno)d - %(message)s")
+                                      "- %(lineno)4d - %(message)s")
     if config.log_stdout:
         stream_handler = logging.StreamHandler()
         stream_handler.setFormatter(log_formatter)

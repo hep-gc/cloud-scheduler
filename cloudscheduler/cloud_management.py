@@ -17,8 +17,8 @@
 import os
 import sys
 import logging
-import ConfigParser
 
+import ConfigParser
 import cluster_tools
 
 ##

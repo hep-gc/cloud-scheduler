@@ -295,8 +295,8 @@ class NimbusCluster(ICluster):
                 vm_cpuarch, vm_imagelocation)
         
         # Create a deployment request file from given parameters
-        vm_deploymentrequest = nimbus_xml.ws_deployment_factory(VM_DURATION, \
-                VM_TARGETSTATE, vm_mem, vm_storage, VM_NODES)
+        vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
+                self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES)
 
         # Set a timestamp for VM creation
         now = datetime.datetime.now()
@@ -561,10 +561,10 @@ class NimbusCluster(ICluster):
            "--deploy",
            "--file", epr_file,
            "--metadata", metadata_file,
-           "--request", request_file
-           "-s", "https://" + self.network_address  + ":8443/wsrf/services/WorkspaceFactoryService",
+           "--request", request_file,
+           "-s", "https://" + self.network_address + ":8443/wsrf/services/WorkspaceFactoryService",
            "--nosubscriptions",              # Causes the command to start workspace and return immediately
-           "--trash-at-shutdown",
+           #"--trash-at-shutdown",
            #"--deploy-duration", duration,    # minutes
            #"--deploy-mem", str(mem),         # megabytes (convert from int)
            #"--deploy-state", deploy_state,   # Running, Paused, etc.
