@@ -238,6 +238,7 @@ class ICluster:
     def resource_checkout(self, vm):
         log.info("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
         self.vm_slots -= 1
+        self.storageGB -= vm.storage
         # ISSUE: No way to know what mementry a VM is running on
         self.memory[vm.mementry] -= vm.memory
 
@@ -248,6 +249,7 @@ class ICluster:
     def resource_return(self, vm):
         log.info("Returning resources used by VM %s to Cluster %s" % (vm.name, self.name))
         self.vm_slots += 1
+        self.storageGB += vm.storage
         # ISSUE: No way to know what mementry a VM is running on
         self.memory[vm.mementry] += vm.memory
 
