@@ -28,7 +28,14 @@ import cloudscheduler.config as config
 from cluster_tools import ICluster
 from cluster_tools import VM
 from cloud_management import ResourcePool
-import simplejson as json
+# JSON lib included in 2.6+
+if sys.version_info < (2, 6):
+    try:
+        import simplejson as json
+    except:
+        raise "Please install the simplejson lib for python 2.4"
+else:
+    import json
 
 log = logging.getLogger("CloudLogger")
 
