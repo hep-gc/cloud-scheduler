@@ -19,7 +19,7 @@ import xml.dom.minidom
 # Deployment request constants
 PARTITION_NAME = "blankdisk1"       # Goes in both deployment and metadata files
 SHUTDOWN_MECH = "Trash"
-BLANKSPACE_MOUNT = "sda2"
+BLANKSPACE_MOUNT = "sdb"
 
 # Metadata constants
 NAME_URI_LVL = "http://"
@@ -27,7 +27,7 @@ VM_NIC = "eth0"
 ACQUISITION_METHOD = "AllocateAndConfigure"
 VIRT_TYPE = "Xen"
 VIRT_VERSION = "3"
-VM_MOUNT = "sda1"
+VM_MOUNT = "sda"
 VM_PERMISSIONS = "ReadWrite"
 
 

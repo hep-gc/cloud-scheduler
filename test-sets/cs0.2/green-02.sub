@@ -1,0 +1,32 @@
+####################                    
+# Condor job submission file for Cloud Scheduler Testing
+####################                                                    
+
+# Job specifications
+Universe   = vanilla
+Executable = recon.sh
+Arguments  = 240
+Log        = @JOBNUM@.green-02.log
+Output     = @JOBNUM@.green-02.out
+Error      = @JOBNUM@.green-02.error
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
+# Run-environment requirements
+Requirements = VMType =?= "green" && \
+               Arch == "INTEL" && \
+               Memory >= 1024 && \
+               Cpus >=  1 
+               #Disk >= 52428800
+
+# User requirements
++VMName        = "Green02"
++VMNetwork     = "private"
++VMCPUArch     = "x86"
++VMLoc         = "http://vmrepo.phys.uvic.ca/vms/dev-green_x86.img.gz"
++VMMem         = "1024"
++VMCPUCores    = "1"
++VMStorage     = "50"
+
+Queue
+
