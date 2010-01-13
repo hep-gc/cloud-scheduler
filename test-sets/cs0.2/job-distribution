@@ -1,0 +1,3 @@
+#!/bin/sh
+
+cat $@ | grep Hostname | sort -g | uniq -c | awk '{print $3 "   " $1}'
