@@ -1,0 +1,30 @@
+Test Sets README
+
+This README describes the contents of the test-sets directory, which contains
+sample job sets and scripts for testing the cloud scheduler.
+
+The directory is organized into subdirectories that hold the jobs and scripts
+particular to specific cloud scheduler releases. An example is the directory
+cs0.2, which holds the jobs and scripts set to acceptance test the Cloud
+Scheduler version 0.2.
+
+Test job files are .sub files.
+
+Test scripts execute various tasks to submit jobs and measure cloud scheduler
+functionality. The scripts are briefly described below.
+
+cs0.2:
+
+test-cloudscheduler
+    This script is a simple walk-through script that executes a 100 job test
+    against a running cloud scheduler. It submits 25 instances of 4 different
+    jobs (jobs with differing requirements).
+    Run ./test-cloudscheduler for information.
+submit-multiples
+    This script simply submits multiple jobs to the condor job pool. The script
+    will number output files to match the submission sequence.
+    For usage, run the ./submit-multiples
+job-distribution
+    This script gets the distribution of jobs to the hostnames of the VM machines
+    where the jobs ran. Run it on the output files of a fully completed job set.
+    ./job-distribution *.out
