@@ -61,15 +61,15 @@ def main(argv=None):
     try:
         s = xmlrpclib.ServerProxy("http://%s:%s" %
                                   (server_hostname, server_port))
-        if cli_options.all_cluster:
+        if cli_options.all_cluster and not cli_options.json:
             print s.get_cluster_resources()
         elif cli_options.vms:
             print s.get_cluster_vm_resources()
-        elif cli_options.vm_id and cli_options.cluster_name:
+        elif not cli_options.json and cli_options.vm_id and cli_options.cluster_name:
             print s.get_vm_info(cli_options.cluster_name, cli_options.vm_id)
         elif cli_options.vm_id and not cli_options.cluster_name:
             print "Please provide -c cluster_name with vm ID"
-        elif cli_options.cluster_name and not cli_options.vm_id:
+        elif not cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
             print s.get_cluster_info(cli_options.cluster_name)
         elif cli_options.json and cli_options.all_cluster:
             print s.get_json_resource()
