@@ -25,6 +25,17 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
 import cloudscheduler.config as config
+from cluster_tools import ICluster
+from cluster_tools import VM
+from cloud_management import ResourcePool
+# JSON lib included in 2.6+
+if sys.version_info < (2, 6):
+    try:
+        import simplejson as json
+    except:
+        raise "Please install the simplejson lib for python 2.4"
+else:
+    import json
 
 log = logging.getLogger("CloudLogger")
 
@@ -58,6 +69,54 @@ class CloudSchedulerInfoServer(threading.Thread,):
         class externalFunctions:
             def get_cloud_resources(self):
                 return cloud_resources.get_pool_info()
+            def get_cluster_resources(self):
+                output = "Clusters in resource pool:\n"
+                for cluster in cloud_resources.resources:
+                    output += cluster.get_cluster_info_short()+"\n"
+                return output
+            def get_cluster_vm_resources(self):
+                output = "VMs in cluster:\n"
+                for cluster in cloud_resources.resources:
+                    output += cluster.get_cluster_vms_info()+"\n"
+                return output
+            def get_cluster_info(self, cluster_name):
+                output = "Cluster Info: %s\n" % cluster_name
+                cluster = cloud_resources.get_cluster(cluster_name)
+                if cluster:
+                    output += cluster.get_cluster_info_short()
+                else:
+                    output += "Cluster named %s not found." % cluster_name
+                return output
+            def get_vm_info(self, cluster_name, vm_id):
+                output = "VM Info for VM id: %s\n" % vm_id
+                cluster = cloud_resources.get_cluster(cluster_name)
+                vm = None
+                if cluster:
+                    vm = cluster.get_vm(vm_id)
+                else:
+                    output += "Cluster %s not found.\n" % cluster_name
+                if vm:
+                    output += vm.get_vm_info()
+                else:
+                    output += "VM with id: %s not found.\n" % vm_id
+                return output
+            def get_json_vm(self, cluster_name, vm_id):
+                output = "{}"
+                cluster = cloud_resources.get_cluster(cluster_name)
+                vm = None
+                if cluster:
+                    vm = cluster.get_vm(vm_id)
+                    if vm:
+                        output = VMJSONEncoder().encode(vm)
+                return output
+            def get_json_cluster(self, cluster_name):
+                output = "{}"
+                cluster = cloud_resources.get_cluster(cluster_name)
+                if cluster:
+                    output = ClusterJSONEncoder().encode(cluster)
+                return output
+            def get_json_resource(self):
+                return ResourcePoolJSONEncoder().encode(cloud_resources)
             def get_developer_information(self):
                 try:
                     from guppy import hpy
@@ -85,3 +144,40 @@ class CloudSchedulerInfoServer(threading.Thread,):
 
     def stop(self):
         self.done = True
+
+class VMJSONEncoder(json.JSONEncoder):
+    def default(self, vm):
+        if not isinstance (vm, VM):
+           log.error("Cannot use VMJSONEncoder on non VM object")
+           return
+        return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
+                'clusteraddr': vm.clusteraddr, 'cloudtype': vm.cloudtype,
+                'network': vm.network, 'cpuarch': vm.cpuarch,
+                'imagelocation': vm.imagelocation, 'memory': vm.memory,
+                'mementry': vm.mementry, 'cpucores': vm.cpucores,
+                'storage': vm.storage, 'status': vm.status}
+
+class ClusterJSONEncoder(json.JSONEncoder):
+    def default(self, cluster):
+        if not isinstance (cluster, ICluster):
+           log.error("Cannot use ClusterJSONEncoder on non Cluster object")
+           return
+        vmEncodes = []
+        for vm in cluster.vms:
+            vmEncodes.append(VMJSONEncoder().encode(vm))
+        return {'name': cluster.name, 'network_address': cluster.network_address,
+                'cloud_type': cluster.cloud_type, 'memory': cluster.memory, 
+                'cpu_archs': cluster.cpu_archs, 
+                'network_pools': cluster.network_pools, 
+                'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
+                'storageGB': cluster.storageGB, 'vms': vmEncodes}
+
+class ResourcePoolJSONEncoder(json.JSONEncoder):
+    def default(self, res_pool):
+        if not isinstance (res_pool, ResourcePool):
+           log.error("Cannot use ResourcePoolJSONEncoder on non ResourcePool Object")
+           return
+        pool = []
+        for cluster in res_pool.resources:
+            pool.append(ClusterJSONEncoder().encode(cluster))
+        return {'resources': pool}
