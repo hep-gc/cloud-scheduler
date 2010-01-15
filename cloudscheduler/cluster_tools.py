@@ -97,8 +97,11 @@ class VM:
     def log_dbg(self):
         log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
 
-
-
+    def get_vm_info(self):
+        output = "Virtual Machine: %s \n" % self.name
+        output += "%-15s  %-10s  %-15s \n" % ("ID", "VMTYPE", "STATUS")
+        output += "%-15s  %-10s  %-15s \n" % (self.id, self.vmtype, self.status + " on " + self.clusteraddr)
+        return output
 
 
 
@@ -158,7 +161,7 @@ class ICluster:
             log.info("CLUSTER %s running VMs:" % (self.name))
             for vm in self.vms:
                 vm.log_short("\t")
-
+    
 
     ## Support methods
 
@@ -166,6 +169,27 @@ class ICluster:
     # to the vms[] list)
     def num_vms(self):
         return len(self.vms)
+    # Return a short form of cluster information
+    def get_cluster_info_short(self):
+        output = "Cluster: %s \n" % self.name
+        output += "%-25s  %-15s  %-10s  %-10s \n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY")
+        output += "%-25s  %-15s  %-10s  %-10s \n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory)
+        return output
+    # Return information about running VMs on Cluster
+    def get_cluster_vms_info(self):
+        if len(self.vms) == 0:
+            return "CLUSTER %s has no running VMs..." % (self.name)
+        else:
+            output = "CLUSTER %s running VMs:" % (self.name)
+            for vm in self.vms:
+                output += "\n" + vm.get_vm_info()
+            return output
+    # Get VM with id 
+    def get_vm(self, vm_id):
+        for vm in self.vms:
+            if vm_id == vm.id:
+                return vm
+        return None
 
 
     # VM manipulation methods
