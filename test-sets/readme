@@ -13,13 +13,9 @@ Test job files are .sub files.
 Test scripts execute various tasks to submit jobs and measure cloud scheduler
 functionality. The scripts are briefly described below.
 
-cs0.2:
 
-test-cloudscheduler
-    This script is a simple walk-through script that executes a 100 job test
-    against a running cloud scheduler. It submits 25 instances of 4 different
-    jobs (jobs with differing requirements).
-    Run ./test-cloudscheduler for information.
+GENERAL SCRIPTS (located in the scripts/ directory):
+
 submit-multiples
     This script simply submits multiple jobs to the condor job pool. The script
     will number output files to match the submission sequence.
@@ -28,3 +24,11 @@ job-distribution
     This script gets the distribution of jobs to the hostnames of the VM machines
     where the jobs ran. Run it on the output files of a fully completed job set.
     ./job-distribution *.out
+
+CLOUD SCHEDULER 0.2:
+
+test-cloudscheduler
+    This script is a simple walk-through script that executes a 100 job test
+    against a running cloud scheduler. It submits 25 instances of 4 different
+    jobs (jobs with differing requirements).
+    Run ./test-cloudscheduler for information.

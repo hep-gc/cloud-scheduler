@@ -6,10 +6,10 @@ sleep 8
 echo 
 echo Submitting jobs
 
-./submit-multiples blue-01.sub 25
-./submit-multiples blue-02.sub 25
-./submit-multiples green-01.sub 25
-./submit-multiples green-01.sub 25
+../../scripts/submit-multiples blue-01.sub 25
+../../scripts/submit-multiples blue-02.sub 25
+../../scripts/submit-multiples green-01.sub 25
+../../scripts/submit-multiples green-01.sub 25
 
 clear
 
