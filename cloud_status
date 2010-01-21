@@ -11,6 +11,13 @@ import xmlrpclib
 import sys
 import socket
 from optparse import OptionParser
+import logging
+
+import cloudscheduler.utilities as utilities 
+# We need to set up logging with a Null Handler before we # import our other libraries, since they use it. 
+log = logging.getLogger("CloudLogger")
+null_handler = utilities.NullHandler()
+log.addHandler(null_handler)
 
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.config as config

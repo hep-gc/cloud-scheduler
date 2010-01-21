@@ -2,6 +2,7 @@
 # utilities.py - utility functions not specific to cloud scheduler
 
 import os
+import logging
 
 def determine_path ():
     """Borrowed from wxglade.py"""
@@ -14,3 +15,13 @@ def determine_path ():
         print "I'm sorry, but something is wrong."
         print "There is no __file__ variable. Please contact the author."
         sys.exit ()
+
+LEVELS = {'DEBUG': logging.DEBUG,
+          'INFO': logging.INFO,
+          'WARNING': logging.WARNING,
+          'ERROR': logging.ERROR,
+          'CRITICAL': logging.CRITICAL,}
+class NullHandler(logging.Handler):
+    def emit(self, record):
+        pass
+
