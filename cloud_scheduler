@@ -30,17 +30,6 @@ from optparse import OptionParser
 import ConfigParser
 
 import cloudscheduler.utilities as utilities
-
-# We need to set up logging with a Null Handler before we
-# import our other libraries, since they use it.
-#
-# This mostly seems to be a problem with py 2.4, so if we ever
-# drop support for it, we should move this block under the rest
-# of the imports
-log = logging.getLogger("CloudLogger")
-null_handler = utilities.NullHandler()
-log.addHandler(null_handler)
-
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
 import cloudscheduler.info_server as info_server
@@ -52,6 +41,9 @@ import cloudscheduler.__version__ as version
 usage_str = "cloud_scheduler [-f FILE | --config-file] [-c FILE | --cloud-config FILE] [-m SERVER | --MDS SERVER]"
 version_str = "Cloud Scheduler " + version.version
 
+log = logging.getLogger("cloudscheduler")
+null_handler = utilities.NullHandler()
+log.addHandler(null_handler)
 
 
 ## Thread Bodies

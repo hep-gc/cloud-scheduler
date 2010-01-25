@@ -14,8 +14,9 @@ from optparse import OptionParser
 import logging
 
 import cloudscheduler.utilities as utilities 
-# We need to set up logging with a Null Handler before we # import our other libraries, since they use it. 
-log = logging.getLogger("CloudLogger")
+# We need to set up logging with a Null Handler before we
+# import our modules, since they use it. 
+log = logging.getLogger("cloudscheduler")
 null_handler = utilities.NullHandler()
 log.addHandler(null_handler)
 

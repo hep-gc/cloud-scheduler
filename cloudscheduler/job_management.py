@@ -40,7 +40,7 @@ import cloudscheduler.config as config
 ## LOGGING
 ##
 
-log = logging.getLogger("CloudLogger")
+log = None
 
 
 ##
@@ -90,6 +90,9 @@ class Job:
 
         # Set the new job's status
         self.status = self.statuses[0]
+
+        global log
+        log = logging.getLogger("cloudscheduler")
 
         log.debug("New Job object created:")
         log.debug("ID: %s, VM Type: %s, Network: %s, Image: %s, Image Location: %s, Memory: %d" \
@@ -148,6 +151,8 @@ class JobPool:
     # last_query - A timestamp for the last time the scheduler was queried,
     #              or its creation time
     def __init__(self, name):
+        global log
+        log = logging.getLogger("cloudscheduler")
         log.info("New JobPool %s created" % name)
         self.name = name
         self.last_query = datetime.datetime.now()
@@ -507,6 +512,8 @@ class JobSet:
     # Variables:
     #   set_time - (datetime) The time at which the job set was created
     def __init__(self, name, pool):
+        global log
+        log = logging.getLogger("cloudscheduler")
         log.info("New JobSet %s created" % name)
         self.name = name
         set_time = datetime.datetime.now()

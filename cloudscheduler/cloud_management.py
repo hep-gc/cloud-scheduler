@@ -24,13 +24,7 @@ import cluster_tools
 ##
 ## GLOBALS
 ##
-
-##
-## LOGGING
-##
-
-# Create a python logger
-log = logging.getLogger("CloudLogger")
+log = None
 
 ##
 ## CLASSES
@@ -48,11 +42,14 @@ class ResourcePool:
     # Constructor
     # name   - The name of the ResourcePool being created
     def __init__(self, name):
+        global log
+        log = logging.getLogger("cloudscheduler") 
         log.info("New ResourcePool " + name + " created")
         self.name = name
 
     # Read in defined clouds from cloud definition file
     def setup(self, config_file):
+
         log.info("Reading cloud configuration file %s" % config_file)
         # Check for config files with ~ in the path
         config_file = os.path.expanduser(config_file)

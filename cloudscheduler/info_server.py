@@ -37,7 +37,7 @@ if sys.version_info < (2, 6):
 else:
     import json
 
-log = logging.getLogger("CloudLogger")
+log = None
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
@@ -47,6 +47,10 @@ class CloudSchedulerInfoServer(threading.Thread,):
     cloud_resources = None
 
     def __init__(self, c_resources):
+
+        global log
+        log = logging.getLogger("cloudscheduler")
+
         #set up class
         threading.Thread.__init__(self)
         self.done = False

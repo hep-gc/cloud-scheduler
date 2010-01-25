@@ -12,30 +12,24 @@
 
 import os
 import re
+import sys
 import string
 import logging
 import datetime
 import tempfile
 import subprocess
 
-log = logging.getLogger("CloudLogger")
+log = None
 
 from subprocess import Popen
 try:
     import boto.ec2
 except ImportError:
-    log.error("To use EC2-style clouds, you need to have boto installed. "
-              "You can install it from your package manager, or get it from "
-              "http://code.google.com/p/boto/")
+        print >> sys.stderr, "To use EC2-style clouds, you need to have boto " \
+              "installed. You can install it from your package manager, " \
+              "or get it from http://code.google.com/p/boto/"
 
 import nimbus_xml
-
-##
-## LOGGING
-
-# Create a python logger
-log = logging.getLogger("CloudLogger")
-
 
 # A class for storing created VM information. Used to populate Cluster classes
 # 'vms' lists.
@@ -88,6 +82,8 @@ class VM:
         # Set a status variable on new creation
         self.status = "Starting"
 
+        global log
+        log = logging.getLogger("cloudscheduler")
         log.info("New VM object created:")
         log.info("VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
           % (name, id, clusteraddr, imagelocation, memory))
@@ -130,6 +126,8 @@ class ICluster:
         self.storageGB = storage
         self.vms = [] # List of running VMs
 
+        global log
+        log = logging.getLogger("cloudscheduler")
         log.info("New cluster %s created" % self.name)
 
 
