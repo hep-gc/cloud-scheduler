@@ -60,6 +60,7 @@ class Job:
     # Constructor
     # Parameters:
     # GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
+    # User       - (str) The user that submitted the job to Condor
     # VMType     - (str) The VMType required by the job (set in VM's condor_config file)
     # VMNetwork  - (str) The network association the job requires. TODO: Should support "any"
     # VMCPUArch  - (str) The CPU architecture the job requires in its run environment
@@ -74,11 +75,12 @@ class Job:
     #
     # TODO: Set default job properties in the cloud scheduler main config file
     #      (Have option to set them there, and default values)
-    def __init__(self, GlobalJobId="None", VMType="canfarbase",
+    def __init__(self, GlobalJobId="None", Owner="Default-User", VMType="canfarbase",
 	         VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
 	         VMLoc="http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.dev.img.gz",
              VMMem=512, VMCPUCores=1, VMStorage=1):
-        self.id = GlobalJobId
+        self.id   = GlobalJobId
+        self.user = Owner
         self.req_vmtype   = VMType
         self.req_network  = VMNetwork
         self.req_cpuarch  = VMCPUArch
@@ -95,16 +97,16 @@ class Job:
         log = logging.getLogger("cloudscheduler")
 
         log.debug("New Job object created:")
-        log.debug("ID: %s, VM Type: %s, Network: %s, Image: %s, Image Location: %s, Memory: %d" \
-          % (self.id, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_memory))
+        log.debug("ID: %s, User: %s, VM Type: %s, Network: %s, Image: %s, Image Location: %s, Memory: %d" \
+          % (self.id, self.user, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_memory))
 
     # Log a short string representing the job
     def log(self):
-        log.info("Job ID: %s, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
-          % (self.id, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory))
+        log.info("Job ID: %s, User: %s, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
+          % (self.id, self.user, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory))
     def log_dbg(self):
-        log.debug("Job ID: %s, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
-          % (self.id, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory))
+        log.debug("Job ID: %s, User: %s, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
+          % (self.id, self.user, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory))
 
 
     # Get ID
@@ -197,7 +199,6 @@ class JobPool:
                 classads.append(new_classad)
 
             # Create a new list for the jobs in the condor queue
-            # TODO: INEFFICIENT. Should create a jobs list straight from the ClassAdStructArrayAndStatus
             condor_jobs = []
             for classad in classads:
                 # TODO: Remove inefficient cutting down of dictionary. Need a better way to access
@@ -290,6 +291,8 @@ class JobPool:
         # Check for all required Job fields. Add to job dict. if present.
         if ('GlobalJobId' in job_classad):
             job['GlobalJobId'] = job_classad['GlobalJobId']
+        if ('Owner' in job_classad):
+            job['Owner'] = job_classad['Owner']
         if ('Requirements' in job_classad):
             vmtype = self.parse_classAd_requirements(job_classad['Requirements'])
             # If vmtype exists (is not None), store it in job dictionary

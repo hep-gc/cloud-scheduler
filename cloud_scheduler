@@ -104,7 +104,7 @@ class SchedulingTh(threading.Thread):
                 target_cluster = self.resource_pool.get_resourceBF(job.req_network, \
                   job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
 
-                # If no job fits, leave job in list and continue to next job
+                # If no rsrc fits, leave job in list and continue to next job
                 if (target_cluster == None):
                     log.info("No resource to match job: %s" % job.id)
                     log.info("Leaving job unscheduled, moving to next job")
@@ -172,6 +172,9 @@ class SchedulingTh(threading.Thread):
             ## Poll all remaining system VMs
             log.debug("Polling all running VMs...")
             for cluster in self.resource_pool.resources:
+            
+            # TODO: Change loop structure to for->while (see above for eg) to avoid problems
+                
                 for vm in cluster.vms:
                     ret_state = cluster.vm_poll(vm)
 
@@ -180,6 +183,10 @@ class SchedulingTh(threading.Thread):
                     vm.log_dbg()
 
                     ## If the VM is in an error state, manually recreate it
+                    # We use a manual re-create here because calling the Cluster recreate method
+                    # would simply try to recreate the VM on the same cluster. To avoid repetitious
+                    # errors (trying to recreate again and again on a bad cluster), we find another 
+                    # resource and attempt to create on that resource.
                     if ret_state == "Error":
                         log.info("VM %s in error state. Recreating..." % vm.name)
 
@@ -211,18 +218,6 @@ class SchedulingTh(threading.Thread):
                             log.error("Recreating VM failed. Leaving VM in error state.")
                             continue
                     # ENDIF - if VM in error state
-
-                    ## CANNOT USE recreate or reboot because of poll loop bug.
-                    ## If the VM is in an error state, recreate it!
-                    #if ret_state == "Error":
-                    #   print "(Scheduler) - VM in error state. Recreating..."
-                    #   recreate_ret = cluster.vm_recreate(vm)
-
-                        # If recreate fails, leave VM in error state (tbdestroyed)
-                    #   if (recreate_ret != 0):
-                    #       print "(Scheduler) - Recreating VM failed. Leaving" +\
-                    #         "VM in error state"
-                    #       continue
 
             #ENDFOR - Poll each running VM in the resource pool
 
