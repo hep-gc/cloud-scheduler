@@ -108,7 +108,8 @@ class Job:
     def __cmp__(self, other):
         # Using Python's builtin cmp - does intuitive comparisons on ints, strings, etc.
         # priority should be an int, handled by cmp.
-        return cmp(self.priority, other.priority)
+        # This should sort in order: highest priority first
+        return cmp(other.priority, self.priority)
     
     #TODO: Define __lt__ for insort and other sort methods? Might have to. Check job sorting first.
         
@@ -413,7 +414,22 @@ class JobPool:
         self.add_job_unordered(self.sched_jobs, job)
         job.set_status("Scheduled")
         log.debug("(schedule) - Job %s marked as scheduled." % job.get_id())
+    
+    
+    # Get required VM types
+    # Returns a list (of strings) containing the unique required VM types
+    # gathered from all jobs in the job pool (scheduled and unscheduled)
+    # Returns:
+    #   required_vmtypes - (list of strings) A list of required VM types
+    def get_required_vmtypes(self):
+        required_vmtypes = []
+        for jobset in (new_jobs.values() + sched_jobs.values()):
+            for job in jobset:
+                if job.req_vmtype not in required_vmtypes:
+                    required_vmtypes.append(job.req_vmtype)
         
+        log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
+                  
 
     ##
     ## JobPool Private methods (Support methods)

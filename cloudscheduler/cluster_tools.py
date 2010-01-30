@@ -456,8 +456,6 @@ class NimbusCluster(ICluster):
         if (destroy_return != 0):
             log.warning("(vm_destroy) - Error in executing workspace destroy command.")
             log.warning("(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code.")
-            # Causes fatal exception, for some reason
-            #print "(vm_destroy) - VM %s not correctly destroyed. Setting vm status to \'Error\' and returning error code." % vm.name
             vm.status = "Error"
             return destroy_return
         log.debug("(vm_destroy) - workspace destroy command executed.")
