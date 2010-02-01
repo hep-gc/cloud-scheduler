@@ -261,7 +261,7 @@ class JobPool:
                       % job_ads.status.code)
             # Remove all jobs from the system (all have finished or have been removed)
             log.debug("Removing all jobs from the system...")
-            for jobset in (new_jobs.values() + sched_jobs.values()):
+            for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
                 for sys_job in jobset:
                     self.remove_system_job(sys_job)
                     log.info("Job %s finished or removed. Cleared job from system."
@@ -423,7 +423,7 @@ class JobPool:
     #   required_vmtypes - (list of strings) A list of required VM types
     def get_required_vmtypes(self):
         required_vmtypes = []
-        for jobset in (new_jobs.values() + sched_jobs.values()):
+        for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
             for job in jobset:
                 if job.req_vmtype not in required_vmtypes:
                     required_vmtypes.append(job.req_vmtype)

@@ -96,7 +96,7 @@ class SchedulingTh(threading.Thread):
             
             ## Schedule user jobs
             log.debug("Attempt to schedule user jobs (1 job per user per cycle)")
-            for user in self.job_pool.new_jobs.jeys():
+            for user in self.job_pool.new_jobs.keys():
                 
                 # Attempt to schedule jobs in order of their appearance in user's job list
                 # (currently sorted by Job priority)
