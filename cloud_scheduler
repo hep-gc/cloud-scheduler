@@ -103,8 +103,6 @@ class SchedulingTh(threading.Thread):
                 for job in self.job_pool.new_jobs[user]:
                     
                     # Find resources that match the job's requirements
-                    # TODO: This requires a modification of the get_resource methods
-                    #       They must return a primary and secondary resource.
                     (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
                         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
                     
@@ -130,9 +128,8 @@ class SchedulingTh(threading.Thread):
                         log.info("Creating VM for job %s failed on cluster %s." % (job.id, pri_rsrc.name))
                         log.info("Attempting VM creation on secondary resource.")
                         
-                        # TODO: Decision: if a VM create fails, should we try the user's next job,
-                        #       or, should we try the next user? User fairness idea.
-                        # Currently, we go with the next user (a break, instead of a continue)
+                        # If VM creation fails for user-job on both resources (or if there is no
+                        # secondary resource), move to next user
                         if sec_rsrc == None:
                             log.info("No secondary resource available for job %s" % job.id)
                             log.info("Leaving %s's jobs unscheduled, moving on to next user" % user)
@@ -150,7 +147,6 @@ class SchedulingTh(threading.Thread):
                             job.req_storage)
                         
                         # If secondary create fails, continue to next user 
-                        # TODO: (see TODO above. Next user, or next job?)
                         if (create_ret != 0):
                             log.info("Creating VM for job %s failed on cluster %s." % (job.id, sec_rsrc.name))
                             log.info("Leaving user's jobs unscheduled. Moving to next user.")
