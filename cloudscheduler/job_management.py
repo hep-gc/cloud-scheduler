@@ -429,6 +429,7 @@ class JobPool:
                     required_vmtypes.append(job.req_vmtype)
         
         log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
+        return required_vmtypes
                   
 
     ##
