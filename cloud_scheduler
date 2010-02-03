@@ -87,15 +87,15 @@ class SchedulingTh(threading.Thread):
         ########################################################################
 
         while (not self.quit):
-            log_with_line("+++ Scheduler Cycle:")
+            log_with_line("Scheduler Cycle:")
 
             ## Query the job pool to get new unscheduled jobs
             # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
-            log.debug("Querying Condor job pool (via SOAP)")
+            log_with_line("Querying Condor job pool (via SOAP)")
             self.job_pool.job_querySOAP()
             
             ## Schedule user jobs
-            log.debug("Attempt to schedule user jobs (1 job per user per cycle)")
+            log_with_line("Attempt to schedule user jobs")
             for user in self.job_pool.new_jobs.keys():
                 
                 # Attempt to schedule jobs in order of their appearance in user's job list
@@ -166,6 +166,7 @@ class SchedulingTh(threading.Thread):
             time.sleep(1)
 
             ## Clear all un-needed VMs from the system
+            log_with_line("Clearing all un-needed VMs from the system")
             
             # TODO: Add counting code here. Count the number of jobs that require a certain VM type,
             #       and then destroy the EXCESS VMs in that type (leaving a few for spare)
@@ -192,7 +193,7 @@ class SchedulingTh(threading.Thread):
             #ENDFOR - Clear all unneeded VMs from the system
 
             ## Poll all remaining system VMs
-            log.debug("Polling all running VMs...")
+            log_with_line ("Polling all running VMs...")
             for cluster in self.resource_pool.resources:  
                 for vm in cluster.vms:
                     ret_state = cluster.vm_poll(vm)
@@ -224,17 +225,23 @@ class SchedulingTh(threading.Thread):
                         if (destroy_ret != 0):
                             log.error("Destroying VM failed. Leaving VM in error state.")
                             continue
+                        
                         # Find an available, balanced resource to recreate on
-                        target_rsrc = self.resource_pool.get_resourceBF(vm_network, vm_cpuarch, vm_mem, vm_cores, vm_storage)
-                        if (target_rsrc == None):
+                        (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(vm_network, vm_cpuarch, vm_mem, vm_cores, vm_storage)
+                        if (pri_rsrc == None):
                             log.info("No resource found for recreation. Aborting recreate.")
                             continue
+                        
                         # Recreate the VM on the new resource
                         log.info("Open resource selected for recreate:")
-                        target_rsrc.log()
-                        create_ret = target_rsrc.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, vm_imageloc, vm_mem, vm_cores, vm_storage)
+                        pri_rsrc.log()
+                        create_ret = pri_rsrc.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, vm_imageloc, vm_mem, vm_cores, vm_storage)
                         if (create_ret != 0):
                             log.error("Recreating VM failed. Leaving VM in error state.")
+                            
+                            # TODO: Could add code here to retry on secondary resource. 
+                            #       Too time consuming       
+                            
                             continue
                     # ENDIF - if VM in error state
                 # ENDFOR - for each VM in cluster vms list
@@ -246,7 +253,7 @@ class SchedulingTh(threading.Thread):
 
         # Destroy all VMs and finish
         remaining_vms = []
-        log.debug("Destroying all remaining VMs :-(")
+        log_with_line("Destroying all remaining VMs and exiting :-(")
         for cluster in self.resource_pool.resources:
             i = len(cluster.vms)
             while (i != 0):
@@ -394,7 +401,7 @@ def set_options(parser):
 # logs readable lined lines across the screen with message
 def log_with_line(msg):
     msg_len = len(msg)
-    fill = "-" * (40-msg_len)
+    fill = "-" * (120-msg_len)
     log.debug("-----"+msg+fill)
 
 

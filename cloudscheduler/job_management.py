@@ -83,7 +83,7 @@ class Job:
              VMMem=512, VMCPUCores=1, VMStorage=1):
         self.id   = GlobalJobId
         self.user = Owner
-        self.priority     = JobPrio
+        self.priority     = int(JobPrio)
         self.req_vmtype   = VMType
         self.req_network  = VMNetwork
         self.req_cpuarch  = VMCPUArch
@@ -228,13 +228,15 @@ class JobPool:
                 condor_jobs.append(con_job)
                 
             log.debug("Jobs read from condor scheduler, stored in condor jobs list")
+            log.debug("Condor jobs list:")
+            self.log_jobs_list(condor_jobs)
             
             # Update system (unscheduled and scheduled) jobs:
             #  - remove finished jobs (job in system, not in condor_jobs)
             #  - ignore jobs already in the system (job in system, also in condor_jobs)
             
             # For all jobs (where a jobset is a user's jobs, 1 set each for sched. and unsched.)
-            for jobset in (new_jobs.values() + sched_jobs.values()):
+            for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
                 for sys_job in jobset:
                     # If the system job is not in the condor queue, remove job from the system
                     # (it has finished or been manually removed)
@@ -344,7 +346,7 @@ class JobPool:
                       
             # If user's job list is empty, remove entry from the new_jobs dict
             if (self.new_jobs[job.user] == []):
-                del new_jobs[job.user]
+                del self.new_jobs[job.user]
                 log.info("User %s has no more jobs in the Unscheduled Jobs set. Removing user from queue."
                           % job.user)
                 
@@ -356,7 +358,7 @@ class JobPool:
             
             # If user's job list is empty, remove entry from sched_jobs
             if (self.sched_jobs[job.user] == []):
-                del sched_jobs[job.user]
+                del self.sched_jobs[job.user]
                 log.info("User %s has no more jobs in the Scheduled Jobs set. Removing user from queue."
                           % job.user)                     
         else:
@@ -520,7 +522,7 @@ class JobPool:
         else:
             log.debug("Scheduled jobs in %s:" % self.name)
             for user in self.sched_jobs.keys():
-                for job in sched_jobs[user]:
+                for job in self.sched_jobs[user]:
                     job.log_dbg()
 
     # log unscheduled Jobs (short)
@@ -530,9 +532,13 @@ class JobPool:
             return
         else:
             log.debug("Unscheduled jobs in %s:" % self.name)
-            for user in new_jobs.keys():
-                for job in new_jobs[user]:
+            for user in self.new_jobs.keys():
+                for job in self.new_jobs[user]:
                     job.log_dbg()
+    
+    def log_jobs_list(self, jobs):
+        for job in jobs:
+            log.debug("\tJob: %s, %10s, %4d, %10s" % (job.id, job.user, job.priority, job.req_vmtype))
 
 
     # A function to encapsulate command execution via Popen.

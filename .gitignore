@@ -1,6 +1,7 @@
 *.pyc
 *.log
 *.epr
+.nfs*
 eprs/
 .back_*
 build/
