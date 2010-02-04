@@ -21,6 +21,7 @@ import threading
 import time
 import socket
 import sys
+import platform
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
@@ -55,10 +56,10 @@ class CloudSchedulerInfoServer(threading.Thread,):
         threading.Thread.__init__(self)
         self.done = False
         cloud_resources = c_resources
-
+        host_name = platform.node()
         #set up server
         try:
-            self.server = SimpleXMLRPCServer(("localhost",
+            self.server = SimpleXMLRPCServer((host_name,
                                               config.info_server_port),
                                               requestHandler=RequestHandler,
                                               logRequests=False)
