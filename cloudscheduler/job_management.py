@@ -246,10 +246,6 @@ class JobPool:
     #   jobs - (list of Job objects) The jobs received from a condor query
     def update_jobs(self, query_jobs):
         
-        # DBG: Print query_jobs immediately
-        log.debug("Jobs received from condor query:")
-        self.log_jobs_list(query_jobs)
-        
         # If no jobs recvd, remove all jobs from the system (all have finished or have been removed)
         if (query_jobs == []):
             log.debug("No jobs received from job query. Removing all jobs from the system.")
@@ -279,15 +275,7 @@ class JobPool:
                 # If system job is in the jobs list, remove from the jobs list
                 if (self.has_job(query_jobs, sys_job)):
                     log.debug("Job %s is already in the system." % sys_job.id)
-                    #self.remove_job(query_jobs, sys_job)
-                    
-                    # Manually remove job from query jobs inline. Removal is weird.
-                    log.debug("Removal target job: %s" % sys_job.id)
-                    for rem_job in query_jobs:
-                        if (sys_job.id == rem_job.id):
-                            log.debug("Matching job found: %s" % rem_job.id)
-                            query_jobs.remove(rem_job)
-                            break
+                    self.remove_job(query_jobs, sys_job)
                     
                     # DBG: Print query_jobs after modification by update loop
                     log.debug("Query jobs after removal (system already has job):")
@@ -319,46 +307,53 @@ class JobPool:
 	            + " Note that this requires the condor SOAP API (wsdl files).")
         job_querySOAP(self)
 
-
     # Add New Job
-    # Add a new job to the system, via add_job_ordered
+    # Add a new job to the system (in the new_jobs set)
+    # Added in order (of priority)
     def add_new_job(self, job):
-        self.add_job_ordered(self.new_jobs, job)
-        
-        
-    # Add Job (Ordered)
-    # Adds a given job to the given dictionary. Stores job in the list
-    # associated with the job's username as a key in the dictionary.
-    # Uses ordered insertion on jobs by priority number.
-    def add_job_ordered(self, job_dict, job):
-        
-        # TODO: Will this work? A call by reference / call by value problem.
-        # If I add things to job_dict, will they be added to the global dict passed
-        # in? We'll see. Otherwise, right methods to specifically populate new_jobs 
-        # and sched_jobs.
-        
-        if job.user in job_dict:
-            insort(job_dict[job.user], job)
+        if job.user in self.new_jobs:
+            self.insort_job(self.new_jobs[job.user], job)
         else:
-            job_dict[job.user] = [job]
-
-
-    # Add Job (Unordered)
-    # Adds a given job to the given dictionary. Stores job in the list
-    # associated with the job's username.
-    def add_job_unordered(self, job_dict, job):
+            self.new_jobs[job.user] = [job]
+    
         
-        # TODO: Will this work? A call by reference / call by value problem.
-        # If I add things to job_dict, will they be added to the global dict passed
-        # in? We'll see. Otherwise, right methods to specifically populate new_jobs 
-        # and sched_jobs.
-        
-        # If user key exists in dict, add to existing list
-        if job.user in job_dict:
-            job_dict[job.user].append(job)
+    # Add a job to the scheduled jobs set in the system
+    def add_sched_job(self, job):
+        if job.user in self.sched_jobs:
+            self.sched_jobs[job.user].append(job)
         else:
-            job_dict[job.user] = [job]
-        
+            self.sched_jobs[job.user] = [job]
+    
+    
+    # Adds a job to a given list of job objects
+    # in order of priority. The list runs front to back, high to low
+    # priority.
+    # Note: job_list MUST be a list of Job objects
+    def insort_job(self, job_list, job):
+        ## Heuristics:
+        # Check if list is empty
+        if (job_list == []):
+            job_list.append(job)
+            return
+        # Check if job has highest priority in list
+        elif (job_list[0].priority < job.priority):
+            job_list.insert(0, job)
+            return
+        # Check back of the list - equal priorites, append
+        elif (job_list[-1].priority >= job.priority):
+            job_list.append(job)
+            return
+        # Otherwise, do a linear insert
+        # Move from back to front, as new entry is inserted AFTER entries of same priority
+        else:
+            i = len(job_list)
+            while (i != 0):
+                i = i-1
+                if (job_list[i].priority >= job.priority):
+                    job_list.insert(i+1, job)
+                    break
+            return
+            
 
     # Remove System Job
     # Attempts to remove a given job from the JobPool unscheduled
@@ -371,7 +366,8 @@ class JobPool:
         # Check for job in unscheduled job set
         # if (job.user in self.new_jobs) and (job in self.new_jobs[job.user]):
         if (job.user in self.new_jobs) and (self.has_job(self.new_jobs[job.user], job)):
-            self.new_jobs[job.user].remove(job)
+            #self.new_jobs[job.user].remove(job)
+            self.remove_job(self.new_jobs[job.user], job)
             log.debug("remove_system_job - Removing job %s from unscheduled jobs."
                       % job.id)
                       
@@ -384,7 +380,8 @@ class JobPool:
         # Check for job in scheduled job set
         # elif (job.user in self.sched_jobs) and (job in self.sched_jobs[job.user]):
         elif (job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[job.user], job)):
-            self.sched_jobs[job.user].remove(job)
+            #self.sched_jobs[job.user].remove(job)
+            self.remove_job(self.sched_jobs[job.user], job)
             log.debug("remove_system_job - Removing job %s from scheduled jobs."
                       % job.id)
             
@@ -396,6 +393,7 @@ class JobPool:
         else:
             log.warning("remove_system_job - Job does not exist in system."
                       + " Doing nothing.")
+
 
     # Remove job by id
     # Attempts to remove a job with a given job id from a given
@@ -421,8 +419,7 @@ class JobPool:
         for dead_job in removals:
             log.debug("(remove_job) - Removing job in removals list: %s" % dead_job.id)
             job_list.remove(dead_job)
-
-        
+  
         #i = len(job_list)
         #while (i != 0):
         #    i = i-1
@@ -460,8 +457,8 @@ class JobPool:
             return
         
         self.remove_system_job(job)
-        self.add_job_unordered(self.sched_jobs, job)
         job.set_status("Scheduled")
+        self.add_sched_job(job)
         log.debug("(schedule) - Job %s marked as scheduled." % job.id)
     
     
