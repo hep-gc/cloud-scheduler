@@ -13,8 +13,9 @@ A high level explanation of the cloud schduler is available from:
 http://wiki.github.com/hep-gc/cloud-scheduler
 
 For more documentation on the cloud scheduler, please refer to the following wiki pages:
--  http://wiki.github.com/hep-gc/cloud-scheduler
--  http://cloudscheduler.org
+
+-  [http://wiki.github.com/hep-gc/cloud-scheduler](http://wiki.github.com/hep-gc/cloud-scheduler)
+-  [http://cloudscheduler.org](http://cloudscheduler.org)
 
 ## Configuration
 
