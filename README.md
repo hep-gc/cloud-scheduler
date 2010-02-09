@@ -1,6 +1,6 @@
 #Cloud Scheduler 0.3
 
-## INTRODUCTION
+## Introduction
 The cloud scheduler: a cloud-enabled distributed resource manager.
 
 The cloud scheduler manages virtual machines on clouds configured with Nimbus, 
@@ -13,14 +13,15 @@ A high level explanation of the cloud schduler is available from:
 http://wiki.github.com/hep-gc/cloud-scheduler
 
 For more documentation on the cloud scheduler, please refer to the following wiki pages:
-    - http://wiki.github.com/hep-gc/cloud-scheduler
-    - http://cloudscheduler.org
+-  http://wiki.github.com/hep-gc/cloud-scheduler
+-  http://cloudscheduler.org
 
 ## Configuration
+
 There are two configuration files that define the function of the cloud scheduler. 
 These are:
 
-   ## The general cloud scheduler configuration file
+### The general cloud scheduler configuration file
 
 The general (or central) cloud scheduler configuration file contains fields for
 defining cloud scheduler program functionality, including Condor job pool con-
@@ -37,8 +38,7 @@ Note: the cloud scheduler will attempt first to get the general configuration
 file from the command-line, then from the ~/... directory, and finally from the
 /etc/... directory.
 
-
-  ##  The cloud resource configuration file
+### The cloud resource configuration file
 
 The cloud resource configuration file contains information on the cloud-enabled
 clusters that the cloud scheduler will use as resources. Clusters in this con-
@@ -51,14 +51,14 @@ specified on the command line, it will be taken from the location given in the
 cloud_resource_config field of the cloud_scheduler.conf file.
 
 
-# PREREQUISITES
+# Prerequisites
 pyXML
 
 suds (https://fedorahosted.org/suds/)
 
 boto (For EC2 support: http://code.google.com/p/boto/)
 
-You can install these on RHEL5 (and clones) with the following
+You can install these on RHEL5 (and clones) with the following:
 
 > yum install PyXML
 >
@@ -70,8 +70,8 @@ You can install these on RHEL5 (and clones) with the following
 > cd boto-1.8d
 > python setup.py install
 
-On Mac OS X, using Macports, you can install these with the following:
-(say you're using python 2.6)
+On Mac OS X, using Macports, you can install these with the following
+(say you're using python 2.6):
 
 > sudo port install py26-xml py26-suds py26-boto
 
@@ -82,16 +82,16 @@ To install cloud scheduler, as root, run:
 > python setup.py install
 
 
-# LICENSE
+# License
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of either:
 
-    a) the GNU General Public License as published by the Free
-    Software Foundation; either version 3, or (at your option) any
-    later version, or
+a) the GNU General Public License as published by the Free
+Software Foundation; either version 3, or (at your option) any
+later version, or
 
-    b) the Apache v2 License .
+b) the Apache v2 License.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
