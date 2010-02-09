@@ -60,7 +60,7 @@ Prerequisites
 
 You can install these on RHEL5 (and clones) with the following:
 
-    $yum install PyXML
+    $ yum install PyXML
     $ wget 'https://fedorahosted.org/suds/attachment/wiki/WikiStart/python-suds-0.3.6-1.el5.noarch.rpm?format=raw'\
     $ -O python-suds.el5.noarch.rpm
     $ yum localinstall python-suds.el5.noarch.rpm
