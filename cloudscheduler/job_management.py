@@ -24,18 +24,18 @@
 ##
 ## IMPORTS
 ##
+import re
+import sys
+import string
+import logging
 import datetime
 import subprocess
-import string
-import re
-import logging
-import sys
-from suds.client import Client
 from urllib2 import URLError
-from bisect import insort
+from suds.client import Client
 
-from cloudscheduler.utilities import determine_path
 import cloudscheduler.config as config
+from cloudscheduler.utilities import determine_path
+
 
 ##
 ## LOGGING
@@ -282,6 +282,11 @@ class JobPool:
                     self.remove_job(query_jobs, sys_job)
                     log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
                 
+                # NOTE: The code below also conceptually achieves the above functionality.
+                #       However, due to a Python 2.4.x quirk, iterating through lists
+                #       in the order given below causes occasional errors. This has been
+                #       changed in Python 2.5+. For support of 2.4.3 (SL standard), use the 
+                #       above code, and generally watch out for in-loop list manipulation.
                 # If system job is in the jobs list, remove from the jobs list
                 #if (self.has_job(query_jobs, sys_job)):
                 #    log.debug("Job %s is already in the system." % sys_job.id)
@@ -415,21 +420,7 @@ class JobPool:
     # No return (if job does not exist in given list, error message logged)
     def remove_job(self, job_list, target_job):
         log.debug("(remove_job) - Target job: %s" % target_job.id)
-        
-        #removals = []
-        #for job in job_list:
-        #    if (target_job.id == job.id):
-        #        removals.append(job)
-        #        log.debug("(remove_job) - Matching job found: %s" % job.id)
-        
-        #if (len(removals) == 0):
-        #    log.debug("remove_job - Job %s does not exist in given list. Doing nothing." % target_job.id)
-        #    return
-        
-        #for dead_job in removals:
-        #    log.debug("(remove_job) - Removing job in removals list: %s" % dead_job.id)
-        #    job_list.remove(dead_job)
-        
+                
         target_job_id = target_job.id
         removed = False
         i = len(job_list)

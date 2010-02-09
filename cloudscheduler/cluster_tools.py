@@ -291,6 +291,10 @@ class NimbusCluster(ICluster):
     VM_DURATION = "10080"
     VM_TARGETSTATE = "Running"
     VM_NODES = "1"
+    
+    # Number of seconds to wait between executing a shutdown and a destroy.
+    # (Used in vm_destroy method)
+    VM_SHUTDOWN = 8
 
     # A dictionary mapping Nimbus states to global states (see VM class comments
     # for the global state information)
@@ -462,7 +466,7 @@ class NimbusCluster(ICluster):
             log.debug("(vm_destroy) - workspace shutdown command executed successfully.")
             
         # Sleep for a few seconds to allow for proper shutdown
-        time.sleep(4)
+        time.sleep(self.VM_SHUTDOWN)
         
         # Execute the workspace destroy command: wait for return, stdout to log.
         destroy_return = self.vm_execute(destroy_cmd)
