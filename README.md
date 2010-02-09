@@ -9,10 +9,7 @@ job execution. Users submit their jobs to a batch job queue like Condor, Sun
 Grid Engine, or Platform LSF, and Cloud Scheduler boots VMs to suit those jobs,
 creating a malleable, virtual environment for efficient job execution.
 
-A high level explanation of the cloud schduler is available from:
-http://wiki.github.com/hep-gc/cloud-scheduler
-
-For more documentation on the cloud scheduler, please refer to the following wiki pages:
+For more documentation on the cloud scheduler, please refer to the following pages:
 
 -  [http://wiki.github.com/hep-gc/cloud-scheduler](http://wiki.github.com/hep-gc/cloud-scheduler)
 -  [http://cloudscheduler.org](http://cloudscheduler.org)
