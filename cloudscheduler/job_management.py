@@ -272,19 +272,29 @@ class JobPool:
                 # DBG: print job details in loop
                 log.debug("system job loop - %s, %10s, %4d, %10s" % (sys_job.id, sys_job.user, sys_job.priority, sys_job.req_vmtype))
                 
-                # If system job is in the jobs list, remove from the jobs list
-                if (self.has_job(query_jobs, sys_job)):
-                    log.debug("Job %s is already in the system." % sys_job.id)
+                # If the sys job is not in the query jobs, sys job has finished / been removed
+                if not (self.has_job(query_jobs, sys_job)):
+                    self.remove_system_job(sys_job)
+                    log.info("Job %s finished or removed. Cleared job from system." % sys_job.id)
+                
+                # Otherwise, the system job is in the condor queue - remove it from condor_jobs
+                else:
                     self.remove_job(query_jobs, sys_job)
-                    
-                    # DBG: Print query_jobs after modification by update loop
-                    log.debug("Query jobs after removal (system already has job):")
-                    self.log_jobs_list(query_jobs)
+                    log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
+                
+                # If system job is in the jobs list, remove from the jobs list
+                #if (self.has_job(query_jobs, sys_job)):
+                #    log.debug("Job %s is already in the system." % sys_job.id)
+                #    self.remove_job(query_jobs, sys_job)
+                #    
+                #    # DBG: Print query_jobs after modification by update loop
+                #    log.debug("Query jobs after removal (system already has job):")
+                #    self.log_jobs_list(query_jobs)
                 
                 # Otherwise, if system job is not in recvd jobs, remove job from system
-                else:
-                    log.info("Job %s finished or removed. Clearing job from system." % sys_job.id)
-                    self.remove_system_job(sys_job)
+                #else:
+                #    log.info("Job %s finished or removed. Clearing job from system." % sys_job.id)
+                #   self.remove_system_job(sys_job)
         
         # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
         for job in query_jobs:
@@ -343,7 +353,7 @@ class JobPool:
         elif (job_list[-1].priority >= job.priority):
             job_list.append(job)
             return
-        # Otherwise, do a linear insert
+        ## Otherwise, do a linear insert
         # Move from back to front, as new entry is inserted AFTER entries of same priority
         else:
             i = len(job_list)
@@ -397,7 +407,7 @@ class JobPool:
 
     # Remove job by id
     # Attempts to remove a job with a given job id from a given
-    # list of Jobs. Note: Will remove all jobs with the given ID
+    # list of Jobs. 
     # Note: The job_list MUST be a list of Job objects
     # Parameters:
     #   job_list - (list of Job) the list from which to remove jobs
@@ -406,27 +416,31 @@ class JobPool:
     def remove_job(self, job_list, target_job):
         log.debug("(remove_job) - Target job: %s" % target_job.id)
         
-        removals = []
-        for job in job_list:
-            if (target_job.id == job.id):
-                removals.append(job)
-                log.debug("(remove_job) - Matching job found: %s" % job.id)
+        #removals = []
+        #for job in job_list:
+        #    if (target_job.id == job.id):
+        #        removals.append(job)
+        #        log.debug("(remove_job) - Matching job found: %s" % job.id)
         
-        if (len(removals) == 0):
-            log.debug("remove_job - Job %s does not exist in given list. Doing nothing." % target_job.id)
-            return
+        #if (len(removals) == 0):
+        #    log.debug("remove_job - Job %s does not exist in given list. Doing nothing." % target_job.id)
+        #    return
         
-        for dead_job in removals:
-            log.debug("(remove_job) - Removing job in removals list: %s" % dead_job.id)
-            job_list.remove(dead_job)
-  
-        #i = len(job_list)
-        #while (i != 0):
-        #    i = i-1
-        #    if (target_job.id == job_list[i].id):
-        #        log.debug("(remove_job) - Matching job found: %s" % job_list[i].id)
-        #        job_list.remove(job_list[i])
-        #        return   
+        #for dead_job in removals:
+        #    log.debug("(remove_job) - Removing job in removals list: %s" % dead_job.id)
+        #    job_list.remove(dead_job)
+        
+        target_job_id = target_job.id
+        removed = False
+        i = len(job_list)
+        while (i != 0):
+            i = i-1
+            if (target_job_id == job_list[i].id):
+                log.debug("(remove_job) - Matching job found: %s" % job_list[i].id)
+                job_list.remove(job_list[i])
+                removed = True
+        if not removed:
+            log.debug("(remove_job) - Job %s does not exist in given list. Doing nothing." % job_id)
         
 
     # Checks to see if the given job ID is in the given job list
@@ -438,8 +452,9 @@ class JobPool:
     #   True   - The job exists in the checked lists
     #   False  - The job does not exist in the checked lists
     def has_job(self, job_list, target_job):
+        target_job_id = target_job.id
         for job in job_list:
-            if (target_job.id == job.id):
+            if (target_job_id == job.id):
                 return True
         return False
 

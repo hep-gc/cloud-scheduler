@@ -13,6 +13,7 @@
 import os
 import re
 import sys
+import time
 import string
 import logging
 import datetime
@@ -441,15 +442,30 @@ class NimbusCluster(ICluster):
 
     # TODO: Explain parameters and returns
     def vm_destroy(self, vm):
-        log.debug('Nimbus cloud destroy command')
+        log.debug('Nimbus cloud shutdown and destroy command')
+
+        # Create the workspace command with shutdown option
+        shutdown_cmd = self.vmshutdown_factory(vm.id)
+        log.debug("(vm_destroy) - workspace shutdown command prepared.")
+        log.debug("(vm_destroy) - Command: " + string.join(shutdown_cmd, " "))
 
         # Create the workspace command with destroy option as a list (priv.)
-        ws_cmd = self.vmdestroy_factory(vm.id)
+        destroy_cmd = self.vmdestroy_factory(vm.id)
         log.debug("(vm_destroy) - workspace destroy command prepared.")
-        log.debug("(vm_destroy) - Command: " + string.join(ws_cmd, " "))
+        log.debug("(vm_destroy) - Command: " + string.join(destroy_cmd, " "))
 
-        # Execute the workspace command: wait for return, stdout to log.
-        destroy_return = self.vm_execute(ws_cmd)
+        # Execute the workspace shutdown command.
+        shutdown_return = self.vm_execute(shutdown_cmd)
+        if (shutdown_return != 0):
+            log.warning("(vm_destroy) - VM shutdown request failed, moving directly to destroy.")
+        else:
+            log.debug("(vm_destroy) - workspace shutdown command executed successfully.")
+            
+        # Sleep for a few seconds to allow for proper shutdown
+        time.sleep(4)
+        
+        # Execute the workspace destroy command: wait for return, stdout to log.
+        destroy_return = self.vm_execute(destroy_cmd)
 
         # Check destroy return code. If successful, continue. Otherwise, set VM to
         # error state (wait, and the polling thread will attempt a destroy later)
@@ -603,6 +619,10 @@ class NimbusCluster(ICluster):
 
     def vmdestroy_factory(self, epr_file):
         ws_list = [ "workspace", "-e", epr_file, "--destroy"]
+        return ws_list
+    
+    def vmshutdown_factory(self, epr_file):
+        ws_list = [ "workspace", "-e", epr_file, "--shutdown"]
         return ws_list
 
     def vmpoll_factory(self, epr_file):
