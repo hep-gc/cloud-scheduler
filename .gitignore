@@ -1,3 +1,8 @@
 *.pyc
 *.log
-./eprs
+*.epr
+.nfs*
+eprs/
+.back_*
+build/
+tmp_nimbus_metadata.xml

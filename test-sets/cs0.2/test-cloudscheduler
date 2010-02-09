@@ -1,0 +1,25 @@
+#!/bin/sh
+
+echo This script will run a 100 job test on the Cloud Scheduler
+echo - Four types of jobs will be submitted, each with different requirements
+sleep 8
+echo 
+echo Submitting jobs
+
+../../scripts/submit-multiples blue-01.sub 25
+../../scripts/submit-multiples blue-02.sub 25
+../../scripts/submit-multiples green-01.sub 25
+../../scripts/submit-multiples green-01.sub 25
+
+clear
+
+echo Jobs submitted. Run condor_q for details
+echo 
+echo - To view individual job results, view the job\'s .out file after it has finished
+echo - Job output files contain information on the environment in which the job ran
+echo - '(Such as CPU info, Memory, Diskspace, Hostname, User, Runtime, and Condor info )'
+echo 
+echo - After all jobs finish, run the job-distribution script as follows to see the distribution of jobs to clusters
+echo - Usage: './job-distribution *.out'
+echo 
+echo - To remove all the .out, .log, and .error files, run './submit-multiples --cleanup'
