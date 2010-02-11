@@ -170,12 +170,15 @@ class ClusterJSONEncoder(json.JSONEncoder):
         vmEncodes = []
         for vm in cluster.vms:
             vmEncodes.append(VMJSONEncoder().encode(vm))
+        vmDecodes = []
+        for vm in vmEncodes:
+            vmDecodes.append(json.loads(vm))
         return {'name': cluster.name, 'network_address': cluster.network_address,
                 'cloud_type': cluster.cloud_type, 'memory': cluster.memory, 
                 'cpu_archs': cluster.cpu_archs, 
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
-                'storageGB': cluster.storageGB, 'vms': vmEncodes}
+                'storageGB': cluster.storageGB, 'vms': vmDecodes}
 
 class ResourcePoolJSONEncoder(json.JSONEncoder):
     def default(self, res_pool):
@@ -185,4 +188,7 @@ class ResourcePoolJSONEncoder(json.JSONEncoder):
         pool = []
         for cluster in res_pool.resources:
             pool.append(ClusterJSONEncoder().encode(cluster))
-        return {'resources': pool}
+        poolDecodes = []
+        for cluster in pool:
+            poolDecodes.append(json.loads(cluster))
+        return {'resources': poolDecodes}

@@ -292,4 +292,9 @@ class ResourcePool:
 
         # Return the most balanced cluster after considering all fitting clusters.
         return (mostbal_cluster, nextbal_cluster)
-
+    # Return cluster that matches cluster_name 
+    def get_cluster(self, cluster_name):
+        for cluster in self.resources:
+            if cluster.name == cluster_name:
+                return cluster
+        return None

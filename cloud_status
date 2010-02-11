@@ -63,7 +63,7 @@ def main(argv=None):
     else:
         server_port = config.info_server_port
 
-    server_hostname = "localhost"
+    server_hostname = "vmcgs29.phys.uvic.ca"
 
     # Connect to info server
     try:
