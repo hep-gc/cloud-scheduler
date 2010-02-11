@@ -1,0 +1,9 @@
+Cloud Scheduler Monitoring Web Page 0.1
+
+## Introduction
+The monitoring web page: an AJAX page for monitoring the cloud scheduler via XMLRPC
+
+## Configuration
+
+Edit rtmonitor.js and find the server address - change to the location where the cloud scheduler is running.
+
