@@ -1,13 +1,11 @@
 <!--
-
+// Polling Loop - sets the update frequency
 function pollRPCServer(target)
 {
-   var result = document.getElementById(target).innerHTML;
-   document.getElementById(target).innerHTML = result;
    myRPCall("get_json_resource");
    setTimeout("pollRPCServer('main_info')", 10000);
 }
-
+// Builds the table for displaying cluster and VM information
 function buildTable(resource_pool)
 {
    var table = '<table border=1 cellpadding=5 width="50%">';
@@ -40,14 +38,18 @@ function buildTable(resource_pool)
    table = table + "</table>";
    document.getElementById('tb').innerHTML = table;
 }
-
+// Callback function needed by JSRS - gets response from the XMLRPC Server
 function myCallback(response)
 {
-   //document.getElementById('head_info').innerHTML = response + "<br/>Length: "+response.length;
+// TODO: Check that there was not an error return
+   // Since response is actually an id containing all the extra xml in the response
+   // need to extract just the json string from the surrounding xml
    var pattern = /[{].*.[}]/
    var json = pattern.exec(response);
+   // Check if there is something left to parse
    if(json != null)
    {
+      // For Debugging - main info is hidden output the json string for visual inspection
       document.getElementById('main_info').innerHTML = json[0] + "<br/>Length: "+json[0].length + " num: "+json.length;
       var js = json[0];
       var resource = json_parse(js); 
@@ -59,19 +61,18 @@ function myCallback(response)
       document.getElementById('tb').innerHTML = "<p>Error Reading from RPC Server</p>";
    }
 }
-
+// Constructs and makes makes the call to the RPC Server
+// TODO: Add 2nd argument that is an array of parameters to use?
 function myRPCall(method)
 {
    var msg = new XMLRPCMessage();
    msg.setMethod(method);
-   //msg.addParameter("vmcgs29");
-   var msgtext = msg.xml();
-
-   //alert(msgtext);
-   var msgs = [];
-   msgs[0] = "http://vmcgs29.phys.uvic.ca:8111/";
-   msgs[1] = escape(msgtext);
-   jsrsExecute("xmlrpc-socket.php", myCallback, "doRPC", msgs);
+   //msg.addParameter("value");
+   var msgtext = msg.xml(); // convert msg obj into the xml string for sending
+   var msgs = []; // msg struct used to make call 
+   msgs[0] = "http://vmcgs29.phys.uvic.ca:8111/"; // the address of the RPC server
+   msgs[1] = escape(msgtext); // message to send
+   jsrsExecute("xmlrpc-socket.php", myCallback, "doRPC", msgs); // asyn call will call the Callback function when it gets a response
 
 }
 
