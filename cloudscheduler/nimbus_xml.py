@@ -11,7 +11,6 @@
 
 import os
 import tempfile
-import xml.dom.ext
 import xml.dom.minidom
 
 
