@@ -42,6 +42,63 @@ def format_duration_time(time):
 def format_storage(storage_gb):
     return str(int(storage_gb) * 1024) 
 
+def ws_optional_factory(custom_tasks):
+    """ 
+    Creates and returns a Nimbus optional file
+
+    Argument:
+    custom_tasks -- A list of tuples were the first item is the file to edit
+                    and the second is the string to place there. In these
+                    tuples, the first element is the content, and the second
+                    is the location
+
+    Example:
+    ws_optional_factory([("YOURKEY", "/root/.ssh/authorized_keys")])
+
+    returns None if input is invalid
+    """
+    
+    # Create the XML doc
+    doc = xml.dom.minidom.Document()
+    
+    ##
+    ## Create XML document heirarchy
+    ##
+    
+    # Create the OptionalParameters (root) element
+    op = doc.createElement("OptionalParameters")
+    
+    # Add the Workspace deployment element (first, to be root)
+    doc.appendChild(op)
+
+    # Add each filewrite element
+    for task in custom_tasks:
+        filewrite = doc.createElement("filewrite")
+        op.appendChild(filewrite)
+
+        content_el = doc.createElement("content")
+        filewrite.appendChild(content_el)
+        content = doc.createTextNode(task[0])
+        content_el.appendChild(content)
+
+        pathOnVM_el = doc.createElement("pathOnVM")
+        filewrite.appendChild(pathOnVM_el)
+        pathOnVM = doc.createTextNode(task[1])
+        pathOnVM_el.appendChild(pathOnVM)
+        
+
+
+    ##
+    ## Create output file. Write xml. Close file.
+    ##
+    
+    (xml_out, file_name) = tempfile.mkstemp()
+
+    os.write(xml_out, doc.toxml(encoding="utf-8"))
+    os.close(xml_out)
+
+    # Return the filename of the created metadata file
+    return file_name    
 
 # Creates and returns a Nimbus deployment request XML string.
 def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_nodes):

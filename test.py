@@ -9,6 +9,7 @@ from cStringIO import StringIO
 
 import cloudscheduler.config
 import cloudscheduler.cloud_management
+import cloudscheduler.nimbus_xml
 
 held, sys.stderr = sys.stderr, StringIO() # Hide stderr
 
@@ -179,6 +180,24 @@ class ResourcePoolSetup(unittest.TestCase):
 
     def tearDown(self):
         os.remove(self.configfilename)
+
+class NimbusXMLTests(unittest.TestCase):
+
+    def setUp(self):
+        self.custom_filename = "/tmp/filename"
+        self.custom_string = "stringtoput"
+        self.custom_tasks = [(self.custom_string, self.custom_filename)]
+        self.correct_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite></OptionalParameters>" % (self.custom_string, self.custom_filename)
+
+    def test_for_good_optional_parameters(self):
+        txml = cloudscheduler.nimbus_xml.ws_optional_factory(self.custom_tasks)
+        
+        xml_file = open(txml, "r")
+        generated_xml = xml_file.read()
+        self.assertEqual(generated_xml, self.correct_xml)
+        
+        xml_file.close()
+        os.remove(txml)
 
 
 if __name__ == '__main__':
