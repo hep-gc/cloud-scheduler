@@ -31,6 +31,7 @@ except ImportError:
               "or get it from http://code.google.com/p/boto/"
 
 import nimbus_xml
+import config
 
 # A class for storing created VM information. Used to populate Cluster classes
 # 'vms' lists.
@@ -322,11 +323,18 @@ class NimbusCluster(ICluster):
         # Create a workspace metadata xml file from passed parameters
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
                 vm_cpuarch, vm_imagelocation)
-        
+
         # Create a deployment request file from given parameters
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
                 self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES)
 
+        # Create an optional metadata file
+        if config.condor_host != "localhost" and config.condor_context_file:
+            vm_optional = nimbus_xml.ws_optional_factory(
+                                     [(config.condor_host, config.condor_context_file)])
+        else:
+            vm_optional = None
+ 
         # Set a timestamp for VM creation
         now = datetime.datetime.now()
 
@@ -335,7 +343,7 @@ class NimbusCluster(ICluster):
         os.close(epr_handle)
 
         # Create the workspace command as a list (private method)
-        ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest)
+        ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest, vm_optional)
         log.debug("vm_create - workspace create command prepared.")
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
@@ -595,7 +603,7 @@ class NimbusCluster(ICluster):
 
     # The following _factory methods take the given parameters and return a list
     # representing the corresponding workspace command.
-    def vmcreate_factory(self, epr_file, metadata_file, request_file):
+    def vmcreate_factory(self, epr_file, metadata_file, request_file, optional_file):
 
         ws_list = ["workspace",
            "-z", "none",
@@ -613,6 +621,9 @@ class NimbusCluster(ICluster):
            #"--exit-state", "Running",       # Running, Paused, Propagated - hard set.
            # "--dryrun",
           ]
+        if optional_file:
+            ws_list.append("--optional")
+            ws_list.append(optional_file)
 
         # Return the workspace command list
         return ws_list

@@ -9,13 +9,17 @@
 
 import os
 import sys
+from urlparse import urlparse
 import ConfigParser
+
+import cloudscheduler.utilities as utilities
 
 # Cloud Scheduler Options Module.
 
 # Set default values
 condor_webservice_url = "http://localhost:8080"
-condor_context_file = "/etc/condor/central_manager"
+condor_host = "localhost"
+condor_context_file = ""
 cloud_resource_config = None
 log_level = "INFO"
 log_location = None
@@ -30,6 +34,7 @@ def setup(path=None):
 
     global condor_webservice_url
     global condor_context_file
+    global condor_host
     global cloud_resource_config
     global info_server_port
     global log_level
@@ -107,3 +112,6 @@ def setup(path=None):
             print "Configuration file problem: log_max_size must be an " \
                   "integer value in bytes."
             sys.exit(1)
+
+    # Derived options
+    condor_host = utilities.get_hostname_from_url(condor_webservice_url)

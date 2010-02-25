@@ -73,6 +73,11 @@ def ws_optional_factory(custom_tasks):
 
     # Add each filewrite element
     for task in custom_tasks:
+
+        # Verify that the path is absolute
+        if not task[1][0] or task[1][0] != "/":
+            return None
+
         filewrite = doc.createElement("filewrite")
         op.appendChild(filewrite)
 

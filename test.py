@@ -19,6 +19,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
         # set values for each option
         self.condor_webservice_url = "http://testhost:1234"
+        self.condor_host = "testhost"
         self.condor_context_file = "/etc/testlocation"
         self.cloud_resource_config = "/home/testuser/cloud"
         self.info_server_port = "1234"
@@ -53,6 +54,8 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_condor_webservice_url(self):
         self.assertEqual(self.condor_webservice_url, cloudscheduler.config.condor_webservice_url)
+    def test_condor_host(self):
+        self.assertEqual(self.condor_host, cloudscheduler.config.condor_host)
     def test_condor_context_file(self):
         self.assertEqual(self.condor_context_file, cloudscheduler.config.condor_context_file)
 
@@ -187,18 +190,35 @@ class NimbusXMLTests(unittest.TestCase):
         self.custom_filename = "/tmp/filename"
         self.custom_string = "stringtoput"
         self.custom_tasks = [(self.custom_string, self.custom_filename)]
-        self.correct_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite></OptionalParameters>" % (self.custom_string, self.custom_filename)
+        self.optional_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite></OptionalParameters>" % (self.custom_string, self.custom_filename)
 
     def test_for_good_optional_parameters(self):
         txml = cloudscheduler.nimbus_xml.ws_optional_factory(self.custom_tasks)
         
         xml_file = open(txml, "r")
         generated_xml = xml_file.read()
-        self.assertEqual(generated_xml, self.correct_xml)
+        self.assertEqual(generated_xml, self.optional_xml)
         
         xml_file.close()
         os.remove(txml)
 
+    def test_optional_with_bad_path(self):
+
+        bad_filename = "not a filepath"
+        bad_custom_task = [(bad_filename, self.custom_string)]
+
+        txml = cloudscheduler.nimbus_xml.ws_optional_factory(bad_custom_task)
+
+        self.assertEqual(None, txml)
+
+    def test_optional_with_empty_path(self):
+
+        bad_filename = ""
+        bad_custom_task = [(bad_filename, self.custom_string)]
+
+        txml = cloudscheduler.nimbus_xml.ws_optional_factory(bad_custom_task)
+
+        self.assertEqual(None, txml)
 
 if __name__ == '__main__':
     unittest.main()
