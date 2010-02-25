@@ -15,6 +15,7 @@ import ConfigParser
 
 # Set default values
 condor_webservice_url = "http://localhost:8080"
+condor_context_file = "/etc/condor/central_manager"
 cloud_resource_config = None
 log_level = "INFO"
 log_location = None
@@ -28,6 +29,7 @@ info_server_port = 8111
 def setup(path=None):
 
     global condor_webservice_url
+    global condor_context_file
     global cloud_resource_config
     global info_server_port
     global log_level
@@ -72,6 +74,10 @@ def setup(path=None):
     if config_file.has_option("global", "condor_webservice_url"):
         condor_webservice_url = config_file.get("global",
                                                 "condor_webservice_url")
+
+    if config_file.has_option("global", "condor_context_file"):
+        condor_context_file = config_file.get("global",
+                                                "condor_context_file")
 
     if config_file.has_option("global", "cloud_resource_config"):
         cloud_resource_config = config_file.get("global",
