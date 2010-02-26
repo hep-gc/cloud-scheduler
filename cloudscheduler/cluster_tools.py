@@ -331,7 +331,7 @@ class NimbusCluster(ICluster):
         # Create an optional metadata file
         if config.condor_host != "localhost" and config.condor_context_file:
             vm_optional = nimbus_xml.ws_optional_factory(
-                                     [(config.condor_host, config.condor_context_file)])
+                              [(config.condor_host, config.condor_context_file)])
         else:
             vm_optional = None
  

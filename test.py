@@ -20,6 +20,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         # set values for each option
         self.condor_webservice_url = "http://testhost:1234"
         self.condor_host = "testhost"
+        self.condor_host_on_vm = "vmtesthost"
         self.condor_context_file = "/etc/testlocation"
         self.cloud_resource_config = "/home/testuser/cloud"
         self.info_server_port = "1234"
@@ -35,6 +36,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
         testconfig.add_section('global')
         testconfig.set('global', 'condor_webservice_url', self.condor_webservice_url)
+        testconfig.set('global', 'condor_host_on_vm', self.condor_host_on_vm)
         testconfig.set('global', 'condor_context_file', self.condor_context_file)
         testconfig.set('global', 'cloud_resource_config', self.cloud_resource_config)
         testconfig.set('global', 'info_server_port', self.info_server_port)
@@ -55,7 +57,13 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
     def test_condor_webservice_url(self):
         self.assertEqual(self.condor_webservice_url, cloudscheduler.config.condor_webservice_url)
     def test_condor_host(self):
-        self.assertEqual(self.condor_host, cloudscheduler.config.condor_host)
+        if self.condor_host_on_vm:
+            self.assertEqual(self.condor_host_on_vm, cloudscheduler.config.condor_host)
+        else:
+            self.assertEqual(self.condor_host, cloudscheduler.config.condor_host)
+
+    def test_condor_host_on_vm(self):
+        self.assertEqual(self.condor_host_on_vm, cloudscheduler.config.condor_host_on_vm)
     def test_condor_context_file(self):
         self.assertEqual(self.condor_context_file, cloudscheduler.config.condor_context_file)
 

@@ -19,6 +19,7 @@ import cloudscheduler.utilities as utilities
 # Set default values
 condor_webservice_url = "http://localhost:8080"
 condor_host = "localhost"
+condor_host_on_vm = ""
 condor_context_file = ""
 cloud_resource_config = None
 log_level = "INFO"
@@ -35,6 +36,7 @@ def setup(path=None):
     global condor_webservice_url
     global condor_context_file
     global condor_host
+    global condor_host_on_vm
     global cloud_resource_config
     global info_server_port
     global log_level
@@ -80,6 +82,10 @@ def setup(path=None):
         condor_webservice_url = config_file.get("global",
                                                 "condor_webservice_url")
 
+    if config_file.has_option("global", "condor_host_on_vm"):
+        condor_host_on_vm = config_file.get("global",
+                                                "condor_host_on_vm")
+
     if config_file.has_option("global", "condor_context_file"):
         condor_context_file = config_file.get("global",
                                                 "condor_context_file")
@@ -114,4 +120,7 @@ def setup(path=None):
             sys.exit(1)
 
     # Derived options
-    condor_host = utilities.get_hostname_from_url(condor_webservice_url)
+    if condor_host_on_vm:
+        condor_host = condor_host_on_vm
+    else:
+        condor_host = utilities.get_hostname_from_url(condor_webservice_url)
