@@ -46,6 +46,9 @@ class ResourcePool:
         log = logging.getLogger("cloudscheduler") 
         log.info("New ResourcePool " + name + " created")
         self.name = name
+        _collector_wsdl = "file://" + determine_path() \
+                          + "/wsdl/condorCollector.wsdl"
+        self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
 
     # Read in defined clouds from cloud definition file
     def setup(self, config_file):
@@ -298,3 +301,59 @@ class ResourcePool:
             if cluster.name == cluster_name:
                 return cluster
         return None
+    def convert_classad_dict(self, ad):
+        native = {}
+        attrs = ad[0]
+        for attr in attrs:
+            native[attr['name']] = attr['value']
+        return native
+
+    def convert_classed_list(self, ad):
+        native_list = []
+        items = ad[0]
+        for item in items:
+            native_list.append(convert_classad_dict(item))
+        return native_list
+
+    def resource_querySOAP(self):
+        log.debug("Querying condor startd with SOAP API")
+        try:
+            machines = self.condor_collector.service.queryStartdAds()
+        except URLError, e:
+            log.error("There was a problem connecting to the "
+                      "Condor scheduler web service (%s) for the following "
+                      "reason: %s"
+                      % (config.condor_collector_url, e.reason[1]))
+        except:
+            log.error("There was a problem connecting to the "
+                      "Condor scheduler web service (%s)"
+                      % (config.condor_collector_url))
+            raise
+            sys.exit(1)
+        if len(machines) != 0:
+            machineList = convert_classad_list(machines)
+        else:
+            machineList = None
+        return machineList
+
+    # Get a Dictionary of required VM Types with how many of that type running
+    def get_vmtypes_count(self, machineList):
+        count = {}
+        for vm in machineList:
+            if vm['VMType'] not in count:
+                count[vm['VMType']] = 1
+            else:
+                count[vm['VMType']] = count[vm['VMType']] + 1
+        return count
+
+    # Determines if the key value pairs in in criteria are in the dictionary
+    def match_criteria(self, base, criteria):
+        return criteria == dict(set(base.items()).intersection(set(criteria.items())))
+    # Find all the matching entries for given criteria
+    def find_in_where(self, machineList, criteria):
+        matches = []
+        for machine in machineList:
+            if match_criteria(machine, criteria):
+                matches.append(machine)
+        return matches
+
