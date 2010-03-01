@@ -265,9 +265,11 @@ class JobPool:
         self.log_jobs_dict(self.new_jobs)
         log.debug("Scheduled Jobs (sched_jobs):")
         self.log_jobs_dict(self.sched_jobs)
-        
+
         for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
-            for sys_job in jobset:
+            jobsetcopy = []
+            jobsetcopy.extend(jobset)
+            for sys_job in jobsetcopy:
                 
                 # DBG: print job details in loop
                 log.debug("system job loop - %s, %10s, %4d, %10s" % (sys_job.id, sys_job.user, sys_job.priority, sys_job.req_vmtype))
@@ -482,7 +484,23 @@ class JobPool:
         
         log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes
-                  
+    
+    # Get required VM types
+    # Returns a dictionary containing the unique required VM types as a key
+    # gathered from all jobs in the job pool (scheduled and unscheduled), and
+    # count of the number of jobs needing that type as the value.
+    # Returns:
+    #   required_vmtypes - (dictionary, string key, int value) A dict of required VM types                  
+    def get_required_vmtypes_dict(self):
+        required_vmtypes = {}
+        for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
+            for job in jobset:
+                if job.req_vmtype not in required_vmtypes:
+                    required_vmtypes[job.req_vmtype] = 1
+                else:
+                    required_vmtypes[job.req_vmtype] = required_vmtypes[job.req_vmtype] + 1
+        log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
+        return required_vmtypes
 
     ##
     ## JobPool Private methods (Support methods)
