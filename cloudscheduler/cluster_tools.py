@@ -522,7 +522,7 @@ class NimbusCluster(ICluster):
             # Set VM status:
             if (tmp_state in self.VM_STATES):
                 vm.status = self.VM_STATES[tmp_state]
-                log.debug("(vm_poll) - VM state: %s" % vm.status)
+                log.debug("(vm_poll) - VM state: %s, Nimbus state: %s" % (vm.status, tmp_state))
             else:
                 log.error("(vm_poll) - Error: state %s not in VM_STATES." % tmp_state)
                 log.debug("(vm_poll) - Setting VM status to \'Error\'")
