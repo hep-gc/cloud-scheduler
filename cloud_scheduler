@@ -177,10 +177,40 @@ class SchedulingTh(threading.Thread):
             
             # TODO: Add counting code here. Count the number of jobs that require a certain VM type,
             #       and then destroy the EXCESS VMs in that type (leaving a few for spare)
-            
             log.debug("Gathering required VM types.")
             required_vmtypes = self.job_pool.get_required_vmtypes()
-            
+
+            machineList = self.resource_pool.resource_querySOAP()
+            if machineList:
+                available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
+                required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
+                # Remove excess VMs when available VM type exceedes required by jobs
+                log.debug("Removing excess VMs from the system.")
+                to_remove = {}
+                for type, count in available_vmtypes_dict.iteritems():
+                    if type in required_vmtypes_dict.keys():
+                        if count > required_vmtypes_dict[type]:
+                            to_remove[type] = count - required_vmtypes_dict[type]
+                    # This type no longer needed, remove all remaining
+                    else:
+                        to_remove[type] = count
+                # Go over the types and find idle machines to remove
+                for type, count in to_remove.iteritems():
+                    log.debug("Attemping to remove %i VMs of type %s" % (count, type))
+                    # TODO: Actually remove it
+                    critieria = {'VMType': type, 'State': 'Unclaimed', 'Activity': 'Idle'}
+                    unused_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
+                    num_to_shutdown = 0
+                    len_unused = len(unused_vms_of_type)
+                    if len_unused == 0:
+                        log.debug("Could not find any VMs to shutdown")
+                    elif len_unused >= count:
+                        num_to_shutdown = count
+                    elif len_unused < count:
+                        num_to_shutdown = len_unsued
+                    for x in num_to_shutdown:
+                        log.debug("Name of Condor Machine %s" % unsued_vms_of_type[x]['Name'])
+ 
             # Remove all VMs with a type not required by current system jobs
             log.debug("Removing unneeded VMs from the system.")
             for cluster in self.resource_pool.resources:
