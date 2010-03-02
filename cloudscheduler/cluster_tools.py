@@ -55,6 +55,7 @@ class VM:
     # id           - (str) The id tag for the VM. Whatever is used to access the vm
     #                by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
     # vmtype       - (str) The condor VMType attribute for the VM
+    # hostname     - (str) The first part of hostname given to VM 
     # clusteraddr  - (str) The address of the cluster hosting the VM
     # cloudtype   - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
     # network      - (str) The network association the VM uses
@@ -64,12 +65,14 @@ class VM:
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
     def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType",
-            clusteraddr="default_hostname", cloudtype="def_cloudtype", network="public",
-            cpuarch="x86", imagelocation="default_imageloc", memory=0, mementry=0,
+            hostname="default_vmhostname", clusteraddr="default_hostname", 
+            cloudtype="def_cloudtype", network="public", cpuarch="x86", 
+            imagelocation="default_imageloc", memory=0, mementry=0,
             cpucores=0, storage=0):
         self.name = name
         self.id = id
         self.vmtype = vmtype
+        self.hostname = hostname
         self.clusteraddr = clusteraddr
         self.cloudtype = cloudtype
         self.network = network
@@ -340,7 +343,7 @@ class NimbusCluster(ICluster):
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
         # Execute the workspace create command: returns immediately.
-        create_return = self.vm_execute(ws_cmd)
+        (create_return, create_out, create_err) = self.vm_execwait(ws_cmd)
         if (create_return != 0):
             log.warning("vm_create - Error in executing workspace create command.")
             log.warning("vm_create - VM %s (ID: %s) not created. Returning error code." \
@@ -362,12 +365,22 @@ class NimbusCluster(ICluster):
               "entries (Not supposed to happen). Returning error.")
         log.debug("(vm_create) - vm_create - Memory entry found in given cluster: %d" % vm_mementry)
 
+        # Get the first part of the hostname given to the VM
+        hostname = re.search("Hostname:\s(\w*)", create_out)
+        vm_hostname = "default_vmhostname"
+        if hostname:
+            vm_hostname = hostname.group(1)
+            log.debug("Hostname for vm_id %s is %s" % (vm_epr, vm_hostname))
+        else:
+            log.warning("Unable to get the VM hostname, for vm_id %s" % vm_epr)
+
         # Create a VM object to represent the newly created VM
         new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type,
-            clusteraddr = self.network_address, cloudtype = self.cloud_type,
-            network = vm_networkassoc, cpuarch = vm_cpuarch,
-            imagelocation = vm_imagelocation, memory = vm_mem,
-            mementry = vm_mementry, cpucores = vm_cores, storage = vm_storage)
+            hostname = vm_hostname, clusteraddr = self.network_address, 
+            cloudtype = self.cloud_type,network = vm_networkassoc, 
+            cpuarch = vm_cpuarch, imagelocation = vm_imagelocation, 
+            memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores, 
+            storage = vm_storage)
 
         # Add the new VM object to the cluster's vms list And check out required resources
         self.vms.append(new_vm)
