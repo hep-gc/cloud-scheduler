@@ -20,6 +20,10 @@ import logging
 
 import ConfigParser
 import cluster_tools
+from cloudscheduler.utilities import determine_path
+from suds.client import Client
+import cloudscheduler.config as config
+from urllib2 import URLError
 
 ##
 ## GLOBALS
@@ -308,11 +312,11 @@ class ResourcePool:
             native[attr['name']] = attr['value']
         return native
 
-    def convert_classed_list(self, ad):
+    def convert_classad_list(self, ad):
         native_list = []
         items = ad[0]
         for item in items:
-            native_list.append(convert_classad_dict(item))
+            native_list.append(self.convert_classad_dict(item))
         return native_list
 
     def resource_querySOAP(self):
@@ -331,7 +335,7 @@ class ResourcePool:
             raise
             sys.exit(1)
         if len(machines) != 0:
-            machineList = convert_classad_list(machines)
+            machineList = self.convert_classad_list(machines)
         else:
             machineList = None
         return machineList
