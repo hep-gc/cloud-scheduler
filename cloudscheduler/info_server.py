@@ -156,11 +156,12 @@ class VMJSONEncoder(json.JSONEncoder):
            log.error("Cannot use VMJSONEncoder on non VM object")
            return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
-                'clusteraddr': vm.clusteraddr, 'cloudtype': vm.cloudtype,
-                'network': vm.network, 'cpuarch': vm.cpuarch,
-                'imagelocation': vm.imagelocation, 'memory': vm.memory,
-                'mementry': vm.mementry, 'cpucores': vm.cpucores,
-                'storage': vm.storage, 'status': vm.status}
+                'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
+                'cloudtype': vm.cloudtype, 'network': vm.network, 
+                'cpuarch': vm.cpuarch, 'imagelocation': vm.imagelocation,
+                'memory': vm.memory, 'mementry': vm.mementry, 
+                'cpucores': vm.cpucores, 'storage': vm.storage, 
+                'status': vm.status}
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
