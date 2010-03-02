@@ -323,6 +323,12 @@ class ResourcePool:
         log.debug("Querying condor startd with SOAP API")
         try:
             machines = self.condor_collector.service.queryStartdAds()
+            if len(machines) != 0:
+                machineList = self.convert_classad_list(machines)
+            else:
+                machineList = None
+            return machineList
+
         except URLError, e:
             log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
@@ -334,11 +340,6 @@ class ResourcePool:
                       % (config.condor_collector_url))
             raise
             sys.exit(1)
-        if len(machines) != 0:
-            machineList = self.convert_classad_list(machines)
-        else:
-            machineList = None
-        return machineList
 
     # Get a Dictionary of required VM Types with how many of that type running
     def get_vmtypes_count(self, machineList):
