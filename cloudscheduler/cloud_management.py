@@ -358,7 +358,7 @@ class ResourcePool:
     def find_in_where(self, machineList, criteria):
         matches = []
         for machine in machineList:
-            if match_criteria(machine, criteria):
+            if self.match_criteria(machine, criteria):
                 matches.append(machine)
         return matches
 
