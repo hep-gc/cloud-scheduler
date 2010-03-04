@@ -355,7 +355,7 @@ def main():
         log.addHandler(file_handler)
 
     if not config.log_location and not config.log_stdout:
-        null_handler = NullHandler()
+        null_handler = utilities.NullHandler()
         log.addHandler(null_handler)
 
 

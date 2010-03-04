@@ -31,7 +31,11 @@ import logging
 import datetime
 import subprocess
 from urllib2 import URLError
-from suds.client import Client
+try:
+    from suds.client import Client
+except:
+    print >> sys.stderr, "Couldn't import Suds. You should install it from https://fedorahosted.org/suds/, or your package manager"
+    sys.exit(1)
 
 import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path

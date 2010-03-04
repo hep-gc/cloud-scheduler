@@ -2,7 +2,9 @@
 # utilities.py - utility functions not specific to cloud scheduler
 
 import os
+import sys
 import logging
+from urlparse import urlparse
 
 def determine_path ():
     """Borrowed from wxglade.py"""
@@ -25,3 +27,5 @@ class NullHandler(logging.Handler):
     def emit(self, record):
         pass
 
+def get_hostname_from_url(url):
+    return urlparse(url)[1].split(":")[0]

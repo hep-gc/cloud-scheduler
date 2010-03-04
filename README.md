@@ -50,16 +50,12 @@ cloud_resource_config field of the cloud_scheduler.conf file.
 
 
 # Prerequisites
-pyXML
-
 suds (https://fedorahosted.org/suds/)
 
 boto (For EC2 support: http://code.google.com/p/boto/)
 
 You can install these on RHEL5 (and clones) with the following:
 
-> yum install PyXML
->
 > wget 'https://fedorahosted.org/suds/attachment/wiki/WikiStart/python-suds-0.3.6-1.el5.noarch.rpm?format=raw' -O python-suds.el5.noarch.rpm
 > yum localinstall python-suds.el5.noarch.rpm
 >
@@ -71,7 +67,7 @@ You can install these on RHEL5 (and clones) with the following:
 On Mac OS X, using Macports, you can install these with the following
 (say you're using python 2.6):
 
-> sudo port install py26-xml py26-suds py26-boto
+> sudo port install py26-suds py26-boto
 
 
 # INSTALL
