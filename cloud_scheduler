@@ -175,8 +175,8 @@ class SchedulingTh(threading.Thread):
             ## Clear all un-needed VMs from the system
             log_with_line("Clearing all un-needed VMs from the system")
             
-            # TODO: Add counting code here. Count the number of jobs that require a certain VM type,
-            #       and then destroy the EXCESS VMs in that type (leaving a few for spare)
+            # Count the number of jobs that require a certain VM type,
+            # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
             log.debug("Gathering required VM types.")
             required_vmtypes = self.job_pool.get_required_vmtypes()
 
@@ -197,38 +197,37 @@ class SchedulingTh(threading.Thread):
                 # Go over the types and find idle machines to remove
                 for type, count in to_remove.iteritems():
                     log.debug("Attemping to remove %i VMs of type %s" % (count, type))
-                    # TODO: Actually remove it
-                    critieria = {'VMType': type, 'State': 'Unclaimed', 'Activity': 'Idle'}
+                    criteria = {'VMType': type, 'State': 'Unclaimed', 'Activity': 'Idle'}
                     unused_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
                     num_to_shutdown = 0
                     len_unused = len(unused_vms_of_type)
+                    # Make sure we don't try to shutdown more than is possible
                     if len_unused == 0:
                         log.debug("Could not find any VMs to shutdown")
                     elif len_unused >= count:
                         num_to_shutdown = count
                     elif len_unused < count:
                         num_to_shutdown = len_unsued
-                    for x in num_to_shutdown:
-                        log.debug("Name of Condor Machine %s" % unsued_vms_of_type[x]['Name'])
+                    for x in range(0, num_to_shutdown):
+                        log.debug("Name of Condor Machine to shutdown: %s" % unused_vms_of_type[x]['Name'])
+                        condor_names = unused_vms_of_type[x]['Name'].split('.')
+                        condor_name = condor_names[0]
+                        # Track if machine found or not so can break from loop early
+                        found_vm = False
+                        for cluster in self.resource_pool.resources:
+                            for vm in cluster.vms:
+                                if vm.hostname == condor_name:
+                                    found_vm = True
+                                    log.info("VM of type %s no longer reqired for remaining jobs" % vm.vmtype)
+                                    vm.log()
+                                    destroy_ret = cluster.vm_destroy(vm)
+                                    if destroy_ret != 0:
+                                        log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+                                    else:
+                                        break
+                            if found_vm:
+                                break
  
-            # Remove all VMs with a type not required by current system jobs
-            log.debug("Removing unneeded VMs from the system.")
-            for cluster in self.resource_pool.resources:
-                # Use alternative loop structure to avoid unsafe remove operation
-                i = len(cluster.vms)
-                while (i != 0):
-                    i = i-1
-                    # If VM is not required, destroy it
-                    if (cluster.vms[i].vmtype not in required_vmtypes):
-                        log.info("VM type %s not required. Destroying VM:" % cluster.vms[i].vmtype)
-                        cluster.vms[i].log()
-                        destroy_ret = cluster.vm_destroy(cluster.vms[i])
-                        if (destroy_ret != 0):
-                            log.error("Destroying VM failed in attempt to clear an un-needed VM. Leaving VM.")
-                            continue
-                #ENDWHILE - Check all VMs on a cluster
-            #ENDFOR - Clear all unneeded VMs from the system
-
             ## Poll all remaining system VMs
             log_with_line ("Polling all running VMs...")
             for cluster in self.resource_pool.resources:  
