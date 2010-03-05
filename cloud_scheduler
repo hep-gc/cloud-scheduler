@@ -163,6 +163,8 @@ class SchedulingTh(threading.Thread):
 
                     # Mark job as scheduled
                     self.job_pool.schedule(job)
+                    # break out of this user's job and try next user
+                    break
                     
                 # ENDFOR - for jobs in user's unscheduled job set
             #ENDFOR - Attempt to schedule each one job per user
