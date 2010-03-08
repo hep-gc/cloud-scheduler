@@ -329,7 +329,7 @@ class NimbusCluster(ICluster):
 
         # Create a deployment request file from given parameters
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
-                self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES)
+                self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
 
         # Create an optional metadata file
         if config.condor_host != "localhost" and config.condor_context_file:

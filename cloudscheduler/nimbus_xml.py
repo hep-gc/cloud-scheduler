@@ -105,9 +105,21 @@ def ws_optional_factory(custom_tasks):
     # Return the filename of the created metadata file
     return file_name    
 
-# Creates and returns a Nimbus deployment request XML string.
-def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_nodes):
-    
+def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_nodes, vm_cores=None):
+    """
+    Creates and returns a Nimbus deployment request file
+
+    Arguments:
+    vm_duration    -- time in minutes for VM to be deployed
+    vm_targetstate -- state VM should be in after it is deployed
+    vm_mem         -- memory in megabytes that deployed VM will have
+    vm_storage     -- memory in megabytes that deployed VM will have TODO: Make this optional
+    vm_nodes       -- Number of VMs to request
+    vm_cores       -- optional. number of cores for deployed VM
+
+    returns text file with XML deployment request
+    """
+
     # Namespace variables for populating the xml file
     root_nmspc = "http://www.globus.org/2008/06/workspace/negotiable"
     jsdl_nmspc = "http://schemas.ggf.org/jsdl/2005/11/jsdl"
@@ -119,6 +131,8 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
     ##
     ## Create XML document heirarchy
     ##
+
+    # TODO: Clean this up and give some sample XML to clarify this
     
     # Create the WorkspaceDeployment (root) element
     wsd_el = doc.createElementNS(root_nmspc, "WorkspaceDeployment")
@@ -151,6 +165,18 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
     #---lvl 3
     exactmem_el = doc.createElementNS(jsdl_nmspc, "jsdl:Exact")
     memory_el.appendChild(exactmem_el)
+
+    # Optional CPU Cores option
+    if vm_cores and vm_cores > 1:
+        #--lvl 2
+        ncpu_el = doc.createElementNS(jsdl_nmspc, "jsdl:IndividualCPUCount")
+        rsrcallocation_el.appendChild(ncpu_el)
+        #---lvl 3
+        exactncpu_el = doc.createElementNS(jsdl_nmspc, "jsdl:Exact")
+        ncpu_el.appendChild(exactncpu_el)
+        exactncpu_txt = doc.createTextNode(str(vm_cores))
+        exactncpu_el.appendChild(exactncpu_txt)
+
     #--lvl 2
     storage_el = doc.createElementNS(root_nmspc, "Storage")
     rsrcallocation_el.appendChild(storage_el)
