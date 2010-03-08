@@ -209,7 +209,7 @@ class SchedulingTh(threading.Thread):
                     elif len_unused >= count:
                         num_to_shutdown = count
                     elif len_unused < count:
-                        num_to_shutdown = len_unsued
+                        num_to_shutdown = len_unused
                     for x in range(0, num_to_shutdown):
                         log.debug("Name of Condor Machine to shutdown: %s" % unused_vms_of_type[x]['Name'])
                         condor_names = unused_vms_of_type[x]['Name'].split('.')
