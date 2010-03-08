@@ -22,6 +22,8 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.condor_host = "testhost"
         self.condor_host_on_vm = "vmtesthost"
         self.condor_context_file = "/etc/testlocation"
+        self.image_attach_device = "deva"
+        self.scratch_attach_device = "devb"
         self.cloud_resource_config = "/home/testuser/cloud"
         self.info_server_port = "1234"
 
@@ -39,6 +41,8 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'condor_host_on_vm', self.condor_host_on_vm)
         testconfig.set('global', 'condor_context_file', self.condor_context_file)
         testconfig.set('global', 'cloud_resource_config', self.cloud_resource_config)
+        testconfig.set('global', 'image_attach_device', self.image_attach_device)
+        testconfig.set('global', 'scratch_attach_device', self.scratch_attach_device)
         testconfig.set('global', 'info_server_port', self.info_server_port)
 
         testconfig.add_section('logging')
@@ -69,6 +73,12 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_cloud_resource_config(self):
         self.assertEqual(self.cloud_resource_config, cloudscheduler.config.cloud_resource_config)
+
+    def test_image_attach_device(self):
+        self.assertEqual(self.image_attach_device, cloudscheduler.config.image_attach_device)
+
+    def test_scratch_attach_device(self):
+        self.assertEqual(self.scratch_attach_device, cloudscheduler.config.scratch_attach_device)
 
     def test_info_server_port(self):
         self.assertEqual(int(self.info_server_port), cloudscheduler.config.info_server_port)

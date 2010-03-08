@@ -23,6 +23,9 @@ condor_host = "localhost"
 condor_host_on_vm = ""
 condor_context_file = ""
 cloud_resource_config = None
+image_attach_device = "sda"
+scratch_attach_device = "sdb"
+
 log_level = "INFO"
 log_location = None
 log_stdout = False
@@ -40,7 +43,10 @@ def setup(path=None):
     global condor_host
     global condor_host_on_vm
     global cloud_resource_config
+    global image_attach_device
+    global scratch_attach_device
     global info_server_port
+
     global log_level
     global log_location
     global log_stdout
@@ -99,6 +105,14 @@ def setup(path=None):
     if config_file.has_option("global", "cloud_resource_config"):
         cloud_resource_config = config_file.get("global",
                                                 "cloud_resource_config")
+
+    if config_file.has_option("global", "image_attach_device"):
+        image_attach_device = config_file.get("global",
+                                                "image_attach_device")
+
+    if config_file.has_option("global", "scratch_attach_device"):
+        scratch_attach_device = config_file.get("global",
+                                                "scratch_attach_device")
 
     if config_file.has_option("global", "info_server_port"):
         try:

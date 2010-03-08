@@ -13,12 +13,12 @@ import os
 import tempfile
 import xml.dom.minidom
 
+import cloudscheduler.config as config
 
 ## Global Variables for xml population (VM and VM host machine information)
 # Deployment request constants
 PARTITION_NAME = "blankdisk1"       # Goes in both deployment and metadata files
 SHUTDOWN_MECH = "Trash"
-BLANKSPACE_MOUNT = "sdb"
 
 # Metadata constants
 NAME_URI_LVL = "http://"
@@ -26,7 +26,6 @@ VM_NIC = "eth0"
 ACQUISITION_METHOD = "AllocateAndConfigure"
 VIRT_TYPE = "Xen"
 VIRT_VERSION = "3"
-VM_MOUNT = "sda"
 VM_PERMISSIONS = "ReadWrite"
 
 
@@ -388,7 +387,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     location_el.appendChild(location_txt)
 
     # TODO: mountAs  may need to change (automatically / parameter?)
-    mountAs_txt = doc.createTextNode(VM_MOUNT)
+    mountAs_txt = doc.createTextNode(config.image_attach_device)
     mountAs_el.appendChild(mountAs_txt)
 
     permissions_txt = doc.createTextNode(VM_PERMISSIONS)
@@ -397,11 +396,13 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     partitionName_txt = doc.createTextNode(PARTITION_NAME)
     partitionName_el.appendChild(partitionName_txt)
     
-    mountAsPartition_txt = doc.createTextNode(BLANKSPACE_MOUNT)
+    mountAsPartition_txt = doc.createTextNode(config.scratch_attach_device)
     mountAsPartition_el.appendChild(mountAsPartition_txt)
 
     ## Create output file. Write xml. Close file.
     (xml_out, file_name) = tempfile.mkstemp()
+
+    print xml_out
 
     os.write(xml_out, doc.toxml(encoding="utf-8"))
     os.close(xml_out)
