@@ -403,26 +403,9 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     ## Create output file. Write xml. Close file.
     (xml_out, file_name) = tempfile.mkstemp()
 
-    # Note: toprettyxml causes parse errors with Sax
-    #xml_out.write(doc.toprettyxml(encoding="utf-8"))
     os.write(xml_out, doc.toxml(encoding="utf-8"))
     os.close(xml_out)
 
-    # Print document (in pretty)
-    #print (doc.toprettyxml(encoding="utf-8"))
-
     # Return the filename of the created metadata file
     return file_name
-
-
-## Main Functionality
-
-# deployment request test
-# ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_nodes):
-#request_out = ws_deployment_factory("10000", "Running", 1024, 1, "1")
-#print "Request file: %s" % request_out
-
-#metadata_out = ws_metadata_factory("http://test_image/name/over::Passed", "public", \
-#        "x86", "http://vmrepo.phys.uvic.ca/vms/dev-green_x86.img.gz")
-#print "Metadata file: %s" % metadata_out
 
