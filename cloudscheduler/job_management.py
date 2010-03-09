@@ -39,7 +39,7 @@ except:
 
 import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
-
+from decimal import *
 
 ##
 ## LOGGING
@@ -505,6 +505,23 @@ class JobPool:
                     required_vmtypes[job.req_vmtype] = required_vmtypes[job.req_vmtype] + 1
         log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
+
+    # Get desired vmtype distribution
+    # Based on top jobs in user new_job queue determine
+    # a 'fair' distribution of vmtypes
+    def job_type_distribution(self):
+        type_desired = {}
+        for user in self.new_jobs.keys():
+            vmtype = self.new_jobs[user][0].req_vmtype
+            if vmtype in type_desired.keys():
+                type_desired[vmtype] = type_desired[vmtype] + 1
+            else:
+                type_desired[vmtype] = 1
+        num_users = Decimal(len(self.new_jobs.keys()))
+        for type in type_desired.keys():
+            type_desired[type] = type_desired[type] / num_users
+        return type_desired
+
 
     ##
     ## JobPool Private methods (Support methods)
