@@ -24,6 +24,7 @@ from cloudscheduler.utilities import determine_path
 from suds.client import Client
 import cloudscheduler.config as config
 from urllib2 import URLError
+from decimal import *
 
 ##
 ## GLOBALS
@@ -299,12 +300,16 @@ class ResourcePool:
 
         # Return the most balanced cluster after considering all fitting clusters.
         return (mostbal_cluster, nextbal_cluster)
+
     # Return cluster that matches cluster_name 
     def get_cluster(self, cluster_name):
         for cluster in self.resources:
             if cluster.name == cluster_name:
                 return cluster
         return None
+
+    # Convert the Condor class ad struct into a python dict
+    # Note this is done 'stupidly' without checking data types
     def convert_classad_dict(self, ad):
         native = {}
         attrs = ad[0]
@@ -312,6 +317,7 @@ class ResourcePool:
             native[attr['name']] = attr['value']
         return native
 
+    # Takes a list of Condor class ads to convert
     def convert_classad_list(self, ad):
         native_list = []
         items = ad[0]
@@ -319,6 +325,9 @@ class ResourcePool:
             native_list.append(self.convert_classad_dict(item))
         return native_list
 
+    # SOAP Query to the condor collector
+    # Returns a list of dictionaries with information about the machines
+    # registered with condor.
     def resource_querySOAP(self):
         log.debug("Querying condor startd with SOAP API")
         try:
@@ -342,6 +351,7 @@ class ResourcePool:
             sys.exit(1)
 
     # Get a Dictionary of required VM Types with how many of that type running
+    # Uses the dict-list structure returned by SOAP query
     def get_vmtypes_count(self, machineList):
         count = {}
         for vm in machineList:
@@ -362,3 +372,30 @@ class ResourcePool:
                 matches.append(machine)
         return matches
 
+    # Get a dictionary of types of VMs the scheduler is currently tracking
+    def get_vmtypes_count_internal(self):
+       types = {}
+       for cluster in self.resources:
+           for vm in cluster.vms:
+               if vm.vmtype in types:
+                   types[vm.vmtype] = types[vm.vmtype] + 1
+               else:
+                   types[vm.vmtype] = 1
+       return types
+
+    # Count of VMs in the system
+    def vm_count(self):
+        count = 0
+        for cluster in self.resources:
+            count = count + len(cluster.vms)
+        return count
+
+    # VM Type Distribution
+    def vmtype_distribution(self):
+        types = self.get_vmtypes_count_internal()
+        count = Decimal(self.vm_count())
+        if count == 0:
+            return {}
+        for type in types.keys():
+            types[type] = types[type] / count
+        return types
