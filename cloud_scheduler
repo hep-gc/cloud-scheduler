@@ -174,6 +174,20 @@ class SchedulingTh(threading.Thread):
             log.debug("Scheduler - Waiting...")
             time.sleep(1)
 
+            ## Figure out a fair distribution of VMs 
+            desired_types = self.job_pool.job_type_distribution()
+            current_types = self.resource_pool.vmtype_distribution()
+            diff_types = {}
+            for type in current_types.keys():
+                if type in desired_types.keys():
+                    diff_types[type] = current_types[type] - desired_types[type]
+                else:
+                    diff_types[type] = 0
+            for type in desired_types.keys():
+                if type not in current_types.keys():
+                    diff_types[type] = desired_types[type]
+            print desired_types, current_types, diff_types
+
             ## Clear all un-needed VMs from the system
             log_with_line("Clearing all un-needed VMs from the system")
             
@@ -218,6 +232,7 @@ class SchedulingTh(threading.Thread):
                         found_vm = False
                         for cluster in self.resource_pool.resources:
                             for vm in cluster.vms:
+                                log.debug("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
                                 if vm.hostname == condor_name:
                                     found_vm = True
                                     log.info("VM of type %s no longer reqired for remaining jobs" % vm.vmtype)
