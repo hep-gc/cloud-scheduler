@@ -359,8 +359,10 @@ class NimbusCluster(ICluster):
             return create_return
         log.debug("(vm_create) - workspace create command executed.")
 
-        log.debug("vm_create - Deleting temporary Nimbus Metadata file")
+        log.debug("vm_create - Deleting temporary Nimbus Metadata files")
         os.remove(vm_metadata)
+        os.remove(vm_optional)
+        os.remove(vm_deploymentrequest)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
