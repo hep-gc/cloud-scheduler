@@ -82,7 +82,7 @@ class SchedulingTh(threading.Thread):
 
     def run(self):
         log.info("Starting scheduling thread...")
-
+        prevMachineList = []
         ########################################################################
         ## Full scheduler loop
         ########################################################################
@@ -244,6 +244,19 @@ class SchedulingTh(threading.Thread):
                                         break
                             if found_vm:
                                 break
+                # Compare current Machine List with Previous
+                # Looking for machines that have changed jobs since last check
+                # and are of a type that has an higher than wanted distribution
+                # based on diff_types 
+                vm_matches = []
+                changed = self.resource_pool.machine_jobs_changed(machineList, preMachineList)
+                for cluster in self.resource_pool.resources:
+                    for vm in cluster.vms:
+                        if vm.hostname in changed:
+                            print 'Found %s machine that is candidate to shutdown' % vm.hostname
+                            vm_matches.append(vm)
+
+                prevMachineList = machineList
  
             ## Poll all remaining system VMs
             log_with_line ("Polling all running VMs...")
