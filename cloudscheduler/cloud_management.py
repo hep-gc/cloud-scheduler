@@ -399,3 +399,15 @@ class ResourcePool:
         for type in types.keys():
             types[type] = types[type] / count
         return types
+
+    # Take the current and previous machineLists
+    # Figure out which machines have changed jobs
+    # return list of machine names that have
+    def machine_jobs_changed(self, current, previous):
+        auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current)
+        changed = [d['Name'] for d in previous 
+                   if d['Name'] in auxCurrent and d['GlobalJobId'] != auxCurrent[d['GlobalJobId']]]
+        for n in range(0, len(changed):
+            changed[n] = changed[n].split('.')[0]
+        return changed
+
