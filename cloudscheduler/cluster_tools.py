@@ -361,8 +361,9 @@ class NimbusCluster(ICluster):
 
         log.debug("vm_create - Deleting temporary Nimbus Metadata files")
         os.remove(vm_metadata)
-        os.remove(vm_optional)
         os.remove(vm_deploymentrequest)
+        if vm_optional:
+            os.remove(vm_optional)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
