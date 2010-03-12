@@ -329,7 +329,7 @@ class NimbusCluster(ICluster):
 
         # Create a deployment request file from given parameters
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
-                self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES)
+                self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
 
         # Create an optional metadata file
         if config.condor_host != "localhost" and config.condor_context_file:
@@ -359,8 +359,10 @@ class NimbusCluster(ICluster):
             return create_return
         log.debug("(vm_create) - workspace create command executed.")
 
-        log.debug("vm_create - Deleting temporary Nimbus Metadata file")
+        log.debug("vm_create - Deleting temporary Nimbus Metadata files")
         os.remove(vm_metadata)
+        os.remove(vm_optional)
+        os.remove(vm_deploymentrequest)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
