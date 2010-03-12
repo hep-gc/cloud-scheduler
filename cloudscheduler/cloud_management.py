@@ -308,6 +308,14 @@ class ResourcePool:
                 return cluster
         return None
 
+    # Find cluster that contains vm
+    def get_cluster_with_vm(self, vm):
+        cluster = None
+        for c in self.resources:
+            if vm in c.vms:
+                cluster = c
+        return cluster
+
     # Convert the Condor class ad struct into a python dict
     # Note this is done 'stupidly' without checking data types
     def convert_classad_dict(self, ad):
@@ -358,7 +366,7 @@ class ResourcePool:
             if vm['VMType'] not in count:
                 count[vm['VMType']] = 1
             else:
-                count[vm['VMType']] = count[vm['VMType']] + 1
+                count[vm['VMType']] += 1
         return count
 
     # Determines if the key value pairs in in criteria are in the dictionary
@@ -378,7 +386,7 @@ class ResourcePool:
        for cluster in self.resources:
            for vm in cluster.vms:
                if vm.vmtype in types:
-                   types[vm.vmtype] = types[vm.vmtype] + 1
+                   types[vm.vmtype] += 1
                else:
                    types[vm.vmtype] = 1
        return types
@@ -397,7 +405,7 @@ class ResourcePool:
         if count == 0:
             return {}
         for type in types.keys():
-            types[type] = types[type] / count
+            types[type] /= count
         return types
 
     # Take the current and previous machineLists
@@ -407,7 +415,7 @@ class ResourcePool:
         auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current)
         changed = [d['Name'] for d in previous 
                    if d['Name'] in auxCurrent and d['GlobalJobId'] != auxCurrent[d['GlobalJobId']]]
-        for n in range(0, len(changed):
+        for n in range(0, len(changed)):
             changed[n] = changed[n].split('.')[0]
         return changed
 
