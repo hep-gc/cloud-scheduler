@@ -177,6 +177,7 @@ class SchedulingTh(threading.Thread):
             ## Figure out a fair distribution of VMs 
             desired_types = self.job_pool.job_type_distribution()
             current_types = self.resource_pool.vmtype_distribution()
+            # Negative difference means will need to create that type
             diff_types = {}
             for type in current_types.keys():
                 if type in desired_types.keys():
@@ -186,7 +187,7 @@ class SchedulingTh(threading.Thread):
             for type in desired_types.keys():
                 if type not in current_types.keys():
                     diff_types[type] = desired_types[type]
-            print desired_types, current_types, diff_types
+            #print desired_types, current_types, diff_types
 
             ## Clear all un-needed VMs from the system
             log_with_line("Clearing all un-needed VMs from the system")
@@ -255,7 +256,23 @@ class SchedulingTh(threading.Thread):
                         if vm.hostname in changed:
                             print 'Found %s machine that is candidate to shutdown' % vm.hostname
                             vm_matches.append(vm)
-
+                num_to_change = {}
+                vm_count = self.resource_pool.vm_count()
+                for type, val in diff_types.iteritems():
+                    num_to_change[type] = int(round(val * vm_count))
+                to_shutdown = []
+                for vm in vm_matches:
+                    if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
+                        to_shutdown.append(vm)
+                        num_to_change[vm.vmtype] -= 1
+                for vm in to_shutdown:
+                    log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
+                    cluster = self.resource.cluster_with_vm(vm)
+                    print "VM %s on cluster %s shutting down" % (vm.vmname, cluster.name)
+                    destroy_ret = cluster.vm_destroy(vm)
+                    if destroy_ret != 0:
+                        log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
+                
                 prevMachineList = machineList
  
             ## Poll all remaining system VMs
