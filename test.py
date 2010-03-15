@@ -215,6 +215,8 @@ class NimbusXMLTests(unittest.TestCase):
         
         xml_file = open(txml, "r")
         generated_xml = xml_file.read()
+        # Some versions of python xml insert a newline
+        generated_xml = generated_xml.replace("\n", "")
         self.assertEqual(generated_xml, self.optional_xml)
         
         xml_file.close()
