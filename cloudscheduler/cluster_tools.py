@@ -99,11 +99,17 @@ class VM:
         log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
 
     def get_vm_info(self):
-        output = "Virtual Machine: %s \n" % self.name
-        output += "%-15s  %-10s  %-15s \n" % ("ID", "VMTYPE", "STATUS")
-        output += "%-15s  %-10s  %-15s \n" % (self.id, self.vmtype, self.status + " on " + self.clusteraddr)
+        output = "%-15s %-10s %-15s %-25s\n" % (self.id[-15:], self.vmtype[-10:], self.status[-15:], self.clusteraddr[-25:])
         return output
 
+    @staticmethod
+    def get_vm_info_header():
+        return "%-15s  %-10s  %-15 %-25s\n" % ("ID", "VMTYPE", "STATUS", "CLUSTER")
+
+    def get_vm_info_pretty(self):
+        output = get_vm_info_header()
+        output += get_vm_info()
+        return output
 
 
 ## The ICluster interface provides the basic structure for cluster information,
@@ -183,9 +189,9 @@ class ICluster:
         if len(self.vms) == 0:
             return "CLUSTER %s has no running VMs..." % (self.name)
         else:
-            output = "CLUSTER %s running VMs:" % (self.name)
+            output = ""
             for vm in self.vms:
-                output += "\n" + vm.get_vm_info()
+                output += vm.get_vm_info()
             return output
     # Get VM with id 
     def get_vm(self, vm_id):
