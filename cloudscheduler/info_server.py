@@ -56,7 +56,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
         threading.Thread.__init__(self)
         self.done = False
         cloud_resources = c_resources
-        host_name = platform.node()
+        host_name = "0.0.0.0"
         #set up server
         try:
             self.server = SimpleXMLRPCServer((host_name,
