@@ -75,6 +75,7 @@ class SchedulingTh(threading.Thread):
         self.resource_pool = resource_pool
         self.job_pool      = job_pool
         self.quit          = False
+        self.scheduling_interval = 5 # seconds
 
     def stop(self):
         log.debug("Waiting for scheduling loop to end")
@@ -170,12 +171,11 @@ class SchedulingTh(threading.Thread):
             #ENDFOR - Attempt to schedule each one job per user
 
             ## Wait for a number of seconds
-            #log_with_line("Waiting")
-            log.debug("Scheduler - Waiting...")
-            time.sleep(1)
+            log.debug("Scheduler - Waiting %ss" % self.scheduling_interval)
+            time.sleep(self.scheduling_interval)
 
             ## Clear all un-needed VMs from the system
-            log_with_line("Clearing all un-needed VMs from the system")
+            log.debug("Clearing all un-needed VMs from the system")
             
             # Count the number of jobs that require a certain VM type,
             # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
@@ -231,9 +231,22 @@ class SchedulingTh(threading.Thread):
                                 break
  
             ## Poll all remaining system VMs
-            log_with_line ("Polling all running VMs...")
+            log.debug("Polling all running VMs...")
+
+            starting_poll_interval = 120 # 2 minutes
+            running_poll_interval = 900 # 15 minutes
+
             for cluster in self.resource_pool.resources:  
                 for vm in cluster.vms:
+                    now = int(time.time())
+
+                    if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < starting_poll_interval):
+                        log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                        continue
+                    elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < running_poll_interval):
+                        log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                        continue
+                    
                     ret_state = cluster.vm_poll(vm)
 
                     # Print polled VM's state and details

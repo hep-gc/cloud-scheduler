@@ -83,6 +83,7 @@ class VM:
         self.mementry = mementry
         self.cpucores = cpucores
         self.storage = storage
+        self.lastpoll = None
 
         # Set a status variable on new creation
         self.status = "Starting"
@@ -514,6 +515,9 @@ class NimbusCluster(ICluster):
         self.resource_return(vm)
         self.vms.remove(vm)
 
+        # Delete EPR
+        os.remove(vm.id)
+
         log.debug("(vm_destroy) - VM destroyed and removed, cluster updated.")
         return destroy_return
 
@@ -562,6 +566,7 @@ class NimbusCluster(ICluster):
             log.warning("(vm_poll) - Parsing output failed. No regex match. Setting VM status to \'Error\'")
             vm.status = "Error"
 
+        vm.lastpoll = int(time.time())
         # Return the VM status as a string
         return vm.status
 
@@ -809,7 +814,7 @@ class EC2Cluster(ICluster):
             return vm.status
 
         vm.status = self.VM_STATES.get(instance.state, "Starting")
-
+        vm.lastpoll = int(time.time())
         return vm.status
 
 
