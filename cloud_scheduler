@@ -250,7 +250,7 @@ class SchedulingTh(threading.Thread):
                 # and are of a type that has an higher than wanted distribution
                 # based on diff_types 
                 vm_matches = []
-                changed = self.resource_pool.machine_jobs_changed(machineList, preMachineList)
+                changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
                 for cluster in self.resource_pool.resources:
                     for vm in cluster.vms:
                         if vm.hostname in changed:
