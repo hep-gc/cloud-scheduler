@@ -98,83 +98,8 @@ class SchedulingTh(threading.Thread):
                 log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
             else:
                 self.job_pool.update_jobs(condor_jobs)
-            
-            ## Schedule user jobs
-            # TODO: This should be less explicit in its reference to JobPool class parts.
-            #       Something like 'for job in self.job_pool.get_unsched_jobs()'
-            log_with_line("Attempt to schedule user jobs")
-            for user in self.job_pool.new_jobs.keys():
-                
-                # Attempt to schedule jobs in order of their appearance in user's job list
-                # (currently sorted by Job priority)
-                for job in self.job_pool.new_jobs[user]:
-                    
-                    # Find resources that match the job's requirements
-                    (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
-                        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
-                    
-                    # If no resource fits, continue to next job in user's list
-                    if pri_rsrc == None:
-                        log.info("No resource to match job: %s" % job.id)
-                        log.info("Leaving job unscheduled, moving to %s's next job" % user)
-                        continue
-                    
-                    # Print details of the resource selected
-                    log.info("Open resource selected for job %s:" % job.id)
-                    pri_rsrc.log()
-            
-                    # Start VM with job requirements on the selected resource
-                    log.info("Creating VM for job %s on primary resource" % job.id)
-                    create_ret = pri_rsrc.vm_create(job.req_image,
-                        job.req_vmtype, job.req_network, job.req_cpuarch,
-                        job.req_imageloc, job.req_memory, job.req_cpucores,
-                        job.req_storage)
-            
-                    # If the VM create fails, try again on secondary resource
-                    if (create_ret != 0):
-                        log.info("Creating VM for job %s failed on cluster %s." % (job.id, pri_rsrc.name))
-                        log.info("Attempting VM creation on secondary resource.")
-                        
-                        # If VM creation fails for user-job on both resources (or if there is no
-                        # secondary resource), move to next user
-                        if sec_rsrc == None:
-                            log.info("No secondary resource available for job %s" % job.id)
-                            log.info("Leaving %s's jobs unscheduled, moving on to next user" % user)
-                            break
-                        
-                        # Print details of the secondary resource
-                        log.info("Secondary resource selected for job %s:" % job.id)
-                        sec_rsrc.log()
-                        
-                        # Start VM on secondary resource
-                        log.info("Creating VM for job %s on secondary resource" % job.id)
-                        create_ret = sec_rsrc.vm_create(job.req_image,
-                            job.req_vmtype, job.req_network, job.req_cpuarch,
-                            job.req_imageloc, job.req_memory, job.req_cpucores,
-                            job.req_storage)
-                        
-                        # If secondary create fails, continue to next user 
-                        if (create_ret != 0):
-                            log.info("Creating VM for job %s failed on cluster %s." % (job.id, sec_rsrc.name))
-                            log.info("Leaving user's jobs unscheduled. Moving to next user.")
-                            break
-            
-                    # ENDIF - if VM create fails on primary resource
 
-                    # Mark job as scheduled
-                    self.job_pool.schedule(job)
-                    # break out of this user's job and try next user
-                    break
-                    
-                # ENDFOR - for jobs in user's unscheduled job set
-            #ENDFOR - Attempt to schedule each one job per user
-
-            ## Wait for a number of seconds
-            #log_with_line("Waiting")
-            log.debug("Scheduler - Waiting...")
-            time.sleep(1)
-
-            ## Figure out a fair distribution of VMs 
+            ## Figure out distribution of VMs requested and available
             desired_types = self.job_pool.job_type_distribution()
             current_types = self.resource_pool.vmtype_distribution()
             # Negative difference means will need to create that type
@@ -186,8 +111,85 @@ class SchedulingTh(threading.Thread):
                     diff_types[type] = 0
             for type in desired_types.keys():
                 if type not in current_types.keys():
-                    diff_types[type] = desired_types[type]
-            #print desired_types, current_types, diff_types
+                    diff_types[type] = -desired_types[type]
+            
+            ## Schedule user jobs
+            # TODO: This should be less explicit in its reference to JobPool class parts.
+            #       Something like 'for job in self.job_pool.get_unsched_jobs()'
+            log_with_line("Attempt to schedule user jobs")
+            for user in self.job_pool.new_jobs.keys():
+                
+                # Attempt to schedule jobs in order of their appearance in user's job list
+                # (currently sorted by Job priority)
+                for job in self.job_pool.new_jobs[user]:
+                    # Check that type of VM for job is needed
+                    if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
+                        # Find resources that match the job's requirements
+                        (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
+                        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
+                    
+                        # If no resource fits, continue to next job in user's list
+                        if pri_rsrc == None:
+                            log.info("No resource to match job: %s" % job.id)
+                            log.info("Leaving job unscheduled, moving to %s's next job" % user)
+                            continue
+                    
+                        # Print details of the resource selected
+                        log.info("Open resource selected for job %s:" % job.id)
+                        pri_rsrc.log()
+            
+                        # Start VM with job requirements on the selected resource
+                        log.info("Creating VM for job %s on primary resource" % job.id)
+                        create_ret = pri_rsrc.vm_create(job.req_image,
+                            job.req_vmtype, job.req_network, job.req_cpuarch,
+                            job.req_imageloc, job.req_memory, job.req_cpucores,
+                            job.req_storage)
+            
+                        # If the VM create fails, try again on secondary resource
+                        if (create_ret != 0):
+                            log.info("Creating VM for job %s failed on cluster %s." % (job.id, pri_rsrc.name))
+                            log.info("Attempting VM creation on secondary resource.")
+                        
+                            # If VM creation fails for user-job on both resources (or if there is no
+                            # secondary resource), move to next user
+                            if sec_rsrc == None:
+                                log.info("No secondary resource available for job %s" % job.id)
+                                log.info("Leaving %s's jobs unscheduled, moving on to next user" % user)
+                                break
+                        
+                            # Print details of the secondary resource
+                            log.info("Secondary resource selected for job %s:" % job.id)
+                            sec_rsrc.log()
+                        
+                            # Start VM on secondary resource
+                            log.info("Creating VM for job %s on secondary resource" % job.id)
+                            create_ret = sec_rsrc.vm_create(job.req_image,
+                                job.req_vmtype, job.req_network, job.req_cpuarch,
+                                job.req_imageloc, job.req_memory, job.req_cpucores,
+                                job.req_storage)
+                        
+                            # If secondary create fails, continue to next user 
+                            if (create_ret != 0):
+                                log.info("Creating VM for job %s failed on cluster %s." % (job.id, sec_rsrc.name))
+                                log.info("Leaving user's jobs unscheduled. Moving to next user.")
+                                break
+            
+                        # ENDIF - if VM create fails on primary resource
+
+                        # Mark job as scheduled
+                        self.job_pool.schedule(job)
+                        # break out of this user's job and try next user
+                        break
+                    else:
+                        # This user already has their share
+                        break
+                # ENDFOR - for jobs in user's unscheduled job set
+            #ENDFOR - Attempt to schedule each one job per user
+
+            ## Wait for a number of seconds
+            #log_with_line("Waiting")
+            log.debug("Scheduler - Waiting...")
+            time.sleep(1)
 
             ## Clear all un-needed VMs from the system
             log_with_line("Clearing all un-needed VMs from the system")
@@ -254,7 +256,6 @@ class SchedulingTh(threading.Thread):
                 for cluster in self.resource_pool.resources:
                     for vm in cluster.vms:
                         if vm.hostname in changed:
-                            print 'Found %s machine that is candidate to shutdown' % vm.hostname
                             vm_matches.append(vm)
                 num_to_change = {}
                 vm_count = self.resource_pool.vm_count()
@@ -268,13 +269,14 @@ class SchedulingTh(threading.Thread):
                 for vm in to_shutdown:
                     log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
                     cluster = self.resource_pool.get_cluster_with_vm(vm)
-                    print "VM %s on cluster %s shutting down" % (vm.name, cluster.name)
+                    log.debug("VM %s on cluster %s shutting down" % (vm.name, cluster.name))
                     destroy_ret = cluster.vm_destroy(vm)
                     if destroy_ret != 0:
                         log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
                 
                 prevMachineList = machineList
- 
+            else:
+                log.debug("No Machines returned by Condor Collector Query") 
             ## Poll all remaining system VMs
             log_with_line ("Polling all running VMs...")
             for cluster in self.resource_pool.resources:  
