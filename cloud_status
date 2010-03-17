@@ -12,6 +12,7 @@ import sys
 import socket
 from optparse import OptionParser
 import logging
+import platform
 
 import cloudscheduler.utilities as utilities 
 # We need to set up logging with a Null Handler before we
@@ -63,7 +64,7 @@ def main(argv=None):
     else:
         server_port = config.info_server_port
 
-    server_hostname = "vmcgs29.phys.uvic.ca"
+    server_hostname = platform.node()
 
     # Connect to info server
     try:

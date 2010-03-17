@@ -56,7 +56,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
         threading.Thread.__init__(self)
         self.done = False
         cloud_resources = c_resources
-        host_name = platform.node()
+        host_name = "0.0.0.0"
         #set up server
         try:
             self.server = SimpleXMLRPCServer((host_name,
@@ -80,9 +80,10 @@ class CloudSchedulerInfoServer(threading.Thread,):
                     output += cluster.get_cluster_info_short()+"\n"
                 return output
             def get_cluster_vm_resources(self):
-                output = "VMs in cluster:\n"
+                output = "%-15s %-10s %-15s %-25s\n" % \
+                          ("VM ID", "VM TYPE", "STATUS", "CLUSTER")
                 for cluster in cloud_resources.resources:
-                    output += cluster.get_cluster_vms_info()+"\n"
+                    output += cluster.get_cluster_vms_info()
                 return output
             def get_cluster_info(self, cluster_name):
                 output = "Cluster Info: %s\n" % cluster_name
