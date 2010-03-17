@@ -404,17 +404,18 @@ class ResourcePool:
         count = Decimal(self.vm_count())
         if count == 0:
             return {}
+        count = 1 / count
         for type in types.keys():
-            types[type] /= count
+            types[type] *= count
         return types
 
     # Take the current and previous machineLists
     # Figure out which machines have changed jobs
     # return list of machine names that have
     def machine_jobs_changed(self, current, previous):
-        auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current)
-        changed = [d['Name'] for d in previous 
-                   if d['Name'] in auxCurrent and d['GlobalJobId'] != auxCurrent[d['GlobalJobId']]]
+        auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current if 'GlobalJobId' in d.keys())
+        auxPrevious = dict((d['Name'], d['GlobalJobId']) for d in previous if 'GlobalJobId' in d.keys())
+        changed = [k for k,v in auxPrevious.items() if k in auxCurrent and auxCurrent[k] != v]
         for n in range(0, len(changed)):
             changed[n] = changed[n].split('.')[0]
         return changed
