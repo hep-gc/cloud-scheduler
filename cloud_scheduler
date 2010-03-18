@@ -287,23 +287,17 @@ class SchedulingTh(threading.Thread):
                     log.debug("Polled VM: ")
                     vm.log_dbg()
 
-                    ## If the VM is in an error state, manually recreate it
-                    # We use a manual re-create here because calling the Cluster recreate method
-                    # would simply try to recreate the VM on the same cluster. To avoid repetitious
-                    # errors (trying to recreate again and again on a bad cluster), we find another 
-                    # resource and attempt to create on that resource.
+                    ## If the VM is in an error state, keep track of error and 
+                    # after passing some threshold destroy the machine. 
+                    # Decrementing to avoid a long running VM from accumulating periodic 
+                    # errors and being destroyed
                     if ret_state == "Error":
-                        log.info("VM %s in error state. Recreating..." % vm.name)
-
-                        # Store all VM fields
-                        vm_name = vm.name
-                        vm_type = vm.vmtype
-                        vm_network = vm.network
-                        vm_cpuarch = vm.cpuarch
-                        vm_imageloc = vm.imagelocation
-                        vm_mem = vm.memory
-                        vm_cores = vm.cpucores
-                        vm_storage = vm.storage
+                        vm.errorcount += 1
+                    elif vm.errorcount > 0:
+                        vm.errorcount -= 1
+                    # Implement a config option to set this?
+                    if vm.errorcount > = 10:
+                        log.info("VM %s in error state. Destroying..." % vm.name)
 
                         # Destroy the VM
                         destroy_ret = cluster.vm_destroy(vm)
@@ -311,23 +305,6 @@ class SchedulingTh(threading.Thread):
                             log.error("Destroying VM failed. Leaving VM in error state.")
                             continue
                         
-                        # Find an available, balanced resource to recreate on
-                        (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(vm_network, vm_cpuarch, vm_mem, vm_cores, vm_storage)
-                        if (pri_rsrc == None):
-                            log.info("No resource found for recreation. Aborting recreate.")
-                            continue
-                        
-                        # Recreate the VM on the new resource
-                        log.info("Open resource selected for recreate:")
-                        pri_rsrc.log()
-                        create_ret = pri_rsrc.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, vm_imageloc, vm_mem, vm_cores, vm_storage)
-                        if (create_ret != 0):
-                            log.error("Recreating VM failed. Leaving VM in error state.")
-                            
-                            # TODO: Could add code here to retry on secondary resource. 
-                            #       Too time consuming       
-                            
-                            continue
                     # ENDIF - if VM in error state
                 # ENDFOR - for each VM in cluster vms list
             # ENDFOR - For each cluster in the resource pool

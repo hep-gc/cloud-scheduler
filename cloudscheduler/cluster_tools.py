@@ -65,6 +65,7 @@ class VM:
     # memory       - (int) The memory used by the VM
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
+    # errorcount   - (int) Number of Polling Errors VM has had
     def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType",
             hostname="default_vmhostname", clusteraddr="default_hostname", 
             cloudtype="def_cloudtype", network="public", cpuarch="x86", 
@@ -83,7 +84,7 @@ class VM:
         self.mementry = mementry
         self.cpucores = cpucores
         self.storage = storage
-
+        self.errorcount = 0
         # Set a status variable on new creation
         self.status = "Starting"
 
