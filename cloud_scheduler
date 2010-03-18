@@ -296,7 +296,7 @@ class SchedulingTh(threading.Thread):
                     elif vm.errorcount > 0:
                         vm.errorcount -= 1
                     # Implement a config option to set this?
-                    if vm.errorcount > = 10:
+                    if vm.errorcount >= 10:
                         log.info("VM %s in error state. Destroying..." % vm.name)
 
                         # Destroy the VM
