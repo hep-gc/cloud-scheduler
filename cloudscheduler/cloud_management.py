@@ -301,6 +301,30 @@ class ResourcePool:
         # Return the most balanced cluster after considering all fitting clusters.
         return (mostbal_cluster, nextbal_cluster)
 
+    # Check that a cluster will be able to meet the static requirements.
+    # Parameters:
+    #    network  - the network assoication required by the VM
+    #    cpuarch  - the cpu architecture that the VM must run on
+    # Return: True if cluster is found that fits VM requirments
+    #         Otherwise, returns False
+    def resourcePF(self, network, cpuarch):
+        potential_fit = False
+
+        for cluster in self.resources:
+            # If the cluster does not have the required CPU architecture
+            if not (cpuarch in cluster.cpu_archs):
+                continue
+            # If required network is NOT in cluster's network associations
+            if not (network in cluster.network_pools):
+                continue
+            # Cluster meets network and cpu reqs 
+            potential_fit = True
+            break
+
+        # If no clusters are found (no clusters can host the required VM)
+        return potential_fit
+
+
     # Return cluster that matches cluster_name 
     def get_cluster(self, cluster_name):
         for cluster in self.resources:
