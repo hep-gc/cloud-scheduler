@@ -25,6 +25,7 @@ condor_context_file = ""
 cloud_resource_config = None
 image_attach_device = "sda"
 scratch_attach_device = "sdb"
+polling_error_threshold = 10
 
 log_level = "INFO"
 log_location = None
@@ -46,6 +47,7 @@ def setup(path=None):
     global image_attach_device
     global scratch_attach_device
     global info_server_port
+    global polling_error_threshold
 
     global log_level
     global log_location
@@ -119,6 +121,14 @@ def setup(path=None):
             info_server_port = config_file.getint("global", "info_server_port")
         except ValueError:
             print "Configuration file problem: info_server_port must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "polling_error_threshold"):
+        try:
+            polling_error_threshold = config_file.getint("global", "polling_error_threshold")
+        except ValueError:
+            print "Configuration file problem: polling_error_threshold must be an " \
                   "integer value."
             sys.exit(1)
 
