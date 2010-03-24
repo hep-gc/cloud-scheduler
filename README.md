@@ -11,8 +11,8 @@ creating a malleable, virtual environment for efficient job execution.
 
 For more documentation on the cloud scheduler, please refer to the following pages:
 
--  [http://wiki.github.com/hep-gc/cloud-scheduler](http://wiki.github.com/hep-gc/cloud-scheduler)
--  [http://cloudscheduler.org](http://cloudscheduler.org)
+-  [Cloud Scheduler Wiki](http://wiki.github.com/hep-gc/cloud-scheduler)
+-  [Cloud Scheduler Homepage](http://cloudscheduler.org)
 
 ## Configuration
 
@@ -50,9 +50,8 @@ cloud_resource_config field of the cloud_scheduler.conf file.
 
 
 # Prerequisites
-suds (https://fedorahosted.org/suds/)
-
-boto (For EC2 support: http://code.google.com/p/boto/)
+[Suds](https://fedorahosted.org/suds/)
+[boto](http://code.google.com/p/boto/)
 
 You can install these on RHEL5 (and clones) with the following:
 
@@ -90,7 +89,7 @@ b) the Apache v2 License.
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See either
-the GNU General Public License or the Artistic License for more details.
+the GNU General Public License or the Apache v2 License for more details.
 
 You should have received a copy of the Apache v2 License with this
 software, in the file named "LICENSE".
