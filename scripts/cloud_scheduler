@@ -3,6 +3,7 @@
 # chkconfig:    345 85 15
 # description:  Cloud Scheduler init script for GNU/Linux
 
+export GLOBUS_LOCATION=/usr/local/nimbus/
 
 # Set this only if "cloud_scheduler" isn't in your $PATH (ends in '/')
 EXECUTABLEPATH="" 
@@ -11,7 +12,7 @@ EXECUTABLEPATH=""
 SERVICE=cloud_scheduler
 PIDSPATH=/var/run
 PIDFILE=$PIDSPATH/$SERVICE.pid
-
+export PATH=$PATH:$GLOBUS_LOCATION/bin/
 
 start () {
     if [ ! -f $PIDFILE ]; then
