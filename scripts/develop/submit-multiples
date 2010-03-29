@@ -1,0 +1,34 @@
+#!/bin/sh
+
+EXPECTED_ARGS=2
+USAGE="USAGE: `basename $0` <job_to_run> <number_times_to_run> | --cleanup"
+
+if [ $# -eq 0 ]; then
+
+	echo $USAGE 1>&2
+	exit 1
+fi
+
+if [ $1 == "--cleanup" ]; then
+
+        rm *.error *.out *.log
+        exit 0
+fi
+
+if [ $# -ne $EXPECTED_ARGS ]; then
+
+        echo $USAGE 1>&2
+        exit 1
+fi
+
+
+JOB_FILE=$1
+NUM_JOBS=$2
+JOB_DIR=`mktemp -d`
+
+for i in `seq 1 $NUM_JOBS`; do
+        CURRENT_JOB="$JOB_DIR/$i.$JOB_FILE"
+        sed "s/@JOBNUM@/$i/g" $JOB_FILE > $CURRENT_JOB
+        condor_submit $CURRENT_JOB
+done
+

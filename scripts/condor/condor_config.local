@@ -1,0 +1,7 @@
+# Local config for Cloud Scheduler
+
+## Set this to the name you would like to give your VM
+VMType = "your.vm.type"
+
+##  What machine is your central manager?
+CONDOR_HOST=your.central.manager
