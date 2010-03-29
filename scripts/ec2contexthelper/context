@@ -3,7 +3,7 @@
 # context       This shell script contextualized VM with nimbus
 #               style context data
 #
-# chkconfig:	- 49 01
+# chkconfig:	- 20 01
 # description:  Contextualizes VM
 #
 
