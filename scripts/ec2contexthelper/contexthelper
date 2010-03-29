@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+# vim: set expandtab ts=4 sw=4:
+#
+# contexthelper - writes nimbus context data to disk from ec2 user-data
+#
+# An example:
+#
+#<OptionalParameters>
+#    <filewrite>
+#        <content>These are the contents</content>
+#        <pathOnVM>/tmp/custom</pathOnVM>
+#    </filewrite>
+#    <filewrite>
+#        <content>These are the contents</content>
+#        <pathOnVM>/tmp/custom0</pathOnVM>
+#    </filewrite>
+#</OptionalParameters>
+
+import sys
+from xml.dom import minidom
+import urllib2
+
+USER_DATA_URL = "http://instance-data.ec2.internal/latest/user-data"
+
+try:
+    user_data_xml = urllib2.urlopen(USER_DATA_URL).read()
+except:
+    print >>sys.stderr, "Couldn't read userdata!"
+    sys.exit(1)
+
+user_data = minidom.parseString(user_data_xml)
+
+for file in user_data.getElementsByTagName("filewrite"):
+    path = file.getElementsByTagName("pathOnVM")[0].firstChild.nodeValue
+    content = file.getElementsByTagName("content")[0].firstChild.nodeValue
+
+    try:
+        f = open(path, "w")
+        f.write(content)
+        f.close()
+    except:
+        print >>sys.stderr, "Couldn't write file %s" % path
+        sys.exit(1)
+
+sys.exit(0)
