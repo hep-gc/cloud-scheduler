@@ -51,6 +51,9 @@
 # Ensure that the settings below are correct for your Condor
 # installation.
 
+# EC2 Metadata server
+EC2_METADATA=instance-data.ec2.internal
+
 # Central Manager of your condor pool
 CENTRAL_MANAGER=`cat /etc/condor/central_manager`
 
@@ -296,14 +299,53 @@ wait_for_exit() {
 	fi
 }
 
+replace_or_append() {
+	replace_this=$1
+	with_this=$2
+	on_this_file=$3
+
+	grep $replace_this $on_this_file >/dev/null 2>&1
+	REPLACE=$?
+	if [ $REPLACE -eq 0 ]; then
+		sed -i "s/.*$replace_this.*/$with_this/" $on_this_file
+	else
+		echo $with_this >> $on_this_file
+	fi
+}
+
 set_central_manager() {
 	condor_host=$1
 	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
-	sed -i "s/.*CONDOR_HOST.*/CONDOR_HOST=$condor_host/" $local_file
+	replace_or_append "CONDOR_HOST" "CONDOR_HOST=$condor_host" $local_file
+}
+
+setup_on_ec2() {
+
+	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+
+	curl -s http://$EC2_METADATA/ >/dev/null 2>&1
+	IS_EC2=$?
+	if [ $IS_EC2 -eq 0 ]; then
+
+		# Set hostname to external
+		EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
+		hostname $EXTHOSTNAME
+
+		private_network_name=amazon-ec2-`curl -s http://$EC2_METADATA/latest/meta-data/placement/availability-zone`
+		replace_or_append "PRIVATE_NETWORK_NAME" "PRIVATE_NETWORK_NAME=$private_network_name" $local_file
+
+		tcp_forwarding_host=`curl -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
+		replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
+
+		private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
+		replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
+	fi
+
 }
 
 # Start condor.
 start() {
+	setup_on_ec2
         set_central_manager $CENTRAL_MANAGER
 	init_condor_master
 	echon "Starting up Condor..."
