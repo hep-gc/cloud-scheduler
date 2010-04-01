@@ -748,6 +748,13 @@ class EC2Cluster(ICluster):
 
         log.debug("Trying to boot %s on %s" % (vm_name, self.network_address))
 
+	# Create user data in Nimbus optional XML format
+        if config.condor_host != "localhost" and config.condor_context_file:
+            user_data = nimbus_xml.ws_optional(
+                             [(config.condor_host, config.condor_context_file)])
+        else:
+            user_data = ""
+
         try:
             image = None
             if not "Eucalyptus" == self.cloud_type:
@@ -764,7 +771,7 @@ class EC2Cluster(ICluster):
                         image = potential_match
 
             if image:
-                reservation = image.run(1,1,)
+                reservation = image.run(1,1,user_data=user_data)
                 instance = reservation.instances[0]
                 log.debug("Booted VM %s" % instance.id)
             else:
