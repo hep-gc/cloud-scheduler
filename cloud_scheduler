@@ -149,11 +149,18 @@ class SchedulingTh(threading.Thread):
                         pri_rsrc.log()
             
                         # Start VM with job requirements on the selected resource
-                        log.info("Creating VM for job %s on primary resource" % job.id)
-                        create_ret = pri_rsrc.vm_create(job.req_image,
-                            job.req_vmtype, job.req_network, job.req_cpuarch,
-                            job.req_imageloc, job.req_memory, job.req_cpucores,
-                            job.req_storage)
+                        log.info("Creating a %s VM for job %s on primary resource" % (job.req_vmtype, job.id))
+			
+                        if pri_rsrc.__class__.__name__ == "NimbusCluster":
+                            create_ret = pri_rsrc.vm_create(job.req_image,
+                                job.req_vmtype, job.req_network, job.req_cpuarch,
+                                job.req_imageloc, job.req_memory, job.req_cpucores,
+                                job.req_storage)
+                        elif pri_rsrc.__class__.__name__ == "EC2Cluster":
+                            create_ret = pri_rsrc.vm_create(job.req_image,
+                                job.req_vmtype, job.req_network, job.req_cpuarch,
+                                job.req_ami, job.req_memory, job.req_cpucores,
+                                job.req_storage)
             
                         # If the VM create fails, try again on secondary resource
                         if (create_ret != 0):
@@ -172,11 +179,17 @@ class SchedulingTh(threading.Thread):
                             sec_rsrc.log()
                         
                             # Start VM on secondary resource
-                            log.info("Creating VM for job %s on secondary resource" % job.id)
-                            create_ret = sec_rsrc.vm_create(job.req_image,
-                                job.req_vmtype, job.req_network, job.req_cpuarch,
-                                job.req_imageloc, job.req_memory, job.req_cpucores,
-                                job.req_storage)
+                            log.debug("Creating VM for job %s on secondary resource" % job.id)
+                            if pri_rsrc.__class__.__name__ == "NimbusCluster":
+                                create_ret = pri_rsrc.vm_create(job.req_image,
+                                    job.req_vmtype, job.req_network, job.req_cpuarch,
+                                    job.req_imageloc, job.req_memory, job.req_cpucores,
+                                    job.req_storage)
+                            elif pri_rsrc.__class__.__name__ == "EC2Cluster":
+                                create_ret = pri_rsrc.vm_create(job.req_image,
+                                    job.req_vmtype, job.req_network, job.req_cpuarch,
+                                    job.req_ami, job.req_memory, job.req_cpucores,
+                                    job.req_storage)
                         
                             # If secondary create fails, continue to next user 
                             if (create_ret != 0):
@@ -246,10 +259,10 @@ class SchedulingTh(threading.Thread):
                         for cluster in self.resource_pool.resources:
                             for vm in cluster.vms:
                                 log.debug("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
-                                if vm.hostname == condor_name:
+                                if vm.hostname.split(".")[0] == condor_name:
                                     found_vm = True
-                                    log.info("VM of type %s no longer reqired for remaining jobs" % vm.vmtype)
-                                    vm.log()
+                                    log.info("VM of type %s no longer required for remaining jobs" % vm.vmtype)
+                                    vm.log_dbg()
                                     destroy_ret = cluster.vm_destroy(vm)
                                     if destroy_ret != 0:
                                         log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")

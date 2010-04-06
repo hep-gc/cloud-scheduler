@@ -52,39 +52,37 @@ log = None
 ## CLASSES
 ##
 
-# The storage structure for individual jobs read from the job scheduler
 class Job:
+    """
+    Job Class - Represents a job as read from the Job Scheduler
 
-    ## Instance Variables
 
+    """
     # A list of possible statuses for internal job representation
     statuses = ["Unscheduled", "Scheduled"]
 
-    ## Instance Methods
-
-    # Constructor
-    # Parameters:
-    # GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
-    # User       - (str) The user that submitted the job to Condor
-    # Priority   - (int) The priority given in the job submission file (default = 1)
-    # VMType     - (str) The VMType required by the job (set in VM's condor_config file)
-    # VMNetwork  - (str) The network association the job requires. TODO: Should support "any"
-    # VMCPUArch  - (str) The CPU architecture the job requires in its run environment
-    # VMName     - (str) The name of the image the job is to run on
-    # VMLoc      - (str) The location (URL) of the image the job is to run on
-    # VMMem      - (int) The amount of memory in MB the job requires
-    # VMCPUCores - (int) The number of cpu cores the job requires
-    # VMStorage  - (int) The amount of storage space the job requires
-    # NOTE: The image field is used as a name field for the image the job will
-    #   run on. The cloud scheduler will eventually be able to search a set of
-    #   repositories for this image name. Currently, imageloc MUST be set.
-    #
-    # TODO: Set default job properties in the cloud scheduler main config file
-    #      (Have option to set them there, and default values)
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
-             VMType="canfarbase", VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
-             VMLoc="http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.dev.img.gz",
+             VMType="default", VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
+             VMLoc="", VMAMI="",
              VMMem=512, VMCPUCores=1, VMStorage=1):
+        """
+     Parameters:
+     GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
+     User       - (str) The user that submitted the job to Condor
+     Priority   - (int) The priority given in the job submission file (default = 1)
+     VMType     - (str) The VMType required by the job (set in VM's condor_config file)
+     VMNetwork  - (str) The network association the job requires. TODO: Should support "any"
+     VMCPUArch  - (str) The CPU architecture the job requires in its run environment
+     VMName     - (str) The name of the image the job is to run on
+     VMLoc      - (str) The location (URL) of the image the job is to run on
+     VMAMI      - (str) The Amazon AMI of the image to be run
+     VMMem      - (int) The amount of memory in MB the job requires
+     VMCPUCores - (int) The number of cpu cores the job requires
+     VMStorage  - (int) The amount of storage space the job requires
+     NOTE: The image field is used as a name field for the image the job will
+
+     TODO: Set default job properties in the cloud scheduler main config file
+          (Have option to set them there, and default values) """
         self.id   = GlobalJobId
         self.user = Owner
         self.priority     = int(JobPrio)
@@ -93,6 +91,7 @@ class Job:
         self.req_cpuarch  = VMCPUArch
         self.req_image    = VMName
         self.req_imageloc = VMLoc
+        self.req_ami      = VMAMI
         self.req_memory   = int(VMMem)
         self.req_cpucores = int(VMCPUCores)
         self.req_storage  = int(VMStorage)
@@ -103,9 +102,8 @@ class Job:
         global log
         log = logging.getLogger("cloudscheduler")
 
-        log.debug("New Job object created:")
-        log.debug("ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, Memory: %d" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_memory))
+        log.debug("New Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
     
         
     # Log a short string representing the job
@@ -564,6 +562,8 @@ class JobPool:
             job['VMName'] = job_classad['VMName']
         if ('VMLoc' in job_classad):
             job['VMLoc'] = job_classad['VMLoc']
+        if ('VMAMI' in job_classad):
+            job['VMAMI'] = job_classad['VMAMI']
         if ('VMMem' in job_classad):
             job['VMMem'] = job_classad['VMMem']
         if ('VMCPUCores' in job_classad):

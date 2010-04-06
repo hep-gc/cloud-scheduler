@@ -61,7 +61,7 @@ class VM:
     # cloudtype   - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
     # network      - (str) The network association the VM uses
     # cpuarch      - (str) The required CPU architecture of the VM
-    # imagelocation- (str) The location of the image from which the VM was created
+    # image        - (str) The location of the image from which the VM was created
     # memory       - (int) The memory used by the VM
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
@@ -69,7 +69,7 @@ class VM:
     def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType",
             hostname="default_vmhostname", clusteraddr="default_hostname", 
             cloudtype="def_cloudtype", network="public", cpuarch="x86", 
-            imagelocation="default_imageloc", memory=0, mementry=0,
+            image="default_image", memory=0, mementry=0,
             cpucores=0, storage=0):
         self.name = name
         self.id = id
@@ -79,7 +79,7 @@ class VM:
         self.cloudtype = cloudtype
         self.network = network
         self.cpuarch = cpuarch
-        self.imagelocation = imagelocation
+        self.image = image
         self.memory = memory
         self.mementry = mementry
         self.cpucores = cpucores
@@ -216,7 +216,7 @@ class ICluster:
     # TODO: Explain all params
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-            vm_imagelocation, vm_mem, vm_cores, vm_storage):
+            vm_image, vm_mem, vm_cores, vm_storage):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
@@ -281,7 +281,7 @@ class ICluster:
     # Parameters: (as for checkout() )
     # Notes: (as for checkout)
     def resource_return(self, vm):
-        log.info("Returning resources used by VM %s to Cluster %s" % (vm.name, self.name))
+        log.info("Returning resources used by VM %s to Cluster %s" % (vm.id, self.name))
         self.vm_slots += 1
         self.storageGB += vm.storage
         # ISSUE: No way to know what mementry a VM is running on
@@ -326,13 +326,13 @@ class NimbusCluster(ICluster):
 
     # TODO: Explain parameters and returns
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-            vm_imagelocation, vm_mem, vm_cores, vm_storage):
+            vm_image, vm_mem, vm_cores, vm_storage):
 
         log.debug("Nimbus cloud create command")
 
         # Create a workspace metadata xml file from passed parameters
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
-                vm_cpuarch, vm_imagelocation)
+                vm_cpuarch, vm_image)
 
         # Create a deployment request file from given parameters
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
@@ -396,7 +396,7 @@ class NimbusCluster(ICluster):
         new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type,
             hostname = vm_hostname, clusteraddr = self.network_address, 
             cloudtype = self.cloud_type,network = vm_networkassoc, 
-            cpuarch = vm_cpuarch, imagelocation = vm_imagelocation, 
+            cpuarch = vm_cpuarch, image = vm_image, 
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores, 
             storage = vm_storage)
 
@@ -418,14 +418,14 @@ class NimbusCluster(ICluster):
         vm_type    = vm.vmtype
         vm_network = vm.network
         vm_cpuarch = vm.cpuarch
-        vm_imagelocation = vm.imagelocation
+        vm_image = vm.image
         vm_memory  = vm.memory
         vm_cores   = vm.cpucores
         vm_storage = vm.storage
 
         # Print VM parameters
         log.debug("(vm_recreate) - name: %s network: %s cpuarch: %s imageloc: %s memory: %d" \
-          % (vm_name, vm_network, vm_cpuarch, vm_imagelocation, vm_memory))
+          % (vm_name, vm_network, vm_cpuarch, vm_image, vm_memory))
 
         # Call destroy on the given VM
         log.debug("(vm_recreate) - Destroying VM %s..." % vm_name)
@@ -437,7 +437,7 @@ class NimbusCluster(ICluster):
         # Call create with the given VM's parameters
         log.debug("(vm_recreate) - Recreating VM %s..." % vm_name)
         create_ret = self.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, \
-          vm_imagelocation, vm_memory, vm_cores, vm_storage)
+          vm_image, vm_memory, vm_cores, vm_storage)
         if (create_ret != 0):
             log.warning("(vm_recreate) - Recreating VM %s failed. Aborting recreate.")
             return create_ret
@@ -744,9 +744,9 @@ class EC2Cluster(ICluster):
 
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-                  vm_imagelocation, vm_mem, vm_cores, vm_storage):
+                  vm_image, vm_mem, vm_cores, vm_storage):
 
-        log.debug("Trying to boot %s on %s" % (vm_name, self.network_address))
+        log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
 	# Create user data in Nimbus optional XML format
         if config.condor_host != "localhost" and config.condor_context_file:
@@ -758,7 +758,7 @@ class EC2Cluster(ICluster):
         try:
             image = None
             if not "Eucalyptus" == self.cloud_type:
-                image = self.connection.get_image(vm_name)
+                image = self.connection.get_image(vm_image)
 
             else: #HACK: for some reason Eucalyptus won't respond properly to
                   #      get_image("whateverimg"). Use a linear search until
@@ -767,7 +767,7 @@ class EC2Cluster(ICluster):
                   # https://bugs.launchpad.net/eucalyptus/+bug/495670
                 images = self.connection.get_all_images()
                 for potential_match in images:
-                    if potential_match.id == vm_name:
+                    if potential_match.id == vm_image:
                         image = potential_match
 
             if image:
@@ -792,11 +792,10 @@ class EC2Cluster(ICluster):
             return self.ERROR
         log.debug("vm_create - Memory entry found in given cluster: %d" %
                                                                     vm_mementry)
-
         new_vm = VM(name = vm_name, id = instance.id, vmtype = vm_type,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
-                    cpuarch = vm_cpuarch, imagelocation = vm_imagelocation,
+                    cpuarch = vm_cpuarch, image= vm_image,
                     memory = vm_mem, mementry = vm_mementry,
                     cpucores = vm_cores, storage = vm_storage)
 
@@ -817,7 +816,7 @@ class EC2Cluster(ICluster):
             return vm.status
 
         vm.status = self.VM_STATES.get(instance.state, "Starting")
-
+        vm.hostname = instance.public_dns_name
         return vm.status
 
 
