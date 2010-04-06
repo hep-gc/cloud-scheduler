@@ -145,7 +145,7 @@ class SchedulingTh(threading.Thread):
                             continue
                     
                         # Print details of the resource selected
-                        log.info("Open resource selected for job %s:" % job.id)
+                        log.debug("Open resource selected for job %s:" % job.id)
                         pri_rsrc.log()
             
                         # Start VM with job requirements on the selected resource
@@ -164,18 +164,18 @@ class SchedulingTh(threading.Thread):
             
                         # If the VM create fails, try again on secondary resource
                         if (create_ret != 0):
-                            log.info("Creating VM for job %s failed on cluster %s." % (job.id, pri_rsrc.name))
-                            log.info("Attempting VM creation on secondary resource.")
+                            log.debug("Creating VM for job %s failed on cluster %s." % (job.id, pri_rsrc.name))
+                            log.debug("Attempting VM creation on secondary resource.")
                         
                             # If VM creation fails for user-job on both resources (or if there is no
                             # secondary resource), move to next user
                             if sec_rsrc == None:
-                                log.info("No secondary resource available for job %s" % job.id)
-                                log.info("Leaving %s's jobs unscheduled, moving on to next user" % user)
+                                log.debug("No secondary resource available for job %s" % job.id)
+                                log.debug("Leaving %s's jobs unscheduled, moving on to next user" % user)
                                 break
                         
                             # Print details of the secondary resource
-                            log.info("Secondary resource selected for job %s:" % job.id)
+                            log.debug("Secondary resource selected for job %s:" % job.id)
                             sec_rsrc.log()
                         
                             # Start VM on secondary resource
@@ -193,8 +193,8 @@ class SchedulingTh(threading.Thread):
                         
                             # If secondary create fails, continue to next user 
                             if (create_ret != 0):
-                                log.info("Creating VM for job %s failed on cluster %s." % (job.id, sec_rsrc.name))
-                                log.info("Leaving user's jobs unscheduled. Moving to next user.")
+                                log.debug("Creating VM for job %s failed on cluster %s." % (job.id, sec_rsrc.name))
+                                log.debug("Leaving user's jobs unscheduled. Moving to next user.")
                                 break
             
                         # ENDIF - if VM create fails on primary resource
@@ -351,7 +351,7 @@ class SchedulingTh(threading.Thread):
             while (i != 0):
                 i = i-1
                 
-                log.info("Destroying VM:")
+                log.debug("Destroying VM:")
                 cluster.vms[i].log
                 destroy_ret = cluster.vm_destroy(cluster.vms[i])
                 if destroy_ret != 0:
@@ -446,7 +446,6 @@ def main():
     info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
     info_serv.daemon = True
     info_serv.start()
-    log.info("Started Cloud Scheduler info server...")
 
     # Create the Polling thread (pass resource pool)
     poller = PollingTh(cloud_resources)

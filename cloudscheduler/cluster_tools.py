@@ -90,9 +90,9 @@ class VM:
 
         global log
         log = logging.getLogger("cloudscheduler")
-        log.info("New VM object created:")
-        log.info("VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
-          % (name, id, clusteraddr, imagelocation, memory))
+        log.debug("New VM object created:")
+        log.debug("VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
+          % (name, id, clusteraddr, image, memory))
 
     def log(self):
         log.info("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
@@ -159,7 +159,7 @@ class ICluster:
 
     # Print a short form of cluster information
     def log(self):
-        log.info("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
+        log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
           % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
           self.memory))
 
@@ -706,7 +706,7 @@ class EC2Cluster(ICluster):
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
                                    )
-                log.info("Created a connection to Amazon EC2")
+                log.debug("Created a connection to Amazon EC2")
 
             except boto.exception.EC2ResponseError, e:
                 log.error("Couldn't connect to Amazon EC2 because: %s" %
@@ -725,7 +725,7 @@ class EC2Cluster(ICluster):
                                    port=8773,
                                    path="/services/Eucalyptus",
                                    )
-                log.info("Created a connection to Eucalyptus (%s)" % self.name)
+                log.debug("Created a connection to Eucalyptus (%s)" % self.name)
 
             except boto.exception.EC2ResponseError, e:
                 log.error("Couldn't connect to Amazon EC2 because: %s" %
@@ -775,7 +775,7 @@ class EC2Cluster(ICluster):
                 instance = reservation.instances[0]
                 log.debug("Booted VM %s" % instance.id)
             else:
-                log.error("Couldn't find image %s on %s" % (vm_name, self.host))
+                log.error("Couldn't find image %s on %s" % (vm_image, self.host))
                 return self.ERROR
 
         except boto.exception.EC2ResponseError, e:

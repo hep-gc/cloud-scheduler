@@ -49,7 +49,7 @@ class ResourcePool:
     def __init__(self, name):
         global log
         log = logging.getLogger("cloudscheduler") 
-        log.info("New ResourcePool " + name + " created")
+        log.debug("New ResourcePool " + name + " created")
         self.name = name
         _collector_wsdl = "file://" + determine_path() \
                           + "/wsdl/condorCollector.wsdl"
@@ -58,7 +58,7 @@ class ResourcePool:
     # Read in defined clouds from cloud definition file
     def setup(self, config_file):
 
-        log.info("Reading cloud configuration file %s" % config_file)
+        log.info("Reading cloud resource configuration file %s" % config_file)
         # Check for config files with ~ in the path
         config_file = os.path.expanduser(config_file)
 
@@ -227,7 +227,7 @@ class ResourcePool:
             fitting_clusters.append(cluster)
 
         # Return the list clusters that fit given requirements
-        log.info("List of fitting clusters: ")
+        log.debug("List of fitting clusters: ")
         self.log_list(fitting_clusters)
         return fitting_clusters
 

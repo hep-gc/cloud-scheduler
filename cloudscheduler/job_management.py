@@ -166,7 +166,7 @@ class JobPool:
     def __init__(self, name):
         global log
         log = logging.getLogger("cloudscheduler")
-        log.info("New JobPool %s created" % name)
+        log.debug("New JobPool %s created" % name)
         self.name = name
         self.last_query = datetime.datetime.now()
 
@@ -393,7 +393,7 @@ class JobPool:
             # If user's job list is empty, remove entry from the new_jobs dict
             if (self.new_jobs[job.user] == []):
                 del self.new_jobs[job.user]
-                log.info("User %s has no more jobs in the Unscheduled Jobs set. Removing user from queue."
+                log.debug("User %s has no more jobs in the Unscheduled Jobs set. Removing user from queue."
                           % job.user)
                 
         # Check for job in scheduled job set
@@ -407,7 +407,7 @@ class JobPool:
             # If user's job list is empty, remove entry from sched_jobs
             if (self.sched_jobs[job.user] == []):
                 del self.sched_jobs[job.user]
-                log.info("User %s has no more jobs in the Scheduled Jobs set. Removing user from queue."
+                log.debug("User %s has no more jobs in the Scheduled Jobs set. Removing user from queue."
                           % job.user)                     
         else:
             log.warning("remove_system_job - Job does not exist in system."
