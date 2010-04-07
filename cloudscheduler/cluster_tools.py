@@ -84,12 +84,9 @@ class VM:
         self.mementry = mementry
         self.cpucores = cpucores
         self.storage = storage
-<<<<<<< HEAD:cloudscheduler/cluster_tools.py
         self.errorcount = 0
-=======
         self.lastpoll = None
 
->>>>>>> origin/stability:cloudscheduler/cluster_tools.py
         # Set a status variable on new creation
         self.status = "Starting"
 

@@ -10,6 +10,8 @@ from cStringIO import StringIO
 import cloudscheduler.config
 import cloudscheduler.cloud_management
 import cloudscheduler.nimbus_xml
+import cloudscheduler.utilities as utilities
+
 
 held, sys.stderr = sys.stderr, StringIO() # Hide stderr
 
@@ -239,6 +241,40 @@ class NimbusXMLTests(unittest.TestCase):
         txml = cloudscheduler.nimbus_xml.ws_optional_factory(bad_custom_task)
 
         self.assertEqual(None, txml)
+
+class GetOrNoneTests(unittest.TestCase):
+
+    def setUp(self):
+
+        self.section_name = "section"
+        self.good_name = "nameofparam"
+        self.good_val = "itsvalue"
+
+        # build config file
+        (self.configfile, self.configfilename) = tempfile.mkstemp()
+        testconfig = ConfigParser.RawConfigParser()
+
+        testconfig.add_section(self.section_name)
+        testconfig.set(self.section_name, self.good_name, self.good_val)
+
+        # write temporary config file
+        configfile = open(self.configfilename, 'wb')
+        testconfig.write(configfile)
+        configfile.close()
+        cloudscheduler.config.setup(path=self.configfilename)
+
+
+    def test_get(self):
+        config = ConfigParser.ConfigParser()
+        config.read(self.configfilename)
+        value = utilities.get_or_none(config, self.section_name, self.good_name)
+        self.assertEqual(self.good_val, value)
+
+    def test_none(self):
+        config = ConfigParser.ConfigParser()
+        config.read(self.configfilename)
+        value = utilities.get_or_none(config, self.section_name, "fakeitem")
+        self.assertEqual(None, value)
 
 if __name__ == '__main__':
     unittest.main()

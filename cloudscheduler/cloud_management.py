@@ -20,11 +20,13 @@ import logging
 
 import ConfigParser
 import cluster_tools
-from cloudscheduler.utilities import determine_path
 from suds.client import Client
 import cloudscheduler.config as config
 from urllib2 import URLError
 from decimal import *
+
+from cloudscheduler.utilities import determine_path
+from cloudscheduler.utilities import get_or_none
 
 ##
 ## GLOBALS
@@ -75,33 +77,34 @@ class ResourcePool:
         # Read in config file, parse into Cluster objects
         for cluster in cloud_config.sections():
 
-            cloud_type = cloud_config.get(cluster, "cloud_type")
+            cloud_type = get_or_none(cloud_config, cluster, "cloud_type")
 
             # Create a new cluster according to cloud_type
             if cloud_type == "Nimbus":
                 new_cluster = cluster_tools.NimbusCluster(name = cluster,
-                               host = cloud_config.get(cluster, "host"),
-                               cloud_type = cloud_config.get(cluster, "cloud_type"),
-                               memory = map(int, cloud_config.get(cluster, "memory").split(",")),
-                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                               networks = cloud_config.get(cluster, "networks").split(","),
-                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                               storage = cloud_config.getint(cluster, "storage"),
+                               host = get_or_none(cloud_config, cluster, "host"),
+                               cloud_type = get_or_none(cloud_config, cluster, "cloud_type"),
+                               memory = map(int, get_or_none(cloud_config, cluster, "memory").split(",")),
+                               cpu_archs = get_or_none(cloud_config, cluster, "cpu_archs").split(","),
+                               networks = get_or_none(cloud_config, cluster, "networks").split(","),
+                               vm_slots = int(get_or_none(cloud_config, cluster, "vm_slots")),
+                               cpu_cores = int(get_or_none(cloud_config, cluster, "cpu_cores")),
+                               storage = int(get_or_none(cloud_config, cluster, "storage")),
                                )
 
             elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus":
                 new_cluster = cluster_tools.EC2Cluster(name = cluster,
-                               host = cloud_config.get(cluster, "host"),
-                               cloud_type = cloud_config.get(cluster, "cloud_type"),
-                               memory = map(int, cloud_config.get(cluster, "memory").split(",")),
-                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                               networks = cloud_config.get(cluster, "networks").split(","),
-                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                               storage = cloud_config.getint(cluster, "storage"),
-                               access_key_id = cloud_config.get(cluster, "access_key_id"),
-                               secret_access_key = cloud_config.get(cluster, "secret_access_key"),
+                               host = get_or_none(cloud_config, cluster, "host"),
+                               cloud_type = get_or_none(cloud_config, cluster, "cloud_type"),
+                               memory = map(int, get_or_none(cloud_config, cluster, "memory").split(",")),
+                               cpu_archs = get_or_none(cloud_config, cluster, "cpu_archs").split(","),
+                               networks = get_or_none(cloud_config, cluster, "networks").split(","),
+                               vm_slots = int(get_or_none(cloud_config, cluster, "vm_slots")),
+                               cpu_cores = int(get_or_none(cloud_config, cluster, "cpu_cores")),
+                               storage = int(get_or_none(cloud_config, cluster, "storage")),
+                               access_key_id = get_or_none(cloud_config, cluster, "access_key_id"),
+                               secret_access_key = get_or_none(cloud_config, cluster, "secret_access_key"),
+                               security_group = get_or_none(cloud_config, cluster, "security_group"),
                                )
 
             else:
