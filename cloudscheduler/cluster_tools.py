@@ -84,7 +84,12 @@ class VM:
         self.mementry = mementry
         self.cpucores = cpucores
         self.storage = storage
+<<<<<<< HEAD:cloudscheduler/cluster_tools.py
         self.errorcount = 0
+=======
+        self.lastpoll = None
+
+>>>>>>> origin/stability:cloudscheduler/cluster_tools.py
         # Set a status variable on new creation
         self.status = "Starting"
 
@@ -515,6 +520,9 @@ class NimbusCluster(ICluster):
         self.resource_return(vm)
         self.vms.remove(vm)
 
+        # Delete EPR
+        os.remove(vm.id)
+
         log.debug("(vm_destroy) - VM destroyed and removed, cluster updated.")
         return destroy_return
 
@@ -563,6 +571,7 @@ class NimbusCluster(ICluster):
             log.warning("(vm_poll) - Parsing output failed. No regex match. Setting VM status to \'Error\'")
             vm.status = "Error"
 
+        vm.lastpoll = int(time.time())
         # Return the VM status as a string
         return vm.status
 
@@ -817,6 +826,7 @@ class EC2Cluster(ICluster):
 
         vm.status = self.VM_STATES.get(instance.state, "Starting")
         vm.hostname = instance.public_dns_name
+        vm.lastpoll = int(time.time())
         return vm.status
 
 
