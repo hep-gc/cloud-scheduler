@@ -48,7 +48,7 @@ class ResourcePool:
     # name   - The name of the ResourcePool being created
     def __init__(self, name):
         global log
-        log = logging.getLogger("cloudscheduler") 
+        log = logging.getLogger("cloudscheduler")
         log.debug("New ResourcePool " + name + " created")
         self.name = name
         _collector_wsdl = "file://" + determine_path() \
@@ -266,7 +266,7 @@ class ResourcePool:
         if len(fitting_clusters) == 0:
             log.debug("No clusters fit requirements. Fitting resources list is empty.")
             return (None, None)
-        
+
         # If the list has only 1 item, return immediately
         if len(fitting_clusters) == 1:
             log.debug("Only one cluster fits parameters. Returning that cluster.")
@@ -277,14 +277,14 @@ class ResourcePool:
         # Note: nextbal_cluster stands for "next most balanced cluster"
         cluster1 = fitting_clusters.pop()
         cluster2 = fitting_clusters.pop()
-        
+
         if (cluster1.num_vms() < cluster2.num_vms()):
             mostbal_cluster = cluster1
             nextbal_cluster = cluster2
         else:
             mostbal_cluster = cluster2
             nextbal_cluster = cluster1
-        
+
         mostbal_vms = mostbal_cluster.num_vms()
         nextbal_vms = nextbal_cluster.num_vms()
 
@@ -317,7 +317,7 @@ class ResourcePool:
             # If required network is NOT in cluster's network associations
             if not (network in cluster.network_pools):
                 continue
-            # Cluster meets network and cpu reqs 
+            # Cluster meets network and cpu reqs
             potential_fit = True
             break
 
@@ -325,7 +325,7 @@ class ResourcePool:
         return potential_fit
 
 
-    # Return cluster that matches cluster_name 
+    # Return cluster that matches cluster_name
     def get_cluster(self, cluster_name):
         for cluster in self.resources:
             if cluster.name == cluster_name:

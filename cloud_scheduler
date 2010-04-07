@@ -20,7 +20,7 @@
 
 import os
 import sys
-import time 
+import time
 import string
 import getopt
 import signal
@@ -123,13 +123,13 @@ class SchedulingTh(threading.Thread):
             for type in desired_types.keys():
                 if type not in current_types.keys():
                     diff_types[type] = -desired_types[type]
-            
+
             ## Schedule user jobs
             # TODO: This should be less explicit in its reference to JobPool class parts.
             #       Something like 'for job in self.job_pool.get_unsched_jobs()'
             log_with_line("Attempt to schedule user jobs")
             for user in self.job_pool.new_jobs.keys():
-                
+
                 # Attempt to schedule jobs in order of their appearance in user's job list
                 # (currently sorted by Job priority)
                 for job in self.job_pool.new_jobs[user]:
@@ -138,20 +138,20 @@ class SchedulingTh(threading.Thread):
                         # Find resources that match the job's requirements
                         (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
                         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
-                    
+
                         # If no resource fits, continue to next job in user's list
                         if pri_rsrc == None:
                             log.info("No resource to match job: %s" % job.id)
                             log.info("Leaving job unscheduled, moving to %s's next job" % user)
                             continue
-                    
+
                         # Print details of the resource selected
                         log.debug("Open resource selected for job %s:" % job.id)
                         pri_rsrc.log()
-            
+
                         # Start VM with job requirements on the selected resource
                         log.info("Creating a %s VM for job %s on primary resource" % (job.req_vmtype, job.id))
-			
+
                         if pri_rsrc.__class__.__name__ == "NimbusCluster":
                             create_ret = pri_rsrc.vm_create(job.req_image,
                                 job.req_vmtype, job.req_network, job.req_cpuarch,
@@ -162,23 +162,23 @@ class SchedulingTh(threading.Thread):
                                 job.req_vmtype, job.req_network, job.req_cpuarch,
                                 job.req_ami, job.req_memory, job.req_cpucores,
                                 job.req_storage)
-            
+
                         # If the VM create fails, try again on secondary resource
                         if (create_ret != 0):
                             log.debug("Creating VM for job %s failed on cluster %s." % (job.id, pri_rsrc.name))
                             log.debug("Attempting VM creation on secondary resource.")
-                        
+
                             # If VM creation fails for user-job on both resources (or if there is no
                             # secondary resource), move to next user
                             if sec_rsrc == None:
                                 log.debug("No secondary resource available for job %s" % job.id)
                                 log.debug("Leaving %s's jobs unscheduled, moving on to next user" % user)
                                 break
-                        
+
                             # Print details of the secondary resource
                             log.debug("Secondary resource selected for job %s:" % job.id)
                             sec_rsrc.log()
-                        
+
                             # Start VM on secondary resource
                             log.debug("Creating VM for job %s on secondary resource" % job.id)
                             if pri_rsrc.__class__.__name__ == "NimbusCluster":
@@ -191,13 +191,13 @@ class SchedulingTh(threading.Thread):
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_ami, job.req_memory, job.req_cpucores,
                                     job.req_storage)
-                        
-                            # If secondary create fails, continue to next user 
+
+                            # If secondary create fails, continue to next user
                             if (create_ret != 0):
                                 log.debug("Creating VM for job %s failed on cluster %s." % (job.id, sec_rsrc.name))
                                 log.debug("Leaving user's jobs unscheduled. Moving to next user.")
                                 break
-            
+
                         # ENDIF - if VM create fails on primary resource
 
                         # Mark job as scheduled
@@ -216,7 +216,7 @@ class SchedulingTh(threading.Thread):
 
             ## Clear all un-needed VMs from the system
             log.debug("Clearing all un-needed VMs from the system")
-            
+
             # Count the number of jobs that require a certain VM type,
             # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
             log.debug("Gathering required VM types.")
@@ -273,7 +273,7 @@ class SchedulingTh(threading.Thread):
                 # Compare current Machine List with Previous
                 # Looking for machines that have changed jobs since last check
                 # and are of a type that has an higher than wanted distribution
-                # based on diff_types 
+                # based on diff_types
                 vm_matches = []
                 #vm_starting = []
                 changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
@@ -303,17 +303,17 @@ class SchedulingTh(threading.Thread):
                     destroy_ret = cluster.vm_destroy(vm)
                     if destroy_ret != 0:
                         log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
-                
+
                 prevMachineList = machineList
             else:
-                log.debug("No Machines returned by Condor Collector Query") 
+                log.debug("No Machines returned by Condor Collector Query")
             ## Poll all remaining system VMs
             log.debug("Polling all running VMs...")
 
             starting_poll_interval = 120 # 2 minutes
             running_poll_interval = 900 # 15 minutes
 
-            for cluster in self.resource_pool.resources:  
+            for cluster in self.resource_pool.resources:
                 for vm in cluster.vms:
                     now = int(time.time())
 
@@ -323,16 +323,16 @@ class SchedulingTh(threading.Thread):
                     elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < running_poll_interval):
                         log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
                         continue
-                    
+
                     ret_state = cluster.vm_poll(vm)
 
                     # Print polled VM's state and details
                     log.debug("Polled VM: ")
                     vm.log_dbg()
 
-                    ## If the VM is in an error state, keep track of error and 
-                    # after passing some threshold destroy the machine. 
-                    # Decrementing to avoid a long running VM from accumulating periodic 
+                    ## If the VM is in an error state, keep track of error and
+                    # after passing some threshold destroy the machine.
+                    # Decrementing to avoid a long running VM from accumulating periodic
                     # errors and being destroyed
                     if ret_state == "Error":
                         vm.errorcount += 1
@@ -347,7 +347,7 @@ class SchedulingTh(threading.Thread):
                         if (destroy_ret != 0):
                             log.error("Destroying VM failed. Leaving VM in error state.")
                             continue
-                        
+
                     # ENDIF - if VM in error state
                 # ENDFOR - for each VM in cluster vms list
             # ENDFOR - For each cluster in the resource pool
@@ -363,15 +363,15 @@ class SchedulingTh(threading.Thread):
             i = len(cluster.vms)
             while (i != 0):
                 i = i-1
-                
+
                 log.debug("Destroying VM:")
                 cluster.vms[i].log
                 destroy_ret = cluster.vm_destroy(cluster.vms[i])
                 if destroy_ret != 0:
                     log.error("Destroying VM failed. Continuing anyway... check VM logs")
-                    remaining_vms.append(cluster.vms[i])      
+                    remaining_vms.append(cluster.vms[i])
         #ENDFOR - Attempt to destroy each remaining VM in the system
-        
+
         # Print list of VMs cloud scheduler failed to destroy before exit.
         if (remaining_vms != []):
             log.error("The following VMs could not be destroyed properly:")

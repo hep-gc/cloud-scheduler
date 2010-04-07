@@ -56,7 +56,7 @@ class VM:
     # id           - (str) The id tag for the VM. Whatever is used to access the vm
     #                by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
     # vmtype       - (str) The condor VMType attribute for the VM
-    # hostname     - (str) The first part of hostname given to VM 
+    # hostname     - (str) The first part of hostname given to VM
     # clusteraddr  - (str) The address of the cluster hosting the VM
     # cloudtype   - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
     # network      - (str) The network association the VM uses
@@ -67,8 +67,8 @@ class VM:
     #                from which this VM is taking memory
     # errorcount   - (int) Number of Polling Errors VM has had
     def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType",
-            hostname="default_vmhostname", clusteraddr="default_hostname", 
-            cloudtype="def_cloudtype", network="public", cpuarch="x86", 
+            hostname="default_vmhostname", clusteraddr="default_hostname",
+            cloudtype="def_cloudtype", network="public", cpuarch="x86",
             image="default_image", memory=0, mementry=0,
             cpucores=0, storage=0):
         self.name = name
@@ -176,7 +176,7 @@ class ICluster:
             log.info("CLUSTER %s running VMs:" % (self.name))
             for vm in self.vms:
                 vm.log_short("\t")
-    
+
 
     ## Support methods
 
@@ -199,7 +199,7 @@ class ICluster:
             for vm in self.vms:
                 output += vm.get_vm_info()
             return output
-    # Get VM with id 
+    # Get VM with id
     def get_vm(self, vm_id):
         for vm in self.vms:
             if vm_id == vm.id:
@@ -307,7 +307,7 @@ class NimbusCluster(ICluster):
     VM_DURATION = "10080"
     VM_TARGETSTATE = "Running"
     VM_NODES = "1"
-    
+
     # Number of seconds to wait between executing a shutdown and a destroy.
     # (Used in vm_destroy method)
     VM_SHUTDOWN = 8
@@ -349,7 +349,7 @@ class NimbusCluster(ICluster):
                               [(config.condor_host, config.condor_context_file)])
         else:
             vm_optional = None
- 
+
         # Set a timestamp for VM creation
         now = datetime.datetime.now()
 
@@ -399,10 +399,10 @@ class NimbusCluster(ICluster):
 
         # Create a VM object to represent the newly created VM
         new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type,
-            hostname = vm_hostname, clusteraddr = self.network_address, 
-            cloudtype = self.cloud_type,network = vm_networkassoc, 
-            cpuarch = vm_cpuarch, image = vm_image, 
-            memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores, 
+            hostname = vm_hostname, clusteraddr = self.network_address,
+            cloudtype = self.cloud_type,network = vm_networkassoc,
+            cpuarch = vm_cpuarch, image = vm_image,
+            memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
             storage = vm_storage)
 
         # Add the new VM object to the cluster's vms list And check out required resources
@@ -500,10 +500,10 @@ class NimbusCluster(ICluster):
             log.warning("(vm_destroy) - VM shutdown request failed, moving directly to destroy.")
         else:
             log.debug("(vm_destroy) - workspace shutdown command executed successfully.")
-            
+
         # Sleep for a few seconds to allow for proper shutdown
         time.sleep(self.VM_SHUTDOWN)
-        
+
         # Execute the workspace destroy command: wait for return, stdout to log.
         destroy_return = self.vm_execute(destroy_cmd)
 
@@ -667,7 +667,7 @@ class NimbusCluster(ICluster):
     def vmdestroy_factory(self, epr_file):
         ws_list = [ "workspace", "-e", epr_file, "--destroy"]
         return ws_list
-    
+
     def vmshutdown_factory(self, epr_file):
         ws_list = [ "workspace", "-e", epr_file, "--shutdown"]
         return ws_list
