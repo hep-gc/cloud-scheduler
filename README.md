@@ -1,4 +1,4 @@
-#Cloud Scheduler 0.3.1
+#Cloud Scheduler 0.4
 
 ## Introduction
 The cloud scheduler: a cloud-enabled distributed resource manager.
