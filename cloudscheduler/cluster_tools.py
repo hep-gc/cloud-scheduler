@@ -688,13 +688,17 @@ class EC2Cluster(ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
-                 access_key_id=None, secret_access_key=None):
+                 access_key_id=None, secret_access_key=None, security_group=None):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage,)
+
+        if not security_group:
+            security_group = "default"
+        self.security_groups = [security_group]
 
         if not access_key_id or not secret_access_key:
             log.error("Cannot connect to cluster %s "
@@ -705,6 +709,12 @@ class EC2Cluster(ICluster):
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
 
+        # Create user data in Nimbus optional XML format
+        if config.condor_host != "localhost" and config.condor_context_file:
+            self.user_data = nimbus_xml.ws_optional(
+                             [(config.condor_host, config.condor_context_file)])
+        else:
+            self.user_data = ""
 
         if self.cloud_type == "AmazonEC2":
             try:
@@ -754,12 +764,6 @@ class EC2Cluster(ICluster):
 
         log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
-	# Create user data in Nimbus optional XML format
-        if config.condor_host != "localhost" and config.condor_context_file:
-            user_data = nimbus_xml.ws_optional(
-                             [(config.condor_host, config.condor_context_file)])
-        else:
-            user_data = ""
 
         try:
             image = None
@@ -777,7 +781,9 @@ class EC2Cluster(ICluster):
                         image = potential_match
 
             if image:
-                reservation = image.run(1,1,user_data=user_data)
+                reservation = image.run(1,1,
+                                        user_data=self.user_data,
+                                        security_groups=self.security_groups)
                 instance = reservation.instances[0]
                 log.debug("Booted VM %s" % instance.id)
             else:
