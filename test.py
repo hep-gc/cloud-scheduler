@@ -23,6 +23,10 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.condor_webservice_url = "http://testhost:1234"
         self.condor_host = "testhost"
         self.condor_host_on_vm = "vmtesthost"
+        self.cert_file = "/path/to/cert"
+        self.key_file = "/path/to/key"
+        self.cert_file_on_vm = "/path/to/certonvm"
+        self.key_file_on_vm = "/path/to/keyonvm"
         self.condor_context_file = "/etc/testlocation"
         self.image_attach_device = "deva"
         self.scratch_attach_device = "devb"
@@ -41,6 +45,10 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.add_section('global')
         testconfig.set('global', 'condor_webservice_url', self.condor_webservice_url)
         testconfig.set('global', 'condor_host_on_vm', self.condor_host_on_vm)
+        testconfig.set('global', 'cert_file', self.cert_file)
+        testconfig.set('global', 'key_file', self.key_file)
+        testconfig.set('global', 'cert_file_on_vm', self.cert_file_on_vm)
+        testconfig.set('global', 'key_file_on_vm', self.key_file_on_vm)
         testconfig.set('global', 'condor_context_file', self.condor_context_file)
         testconfig.set('global', 'cloud_resource_config', self.cloud_resource_config)
         testconfig.set('global', 'image_attach_device', self.image_attach_device)
@@ -72,6 +80,18 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.assertEqual(self.condor_host_on_vm, cloudscheduler.config.condor_host_on_vm)
     def test_condor_context_file(self):
         self.assertEqual(self.condor_context_file, cloudscheduler.config.condor_context_file)
+
+    def test_cert_file(self):
+        self.assertEqual(self.cert_file, cloudscheduler.config.cert_file)
+
+    def test_key_file(self):
+        self.assertEqual(self.key_file, cloudscheduler.config.key_file)
+
+    def test_cert_file_on_vm(self):
+        self.assertEqual(self.cert_file_on_vm, cloudscheduler.config.cert_file_on_vm)
+
+    def test_key_file_on_vm(self):
+        self.assertEqual(self.key_file_on_vm, cloudscheduler.config.key_file_on_vm)
 
     def test_cloud_resource_config(self):
         self.assertEqual(self.cloud_resource_config, cloudscheduler.config.cloud_resource_config)

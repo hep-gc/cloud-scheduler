@@ -152,16 +152,42 @@ class SchedulingTh(threading.Thread):
                         # Start VM with job requirements on the selected resource
                         log.info("Creating a %s VM for job %s on primary resource" % (job.req_vmtype, job.id))
 
+                        # Create an optional customization metadata file
+                        customizations = []
+                        if config.condor_host != "localhost" and config.condor_context_file:
+                            customizations.append((config.condor_host, config.condor_context_file))
+
+                        if config.cert_file:
+                            file_contents = open(config.cert_file).read()
+
+                            if config.cert_file_on_vm:
+                                file_location = config.cert_file_on_vm
+                            else:
+                                file_location = config.cert_file
+
+                            customizations.append((file_contents, file_location))
+
+                        if config.key_file:
+                            file_contents = open(config.key_file).read()
+
+                            if config.key_file_on_vm:
+                                file_location = config.key_file_on_vm
+                            else:
+                                file_location = config.key_file
+
+                            customizations.append((file_contents, file_location))
+
+
                         if pri_rsrc.__class__.__name__ == "NimbusCluster":
                             create_ret = pri_rsrc.vm_create(job.req_image,
                                 job.req_vmtype, job.req_network, job.req_cpuarch,
                                 job.req_imageloc, job.req_memory, job.req_cpucores,
-                                job.req_storage)
+                                job.req_storage, customization=customizations)
                         elif pri_rsrc.__class__.__name__ == "EC2Cluster":
                             create_ret = pri_rsrc.vm_create(job.req_image,
                                 job.req_vmtype, job.req_network, job.req_cpuarch,
                                 job.req_ami, job.req_memory, job.req_cpucores,
-                                job.req_storage)
+                                job.req_storage, customization=customizations)
 
                         # If the VM create fails, try again on secondary resource
                         if (create_ret != 0):
@@ -185,12 +211,12 @@ class SchedulingTh(threading.Thread):
                                 create_ret = pri_rsrc.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_imageloc, job.req_memory, job.req_cpucores,
-                                    job.req_storage)
+                                    job.req_storage, customization=customizations)
                             elif pri_rsrc.__class__.__name__ == "EC2Cluster":
                                 create_ret = pri_rsrc.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_ami, job.req_memory, job.req_cpucores,
-                                    job.req_storage)
+                                    job.req_storage, customization=customizations)
 
                             # If secondary create fails, continue to next user
                             if (create_ret != 0):

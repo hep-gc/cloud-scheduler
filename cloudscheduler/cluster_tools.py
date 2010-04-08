@@ -218,7 +218,7 @@ class ICluster:
     # TODO: Explain all params
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-            vm_image, vm_mem, vm_cores, vm_storage):
+            vm_image, vm_mem, vm_cores, vm_storage, customization=None):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
@@ -328,7 +328,7 @@ class NimbusCluster(ICluster):
 
     # TODO: Explain parameters and returns
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-            vm_image, vm_mem, vm_cores, vm_storage):
+            vm_image, vm_mem, vm_cores, vm_storage, customization=None):
 
         log.debug("Nimbus cloud create command")
 
@@ -340,12 +340,9 @@ class NimbusCluster(ICluster):
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
                 self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
 
-        # Create an optional metadata file
-        if config.condor_host != "localhost" and config.condor_context_file:
-            vm_optional = nimbus_xml.ws_optional_factory(
-                              [(config.condor_host, config.condor_context_file)])
-        else:
-            vm_optional = None
+        if customization:
+            vm_optional = nimbus_xml.ws_optional_factory(customization)
+
 
         # Set a timestamp for VM creation
         now = datetime.datetime.now()
@@ -709,12 +706,6 @@ class EC2Cluster(ICluster):
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
 
-        # Create user data in Nimbus optional XML format
-        if config.condor_host != "localhost" and config.condor_context_file:
-            self.user_data = nimbus_xml.ws_optional(
-                             [(config.condor_host, config.condor_context_file)])
-        else:
-            self.user_data = ""
 
         if self.cloud_type == "AmazonEC2":
             try:
@@ -760,10 +751,14 @@ class EC2Cluster(ICluster):
 
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-                  vm_image, vm_mem, vm_cores, vm_storage):
+                  vm_image, vm_mem, vm_cores, vm_storage, customization=None):
 
         log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
+        if customization:
+            self.user_data = nimbus_xml.ws_optional(customization)
+        else:
+            self.user_data = ""
 
         try:
             image = None

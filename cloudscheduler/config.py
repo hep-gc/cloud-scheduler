@@ -22,6 +22,10 @@ condor_collector_url = "http://localhost:9618"
 condor_host = "localhost"
 condor_host_on_vm = ""
 condor_context_file = ""
+cert_file = ""
+key_file = ""
+cert_file_on_vm = ""
+key_file_on_vm = ""
 cloud_resource_config = None
 image_attach_device = "sda"
 scratch_attach_device = "sdb"
@@ -43,6 +47,10 @@ def setup(path=None):
     global condor_context_file
     global condor_host
     global condor_host_on_vm
+    global cert_file
+    global key_file
+    global cert_file_on_vm
+    global key_file_on_vm
     global cloud_resource_config
     global image_attach_device
     global scratch_attach_device
@@ -103,6 +111,18 @@ def setup(path=None):
     if config_file.has_option("global", "condor_context_file"):
         condor_context_file = config_file.get("global",
                                                 "condor_context_file")
+
+    if config_file.has_option("global", "cert_file"):
+        cert_file = config_file.get("global", "cert_file")
+
+    if config_file.has_option("global", "key_file"):
+        key_file = config_file.get("global", "key_file")
+
+    if config_file.has_option("global", "cert_file_on_vm"):
+        cert_file_on_vm = config_file.get("global", "cert_file_on_vm")
+
+    if config_file.has_option("global", "key_file_on_vm"):
+        key_file_on_vm = config_file.get("global", "key_file_on_vm")
 
     if config_file.has_option("global", "cloud_resource_config"):
         cloud_resource_config = config_file.get("global",
