@@ -1,0 +1,12 @@
+# Local config for Cloud Scheduler
+
+COLLECTOR_NAME = condor collector
+START = TRUE
+SUSPEND = FALSE
+PREEMPT = FALSE
+KILL = FALSE
+DAEMON_LIST = COLLECTOR, MASTER, NEGOTIATOR, SCHEDD
+TRUST_UID_DOMAIN = TRUE
+
+## Settings after this point have been set automatically. Don't change them
+## unless you're really sure you know what you're doing

@@ -1,0 +1,4 @@
+
+These are suggested configurations for your Condor central manager.
+
+You will probably want to change ALLOW_WRITE to include machines in your domain.
