@@ -49,33 +49,85 @@ specified on the command line, it will be taken from the location given in the
 cloud_resource_config field of the cloud_scheduler.conf file.
 
 
-# Prerequisites
-[Suds](https://fedorahosted.org/suds/)
-[boto](http://code.google.com/p/boto/)
+## Prerequisites
+
+* A working Condor 7.5.x install (details below)
+* [Suds](https://fedorahosted.org/suds/)
+* [boto](http://code.google.com/p/boto/)
+* [simple-json](http://undefined.org/python/#simplejson) For python 2.4/2.5
 
 You can install these on RHEL5 (and clones) with the following:
 
-> wget 'https://fedorahosted.org/suds/attachment/wiki/WikiStart/python-suds-0.3.6-1.el5.noarch.rpm?format=raw' -O python-suds.el5.noarch.rpm
-> yum localinstall python-suds.el5.noarch.rpm
->
-> wget http://boto.googlecode.com/files/boto-1.8d.tar.gz
-> tar xvf boto-1.8d.tar.gz
-> cd boto-1.8d
-> python setup.py install
+    # yum install python-simplejson
+    # wget https://fedorahosted.org/releases/s/u/suds/python-suds-0.3.9-1.fc11.noarch.rpm
+    # yum localinstall python-suds.0.3.9-1.fc11.noarch.rpm
+    # wget http://boto.googlecode.com/files/boto-1.9d.tar.gz
+    # tar xvf boto-1.9d.tar.gz
+    # cd boto-1.8d
+    # python setup.py install
 
-On Mac OS X, using Macports, you can install these with the following
-(say you're using python 2.6):
+On Mac OS X, using Macports, you can install these with the following:
 
-> sudo port install py26-suds py26-boto
+    # sudo port install py-suds py-boto
+
+## CONDOR INSTALL
+Cloud Scheduler works with [Condor](http://www.cs.wisc.edu/condor/), which needs
+to be installed and able to manage resources. You can install it on the same
+machine that runs Cloud Scheduler (or not). You need to enable SOAP to allow
+Cloud Scheduler to communicate with Condor. You can do this by adding the
+following to your Condor install:
+
+    ## CLOUD SCHEDULER SETTINGS
+    ENABLE_SOAP = TRUE
+    ENABLE_WEB_SERVER = TRUE
+    WEB_ROOT_DIR=$(RELEASE_DIR)/web
+    ALLOW_SOAP=localhost, 127.0.0.1
+    SCHEDD_ARGS = -p 8080
+
+We also recommend the following settings.
+
+    UPDATE_COLLECTOR_WITH_TCP=True
+    COLLECTOR_SOCKET_CACHE_SIZE=1000
+
+We have also placed an example Condor config in scripts/condor/manager
+
+Make sure you can run condor_status and condor_q, and make sure your
+ALLOW_WRITE will permit the VMs you will start to add themselves to your Condor
+Pool.
+
+Condor must also be installed on your VM images that will run your jobs. There
+is a sample configuration for your Condor installation in scripts/condor/worker/
+condor_config, condor_config.local and central_manager must be in /etc/condor/
+and you must use the customized condor init script scripts/condor/worker/condor
 
 
-# INSTALL
+## INSTALL
 To install cloud scheduler, as root, run:
 
-> python setup.py install
+    # python setup.py install
 
+## CONFIGURATION
+Default configuration files are in /etc/cloudscheduler/. You will need both a
+cloud_scheduler.conf file, and a cloud_resources.conf file. 
 
-# License
+cloud_scheduler.conf contains configuration values to point your configuration 
+to the correct Condor pool, and defaults for logging.
+
+## INIT SCRIPT
+There is a cloud scheduler init script at scripts/cloud_scheduler. To install
+it on systems with System V style init scripts, you can do so with:
+
+    # cp scripts/cloud_scheduler /etc/init.d/
+
+Start it with:
+
+    # /etc/init.d/cloud_scheduler start
+
+On Red Hat-like systems you can enable it to run at boot with:
+
+    # chkconfig cloud_scheduler on
+
+## LICENSE
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of either:
