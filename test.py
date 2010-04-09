@@ -9,6 +9,9 @@ from cStringIO import StringIO
 
 import cloudscheduler.config
 import cloudscheduler.cloud_management
+import cloudscheduler.nimbus_xml
+import cloudscheduler.utilities as utilities
+
 
 held, sys.stderr = sys.stderr, StringIO() # Hide stderr
 
@@ -18,6 +21,15 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
         # set values for each option
         self.condor_webservice_url = "http://testhost:1234"
+        self.condor_host = "testhost"
+        self.condor_host_on_vm = "vmtesthost"
+        self.cert_file = "/path/to/cert"
+        self.key_file = "/path/to/key"
+        self.cert_file_on_vm = "/path/to/certonvm"
+        self.key_file_on_vm = "/path/to/keyonvm"
+        self.condor_context_file = "/etc/testlocation"
+        self.image_attach_device = "deva"
+        self.scratch_attach_device = "devb"
         self.cloud_resource_config = "/home/testuser/cloud"
         self.info_server_port = "1234"
 
@@ -32,7 +44,15 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
         testconfig.add_section('global')
         testconfig.set('global', 'condor_webservice_url', self.condor_webservice_url)
+        testconfig.set('global', 'condor_host_on_vm', self.condor_host_on_vm)
+        testconfig.set('global', 'cert_file', self.cert_file)
+        testconfig.set('global', 'key_file', self.key_file)
+        testconfig.set('global', 'cert_file_on_vm', self.cert_file_on_vm)
+        testconfig.set('global', 'key_file_on_vm', self.key_file_on_vm)
+        testconfig.set('global', 'condor_context_file', self.condor_context_file)
         testconfig.set('global', 'cloud_resource_config', self.cloud_resource_config)
+        testconfig.set('global', 'image_attach_device', self.image_attach_device)
+        testconfig.set('global', 'scratch_attach_device', self.scratch_attach_device)
         testconfig.set('global', 'info_server_port', self.info_server_port)
 
         testconfig.add_section('logging')
@@ -50,9 +70,37 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_condor_webservice_url(self):
         self.assertEqual(self.condor_webservice_url, cloudscheduler.config.condor_webservice_url)
+    def test_condor_host(self):
+        if self.condor_host_on_vm:
+            self.assertEqual(self.condor_host_on_vm, cloudscheduler.config.condor_host)
+        else:
+            self.assertEqual(self.condor_host, cloudscheduler.config.condor_host)
+
+    def test_condor_host_on_vm(self):
+        self.assertEqual(self.condor_host_on_vm, cloudscheduler.config.condor_host_on_vm)
+    def test_condor_context_file(self):
+        self.assertEqual(self.condor_context_file, cloudscheduler.config.condor_context_file)
+
+    def test_cert_file(self):
+        self.assertEqual(self.cert_file, cloudscheduler.config.cert_file)
+
+    def test_key_file(self):
+        self.assertEqual(self.key_file, cloudscheduler.config.key_file)
+
+    def test_cert_file_on_vm(self):
+        self.assertEqual(self.cert_file_on_vm, cloudscheduler.config.cert_file_on_vm)
+
+    def test_key_file_on_vm(self):
+        self.assertEqual(self.key_file_on_vm, cloudscheduler.config.key_file_on_vm)
 
     def test_cloud_resource_config(self):
         self.assertEqual(self.cloud_resource_config, cloudscheduler.config.cloud_resource_config)
+
+    def test_image_attach_device(self):
+        self.assertEqual(self.image_attach_device, cloudscheduler.config.image_attach_device)
+
+    def test_scratch_attach_device(self):
+        self.assertEqual(self.scratch_attach_device, cloudscheduler.config.scratch_attach_device)
 
     def test_info_server_port(self):
         self.assertEqual(int(self.info_server_port), cloudscheduler.config.info_server_port)
@@ -176,6 +224,77 @@ class ResourcePoolSetup(unittest.TestCase):
     def tearDown(self):
         os.remove(self.configfilename)
 
+class NimbusXMLTests(unittest.TestCase):
+
+    def setUp(self):
+        self.custom_filename = "/tmp/filename"
+        self.custom_string = "stringtoput"
+        self.custom_tasks = [(self.custom_string, self.custom_filename)]
+        self.optional_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite></OptionalParameters>" % (self.custom_string, self.custom_filename)
+
+    def test_for_good_optional_parameters(self):
+        txml = cloudscheduler.nimbus_xml.ws_optional_factory(self.custom_tasks)
+        
+        xml_file = open(txml, "r")
+        generated_xml = xml_file.read()
+        # Some versions of python xml insert a newline
+        generated_xml = generated_xml.replace("\n", "")
+        self.assertEqual(generated_xml, self.optional_xml)
+        
+        xml_file.close()
+        os.remove(txml)
+
+    def test_optional_with_bad_path(self):
+
+        bad_filename = "not a filepath"
+        bad_custom_task = [(bad_filename, self.custom_string)]
+
+        txml = cloudscheduler.nimbus_xml.ws_optional_factory(bad_custom_task)
+
+        self.assertEqual(None, txml)
+
+    def test_optional_with_empty_path(self):
+
+        bad_filename = ""
+        bad_custom_task = [(bad_filename, self.custom_string)]
+
+        txml = cloudscheduler.nimbus_xml.ws_optional_factory(bad_custom_task)
+
+        self.assertEqual(None, txml)
+
+class GetOrNoneTests(unittest.TestCase):
+
+    def setUp(self):
+
+        self.section_name = "section"
+        self.good_name = "nameofparam"
+        self.good_val = "itsvalue"
+
+        # build config file
+        (self.configfile, self.configfilename) = tempfile.mkstemp()
+        testconfig = ConfigParser.RawConfigParser()
+
+        testconfig.add_section(self.section_name)
+        testconfig.set(self.section_name, self.good_name, self.good_val)
+
+        # write temporary config file
+        configfile = open(self.configfilename, 'wb')
+        testconfig.write(configfile)
+        configfile.close()
+        cloudscheduler.config.setup(path=self.configfilename)
+
+
+    def test_get(self):
+        config = ConfigParser.ConfigParser()
+        config.read(self.configfilename)
+        value = utilities.get_or_none(config, self.section_name, self.good_name)
+        self.assertEqual(self.good_val, value)
+
+    def test_none(self):
+        config = ConfigParser.ConfigParser()
+        config.read(self.configfilename)
+        value = utilities.get_or_none(config, self.section_name, "fakeitem")
+        self.assertEqual(None, value)
 
 if __name__ == '__main__':
     unittest.main()

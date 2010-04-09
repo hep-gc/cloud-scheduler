@@ -1,0 +1,8 @@
+Cloud Scheduler EC2 Context Helper
+
+This script contextualizes your EC2 VM with Nimbus Style Context Data.
+
+To install it to start at runtime, just run the setup, and chkconfig:
+
+# python setup.py install
+# chkconfig context on

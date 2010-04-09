@@ -9,13 +9,28 @@
 
 import os
 import sys
+from urlparse import urlparse
 import ConfigParser
+
+import cloudscheduler.utilities as utilities
 
 # Cloud Scheduler Options Module.
 
 # Set default values
 condor_webservice_url = "http://localhost:8080"
+condor_collector_url = "http://localhost:9618"
+condor_host = "localhost"
+condor_host_on_vm = ""
+condor_context_file = ""
+cert_file = ""
+key_file = ""
+cert_file_on_vm = ""
+key_file_on_vm = ""
 cloud_resource_config = None
+image_attach_device = "sda"
+scratch_attach_device = "sdb"
+polling_error_threshold = 10
+
 log_level = "INFO"
 log_location = None
 log_stdout = False
@@ -28,8 +43,20 @@ info_server_port = 8111
 def setup(path=None):
 
     global condor_webservice_url
+    global condor_collector_url
+    global condor_context_file
+    global condor_host
+    global condor_host_on_vm
+    global cert_file
+    global key_file
+    global cert_file_on_vm
+    global key_file_on_vm
     global cloud_resource_config
+    global image_attach_device
+    global scratch_attach_device
     global info_server_port
+    global polling_error_threshold
+
     global log_level
     global log_location
     global log_stdout
@@ -73,15 +100,55 @@ def setup(path=None):
         condor_webservice_url = config_file.get("global",
                                                 "condor_webservice_url")
 
+    if config_file.has_option("global", "condor_collector_url"):
+        condor_collector_url = config_file.get("global",
+                                                "condor_collector_url")
+
+    if config_file.has_option("global", "condor_host_on_vm"):
+        condor_host_on_vm = config_file.get("global",
+                                                "condor_host_on_vm")
+
+    if config_file.has_option("global", "condor_context_file"):
+        condor_context_file = config_file.get("global",
+                                                "condor_context_file")
+
+    if config_file.has_option("global", "cert_file"):
+        cert_file = config_file.get("global", "cert_file")
+
+    if config_file.has_option("global", "key_file"):
+        key_file = config_file.get("global", "key_file")
+
+    if config_file.has_option("global", "cert_file_on_vm"):
+        cert_file_on_vm = config_file.get("global", "cert_file_on_vm")
+
+    if config_file.has_option("global", "key_file_on_vm"):
+        key_file_on_vm = config_file.get("global", "key_file_on_vm")
+
     if config_file.has_option("global", "cloud_resource_config"):
         cloud_resource_config = config_file.get("global",
                                                 "cloud_resource_config")
+
+    if config_file.has_option("global", "image_attach_device"):
+        image_attach_device = config_file.get("global",
+                                                "image_attach_device")
+
+    if config_file.has_option("global", "scratch_attach_device"):
+        scratch_attach_device = config_file.get("global",
+                                                "scratch_attach_device")
 
     if config_file.has_option("global", "info_server_port"):
         try:
             info_server_port = config_file.getint("global", "info_server_port")
         except ValueError:
             print "Configuration file problem: info_server_port must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "polling_error_threshold"):
+        try:
+            polling_error_threshold = config_file.getint("global", "polling_error_threshold")
+        except ValueError:
+            print "Configuration file problem: polling_error_threshold must be an " \
                   "integer value."
             sys.exit(1)
 
@@ -101,3 +168,9 @@ def setup(path=None):
             print "Configuration file problem: log_max_size must be an " \
                   "integer value in bytes."
             sys.exit(1)
+
+    # Derived options
+    if condor_host_on_vm:
+        condor_host = condor_host_on_vm
+    else:
+        condor_host = utilities.get_hostname_from_url(condor_webservice_url)

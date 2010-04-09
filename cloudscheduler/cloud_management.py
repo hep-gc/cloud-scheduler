@@ -20,6 +20,13 @@ import logging
 
 import ConfigParser
 import cluster_tools
+from suds.client import Client
+import cloudscheduler.config as config
+from urllib2 import URLError
+from decimal import *
+
+from cloudscheduler.utilities import determine_path
+from cloudscheduler.utilities import get_or_none
 
 ##
 ## GLOBALS
@@ -43,14 +50,17 @@ class ResourcePool:
     # name   - The name of the ResourcePool being created
     def __init__(self, name):
         global log
-        log = logging.getLogger("cloudscheduler") 
-        log.info("New ResourcePool " + name + " created")
+        log = logging.getLogger("cloudscheduler")
+        log.debug("New ResourcePool " + name + " created")
         self.name = name
+        _collector_wsdl = "file://" + determine_path() \
+                          + "/wsdl/condorCollector.wsdl"
+        self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
 
     # Read in defined clouds from cloud definition file
     def setup(self, config_file):
 
-        log.info("Reading cloud configuration file %s" % config_file)
+        log.info("Reading cloud resource configuration file %s" % config_file)
         # Check for config files with ~ in the path
         config_file = os.path.expanduser(config_file)
 
@@ -67,33 +77,34 @@ class ResourcePool:
         # Read in config file, parse into Cluster objects
         for cluster in cloud_config.sections():
 
-            cloud_type = cloud_config.get(cluster, "cloud_type")
+            cloud_type = get_or_none(cloud_config, cluster, "cloud_type")
 
             # Create a new cluster according to cloud_type
             if cloud_type == "Nimbus":
                 new_cluster = cluster_tools.NimbusCluster(name = cluster,
-                               host = cloud_config.get(cluster, "host"),
-                               cloud_type = cloud_config.get(cluster, "cloud_type"),
-                               memory = map(int, cloud_config.get(cluster, "memory").split(",")),
-                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                               networks = cloud_config.get(cluster, "networks").split(","),
-                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                               storage = cloud_config.getint(cluster, "storage"),
+                               host = get_or_none(cloud_config, cluster, "host"),
+                               cloud_type = get_or_none(cloud_config, cluster, "cloud_type"),
+                               memory = map(int, get_or_none(cloud_config, cluster, "memory").split(",")),
+                               cpu_archs = get_or_none(cloud_config, cluster, "cpu_archs").split(","),
+                               networks = get_or_none(cloud_config, cluster, "networks").split(","),
+                               vm_slots = int(get_or_none(cloud_config, cluster, "vm_slots")),
+                               cpu_cores = int(get_or_none(cloud_config, cluster, "cpu_cores")),
+                               storage = int(get_or_none(cloud_config, cluster, "storage")),
                                )
 
             elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus":
                 new_cluster = cluster_tools.EC2Cluster(name = cluster,
-                               host = cloud_config.get(cluster, "host"),
-                               cloud_type = cloud_config.get(cluster, "cloud_type"),
-                               memory = map(int, cloud_config.get(cluster, "memory").split(",")),
-                               cpu_archs = cloud_config.get(cluster, "cpu_archs").split(","),
-                               networks = cloud_config.get(cluster, "networks").split(","),
-                               vm_slots = cloud_config.getint(cluster, "vm_slots"),
-                               cpu_cores = cloud_config.getint(cluster, "cpu_cores"),
-                               storage = cloud_config.getint(cluster, "storage"),
-                               access_key_id = cloud_config.get(cluster, "access_key_id"),
-                               secret_access_key = cloud_config.get(cluster, "secret_access_key"),
+                               host = get_or_none(cloud_config, cluster, "host"),
+                               cloud_type = get_or_none(cloud_config, cluster, "cloud_type"),
+                               memory = map(int, get_or_none(cloud_config, cluster, "memory").split(",")),
+                               cpu_archs = get_or_none(cloud_config, cluster, "cpu_archs").split(","),
+                               networks = get_or_none(cloud_config, cluster, "networks").split(","),
+                               vm_slots = int(get_or_none(cloud_config, cluster, "vm_slots")),
+                               cpu_cores = int(get_or_none(cloud_config, cluster, "cpu_cores")),
+                               storage = int(get_or_none(cloud_config, cluster, "storage")),
+                               access_key_id = get_or_none(cloud_config, cluster, "access_key_id"),
+                               secret_access_key = get_or_none(cloud_config, cluster, "secret_access_key"),
+                               security_group = get_or_none(cloud_config, cluster, "security_group"),
                                )
 
             else:
@@ -219,7 +230,7 @@ class ResourcePool:
             fitting_clusters.append(cluster)
 
         # Return the list clusters that fit given requirements
-        log.info("List of fitting clusters: ")
+        log.debug("List of fitting clusters: ")
         self.log_list(fitting_clusters)
         return fitting_clusters
 
@@ -258,7 +269,7 @@ class ResourcePool:
         if len(fitting_clusters) == 0:
             log.debug("No clusters fit requirements. Fitting resources list is empty.")
             return (None, None)
-        
+
         # If the list has only 1 item, return immediately
         if len(fitting_clusters) == 1:
             log.debug("Only one cluster fits parameters. Returning that cluster.")
@@ -269,14 +280,14 @@ class ResourcePool:
         # Note: nextbal_cluster stands for "next most balanced cluster"
         cluster1 = fitting_clusters.pop()
         cluster2 = fitting_clusters.pop()
-        
+
         if (cluster1.num_vms() < cluster2.num_vms()):
             mostbal_cluster = cluster1
             nextbal_cluster = cluster2
         else:
             mostbal_cluster = cluster2
             nextbal_cluster = cluster1
-        
+
         mostbal_vms = mostbal_cluster.num_vms()
         nextbal_vms = nextbal_cluster.num_vms()
 
@@ -292,4 +303,147 @@ class ResourcePool:
 
         # Return the most balanced cluster after considering all fitting clusters.
         return (mostbal_cluster, nextbal_cluster)
+
+    # Check that a cluster will be able to meet the static requirements.
+    # Parameters:
+    #    network  - the network assoication required by the VM
+    #    cpuarch  - the cpu architecture that the VM must run on
+    # Return: True if cluster is found that fits VM requirments
+    #         Otherwise, returns False
+    def resourcePF(self, network, cpuarch):
+        potential_fit = False
+
+        for cluster in self.resources:
+            # If the cluster does not have the required CPU architecture
+            if not (cpuarch in cluster.cpu_archs):
+                continue
+            # If required network is NOT in cluster's network associations
+            if not (network in cluster.network_pools):
+                continue
+            # Cluster meets network and cpu reqs
+            potential_fit = True
+            break
+
+        # If no clusters are found (no clusters can host the required VM)
+        return potential_fit
+
+
+    # Return cluster that matches cluster_name
+    def get_cluster(self, cluster_name):
+        for cluster in self.resources:
+            if cluster.name == cluster_name:
+                return cluster
+        return None
+
+    # Find cluster that contains vm
+    def get_cluster_with_vm(self, vm):
+        cluster = None
+        for c in self.resources:
+            if vm in c.vms:
+                cluster = c
+        return cluster
+
+    # Convert the Condor class ad struct into a python dict
+    # Note this is done 'stupidly' without checking data types
+    def convert_classad_dict(self, ad):
+        native = {}
+        attrs = ad[0]
+        for attr in attrs:
+            native[attr['name']] = attr['value']
+        return native
+
+    # Takes a list of Condor class ads to convert
+    def convert_classad_list(self, ad):
+        native_list = []
+        items = ad[0]
+        for item in items:
+            native_list.append(self.convert_classad_dict(item))
+        return native_list
+
+    # SOAP Query to the condor collector
+    # Returns a list of dictionaries with information about the machines
+    # registered with condor.
+    def resource_querySOAP(self):
+        log.debug("Querying condor startd with SOAP API")
+        try:
+            machines = self.condor_collector.service.queryStartdAds()
+            if len(machines) != 0:
+                machineList = self.convert_classad_list(machines)
+            else:
+                machineList = None
+            return machineList
+
+        except URLError, e:
+            log.error("There was a problem connecting to the "
+                      "Condor scheduler web service (%s) for the following "
+                      "reason: %s"
+                      % (config.condor_collector_url, e.reason[1]))
+        except:
+            log.error("There was a problem connecting to the "
+                      "Condor scheduler web service (%s)"
+                      % (config.condor_collector_url))
+            raise
+            sys.exit(1)
+
+    # Get a Dictionary of required VM Types with how many of that type running
+    # Uses the dict-list structure returned by SOAP query
+    def get_vmtypes_count(self, machineList):
+        count = {}
+        for vm in machineList:
+            if vm['VMType'] not in count:
+                count[vm['VMType']] = 1
+            else:
+                count[vm['VMType']] += 1
+        return count
+
+    # Determines if the key value pairs in in criteria are in the dictionary
+    def match_criteria(self, base, criteria):
+        return criteria == dict(set(base.items()).intersection(set(criteria.items())))
+    # Find all the matching entries for given criteria
+    def find_in_where(self, machineList, criteria):
+        matches = []
+        for machine in machineList:
+            if self.match_criteria(machine, criteria):
+                matches.append(machine)
+        return matches
+
+    # Get a dictionary of types of VMs the scheduler is currently tracking
+    def get_vmtypes_count_internal(self):
+       types = {}
+       for cluster in self.resources:
+           for vm in cluster.vms:
+               if vm.vmtype in types:
+                   types[vm.vmtype] += 1
+               else:
+                   types[vm.vmtype] = 1
+       return types
+
+    # Count of VMs in the system
+    def vm_count(self):
+        count = 0
+        for cluster in self.resources:
+            count = count + len(cluster.vms)
+        return count
+
+    # VM Type Distribution
+    def vmtype_distribution(self):
+        types = self.get_vmtypes_count_internal()
+        count = Decimal(self.vm_count())
+        if count == 0:
+            return {}
+        count = 1 / count
+        for type in types.keys():
+            types[type] *= count
+        return types
+
+    # Take the current and previous machineLists
+    # Figure out which machines have changed jobs
+    # return list of machine names that have
+    def machine_jobs_changed(self, current, previous):
+        auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current if 'GlobalJobId' in d.keys())
+        auxPrevious = dict((d['Name'], d['GlobalJobId']) for d in previous if 'GlobalJobId' in d.keys())
+        changed = [k for k,v in auxPrevious.items() if k in auxCurrent and auxCurrent[k] != v]
+        for n in range(0, len(changed)):
+            changed[n] = changed[n].split('.')[0]
+        return changed
 

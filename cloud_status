@@ -12,6 +12,7 @@ import sys
 import socket
 from optparse import OptionParser
 import logging
+import platform
 
 import cloudscheduler.utilities as utilities 
 # We need to set up logging with a Null Handler before we
@@ -29,7 +30,11 @@ def main(argv=None):
     parser = OptionParser()
     parser.add_option("-f", "--config-file", dest="config_file", metavar="FILE",
                       help="Designate a Cloud Sceduler config file")
-    parser.add_option("-p", "--port", dest="port", metavar="FILE",
+    parser.add_option("-s", "--server-hostname", dest="server_hostname",
+                      metavar="HOSTNAME",
+                      help="Pick a specific machine's Cloud Scheduler"
+                           "information server")
+    parser.add_option("-p", "--port", dest="port", metavar="PORT",
                       help="Pick a custom port to connect to Cloud Scheduler"
                            "information server")
     parser.add_option("-a", "--all-cluster", action="store_true", 
@@ -63,7 +68,10 @@ def main(argv=None):
     else:
         server_port = config.info_server_port
 
-    server_hostname = "localhost"
+    if cli_options.server_hostname:
+        server_hostname = cli_options.server_hostname
+    else:
+        server_hostname = platform.node()
 
     # Connect to info server
     try:

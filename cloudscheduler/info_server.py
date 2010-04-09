@@ -56,7 +56,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
         threading.Thread.__init__(self)
         self.done = False
         cloud_resources = c_resources
-        host_name = platform.node()
+        host_name = "0.0.0.0"
         #set up server
         try:
             self.server = SimpleXMLRPCServer((host_name,
@@ -80,9 +80,10 @@ class CloudSchedulerInfoServer(threading.Thread,):
                     output += cluster.get_cluster_info_short()+"\n"
                 return output
             def get_cluster_vm_resources(self):
-                output = "VMs in cluster:\n"
+                output = "%-15s %-10s %-15s %-25s\n" % \
+                          ("VM ID", "VM TYPE", "STATUS", "CLUSTER")
                 for cluster in cloud_resources.resources:
-                    output += cluster.get_cluster_vms_info()+"\n"
+                    output += cluster.get_cluster_vms_info()
                 return output
             def get_cluster_info(self, cluster_name):
                 output = "Cluster Info: %s\n" % cluster_name
@@ -156,11 +157,12 @@ class VMJSONEncoder(json.JSONEncoder):
            log.error("Cannot use VMJSONEncoder on non VM object")
            return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
-                'clusteraddr': vm.clusteraddr, 'cloudtype': vm.cloudtype,
-                'network': vm.network, 'cpuarch': vm.cpuarch,
-                'imagelocation': vm.imagelocation, 'memory': vm.memory,
-                'mementry': vm.mementry, 'cpucores': vm.cpucores,
-                'storage': vm.storage, 'status': vm.status}
+                'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
+                'cloudtype': vm.cloudtype, 'network': vm.network, 
+                'cpuarch': vm.cpuarch, 'imagelocation': vm.imagelocation,
+                'memory': vm.memory, 'mementry': vm.mementry, 
+                'cpucores': vm.cpucores, 'storage': vm.storage, 
+                'status': vm.status}
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
@@ -170,12 +172,15 @@ class ClusterJSONEncoder(json.JSONEncoder):
         vmEncodes = []
         for vm in cluster.vms:
             vmEncodes.append(VMJSONEncoder().encode(vm))
+        vmDecodes = []
+        for vm in vmEncodes:
+            vmDecodes.append(json.loads(vm))
         return {'name': cluster.name, 'network_address': cluster.network_address,
                 'cloud_type': cluster.cloud_type, 'memory': cluster.memory, 
                 'cpu_archs': cluster.cpu_archs, 
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
-                'storageGB': cluster.storageGB, 'vms': vmEncodes}
+                'storageGB': cluster.storageGB, 'vms': vmDecodes}
 
 class ResourcePoolJSONEncoder(json.JSONEncoder):
     def default(self, res_pool):
@@ -185,4 +190,7 @@ class ResourcePoolJSONEncoder(json.JSONEncoder):
         pool = []
         for cluster in res_pool.resources:
             pool.append(ClusterJSONEncoder().encode(cluster))
-        return {'resources': pool}
+        poolDecodes = []
+        for cluster in pool:
+            poolDecodes.append(json.loads(cluster))
+        return {'resources': poolDecodes}

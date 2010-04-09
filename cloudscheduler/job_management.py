@@ -24,18 +24,22 @@
 ##
 ## IMPORTS
 ##
+import re
+import sys
+import string
+import logging
 import datetime
 import subprocess
-import string
-import re
-import logging
-import sys
-from suds.client import Client
 from urllib2 import URLError
-from bisect import insort
+try:
+    from suds.client import Client
+except:
+    print >> sys.stderr, "Couldn't import Suds. You should install it from https://fedorahosted.org/suds/, or your package manager"
+    sys.exit(1)
 
-from cloudscheduler.utilities import determine_path
 import cloudscheduler.config as config
+from cloudscheduler.utilities import determine_path
+from decimal import *
 
 ##
 ## LOGGING
@@ -48,39 +52,37 @@ log = None
 ## CLASSES
 ##
 
-# The storage structure for individual jobs read from the job scheduler
 class Job:
+    """
+    Job Class - Represents a job as read from the Job Scheduler
 
-    ## Instance Variables
 
+    """
     # A list of possible statuses for internal job representation
     statuses = ["Unscheduled", "Scheduled"]
 
-    ## Instance Methods
-
-    # Constructor
-    # Parameters:
-    # GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
-    # User       - (str) The user that submitted the job to Condor
-    # Priority   - (int) The priority given in the job submission file (default = 1)
-    # VMType     - (str) The VMType required by the job (set in VM's condor_config file)
-    # VMNetwork  - (str) The network association the job requires. TODO: Should support "any"
-    # VMCPUArch  - (str) The CPU architecture the job requires in its run environment
-    # VMName     - (str) The name of the image the job is to run on
-    # VMLoc      - (str) The location (URL) of the image the job is to run on
-    # VMMem      - (int) The amount of memory in MB the job requires
-    # VMCPUCores - (int) The number of cpu cores the job requires
-    # VMStorage  - (int) The amount of storage space the job requires
-    # NOTE: The image field is used as a name field for the image the job will
-    #   run on. The cloud scheduler will eventually be able to search a set of
-    #   repositories for this image name. Currently, imageloc MUST be set.
-    #
-    # TODO: Set default job properties in the cloud scheduler main config file
-    #      (Have option to set them there, and default values)
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
-             VMType="canfarbase", VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
-             VMLoc="http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.dev.img.gz",
+             VMType="default", VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
+             VMLoc="", VMAMI="",
              VMMem=512, VMCPUCores=1, VMStorage=1):
+        """
+     Parameters:
+     GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
+     User       - (str) The user that submitted the job to Condor
+     Priority   - (int) The priority given in the job submission file (default = 1)
+     VMType     - (str) The VMType required by the job (set in VM's condor_config file)
+     VMNetwork  - (str) The network association the job requires. TODO: Should support "any"
+     VMCPUArch  - (str) The CPU architecture the job requires in its run environment
+     VMName     - (str) The name of the image the job is to run on
+     VMLoc      - (str) The location (URL) of the image the job is to run on
+     VMAMI      - (str) The Amazon AMI of the image to be run
+     VMMem      - (int) The amount of memory in MB the job requires
+     VMCPUCores - (int) The number of cpu cores the job requires
+     VMStorage  - (int) The amount of storage space the job requires
+     NOTE: The image field is used as a name field for the image the job will
+
+     TODO: Set default job properties in the cloud scheduler main config file
+          (Have option to set them there, and default values) """
         self.id   = GlobalJobId
         self.user = Owner
         self.priority     = int(JobPrio)
@@ -89,6 +91,7 @@ class Job:
         self.req_cpuarch  = VMCPUArch
         self.req_image    = VMName
         self.req_imageloc = VMLoc
+        self.req_ami      = VMAMI
         self.req_memory   = int(VMMem)
         self.req_cpucores = int(VMCPUCores)
         self.req_storage  = int(VMStorage)
@@ -99,11 +102,10 @@ class Job:
         global log
         log = logging.getLogger("cloudscheduler")
 
-        log.debug("New Job object created:")
-        log.debug("ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, Memory: %d" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_memory))
-    
-        
+        log.debug("New Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
+
+
     # Log a short string representing the job
     def log(self):
         log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
@@ -116,11 +118,11 @@ class Job:
     # Returns the job's id string
     def get_id(self):
         return self.id
-    
+
     # Get priority
     def get_priority(self):
         return self.priority
-    
+
     # Set priority
     # Prio must be an integer.
     def set_priority(self, prio):
@@ -164,7 +166,7 @@ class JobPool:
     def __init__(self, name):
         global log
         log = logging.getLogger("cloudscheduler")
-        log.info("New JobPool %s created" % name)
+        log.debug("New JobPool %s created" % name)
         self.name = name
         self.last_query = datetime.datetime.now()
 
@@ -208,7 +210,7 @@ class JobPool:
                     attribute_key = str(attribute.name)
                     new_classad[attribute_key] = attribute.value
                 classads.append(new_classad)
-          
+
             for classad in classads:
                 job_dict = self.make_job_dict(classad)
 
@@ -217,7 +219,7 @@ class JobPool:
                 # of dictionary keys of the same name (as the function parameters)
                 con_job = Job(**job_dict)
                 condor_jobs.append(con_job)
-            
+
             # DBG: Print condor jobs recvd from scheduler.
             log.debug("Jobs read from condor scheduler, stored in condor jobs list: ")
             self.log_jobs_list(condor_jobs)
@@ -225,7 +227,7 @@ class JobPool:
         # Otherwise, if the query succeeds but there are no jobs in the queue
         elif job_ads.status.code == "SUCCESS" and not job_ads.classAdArray:
             log.debug("Job query (status: %s) returned no jobs." % job_ads.status.code)
-            
+
         # Otherwise, log an error and return None
         else:
             log.error("Job query (status: %s) failed." % job_ads.status.code)
@@ -245,7 +247,7 @@ class JobPool:
     # Parameters:
     #   jobs - (list of Job objects) The jobs received from a condor query
     def update_jobs(self, query_jobs):
-        
+
         # If no jobs recvd, remove all jobs from the system (all have finished or have been removed)
         if (query_jobs == []):
             log.debug("No jobs received from job query. Removing all jobs from the system.")
@@ -254,60 +256,67 @@ class JobPool:
                     self.remove_system_job(job)
                     log.info("Job %s finished or removed. Cleared job from system." % job.id)
             return
-        
+
         # Update all system jobs:
         #   - remove jobs already in the system from the jobs list
         #   - remove finished jobs (job in system, not in jobs list)
-        
+
         # DBG: print both jobs dicts before updating system.
         log.debug("System jobs prior to system update:")
         log.debug("Unscheduled Jobs (new_jobs):")
         self.log_jobs_dict(self.new_jobs)
         log.debug("Scheduled Jobs (sched_jobs):")
         self.log_jobs_dict(self.sched_jobs)
-        
+
         for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
-            for sys_job in jobset:
-                
+            jobsetcopy = []
+            jobsetcopy.extend(jobset)
+            for sys_job in jobsetcopy:
+
                 # DBG: print job details in loop
                 log.debug("system job loop - %s, %10s, %4d, %10s" % (sys_job.id, sys_job.user, sys_job.priority, sys_job.req_vmtype))
-                
+
                 # If the sys job is not in the query jobs, sys job has finished / been removed
                 if not (self.has_job(query_jobs, sys_job)):
                     self.remove_system_job(sys_job)
                     log.info("Job %s finished or removed. Cleared job from system." % sys_job.id)
-                
+
                 # Otherwise, the system job is in the condor queue - remove it from condor_jobs
                 else:
                     self.remove_job(query_jobs, sys_job)
                     log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
-                
+
+                # NOTE: The code below also conceptually achieves the above functionality.
+                #       However, due to a Python 2.4.x quirk, iterating through lists
+                #       in the order given below causes occasional errors. This has been
+                #       changed in Python 2.5+. For support of 2.4.3 (SL standard), use the
+                #       above code, and generally watch out for in-loop list manipulation.
                 # If system job is in the jobs list, remove from the jobs list
                 #if (self.has_job(query_jobs, sys_job)):
                 #    log.debug("Job %s is already in the system." % sys_job.id)
                 #    self.remove_job(query_jobs, sys_job)
-                #    
+                #
                 #    # DBG: Print query_jobs after modification by update loop
                 #    log.debug("Query jobs after removal (system already has job):")
                 #    self.log_jobs_list(query_jobs)
-                
+
                 # Otherwise, if system job is not in recvd jobs, remove job from system
                 #else:
                 #    log.info("Job %s finished or removed. Clearing job from system." % sys_job.id)
                 #   self.remove_system_job(sys_job)
-        
+
         # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
         for job in query_jobs:
             self.add_new_job(job)
-            log.info("Job %s added to unscheduled jobs list" % job.id)    
-                    
+            log.info("Job %s added to unscheduled jobs list" % job.id)
+
         # DBG: print both jobs dicts before updating system.
         log.debug("System jobs after system update:")
         log.debug("Unscheduled Jobs (new_jobs):")
         self.log_jobs_dict(self.new_jobs)
         log.debug("Scheduled Jobs (sched_jobs):")
         self.log_jobs_dict(self.sched_jobs)
-        
+
 
     # Query Job Scheduler via command line condor tools
     # Gets a list of jobs from the job scheduler, and updates internal scheduled
@@ -325,16 +334,16 @@ class JobPool:
             self.insort_job(self.new_jobs[job.user], job)
         else:
             self.new_jobs[job.user] = [job]
-    
-        
+
+
     # Add a job to the scheduled jobs set in the system
     def add_sched_job(self, job):
         if job.user in self.sched_jobs:
             self.sched_jobs[job.user].append(job)
         else:
             self.sched_jobs[job.user] = [job]
-    
-    
+
+
     # Adds a job to a given list of job objects
     # in order of priority. The list runs front to back, high to low
     # priority.
@@ -363,7 +372,7 @@ class JobPool:
                     job_list.insert(i+1, job)
                     break
             return
-            
+
 
     # Remove System Job
     # Attempts to remove a given job from the JobPool unscheduled
@@ -372,7 +381,7 @@ class JobPool:
     #   job - (Job) the job to be removed from the system
     # No return (if job does not exist in system, error message logged)
     def remove_system_job(self, job):
-        
+
         # Check for job in unscheduled job set
         # if (job.user in self.new_jobs) and (job in self.new_jobs[job.user]):
         if (job.user in self.new_jobs) and (self.has_job(self.new_jobs[job.user], job)):
@@ -380,13 +389,13 @@ class JobPool:
             self.remove_job(self.new_jobs[job.user], job)
             log.debug("remove_system_job - Removing job %s from unscheduled jobs."
                       % job.id)
-                      
+
             # If user's job list is empty, remove entry from the new_jobs dict
             if (self.new_jobs[job.user] == []):
                 del self.new_jobs[job.user]
-                log.info("User %s has no more jobs in the Unscheduled Jobs set. Removing user from queue."
+                log.debug("User %s has no more jobs in the Unscheduled Jobs set. Removing user from queue."
                           % job.user)
-                
+
         # Check for job in scheduled job set
         # elif (job.user in self.sched_jobs) and (job in self.sched_jobs[job.user]):
         elif (job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[job.user], job)):
@@ -394,12 +403,12 @@ class JobPool:
             self.remove_job(self.sched_jobs[job.user], job)
             log.debug("remove_system_job - Removing job %s from scheduled jobs."
                       % job.id)
-            
+
             # If user's job list is empty, remove entry from sched_jobs
             if (self.sched_jobs[job.user] == []):
                 del self.sched_jobs[job.user]
-                log.info("User %s has no more jobs in the Scheduled Jobs set. Removing user from queue."
-                          % job.user)                     
+                log.debug("User %s has no more jobs in the Scheduled Jobs set. Removing user from queue."
+                          % job.user)
         else:
             log.warning("remove_system_job - Job does not exist in system."
                       + " Doing nothing.")
@@ -407,7 +416,7 @@ class JobPool:
 
     # Remove job by id
     # Attempts to remove a job with a given job id from a given
-    # list of Jobs. 
+    # list of Jobs.
     # Note: The job_list MUST be a list of Job objects
     # Parameters:
     #   job_list - (list of Job) the list from which to remove jobs
@@ -415,21 +424,7 @@ class JobPool:
     # No return (if job does not exist in given list, error message logged)
     def remove_job(self, job_list, target_job):
         log.debug("(remove_job) - Target job: %s" % target_job.id)
-        
-        #removals = []
-        #for job in job_list:
-        #    if (target_job.id == job.id):
-        #        removals.append(job)
-        #        log.debug("(remove_job) - Matching job found: %s" % job.id)
-        
-        #if (len(removals) == 0):
-        #    log.debug("remove_job - Job %s does not exist in given list. Doing nothing." % target_job.id)
-        #    return
-        
-        #for dead_job in removals:
-        #    log.debug("(remove_job) - Removing job in removals list: %s" % dead_job.id)
-        #    job_list.remove(dead_job)
-        
+
         target_job_id = target_job.id
         removed = False
         i = len(job_list)
@@ -441,7 +436,7 @@ class JobPool:
                 removed = True
         if not removed:
             log.debug("(remove_job) - Job %s does not exist in given list. Doing nothing." % job_id)
-        
+
 
     # Checks to see if the given job ID is in the given job list
     # Note: The job_list MUST be a list of Job objects.
@@ -470,13 +465,13 @@ class JobPool:
             log.error("(schedule) - Error: job %s not in the system's Unscheduled jobs" % job.id)
             log.error("(schedule) - Cannot mark job as scheduled")
             return
-        
+
         self.remove_system_job(job)
         job.set_status("Scheduled")
         self.add_sched_job(job)
         log.debug("(schedule) - Job %s marked as scheduled." % job.id)
-    
-    
+
+
     # Get required VM types
     # Returns a list (of strings) containing the unique required VM types
     # gathered from all jobs in the job pool (scheduled and unscheduled)
@@ -488,10 +483,43 @@ class JobPool:
             for job in jobset:
                 if job.req_vmtype not in required_vmtypes:
                     required_vmtypes.append(job.req_vmtype)
-        
+
         log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes
-                  
+
+    # Get required VM types
+    # Returns a dictionary containing the unique required VM types as a key
+    # gathered from all jobs in the job pool (scheduled and unscheduled), and
+    # count of the number of jobs needing that type as the value.
+    # Returns:
+    #   required_vmtypes - (dictionary, string key, int value) A dict of required VM types
+    def get_required_vmtypes_dict(self):
+        required_vmtypes = {}
+        for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
+            for job in jobset:
+                if job.req_vmtype not in required_vmtypes:
+                    required_vmtypes[job.req_vmtype] = 1
+                else:
+                    required_vmtypes[job.req_vmtype] = required_vmtypes[job.req_vmtype] + 1
+        log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
+        return required_vmtypes
+
+    # Get desired vmtype distribution
+    # Based on top jobs in user new_job queue determine
+    # a 'fair' distribution of vmtypes
+    def job_type_distribution(self):
+        type_desired = {}
+        for user in self.new_jobs.keys():
+            vmtype = self.new_jobs[user][0].req_vmtype
+            if vmtype in type_desired.keys():
+                type_desired[vmtype] = type_desired[vmtype] + 1
+            else:
+                type_desired[vmtype] = 1
+        num_users = Decimal(len(self.new_jobs.keys()))
+        for type in type_desired.keys():
+            type_desired[type] = type_desired[type] / num_users
+        return type_desired
+
 
     ##
     ## JobPool Private methods (Support methods)
@@ -534,6 +562,8 @@ class JobPool:
             job['VMName'] = job_classad['VMName']
         if ('VMLoc' in job_classad):
             job['VMLoc'] = job_classad['VMLoc']
+        if ('VMAMI' in job_classad):
+            job['VMAMI'] = job_classad['VMAMI']
         if ('VMMem' in job_classad):
             job['VMMem'] = job_classad['VMMem']
         if ('VMCPUCores' in job_classad):
@@ -594,13 +624,13 @@ class JobPool:
             for user in self.new_jobs.keys():
                 for job in self.new_jobs[user]:
                     job.log_dbg()
-    
+
     def log_jobs_list(self, jobs):
         if jobs == []:
             log.debug("(none)")
         for job in jobs:
             log.debug("\tJob: %s, %10s, %4d, %10s" % (job.id, job.user, job.priority, job.req_vmtype))
-    
+
     def log_jobs_dict(self, jobs):
         if jobs == {}:
             log.debug("(none)")
