@@ -342,6 +342,8 @@ class NimbusCluster(ICluster):
 
         if customization:
             vm_optional = nimbus_xml.ws_optional_factory(customization)
+        else:
+            vm_optional = None
 
 
         # Set a timestamp for VM creation
