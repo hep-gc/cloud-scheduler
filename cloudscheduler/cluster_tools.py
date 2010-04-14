@@ -352,7 +352,7 @@ class NimbusCluster(ICluster):
         os.close(epr_handle)
 
         # Create the workspace command as a list (private method)
-        ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest, vm_optional)
+        ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest, optional_file=vm_optional)
         log.debug("vm_create - workspace create command prepared.")
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
@@ -629,7 +629,7 @@ class NimbusCluster(ICluster):
 
     # The following _factory methods take the given parameters and return a list
     # representing the corresponding workspace command.
-    def vmcreate_factory(self, epr_file, metadata_file, request_file, optional_file):
+    def vmcreate_factory(self, epr_file, metadata_file, request_file, optional_file=None):
 
         ws_list = ["workspace",
            "-z", "none",
