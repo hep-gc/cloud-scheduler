@@ -350,6 +350,8 @@ start() {
 	init_condor_master
 	echon "Starting up Condor..."
 	"$CONDOR_MASTER" -pidfile "$PIDFILE"
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/condor;
 	echo "done."
 	return 0
 }
@@ -397,6 +399,8 @@ xstop() {
 	fi
 
 	echo "done."
+
+	rm /var/lock/subsys/condor
 
 	return 0
 }
