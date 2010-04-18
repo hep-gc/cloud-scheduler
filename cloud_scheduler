@@ -77,6 +77,9 @@ class SchedulingTh(threading.Thread):
         self.job_pool      = job_pool
         self.quit          = False
         self.scheduling_interval = 5 # seconds
+        self.starting_poll_interval = 120 # 2 minutes
+        self.running_poll_interval = 900 # 15 minutes
+
 
     def stop(self):
         log.debug("Waiting for scheduling loop to end")
@@ -127,7 +130,7 @@ class SchedulingTh(threading.Thread):
             ## Schedule user jobs
             # TODO: This should be less explicit in its reference to JobPool class parts.
             #       Something like 'for job in self.job_pool.get_unsched_jobs()'
-            log_with_line("Attempt to schedule user jobs")
+            log.debug("Attempt to schedule user jobs")
             for user in self.job_pool.new_jobs.keys():
 
                 # Attempt to schedule jobs in order of their appearance in user's job list
@@ -138,19 +141,17 @@ class SchedulingTh(threading.Thread):
                         # Find resources that match the job's requirements
                         (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
                         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
+                        
+                        good_resources = [pri_rsrc]
+                        if sec_rsrc and pri_rsrc != sec_rsrc:
+                            good_resources.append(sec_rsrc)
 
                         # If no resource fits, continue to next job in user's list
-                        if pri_rsrc == None:
+                        if good_resources[0] == None:
                             log.info("No resource to match job: %s" % job.id)
                             log.info("Leaving job unscheduled, moving to %s's next job" % user)
                             continue
 
-                        # Print details of the resource selected
-                        log.debug("Open resource selected for job %s:" % job.id)
-                        pri_rsrc.log()
-
-                        # Start VM with job requirements on the selected resource
-                        log.info("Creating a %s VM for job %s on primary resource" % (job.req_vmtype, job.id))
 
                         # Create an optional customization metadata file
                         customizations = []
@@ -178,53 +179,32 @@ class SchedulingTh(threading.Thread):
                             customizations.append((file_contents, file_location))
 
 
-                        if pri_rsrc.__class__.__name__ == "NimbusCluster":
-                            create_ret = pri_rsrc.vm_create(job.req_image,
-                                job.req_vmtype, job.req_network, job.req_cpuarch,
-                                job.req_imageloc, job.req_memory, job.req_cpucores,
-                                job.req_storage, customization=customizations)
-                        elif pri_rsrc.__class__.__name__ == "EC2Cluster":
-                            create_ret = pri_rsrc.vm_create(job.req_image,
-                                job.req_vmtype, job.req_network, job.req_cpuarch,
-                                job.req_ami, job.req_memory, job.req_cpucores,
-                                job.req_storage, customization=customizations)
+                        for resource in good_resources:
+                            # Print details of the resource selected
+                            log.debug("Booting VM for job %s on %s:" % (job.id, resource.name))
+                            resource.log()
 
-                        # If the VM create fails, try again on secondary resource
-                        if (create_ret != 0):
-                            log.debug("Creating VM for job %s failed on cluster %s." % (job.id, pri_rsrc.name))
-                            log.debug("Attempting VM creation on secondary resource.")
-
-                            # If VM creation fails for user-job on both resources (or if there is no
-                            # secondary resource), move to next user
-                            if sec_rsrc == None:
-                                log.debug("No secondary resource available for job %s" % job.id)
-                                log.debug("Leaving %s's jobs unscheduled, moving on to next user" % user)
-                                break
-
-                            # Print details of the secondary resource
-                            log.debug("Secondary resource selected for job %s:" % job.id)
-                            sec_rsrc.log()
-
-                            # Start VM on secondary resource
-                            log.debug("Creating VM for job %s on secondary resource" % job.id)
-                            if pri_rsrc.__class__.__name__ == "NimbusCluster":
+                            if resource.__class__.__name__ == "NimbusCluster":
                                 create_ret = pri_rsrc.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_imageloc, job.req_memory, job.req_cpucores,
                                     job.req_storage, customization=customizations)
-                            elif pri_rsrc.__class__.__name__ == "EC2Cluster":
+                            elif resource.__class__.__name__ == "EC2Cluster":
                                 create_ret = pri_rsrc.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_ami, job.req_memory, job.req_cpucores,
                                     job.req_storage, customization=customizations)
 
-                            # If secondary create fails, continue to next user
+                            # If the VM create fails, try again on another resource
                             if (create_ret != 0):
-                                log.debug("Creating VM for job %s failed on cluster %s." % (job.id, sec_rsrc.name))
-                                log.debug("Leaving user's jobs unscheduled. Moving to next user.")
-                                break
+                                log.debug("Creating VM for job %s failed on %s. " % (job.id, resource.name))
+                                continue
 
-                        # ENDIF - if VM create fails on primary resource
+                        # If VM creation fails for user-job on all resources move to next user
+                        if create_ret != 0:
+                            log.debug("None of the resources could boot a vm for job %s. " % job.id + \
+                                      "Leaving %s's jobs unscheduled, moving on to next user" % user)
+                            break
 
                         # Mark job as scheduled
                         self.job_pool.schedule(job)
@@ -236,9 +216,6 @@ class SchedulingTh(threading.Thread):
                 # ENDFOR - for jobs in user's unscheduled job set
             #ENDFOR - Attempt to schedule each one job per user
 
-            ## Wait for a number of seconds
-            log.debug("Scheduler - Waiting %ss" % self.scheduling_interval)
-            time.sleep(self.scheduling_interval)
 
             ## Clear all un-needed VMs from the system
             log.debug("Clearing all un-needed VMs from the system")
@@ -336,17 +313,14 @@ class SchedulingTh(threading.Thread):
             ## Poll all remaining system VMs
             log.debug("Polling all running VMs...")
 
-            starting_poll_interval = 120 # 2 minutes
-            running_poll_interval = 900 # 15 minutes
-
             for cluster in self.resource_pool.resources:
                 for vm in cluster.vms:
                     now = int(time.time())
 
-                    if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < starting_poll_interval):
+                    if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
                         log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
                         continue
-                    elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < running_poll_interval):
+                    elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
                         log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
                         continue
 
@@ -376,6 +350,11 @@ class SchedulingTh(threading.Thread):
 
                     # ENDIF - if VM in error state
                 # ENDFOR - for each VM in cluster vms list
+
+            ## Wait for a number of seconds
+            log.debug("Scheduler - Waiting %ss" % self.scheduling_interval)
+            time.sleep(self.scheduling_interval)
+
             # ENDFOR - For each cluster in the resource pool
         # ENDWHILE - End of the main scheduler loop
 
@@ -507,8 +486,8 @@ def main():
     # Clean up out threads (shuts down all running VMs)
     log.info("System exiting gracefully")
     scheduler.stop()
-    info_serv.stop()
     scheduler.join()
+    info_serv.stop()
     info_serv.join()
     sys.exit()
 

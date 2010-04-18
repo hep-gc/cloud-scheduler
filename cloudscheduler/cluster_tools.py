@@ -478,17 +478,14 @@ class NimbusCluster(ICluster):
 
     # TODO: Explain parameters and returns
     def vm_destroy(self, vm):
-        log.debug('Nimbus cloud shutdown and destroy command')
 
         # Create the workspace command with shutdown option
         shutdown_cmd = self.vmshutdown_factory(vm.id)
-        log.debug("(vm_destroy) - workspace shutdown command prepared.")
-        log.debug("(vm_destroy) - Command: " + string.join(shutdown_cmd, " "))
+        log.debug("Shutting down VM with command: " + string.join(shutdown_cmd, " "))
 
         # Create the workspace command with destroy option as a list (priv.)
         destroy_cmd = self.vmdestroy_factory(vm.id)
-        log.debug("(vm_destroy) - workspace destroy command prepared.")
-        log.debug("(vm_destroy) - Command: " + string.join(destroy_cmd, " "))
+        log.debug("Destroying VM with command: " + string.join(destroy_cmd, " "))
 
         # Execute the workspace shutdown command.
         shutdown_return = self.vm_execute(shutdown_cmd)
@@ -498,6 +495,7 @@ class NimbusCluster(ICluster):
             log.debug("(vm_destroy) - workspace shutdown command executed successfully.")
 
         # Sleep for a few seconds to allow for proper shutdown
+        log.debug("Waiting %ss for VM to shut down..." % self.VM_SHUTDOWN)
         time.sleep(self.VM_SHUTDOWN)
 
         # Execute the workspace destroy command: wait for return, stdout to log.
@@ -510,7 +508,6 @@ class NimbusCluster(ICluster):
             log.warning("(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code.")
             vm.status = "Error"
             return destroy_return
-        log.debug("(vm_destroy) - workspace destroy command executed.")
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
         self.resource_return(vm)
@@ -525,7 +522,6 @@ class NimbusCluster(ICluster):
 
     # TODO: Explain parameters and returns
     def vm_poll(self, vm):
-        log.debug('Nimbus cloud poll command')
 
         # Create workspace poll command
         ws_cmd = self.vmpoll_factory(vm.id)
@@ -547,8 +543,6 @@ class NimbusCluster(ICluster):
             return vm.status
 
         # Print output, and parse the VM status from it
-        #print "(vm_poll) - STDOUT: %s" % poll_out
-        log.debug("(vm_poll) - Parsing polling output...")
 
         #STATE_RE = "State:\s(\w*)$"
         match = re.search(self.STATE_RE, poll_out)
