@@ -390,10 +390,11 @@ class ResourcePool:
     def get_vmtypes_count(self, machineList):
         count = {}
         for vm in machineList:
-            if vm['VMType'] not in count:
-                count[vm['VMType']] = 1
-            else:
-                count[vm['VMType']] += 1
+            if vm.haskey('VMType'):
+                if vm['VMType'] not in count:
+                    count[vm['VMType']] = 1
+                else:
+                    count[vm['VMType']] += 1
         return count
 
     # Determines if the key value pairs in in criteria are in the dictionary
