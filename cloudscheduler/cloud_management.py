@@ -390,7 +390,7 @@ class ResourcePool:
     def get_vmtypes_count(self, machineList):
         count = {}
         for vm in machineList:
-            if vm.haskey('VMType'):
+            if vm.has_key('VMType'):
                 if vm['VMType'] not in count:
                     count[vm['VMType']] = 1
                 else:
