@@ -185,12 +185,12 @@ class SchedulingTh(threading.Thread):
                             resource.log()
 
                             if resource.__class__.__name__ == "NimbusCluster":
-                                create_ret = pri_rsrc.vm_create(job.req_image,
+                                create_ret = resource.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_imageloc, job.req_memory, job.req_cpucores,
                                     job.req_storage, customization=customizations)
                             elif resource.__class__.__name__ == "EC2Cluster":
-                                create_ret = pri_rsrc.vm_create(job.req_image,
+                                create_ret = resource.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_ami, job.req_memory, job.req_cpucores,
                                     job.req_storage, customization=customizations)
