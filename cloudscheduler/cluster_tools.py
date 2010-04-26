@@ -578,7 +578,7 @@ class NimbusCluster(ICluster):
     def vm_execute(self, cmd):
         # Execute a workspace command with the passed cmd list. Wait for return,
         # and return return value.
-        sp = Popen(cmd, executable="workspace", shell=False)
+        sp = Popen(cmd, executable=config.workspace_path, shell=False)
         ret = sp.wait()
         return ret
 
@@ -592,7 +592,7 @@ class NimbusCluster(ICluster):
     #    ret   - The return value of the executed command
     def vm_execdump(self, cmd, out):
         try:
-            sp = Popen(cmd, executable="workspace", shell=False, stdout=out, stderr=out)
+            sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out)
             ret = sp.wait()
             return ret
         except OSError:
@@ -616,7 +616,7 @@ class NimbusCluster(ICluster):
     #    err   - The STDERR of the executed command
     # The return of this function is a 3-tuple
     def vm_execwait(self, cmd):
-        sp = Popen(cmd, executable="workspace", shell=False,
+        sp = Popen(cmd, executable=config.workspace_path, shell=False,
                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         ret = sp.wait()
         (out, err) = sp.communicate(input=None)
@@ -627,7 +627,7 @@ class NimbusCluster(ICluster):
     # representing the corresponding workspace command.
     def vmcreate_factory(self, epr_file, metadata_file, request_file, optional_file=None):
 
-        ws_list = ["workspace",
+        ws_list = [config.workspace_path,
            "-z", "none",
            "--poll-delay", "200",
            "--deploy",
@@ -651,19 +651,19 @@ class NimbusCluster(ICluster):
         return ws_list
 
     def vmreboot_factory(self, epr_file):
-        ws_list = [ "workspace", "-e", epr_file, "--reboot"]
+        ws_list = [config.workspace_path, "-e", epr_file, "--reboot"]
         return ws_list
 
     def vmdestroy_factory(self, epr_file):
-        ws_list = [ "workspace", "-e", epr_file, "--destroy"]
+        ws_list = [config.workspace_path, "-e", epr_file, "--destroy"]
         return ws_list
 
     def vmshutdown_factory(self, epr_file):
-        ws_list = [ "workspace", "-e", epr_file, "--shutdown"]
+        ws_list = [config.workspace_path, "-e", epr_file, "--shutdown"]
         return ws_list
 
     def vmpoll_factory(self, epr_file):
-        ws_list = [ "workspace", "-e", epr_file, "--rpquery"]
+        ws_list = [config.workspace_path, "-e", epr_file, "--rpquery"]
         return ws_list
 
 

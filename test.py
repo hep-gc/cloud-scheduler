@@ -32,6 +32,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.scratch_attach_device = "devb"
         self.cloud_resource_config = "/home/testuser/cloud"
         self.info_server_port = "1234"
+        self.workspace_path = "/path/to/workspace"
 
         self.log_level = "ERROR"
         self.log_location = "/tmp/test.log"
@@ -54,6 +55,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'image_attach_device', self.image_attach_device)
         testconfig.set('global', 'scratch_attach_device', self.scratch_attach_device)
         testconfig.set('global', 'info_server_port', self.info_server_port)
+        testconfig.set('global', 'workspace_path', self.workspace_path)
 
         testconfig.add_section('logging')
         testconfig.set('logging', 'log_level', self.log_level)
@@ -104,6 +106,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_info_server_port(self):
         self.assertEqual(int(self.info_server_port), cloudscheduler.config.info_server_port)
+
+    def test_workspace_path(self):
+        self.assertEqual(self.workspace_path, cloudscheduler.config.workspace_path)
 
     def test_log_level(self):
         self.assertEqual(self.log_level, cloudscheduler.config.log_level)

@@ -29,13 +29,14 @@ key_file_on_vm = ""
 cloud_resource_config = None
 image_attach_device = "sda"
 scratch_attach_device = "sdb"
+info_server_port = 8111
+workspace_path = "workspace"
 polling_error_threshold = 10
 
 log_level = "INFO"
 log_location = None
 log_stdout = False
 log_max_size = None
-info_server_port = 8111
 
 
 # setup will look for a configuration file specified on the command line,
@@ -55,6 +56,7 @@ def setup(path=None):
     global image_attach_device
     global scratch_attach_device
     global info_server_port
+    global workspace_path
     global polling_error_threshold
 
     global log_level
@@ -143,6 +145,9 @@ def setup(path=None):
             print "Configuration file problem: info_server_port must be an " \
                   "integer value."
             sys.exit(1)
+
+    if config_file.has_option("global", "workspace_path"):
+        workspace_path = config_file.get("global", "workspace_path")
 
     if config_file.has_option("global", "polling_error_threshold"):
         try:
