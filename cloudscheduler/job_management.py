@@ -61,10 +61,10 @@ class Job:
     # A list of possible statuses for internal job representation
     statuses = ["Unscheduled", "Scheduled"]
 
-    def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
-             VMType="default", VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
-             VMLoc="", VMAMI="",
-             VMMem=512, VMCPUCores=1, VMStorage=1):
+    def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1, 
+             JobStatus=0, ClusterId=0, ProcId=0, VMType="default", 
+             VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
+             VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -83,9 +83,12 @@ class Job:
 
      TODO: Set default job properties in the cloud scheduler main config file
           (Have option to set them there, and default values) """
-        self.id   = GlobalJobId
-        self.user = Owner
+        self.id           = GlobalJobId
+        self.user         = Owner
         self.priority     = int(JobPrio)
+        self.job_status   = int(JobStatus)
+        self.cluster_id   = int(ClusterId)
+        self.proc_id      = int(ProcId)
         self.req_vmtype   = VMType
         self.req_network  = VMNetwork
         self.req_cpuarch  = VMCPUArch
@@ -437,6 +440,15 @@ class JobPool:
         if not removed:
             log.debug("(remove_job) - Job %s does not exist in given list. Doing nothing." % job_id)
 
+    # Update Job Status
+    # Updates the status of a job
+    # Parameters:
+    #   job - the job to update
+    # Returns
+    #   True - updated
+    #   False - failed
+    def update_job_status(self, job):
+        return True    
 
     # Checks to see if the given job ID is in the given job list
     # Note: The job_list MUST be a list of Job objects.
@@ -548,6 +560,12 @@ class JobPool:
             job['Owner'] = job_classad['Owner']
         if ('JobPrio' in job_classad):
             job['JobPrio'] = job_classad['JobPrio']
+        if ('JobStatus' in job_classad):
+            job['JobStatus'] = job_classad['JobStatus']
+        if ('ClusterId' in job_classad):
+            job['ClusterId'] = job_classad['ClusterId']
+        if ('ProcId' in job_classad):
+            job['ProcId'] = job_classad['ProcId']
         if ('Requirements' in job_classad):
             vmtype = self.parse_classAd_requirements(job_classad['Requirements'])
             # If vmtype exists (is not None), store it in job dictionary
