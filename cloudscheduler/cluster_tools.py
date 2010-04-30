@@ -86,6 +86,7 @@ class VM:
         self.storage = storage
         self.errorcount = 0
         self.lastpoll = None
+        self.last_state_change = None
 
         # Set a status variable on new creation
         self.status = "Starting"
@@ -550,6 +551,8 @@ class NimbusCluster(ICluster):
             tmp_state = match.group(1)
             # Set VM status:
             if (tmp_state in self.VM_STATES):
+                if vm.status != self.VM_STATES[tmp_state]:
+                    vm.last_state_change = int(time.time())
                 vm.status = self.VM_STATES[tmp_state]
                 log.debug("(vm_poll) - VM state: %s, Nimbus state: %s" % (vm.status, tmp_state))
             else:
@@ -817,7 +820,8 @@ class EC2Cluster(ICluster):
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
-
+        if vm.status != self.VM_STATES.get(instance.state, "Starting"):
+            vm.last_state_change = int(time.time())
         vm.status = self.VM_STATES.get(instance.state, "Starting")
         vm.hostname = instance.public_dns_name
         vm.lastpoll = int(time.time())
