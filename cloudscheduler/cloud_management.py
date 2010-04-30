@@ -349,8 +349,8 @@ class ResourcePool:
         native = {}
         attrs = ad[0]
         for attr in attrs:
-            if attr.has_key('name') and attr.has_key('value'):
-                native[attr['name']] = attr['value']
+            if attr.name and attr.value:
+                native[attr.name] = attr.value
         return native
 
     # Takes a list of Condor class ads to convert
