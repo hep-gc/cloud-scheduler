@@ -269,7 +269,7 @@ class JobPool:
         self.log_jobs_dict(self.new_jobs)
         log.debug("Scheduled Jobs (sched_jobs):")
         self.log_jobs_dict(self.sched_jobs)
-
+        jobs_to_update = []
         for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
             jobsetcopy = []
             jobsetcopy.extend(jobset)
@@ -284,10 +284,10 @@ class JobPool:
                     log.info("Job %s finished or removed. Cleared job from system." % sys_job.id)
 
                 # Otherwise, the system job is in the condor queue - remove it from condor_jobs
-                # and update the job status
+                # and append a job to update to list
                 else:
-                    self.remove_job(query_jobs, sys_job)
-                    self.update_job_status(sys_job)
+                    removed_jobs = self.remove_job(query_jobs, sys_job)
+                    jobs_to_update += removed_jobs
                     log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
 
                 # NOTE: The code below also conceptually achieves the above functionality.
@@ -313,7 +313,11 @@ class JobPool:
         for job in query_jobs:
             self.add_new_job(job)
             log.info("Job %s added to unscheduled jobs list" % job.id)
-
+        # Update job status of all the non-new jobs        
+        log.info("Updating Job Status")        
+        for job in jobs_to_update:
+            self.update_job_status(job)
+            
         # DBG: print both jobs dicts before updating system.
         log.debug("System jobs after system update:")
         log.debug("Unscheduled Jobs (new_jobs):")
@@ -425,10 +429,11 @@ class JobPool:
     # Parameters:
     #   job_list - (list of Job) the list from which to remove jobs
     #   target_job   - (Job object) the job to be removed
-    # No return (if job does not exist in given list, error message logged)
+    # Returns:
+    #   removed_list - (lost of Job) The removed Jobs
     def remove_job(self, job_list, target_job):
         log.debug("(remove_job) - Target job: %s" % target_job.id)
-
+        removed_list = []
         target_job_id = target_job.id
         removed = False
         i = len(job_list)
@@ -436,10 +441,12 @@ class JobPool:
             i = i-1
             if (target_job_id == job_list[i].id):
                 log.debug("(remove_job) - Matching job found: %s" % job_list[i].id)
+                removed_list.append(job_list[i])
                 job_list.remove(job_list[i])
                 removed = True
         if not removed:
             log.debug("(remove_job) - Job %s does not exist in given list. Doing nothing." % job_id)
+        return removed_list
 
     # Update Job Status
     # Updates the status of a job
@@ -451,13 +458,13 @@ class JobPool:
     def update_job_status(self, target_job):
         ret = False
         if (target_job.user in self.new_jobs) and (self.has_job(self.new_jobs[target_job.user], target_job)):
-            for job in self.new_jobs[job.user]:
+            for job in self.new_jobs[target_job.user]:
                 if target_job.id == job.id:
                     job.job_status = target_job.job_status
                     ret = True
                     break
         elif (target_job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[target_job.user], target_job)):
-            for job in self.sched_jobs[job.user]:
+            for job in self.sched_jobs[target_job.user]:
                 if target_job.id == job.id:
                     job.job_status = target_job.job_status
                     ret = True
@@ -549,6 +556,35 @@ class JobPool:
             type_desired[type] = type_desired[type] / num_users
         return type_desired
 
+    def hold_jobSOAP(self, jobs):
+        log.debug("Holding Jobs via Condor SOAP API")
+    
+        for job in jobs:
+            try:
+                job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, None, False, False, True)
+            except URLError, e:
+                log.error("There was a problem connecting to the "
+                      "Condor scheduler web service (%s) for the following "
+                      "reason: %s"
+                      % (config.condor_webservice_url, e.reason[1]))
+                return
+            except:
+                log.error("There was a problem connecting to the "
+                      "Condor scheduler web service (%s) for the following "
+                      "reason: "
+                      % (config.condor_webservice_url))
+                raise
+    
+    def release_jobSOAP(self, jobs):
+        return True
+    
+    def hold_user(self, user):    
+        return True
+    
+    def release_user(self, user):
+        return True
+    
+    
 
     ##
     ## JobPool Private methods (Support methods)
