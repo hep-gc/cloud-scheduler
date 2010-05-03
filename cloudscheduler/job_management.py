@@ -285,8 +285,10 @@ class JobPool:
                     log.info("Job %s finished or removed. Cleared job from system." % sys_job.id)
 
                 # Otherwise, the system job is in the condor queue - remove it from condor_jobs
+                # and update the job status
                 else:
                     self.remove_job(query_jobs, sys_job)
+                    self.update_job_status(sys_job)
                     log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
 
                 # NOTE: The code below also conceptually achieves the above functionality.
@@ -447,8 +449,24 @@ class JobPool:
     # Returns
     #   True - updated
     #   False - failed
-    def update_job_status(self, job):
-        return True    
+    def update_job_status(self, target_job):
+        ret = False
+        if (target_job.user in self.new_jobs) and (self.has_job(self.new_jobs[target_job.user], target_job)):
+            for job in self.new_jobs[job.user]:
+                if target_job.id == job.id:
+                    job.job_status = target_job.job_status
+                    ret = True
+                    break
+        elif (target_job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[target_job.user], target_job)):
+            for job in self.sched_jobs[job.user]:
+                if target_job.id == job.id:
+                    job.job_status = target_job.job_status
+                    ret = True
+                    break
+        else:
+            log.warning("update_job_status - Job does not exist in system."
+                      + " Doing nothing.")
+        return ret
 
     # Checks to see if the given job ID is in the given job list
     # Note: The job_list MUST be a list of Job objects.
