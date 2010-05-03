@@ -52,6 +52,9 @@ VMType = default
 ##  What machine is your central manager?
 CONDOR_HOST	= central-manager-hostname.your.domain
 
+##  Enable CCB for nodes behind NAT
+CCB_ADDRESS = $(CONDOR_HOST)
+
 ##--------------------------------------------------------------------
 ##  Pathnames:
 ##--------------------------------------------------------------------
