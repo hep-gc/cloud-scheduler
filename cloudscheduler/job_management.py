@@ -197,7 +197,6 @@ class JobPool:
                       "reason: "
                       % (config.condor_webservice_url))
             raise
-            sys.exit(1)
 
         # Create the condor_jobs list to store jobs
         condor_jobs = []
