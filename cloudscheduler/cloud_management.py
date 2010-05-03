@@ -384,7 +384,6 @@ class ResourcePool:
                       "Condor scheduler web service (%s)"
                       % (config.condor_collector_url))
             raise
-            sys.exit(1)
 
     # Get a Dictionary of required VM Types with how many of that type running
     # Uses the dict-list structure returned by SOAP query
@@ -411,14 +410,14 @@ class ResourcePool:
 
     # Get a dictionary of types of VMs the scheduler is currently tracking
     def get_vmtypes_count_internal(self):
-       types = {}
-       for cluster in self.resources:
-           for vm in cluster.vms:
-               if vm.vmtype in types:
-                   types[vm.vmtype] += 1
-               else:
-                   types[vm.vmtype] = 1
-       return types
+        types = {}
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.vmtype in types:
+                    types[vm.vmtype] += 1
+                else:
+                    types[vm.vmtype] = 1
+        return types
 
     # Count of VMs in the system
     def vm_count(self):
