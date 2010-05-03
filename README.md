@@ -28,8 +28,8 @@ You can install these on RHEL5 (and clones) with the following:
     # wget https://fedorahosted.org/releases/s/u/suds/python-suds-0.3.9-1.fc11.noarch.rpm
     # yum localinstall python-suds.0.3.9-1.fc11.noarch.rpm
     # wget http://boto.googlecode.com/files/boto-1.9b.tar.gz
-    # tar xvf boto-1.9d.tar.gz
-    # cd boto-1.8d
+    # tar xvf boto-1.9b.tar.gz
+    # cd boto-1.9b
     # python setup.py install
 
 On Mac OS X, using Macports, you can install these with the following:
