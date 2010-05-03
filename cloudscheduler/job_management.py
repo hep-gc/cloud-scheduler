@@ -294,10 +294,17 @@ class JobPool:
                     log.info("Job %s finished or removed. Cleared job from system." % sys_job.id)
 
                 # Otherwise, the system job is in the condor queue - remove it from condor_jobs
+<<<<<<< HEAD
                 # and append a job to update to list
                 else:
                     removed_jobs = self.remove_job(query_jobs, sys_job)
                     jobs_to_update += removed_jobs
+=======
+                # and update the job status
+                else:
+                    self.remove_job(query_jobs, sys_job)
+                    self.update_job_status(sys_job)
+>>>>>>> update job status
                     log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
 
                 # NOTE: The code below also conceptually achieves the above functionality.
@@ -468,13 +475,21 @@ class JobPool:
     def update_job_status(self, target_job):
         ret = False
         if (target_job.user in self.new_jobs) and (self.has_job(self.new_jobs[target_job.user], target_job)):
+<<<<<<< HEAD
             for job in self.new_jobs[target_job.user]:
+=======
+            for job in self.new_jobs[job.user]:
+>>>>>>> update job status
                 if target_job.id == job.id:
                     job.job_status = target_job.job_status
                     ret = True
                     break
         elif (target_job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[target_job.user], target_job)):
+<<<<<<< HEAD
             for job in self.sched_jobs[target_job.user]:
+=======
+            for job in self.sched_jobs[job.user]:
+>>>>>>> update job status
                 if target_job.id == job.id:
                     job.job_status = target_job.job_status
                     ret = True
