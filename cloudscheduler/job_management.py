@@ -294,17 +294,10 @@ class JobPool:
                     log.info("Job %s finished or removed. Cleared job from system." % sys_job.id)
 
                 # Otherwise, the system job is in the condor queue - remove it from condor_jobs
-<<<<<<< HEAD
                 # and append a job to update to list
                 else:
                     removed_jobs = self.remove_job(query_jobs, sys_job)
                     jobs_to_update += removed_jobs
-=======
-                # and update the job status
-                else:
-                    self.remove_job(query_jobs, sys_job)
-                    self.update_job_status(sys_job)
->>>>>>> update job status
                     log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
 
                 # NOTE: The code below also conceptually achieves the above functionality.
@@ -475,21 +468,13 @@ class JobPool:
     def update_job_status(self, target_job):
         ret = False
         if (target_job.user in self.new_jobs) and (self.has_job(self.new_jobs[target_job.user], target_job)):
-<<<<<<< HEAD
             for job in self.new_jobs[target_job.user]:
-=======
-            for job in self.new_jobs[job.user]:
->>>>>>> update job status
                 if target_job.id == job.id:
                     job.job_status = target_job.job_status
                     ret = True
                     break
         elif (target_job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[target_job.user], target_job)):
-<<<<<<< HEAD
             for job in self.sched_jobs[target_job.user]:
-=======
-            for job in self.sched_jobs[job.user]:
->>>>>>> update job status
                 if target_job.id == job.id:
                     job.job_status = target_job.job_status
                     ret = True
@@ -580,6 +565,7 @@ class JobPool:
         for type in type_desired.keys():
             type_desired[type] = type_desired[type] / num_users
         return type_desired
+
     # Attempts to place a list of jobs into a Hold Status to prevent running
     # If a job fails to be held it is placed in a list and failed jobs are returned
     def hold_jobSOAP(self, jobs):
@@ -603,6 +589,7 @@ class JobPool:
                       % (config.condor_webservice_url))
                 raise
         return failed
+    
     # Attempts to release a list of jobs that have been previously held
     # If a job fails to be released it is placed in a list and returned
     def release_jobSOAP(self, jobs):
@@ -677,6 +664,7 @@ class JobPool:
                     jobs.append(job)
         ret = self.release_jobSOAP(jobs)
         return ret
+
 
     ##
     ## JobPool Private methods (Support methods)
