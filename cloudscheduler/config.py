@@ -32,6 +32,7 @@ scratch_attach_device = "sdb"
 info_server_port = 8111
 workspace_path = "workspace"
 polling_error_threshold = 10
+graceful_shutdown = False
 
 log_level = "INFO"
 log_location = None
@@ -58,6 +59,7 @@ def setup(path=None):
     global info_server_port
     global workspace_path
     global polling_error_threshold
+    global graceful_shutdown
 
     global log_level
     global log_location
@@ -157,6 +159,9 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "graceful_shutdown"):
+        log_stdout = config_file.getboolean("global", "graceful_shutdown")
+            
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")
 
