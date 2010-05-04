@@ -160,7 +160,7 @@ def setup(path=None):
             sys.exit(1)
 
     if config_file.has_option("global", "graceful_shutdown"):
-        log_stdout = config_file.getboolean("global", "graceful_shutdown")
+        graceful_shutdown = config_file.getboolean("global", "graceful_shutdown")
             
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")
