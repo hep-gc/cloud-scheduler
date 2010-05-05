@@ -253,12 +253,12 @@ class ICluster:
     def find_mementry(self, memory):
         # Check for exact fit
         if (memory in self.memory):
-           return self.memory.index(memory)
+            return self.memory.index(memory)
 
         # Scan for any fit
         for i in range(len(self.memory)):
-           if self.memory[i] >= memory:
-               return i
+            if self.memory[i] >= memory:
+                return i
 
         # If no entries found, return error code.
         return(-1)
