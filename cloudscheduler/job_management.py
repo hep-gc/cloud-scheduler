@@ -589,7 +589,7 @@ class JobPool:
                       % (config.condor_webservice_url))
                 raise
         return failed
-    
+
     # Attempts to release a list of jobs that have been previously held
     # If a job fails to be released it is placed in a list and returned
     def release_jobSOAP(self, jobs):
@@ -664,7 +664,6 @@ class JobPool:
                     jobs.append(job)
         ret = self.release_jobSOAP(jobs)
         return ret
-
 
     ##
     ## JobPool Private methods (Support methods)
