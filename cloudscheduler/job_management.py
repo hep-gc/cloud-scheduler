@@ -160,6 +160,15 @@ class JobPool:
     new_jobs = {}
     sched_jobs = {}
 
+    ## Condor Job Status mapping 
+    NEW      = 0
+    IDLE     = 1
+    RUNNING  = 2
+    REMOVED  = 3
+    COMPLETE = 4
+    HELD     = 5
+    ERROR    = 6
+    
     ## Instance Methods
 
     # Constructor
@@ -555,13 +564,16 @@ class JobPool:
         for type in type_desired.keys():
             type_desired[type] = type_desired[type] / num_users
         return type_desired
-
+    # Attempts to place a list of jobs into a Hold Status to prevent running
+    # If a job fails to be held it is placed in a list and failed jobs are returned
     def hold_jobSOAP(self, jobs):
         log.debug("Holding Jobs via Condor SOAP API")
-    
+        failed = []
         for job in jobs:
             try:
                 job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, None, False, False, True)
+                if job_ret.code != "SUCCESS":
+                    failed.append(job) 
             except URLError, e:
                 log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
@@ -574,17 +586,81 @@ class JobPool:
                       "reason: "
                       % (config.condor_webservice_url))
                 raise
-    
+        return failed
+    # Attempts to release a list of jobs that have been previously held
+    # If a job fails to be released it is placed in a list and returned
     def release_jobSOAP(self, jobs):
-        return True
+        log.debug("Releasing Jobs via Condor SOAP API")
+        failed = []
+        for job in jobs:
+            try:
+                job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, None, False, False)
+                if job_ret.code != "SUCCESS":
+                    failed.append(job) 
+            except URLError, e:
+                log.error("There was a problem connecting to the "
+                      "Condor scheduler web service (%s) for the following "
+                      "reason: %s"
+                      % (config.condor_webservice_url, e.reason[1]))
+                return
+            except:
+                log.error("There was a problem connecting to the "
+                      "Condor scheduler web service (%s) for the following "
+                      "reason: "
+                      % (config.condor_webservice_url))
+                raise
+        return failed        
     
     def hold_user(self, user):    
-        return True
+        jobs = []
+        if self.sched_jobs.has_key(user):
+            for job in self.sched_jobs[user]:
+                if job.job_status != self.RUNNING:
+                    jobs.append(job)
+        if self.new_jobs.has_key(user):
+            for job in self.new_jobs[user]:
+                if job.job_status != self.RUNNING:
+                    jobs.append(job)
+        return self.hold_jobSOAP(jobs)
+        
     
     def release_user(self, user):
-        return True
+        jobs = []
+        if self.sched_jobs.has_key(user):
+            for job in self.sched_jobs[user]:
+                if job.job_status == self.HELD:
+                    jobs.append(job)
+        if self.new_jobs.has_key(user):
+            for job in self.new_jobs[user]:
+                if job.job_status == self.HELD:
+                    jobs.append(job)
+        return self.release_jobSOAP(jobs)
     
+    def hold_vmtype(self, vmtype):
+        jobs = []
+        for user in self.new_jobs.keys():
+            for job in self.new_jobs[user]:
+                if job.req_vmtype == vmtype and job.job_status != self.RUNNING:
+                    jobs.append(job)
+        for user in self.sched_jobs.keys():
+            for job in self.sched_jobs[user]:
+                if job.req_vmtype == vmtype and job.job_status != self.RUNNING:
+                    jobs.append(job)
+        ret = self.hold_jobSOAP(jobs)
+        return ret
     
+    def release_vmtype(self, vmtype):
+        jobs = []
+        for user in self.new_jobs.keys():
+            for job in self.new_jobs[user]:
+                if job.req_vmtype == vmtype and job.job_status == self.HELD:
+                    jobs.append(job)
+        for user in self.sched_jobs.keys():
+            for job in self.sched_jobs[user]:
+                if job.req_vmtype == vmtype and job.job_status == self.HELD:
+                    jobs.append(job)
+        ret = self.release_jobSOAP(jobs)
+        return ret
 
     ##
     ## JobPool Private methods (Support methods)
