@@ -581,9 +581,16 @@ class NimbusCluster(ICluster):
     def vm_execute(self, cmd):
         # Execute a workspace command with the passed cmd list. Wait for return,
         # and return return value.
-        sp = Popen(cmd, executable=config.workspace_path, shell=False)
-        ret = sp.wait()
-        return ret
+        try:
+            sp = Popen(cmd, executable=config.workspace_path, shell=False)
+            ret = sp.wait()
+            return ret
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
+            return -1
+        except:
+            log.error("Problem running %s, unexpected error" % string.join(cmd, " ")
+            return -1
 
     # A command execution with stdout and stderr output destination specified as a filehandle.
     # Waits on the command to finish, and returns the command's return code.
@@ -598,13 +605,12 @@ class NimbusCluster(ICluster):
             sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out)
             ret = sp.wait()
             return ret
-        except OSError:
-            log.error("Couldn't run the following command: '%s' Are the Nimbus binaries in your $PATH?"
-                      % string.join(cmd, " "))
-            raise SystemExit
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
+            return -1
         except:
-            log.error("Couldn't run %s command." % cmd)
-            raise
+            log.error("Problem running %s, unexpected error" % string.join(cmd, " ")
+            return -1
 
 
     # As above, a function to encapsulate command execution via Popen.
@@ -619,11 +625,18 @@ class NimbusCluster(ICluster):
     #    err   - The STDERR of the executed command
     # The return of this function is a 3-tuple
     def vm_execwait(self, cmd):
-        sp = Popen(cmd, executable=config.workspace_path, shell=False,
-                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        ret = sp.wait()
-        (out, err) = sp.communicate(input=None)
-        return (ret, out, err)
+        try:
+            sp = Popen(cmd, executable=config.workspace_path, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ret = sp.wait()
+            (out, err) = sp.communicate(input=None)
+            return (ret, out, err)
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
+            return (-1, "", "")
+        except:
+            log.error("Problem running %s, unexpected error" % string.join(cmd, " ")
+            return (-1, "", "")
 
 
     # The following _factory methods take the given parameters and return a list
@@ -639,12 +652,6 @@ class NimbusCluster(ICluster):
            "--request", request_file,
            "-s", "https://" + self.network_address + ":8443/wsrf/services/WorkspaceFactoryService",
            "--nosubscriptions",              # Causes the command to start workspace and return immediately
-           #"--trash-at-shutdown",
-           #"--deploy-duration", duration,    # minutes
-           #"--deploy-mem", str(mem),         # megabytes (convert from int)
-           #"--deploy-state", deploy_state,   # Running, Paused, etc.
-           #"--exit-state", "Running",       # Running, Paused, Propagated - hard set.
-           # "--dryrun",
           ]
         if optional_file:
             ws_list.append("--optional")

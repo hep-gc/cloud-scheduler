@@ -97,12 +97,11 @@ class SchedulingTh(threading.Thread):
 
             ## Query the job pool to get new unscheduled jobs
             # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
-            log_with_line("Querying Condor job pool (via SOAP)")
             condor_jobs = self.job_pool.job_querySOAP()
-            if (condor_jobs == None):
-                log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
-            else:
+            if condor_jobs:
                 self.job_pool.update_jobs(condor_jobs)
+            else:
+                log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
 
             ## Check that jobs are valid for the clusters available
             bad_jobs = []

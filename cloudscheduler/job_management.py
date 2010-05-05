@@ -189,11 +189,12 @@ class JobPool:
 
 
     def job_querySOAP(self):
-        log.debug("Querying job pool with Condor SOAP API")
+        log.debug("Querying Condor scheduler daemon (schedd)")
 
         # Get job classAds from the condor scheduler
         try:
             job_ads = self.condor_schedd.service.getJobAds(None, None)
+            log.debug("Done querying schedd")
         except URLError, e:
             log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
