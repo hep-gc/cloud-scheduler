@@ -586,10 +586,10 @@ class NimbusCluster(ICluster):
             ret = sp.wait()
             return ret
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return -1
         except:
-            log.error("Problem running %s, unexpected error" % string.join(cmd, " ")
+            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
             return -1
 
     # A command execution with stdout and stderr output destination specified as a filehandle.
@@ -609,7 +609,7 @@ class NimbusCluster(ICluster):
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
             return -1
         except:
-            log.error("Problem running %s, unexpected error" % string.join(cmd, " ")
+            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
             return -1
 
 
@@ -632,10 +632,10 @@ class NimbusCluster(ICluster):
             (out, err) = sp.communicate(input=None)
             return (ret, out, err)
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return (-1, "", "")
         except:
-            log.error("Problem running %s, unexpected error" % string.join(cmd, " ")
+            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
             return (-1, "", "")
 
 
