@@ -321,7 +321,7 @@ set_central_manager() {
 
 # set up condor ccb if only private networking is available
 setup_ccb() {
-	/sbin/ifconfig | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:10."
+	/sbin/ifconfig | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null
 	NON_LOCAL=$?
 
 	if [ $NON_LOCAL -eq 1 ]; then

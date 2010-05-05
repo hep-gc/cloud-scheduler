@@ -34,7 +34,7 @@ if sys.version_info < (2, 6):
     try:
         import simplejson as json
     except:
-        raise "Please install the simplejson lib for python 2.4"
+        raise "Please install the simplejson lib for python 2.4 or 2.5"
 else:
     import json
 
