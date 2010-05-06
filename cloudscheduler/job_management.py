@@ -268,7 +268,14 @@ class JobPool:
                     self.remove_system_job(job)
                     log.info("Job %s finished or removed. Cleared job from system." % job.id)
             return
-
+        
+        # Filter out any jobs in an error status
+        query_copy = []
+        query_copy.extend(query_jobs)
+        for job in query_copy:
+            if job.job_status >= self.ERROR:
+                self.remove_job(query_jobs, job)
+            
         # Update all system jobs:
         #   - remove jobs already in the system from the jobs list
         #   - remove finished jobs (job in system, not in jobs list)
@@ -327,7 +334,7 @@ class JobPool:
         log.info("Updating Job Status")        
         for job in jobs_to_update:
             self.update_job_status(job)
-            
+           
         # DBG: print both jobs dicts before updating system.
         log.debug("System jobs after system update:")
         log.debug("Unscheduled Jobs (new_jobs):")
