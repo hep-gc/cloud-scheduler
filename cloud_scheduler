@@ -322,7 +322,7 @@ class SchedulingTh(threading.Thread):
                     if ret_state == "Error":
                         vm.errorcount += 1
                     elif vm.errorcount > 0:
-                        vm.errorcount -= 1
+                        vm.errorcount = 0
                     # Implement a config option to set this?
                     if vm.errorcount >= config.polling_error_threshold:
                         log.info("VM %s in error state. Destroying..." % vm.name)
@@ -391,7 +391,7 @@ class SchedulingTh(threading.Thread):
 		for cluster in self.resource_pool.resources:
 		    for vm in cluster.vms:
 			log.debug("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
-			if vm.hostname.split(".")[0] == condor_name:
+			if vm.hostname.split(".")[0] == condor_name and vm.vmtype == vmtype:
 			    found_vm = True
 			    log.info("VM of type %s no longer required for remaining jobs" % vm.vmtype)
 			    vm.log_dbg()
