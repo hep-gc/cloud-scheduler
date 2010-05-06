@@ -37,18 +37,13 @@ import cloudscheduler.info_server as info_server
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
 
-
-## GLOBAL VARIABLES
-
-usage_str = "cloud_scheduler [-f FILE | --config-file] [-c FILE | --cloud-config FILE] [-m SERVER | --MDS SERVER]"
-version_str = "Cloud Scheduler " + version.version
-
+# Logging set up
 log = logging.getLogger("cloudscheduler")
 null_handler = utilities.NullHandler()
 log.addHandler(null_handler)
 
 
-## Thread Bodies
+# Threaded Classes
 
 # Polling:
 # The resource & running vm polling thread. Inherits from Thread class.
@@ -80,13 +75,12 @@ class SchedulingTh(threading.Thread):
         self.starting_poll_interval = 120 # 2 minutes
         self.running_poll_interval = 900 # 15 minutes
 
-
     def stop(self):
         log.debug("Waiting for scheduling loop to end")
         self.quit = True
 
     def run(self):
-        log.info("Starting scheduling thread...")
+        log.info("Starting job scheduling...")
         prevMachineList = []
         ########################################################################
         ## Full scheduler loop
@@ -412,7 +406,8 @@ def main():
     log.info("Cloud Scheduler system starting...")
 
     # Create a parser and process commandline arguments
-    parser = OptionParser(usage=usage_str, version=version_str)
+    version_str = "Cloud Scheduler " + version.version
+    parser = OptionParser(version=version_str)
     set_options(parser)
     (cli_options, args) = parser.parse_args()
 
@@ -424,11 +419,8 @@ def main():
 
     # Set up logging
     log.setLevel(utilities.LEVELS[config.log_level])
-    # TODO: Requires Python 2.5+
-    #log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
-    #                                  "- %(funcName)s: %(message)s")
     log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
-                                      "- %(lineno)4d - %(message)s")
+                                      "- %(message)s")
     if config.log_stdout:
         stream_handler = logging.StreamHandler()
         stream_handler.setFormatter(log_formatter)
@@ -471,13 +463,8 @@ def main():
     cloud_resources = cloud_management.ResourcePool("Resource Pool")
     cloud_resources.setup(config.cloud_resource_config)
 
-    # TODO: Add code to query an MDS to get initial cluster/cloud information
-
     # Log the resource pool
     cloud_resources.log_pool()
-
-    # TODO: Resolve issue of atomicity / reliability when 2 threads are working
-    #       on the same resource pool data. Does it matter (best effort!)?
 
     # Start the cloud scheduler info server for RPCs
     info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
@@ -495,12 +482,18 @@ def main():
     # Set SIGTERM (kill) handler
     signal.signal(signal.SIGTERM, term_handler)
 
+    should_be_running = True
+
     # Wait for keyboard input to exit the cloud scheduler
     try:
         while scheduler.isAlive():
             time.sleep(2)
     except (SystemExit, KeyboardInterrupt):
         log.info("Exiting normally due to KeyboardInterrupt or SystemExit")
+        should_be_running = False
+
+    if should_be_running:
+        log.error("Whoops. Wasn't expecting to exit. Did a thread crash?")
 
     # Clean up out threads (shuts down all running VMs)
     log.info("System exiting gracefully")
