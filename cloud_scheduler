@@ -193,12 +193,14 @@ class Scheduler(threading.Thread):
                                 create_ret = resource.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_imageloc, job.req_memory, job.req_cpucores,
-                                    job.req_storage, customization=customizations)
+                                    job.req_storage, customization=customizations,
+				    vm_keepalive=job.keep_alive)
                             elif resource.__class__.__name__ == "EC2Cluster":
                                 create_ret = resource.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_ami, job.req_memory, job.req_cpucores,
-                                    job.req_storage, customization=customizations)
+                                    job.req_storage, customization=customizations,
+				    vm_keepalive=job.keep_alive)
 
                             # If the VM create fails, try again on another resource
                             if (create_ret != 0):
@@ -399,13 +401,21 @@ class Scheduler(threading.Thread):
 			log.debug("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
 			if vm.hostname.split(".")[0] == condor_name and vm.vmtype == vmtype:
 			    found_vm = True
-			    log.info("VM of type %s no longer required for remaining jobs" % vm.vmtype)
-			    vm.log_dbg()
-			    destroy_ret = cluster.vm_destroy(vm)
-			    if destroy_ret != 0:
-				log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+			    if vm.idle_start:
+				# Check that enough time has passed to shutdown
+				now = int(time.time())
+				if now - vm.idle_start > vm.keep_alive:
+				    log.info("VM of type %s no longer required for remaining jobs" % vm.vmtype)
+			            vm.log_dbg()
+			            destroy_ret = cluster.vm_destroy(vm)
+			            if destroy_ret != 0:
+				        log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+			            else:
+				        break
 			    else:
+				vm.idle_start = int(time.time())
 				break
+
 		    if found_vm:
 			break	
 

@@ -81,6 +81,7 @@ class Job:
      VMMem      - (int) The amount of memory in MB the job requires
      VMCPUCores - (int) The number of cpu cores the job requires
      VMStorage  - (int) The amount of storage space the job requires
+     VMKeepAlive- (int) The Length of time to keep alive before idle shutdown
      NOTE: The image field is used as a name field for the image the job will
 
      TODO: Set default job properties in the cloud scheduler main config file
@@ -100,7 +101,7 @@ class Job:
         self.req_memory   = int(VMMem)
         self.req_cpucores = int(VMCPUCores)
         self.req_storage  = int(VMStorage)
-        self.keep_alive   = int(VMKeepAlive)
+        self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
 
         # Set the new job's status
         self.status = self.statuses[0]
