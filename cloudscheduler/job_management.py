@@ -65,7 +65,8 @@ class Job:
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1, 
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default", 
              VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
-             VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1):
+             VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
+             VMKeepAlive=0):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -99,6 +100,7 @@ class Job:
         self.req_memory   = int(VMMem)
         self.req_cpucores = int(VMCPUCores)
         self.req_storage  = int(VMStorage)
+        self.keep_alive   = int(VMKeepAlive)
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -728,6 +730,8 @@ class JobPool:
             job['VMCPUCores'] = job_classad['VMCPUCores']
         if ('VMStorage' in job_classad):
             job['VMStorage'] = job_classad['VMStorage']
+        if ('VMKeepAlive' in job_classad):
+            job['VMKeepAlive'] = job_classad['VMKeepAlive']
 
         return job
 
