@@ -276,10 +276,9 @@ class ICluster:
     # Note: vm_slots is automatically decremeneted by one (1).
     # EXPAND HERE as checkout/return become more complex
     def resource_checkout(self, vm):
-        log.info("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
+        log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
         self.vm_slots -= 1
         self.storageGB -= vm.storage
-        # ISSUE: No way to know what mementry a VM is running on
         self.memory[vm.mementry] -= vm.memory
 
     # Returns the resources taken by the passed in VM to the Cluster's internal
@@ -336,11 +335,11 @@ class NimbusCluster(ICluster):
 
         log.debug("Nimbus cloud create command")
 
-        # Create a workspace metadata xml file from passed parameters
+        # Create a workspace metadata xml file
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
                 vm_cpuarch, vm_image)
 
-        # Create a deployment request file from given parameters
+        # Create a deployment request file
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
                 self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
 
@@ -359,7 +358,6 @@ class NimbusCluster(ICluster):
 
         # Create the workspace command as a list (private method)
         ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest, optional_file=vm_optional)
-        log.debug("vm_create - workspace create command prepared.")
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
         # Execute the workspace create command: returns immediately.
@@ -388,17 +386,24 @@ class NimbusCluster(ICluster):
               "entries (Not supposed to happen). Returning error.")
         log.debug("(vm_create) - vm_create - Memory entry found in given cluster: %d" % vm_mementry)
 
+        # Get the id of the VM from the output of workspace.sh
+        try:
+            vm_id = re.search("Workspace created: id (\d*)", create_out).group(1)
+        except:
+            log.error("vm_create - couldn't find workspace id for new VM")
+
         # Get the first part of the hostname given to the VM
         hostname = re.search("Hostname:\s(\w*)", create_out)
         vm_hostname = "default_vmhostname"
         if hostname:
             vm_hostname = hostname.group(1)
-            log.debug("Hostname for vm_id %s is %s" % (vm_epr, vm_hostname))
+            log.debug("Hostname for vm_id %s is %s" % (vm_id, vm_hostname))
         else:
-            log.warning("Unable to get the VM hostname, for vm_id %s" % vm_epr)
+            log.warning("Unable to get the VM hostname, for vm_id %s" % vm_id)
+
 
         # Create a VM object to represent the newly created VM
-        new_vm = VM(name = vm_name, id = vm_epr, vmtype = vm_type,
+        new_vm = VM(name = vm_name, id = vm_id, vmtype = vm_type,
             hostname = vm_hostname, clusteraddr = self.network_address,
             cloudtype = self.cloud_type,network = vm_networkassoc,
             cpuarch = vm_cpuarch, image = vm_image,
@@ -409,7 +414,7 @@ class NimbusCluster(ICluster):
         self.vms.append(new_vm)
         self.resource_checkout(new_vm)
 
-        log.debug("(vm_create) - VM created and stored, cluster updated.")
+        log.info("Started vm %s on %s using image at %s" % (new_vm.id, new_vm.clusteraddr, new_vm.image))
         return create_return
 
 
@@ -469,8 +474,6 @@ class NimbusCluster(ICluster):
         if (reboot_return != 0):
             log.warning("(vm_reboot) - Error in executing workspace reboot command.")
             log.warning("(vm_reboot) - VM failed to reboot. Setting VM to error state and returning error code.")
-            # Causes fatal exception. ??
-            #print "(vm_reboot) - VM %s failed to reboot. Setting vm status to \'Error\' and returning error code." % vm.name
             vm.status = "Error"
             return reboot_return
 
@@ -483,12 +486,15 @@ class NimbusCluster(ICluster):
     # TODO: Explain parameters and returns
     def vm_destroy(self, vm):
 
+        # Create an epr for workspace.sh
+        vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
+
         # Create the workspace command with shutdown option
-        shutdown_cmd = self.vmshutdown_factory(vm.id)
+        shutdown_cmd = self.vmshutdown_factory(vm_epr)
         log.debug("Shutting down VM with command: " + string.join(shutdown_cmd, " "))
 
         # Create the workspace command with destroy option as a list (priv.)
-        destroy_cmd = self.vmdestroy_factory(vm.id)
+        destroy_cmd = self.vmdestroy_factory(vm_epr)
         log.debug("Destroying VM with command: " + string.join(destroy_cmd, " "))
 
         # Execute the workspace shutdown command.
@@ -508,7 +514,6 @@ class NimbusCluster(ICluster):
         # Check destroy return code. If successful, continue. Otherwise, set VM to
         # error state (wait, and the polling thread will attempt a destroy later)
         if (destroy_return != 0):
-            log.warning("(vm_destroy) - Error in executing workspace destroy command.")
             log.warning("(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code.")
             vm.status = "Error"
             return destroy_return
@@ -518,28 +523,29 @@ class NimbusCluster(ICluster):
         self.vms.remove(vm)
 
         # Delete EPR
-        os.remove(vm.id)
+        os.remove(vm_epr)
 
-        log.debug("(vm_destroy) - VM destroyed and removed, cluster updated.")
+        log.info("Destroyed vm %s on %s" % (vm.id, vm.clusteraddr))
         return destroy_return
 
 
     # TODO: Explain parameters and returns
     def vm_poll(self, vm):
 
+        # Create an epr for our poll command
+        vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
+
         # Create workspace poll command
-        ws_cmd = self.vmpoll_factory(vm.id)
-        log.debug("(vm_poll) - Nimbus poll command created:\n%s" % string.join(ws_cmd, " "))
+        ws_cmd = self.vmpoll_factory(vm_epr)
+        log.debug("(vm_poll) - Running Nimbus poll command:\n%s" % string.join(ws_cmd, " "))
 
         # Execute the workspace poll (wait, retrieve return code, stdout, and stderr)
-        log.debug("(vm_poll) - Executing poll command (wait for completion)...")
         (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd)
         log.debug("(vm_poll) - Poll command completed with return code: %d" % poll_return)
 
         # Check the poll command return
         if (poll_return != 0):
             log.warning("(vm_poll) - Failed polling VM %s (ID: %s)" % (vm.name, vm.id))
-            #print "(vm_poll) - STDERR: %s" % poll_err
             log.debug("(vm_poll) - Setting VM status to \'Error\'")
             vm.status = "Error"
 
@@ -548,7 +554,6 @@ class NimbusCluster(ICluster):
 
         # Print output, and parse the VM status from it
 
-        #STATE_RE = "State:\s(\w*)$"
         match = re.search(self.STATE_RE, poll_out)
         if match:
             tmp_state = match.group(1)
@@ -568,6 +573,9 @@ class NimbusCluster(ICluster):
             vm.status = "Error"
 
         vm.lastpoll = int(time.time())
+
+        os.remove(vm_epr)
+
         # Return the VM status as a string
         return vm.status
 

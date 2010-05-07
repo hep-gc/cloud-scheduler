@@ -57,11 +57,17 @@ def ws_epr_factory(workspace_id, nimbus_hostname):
 
     (xml_out, file_name) = tempfile.mkstemp()
 
-    os.write(xml_out, ws_epr(workspace_id, nimbus_hostname))
-    os.close(xml_out)
+    epr_xml = ws_epr(workspace_id, nimbus_hostname)
 
-    # Return the filename of the created metadata file
-    return file_name
+    if epr_xml != None:
+
+        os.write(xml_out, ws_epr(workspace_id, nimbus_hostname))
+        os.close(xml_out)
+
+        # Return the filename of the created metadata file
+        return file_name
+    else:
+        return none
 
 
 def ws_epr(workspace_id, nimbus_hostname):
@@ -89,7 +95,9 @@ def ws_epr(workspace_id, nimbus_hostname):
     """
 
     # Nimbus workspace ids must be integers
-    if type(workspace_id) != type(1):
+    try:
+        int(workspace_id)
+    except:
         return None
 
     # Create the XML doc
@@ -382,13 +390,8 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
 
     (xml_out, file_name) = tempfile.mkstemp()
 
-    # Note: toprettyxml causes parse errors with Sax
-    #xml_out.write(doc.toprettyxml(encoding="utf-8"))
     os.write(xml_out, doc.toxml(encoding="utf-8"))
     os.close(xml_out)
-
-    # Print document (in pretty)
-    #print (doc.toprettyxml(encoding="utf-8"))
 
     # Return the filename of the created metadata file
     return file_name
@@ -552,8 +555,6 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
 
     ## Create output file. Write xml. Close file.
     (xml_out, file_name) = tempfile.mkstemp()
-
-    print xml_out
 
     os.write(xml_out, doc.toxml(encoding="utf-8"))
     os.close(xml_out)
