@@ -813,6 +813,7 @@ class EC2Cluster(ICluster):
                     cpucores = vm_cores, storage = vm_storage)
 
         new_vm.status = self.VM_STATES.get(instance.state, "Starting")
+        self.resource_checkout(new_vm)
         self.vms.append(new_vm)
 
         return 0
