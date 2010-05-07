@@ -70,7 +70,7 @@ class VM:
             hostname="default_vmhostname", clusteraddr="default_hostname",
             cloudtype="def_cloudtype", network="public", cpuarch="x86",
             image="default_image", memory=0, mementry=0,
-            cpucores=0, storage=0):
+            cpucores=0, storage=0, keep_alive=0):
         self.name = name
         self.id = id
         self.vmtype = vmtype
@@ -87,6 +87,9 @@ class VM:
         self.errorcount = 0
         self.lastpoll = None
         self.last_state_change = None
+        self.keep_alive = keep_alive
+        self.idle_start = None
+        
 
         # Set a status variable on new creation
         self.status = "Starting"
@@ -219,7 +222,7 @@ class ICluster:
     # TODO: Explain all params
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-            vm_image, vm_mem, vm_cores, vm_storage, customization=None):
+            vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
@@ -329,7 +332,7 @@ class NimbusCluster(ICluster):
 
     # TODO: Explain parameters and returns
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-            vm_image, vm_mem, vm_cores, vm_storage, customization=None):
+            vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0):
 
         log.debug("Nimbus cloud create command")
 
@@ -400,7 +403,7 @@ class NimbusCluster(ICluster):
             cloudtype = self.cloud_type,network = vm_networkassoc,
             cpuarch = vm_cpuarch, image = vm_image,
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
-            storage = vm_storage)
+            storage = vm_storage, keep_alive = vm_keepalive)
 
         # Add the new VM object to the cluster's vms list And check out required resources
         self.vms.append(new_vm)
@@ -757,7 +760,8 @@ class EC2Cluster(ICluster):
 
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-                  vm_image, vm_mem, vm_cores, vm_storage, customization=None):
+                  vm_image, vm_mem, vm_cores, vm_storage, customization=None,
+                  vm_keepalive=0):
 
         log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
@@ -810,7 +814,8 @@ class EC2Cluster(ICluster):
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     cpuarch = vm_cpuarch, image= vm_image,
                     memory = vm_mem, mementry = vm_mementry,
-                    cpucores = vm_cores, storage = vm_storage)
+                    cpucores = vm_cores, storage = vm_storage, 
+                    keep_alive = vm_keepalive)
 
         new_vm.status = self.VM_STATES.get(instance.state, "Starting")
         self.resource_checkout(new_vm)
