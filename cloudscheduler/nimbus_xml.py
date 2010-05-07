@@ -5,7 +5,7 @@
 # You may distribute under the terms of either the GNU General Public
 # License or the Apache v2 License, as specified in the README file.
 
-# A script containing a factory for creating workspace metadata and 
+# A script containing a factory for creating workspace metadata and
 # deployment request xml files for Nimbus workspace commands.
 
 
@@ -39,10 +39,110 @@ def format_duration_time(time):
 # gigs of storage) to the deployment request file format (a string of the
 # number of megs of storage desired)
 def format_storage(storage_gb):
-    return str(int(storage_gb) * 1024) 
+    return str(int(storage_gb) * 1024)
+
+def ws_epr_factory(workspace_id, nimbus_hostname):
+    """
+    Creates and returns a Nimbus epr file
+
+    Arguments:
+    workspace_id -- The id of the workspace
+    nimbus_hostname -- The hostname of the Nimbus service
+
+    Example:
+    this function just calls ws_epr, so see it for an example
+
+    returns None if input is invalid
+    """
+
+    (xml_out, file_name) = tempfile.mkstemp()
+
+    os.write(xml_out, ws_epr(workspace_id, nimbus_hostname))
+    os.close(xml_out)
+
+    # Return the filename of the created metadata file
+    return file_name
+
+
+def ws_epr(workspace_id, nimbus_hostname):
+    """
+    Creates and returns a Nimbus VM epr
+
+    Arguments:
+    workspace_id -- The id of the workspace
+    nimbus_hostname -- The hostname of the Nimbus service
+
+    Example:
+    ws_epr(42, "your.nimbus.tld")
+
+    This would return:
+
+    <WORKSPACE_EPR xsi:type="ns1:EndpointReferenceType" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ns1="http://schemas.xmlsoap.org/ws/2004/03/addressing">
+        <ns1:Address xsi:type="ns1:AttributedURI">https://your.nimbus.tld:8443/wsrf/services/WorkspaceService</ns1:Address>
+        <ns1:ReferenceProperties xsi:type="ns1:ReferencePropertiesType">
+            <ns2:WorkspaceKey xmlns:ns2="http://www.globus.org/2008/06/workspace">42</ns2:WorkspaceKey>
+        </ns1:ReferenceProperties>
+        <ns1:ReferenceParameters xsi:type="ns1:ReferenceParametersType"/>
+    </WORKSPACE_EPR>
+
+    returns None if input is invalid
+    """
+
+    # Nimbus workspace ids must be integers
+    if type(workspace_id) != type(1):
+        return None
+
+    # Create the XML doc
+    doc = xml.dom.minidom.Document()
+
+    ##
+    ## Create XML document heirarchy
+    ##
+
+    namespace1 = "http://schemas.xmlsoap.org/ws/2004/03/addressing"
+
+    # Create the WORKSPACE_EPR element
+    workspace_epr = doc.createElementNS(namespace1, "WORKSPACE_EPR")
+    workspace_epr.setAttribute("xmlns:ns1", "http://schemas.xmlsoap.org/ws/2004/03/addressing")
+    workspace_epr.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+    workspace_epr.setAttribute("xsi:type", "ns1:EndpointReferenceType")
+
+    # Add the WORKSPACE_EPR element as our root
+    doc.appendChild(workspace_epr)
+
+    # Add the Address element to the root
+    address = doc.createElement("ns1:Address")
+    address.setAttribute("xsi:type", "ns1:AttributedURI")
+    workspace_epr.appendChild(address)
+
+    # Add the content to the Address element
+    nimbus_url = "https://%s:8443/wsrf/services/WorkspaceService" % nimbus_hostname
+    address_content = doc.createTextNode(nimbus_url)
+    address.appendChild(address_content)
+
+    # Add the ReferenceProperties element
+    reference_properties = doc.createElement("ns1:ReferenceProperties")
+    reference_properties.setAttribute("xsi:type", "ns1:ReferencePropertiesType")
+    workspace_epr.appendChild(reference_properties)
+
+    # Add WorkspaceKey element to ReferenceProperties element
+    workspace_key = doc.createElement("ns2:WorkspaceKey")
+    workspace_key.setAttribute("xmlns:ns2", "http://www.globus.org/2008/06/workspace")
+    reference_properties.appendChild(workspace_key)
+
+    # Add the content to the WorkspaceKey element
+    workspace_key_content = doc.createTextNode(str(workspace_id))
+    workspace_key.appendChild(workspace_key_content)
+
+    # Add ReferenceParameters element to root
+    reference_parameters = doc.createElement("ns1:ReferenceParameters")
+    reference_parameters.setAttribute("xsi:type", "ns1:ReferenceParametersType")
+    workspace_epr.appendChild(reference_parameters)
+
+    return doc.toxml(encoding="utf-8")
 
 def ws_optional_factory(custom_tasks):
-    """ 
+    """
     Creates and returns a Nimbus optional file
 
     Argument:
@@ -56,17 +156,17 @@ def ws_optional_factory(custom_tasks):
 
     returns None if input is invalid
     """
-    
+
     # Create the XML doc
     doc = xml.dom.minidom.Document()
-    
+
     ##
     ## Create XML document heirarchy
     ##
-    
+
     # Create the OptionalParameters (root) element
     op = doc.createElement("OptionalParameters")
-    
+
     # Add the Workspace deployment element (first, to be root)
     doc.appendChild(op)
 
@@ -89,23 +189,23 @@ def ws_optional_factory(custom_tasks):
         filewrite.appendChild(pathOnVM_el)
         pathOnVM = doc.createTextNode(task[1])
         pathOnVM_el.appendChild(pathOnVM)
-        
+
 
 
     ##
     ## Create output file. Write xml. Close file.
     ##
-    
+
     (xml_out, file_name) = tempfile.mkstemp()
 
     os.write(xml_out, doc.toxml(encoding="utf-8"))
     os.close(xml_out)
 
     # Return the filename of the created metadata file
-    return file_name    
+    return file_name
 
 def ws_optional(custom_tasks):
-    """ 
+    """
     Creates and returns a Nimbus optional XML string
 
     Argument:
@@ -119,17 +219,17 @@ def ws_optional(custom_tasks):
 
     returns None if input is invalid
     """
-    
+
     # Create the XML doc
     doc = xml.dom.minidom.Document()
-    
+
     ##
     ## Create XML document heirarchy
     ##
-    
+
     # Create the OptionalParameters (root) element
     op = doc.createElement("OptionalParameters")
-    
+
     # Add the Workspace deployment element (first, to be root)
     doc.appendChild(op)
 
@@ -152,7 +252,7 @@ def ws_optional(custom_tasks):
         filewrite.appendChild(pathOnVM_el)
         pathOnVM = doc.createTextNode(task[1])
         pathOnVM_el.appendChild(pathOnVM)
-        
+
     return doc.toxml(encoding="utf-8")
 
 def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_nodes, vm_cores=None):
@@ -174,38 +274,38 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
     root_nmspc = "http://www.globus.org/2008/06/workspace/negotiable"
     jsdl_nmspc = "http://schemas.ggf.org/jsdl/2005/11/jsdl"
     xsi_nmspc  = "http://www.w3.org/2001/XMLSchema-instance"
-    
+
     # Create the XML doc
     doc = xml.dom.minidom.Document()
-    
+
     ##
     ## Create XML document heirarchy
     ##
 
     # TODO: Clean this up and give some sample XML to clarify this
-    
+
     # Create the WorkspaceDeployment (root) element
     wsd_el = doc.createElementNS(root_nmspc, "WorkspaceDeployment")
-    
+
     # Define namespaces in the root element
     wsd_el.setAttribute("xmlns", root_nmspc )
     wsd_el.setAttribute("xmlns:jsdl", jsdl_nmspc)
     wsd_el.setAttribute("xmlns:xsi", xsi_nmspc)
-    
+
     # Add the Workspace deployment element (first, to be root)
     doc.appendChild(wsd_el)
-        
+
     #-lvl 1
     deploymenttime_el = doc.createElementNS(root_nmspc, "DeploymentTime")
     wsd_el.appendChild(deploymenttime_el)
     #--lvl2
     minduration_el = doc.createElementNS(root_nmspc, "minDuration")
     deploymenttime_el.appendChild(minduration_el)
-    
+
     #-lvl 1
     initialstate_el = doc.createElementNS(root_nmspc, "InitialState")
     wsd_el.appendChild(initialstate_el)
-    
+
     #-lvl 1
     rsrcallocation_el = doc.createElementNS(root_nmspc, "ResourceAllocation")
     wsd_el.appendChild(rsrcallocation_el)
@@ -230,7 +330,7 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
     #--lvl 2
     storage_el = doc.createElementNS(root_nmspc, "Storage")
     rsrcallocation_el.appendChild(storage_el)
-    #---lvl 3    
+    #---lvl 3
     entry_el = doc.createElementNS(root_nmspc, "entry")
     storage_el.appendChild(entry_el)
     #----lvl 4
@@ -242,44 +342,44 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
     #-----lvl 5
     exactdisk_el = doc.createElementNS(jsdl_nmspc, "jsdl:Exact")
     diskspace_el.appendChild(exactdisk_el)
-    
+
     #-lvl 1
     nodenumber_el = doc.createElementNS(root_nmspc, "NodeNumber")
     wsd_el.appendChild(nodenumber_el)
-    
+
     #-lvl 1
     shutdown_el = doc.createElementNS(root_nmspc, "ShutdownMechanism")
     wsd_el.appendChild(shutdown_el)
-    
+
     ##
     ## Set field values
     ##
-    
+
     minduration_txt = doc.createTextNode(format_duration_time(vm_duration))
     minduration_el.appendChild(minduration_txt)
-    
+
     initialstate_txt = doc.createTextNode(vm_targetstate)
     initialstate_el.appendChild(initialstate_txt)
-    
+
     exactmem_txt = doc.createTextNode(str(vm_mem))
     exactmem_el.appendChild(exactmem_txt)
-    
+
     partitionname_txt = doc.createTextNode(PARTITION_NAME)
     partitionname_el.appendChild(partitionname_txt)
-    
+
     exactdisk_txt = doc.createTextNode(format_storage(vm_storage))
     exactdisk_el.appendChild(exactdisk_txt)
-    
+
     nodenumber_txt = doc.createTextNode(str(vm_nodes))
     nodenumber_el.appendChild(nodenumber_txt)
-    
+
     shutdown_txt = doc.createTextNode(SHUTDOWN_MECH)
     shutdown_el.appendChild(shutdown_txt)
-    
+
     ##
     ## Create output file. Write xml. Close file.
     ##
-    
+
     (xml_out, file_name) = tempfile.mkstemp()
 
     # Note: toprettyxml causes parse errors with Sax
@@ -291,7 +391,7 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
     #print (doc.toprettyxml(encoding="utf-8"))
 
     # Return the filename of the created metadata file
-    return file_name    
+    return file_name
 
 
 
@@ -443,10 +543,10 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
 
     permissions_txt = doc.createTextNode(VM_PERMISSIONS)
     permissions_el.appendChild(permissions_txt)
-    
+
     partitionName_txt = doc.createTextNode(PARTITION_NAME)
     partitionName_el.appendChild(partitionName_txt)
-    
+
     mountAsPartition_txt = doc.createTextNode(config.scratch_attach_device)
     mountAsPartition_el.appendChild(mountAsPartition_txt)
 

@@ -236,6 +236,20 @@ class NimbusXMLTests(unittest.TestCase):
         self.custom_string = "stringtoput"
         self.custom_tasks = [(self.custom_string, self.custom_filename)]
         self.optional_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite></OptionalParameters>" % (self.custom_string, self.custom_filename)
+        self.workspace_id = 42
+        self.bad_workspace_id = "whatev"
+        self.nimbus_hostname = "your.nimbus.tld"
+        self.epr_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><WORKSPACE_EPR xmlns:ns1=\"http://schemas.xmlsoap.org/ws/2004/03/addressing\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"ns1:EndpointReferenceType\"><ns1:Address xsi:type=\"ns1:AttributedURI\">https://%s:8443/wsrf/services/WorkspaceService</ns1:Address><ns1:ReferenceProperties xsi:type=\"ns1:ReferencePropertiesType\"><ns2:WorkspaceKey xmlns:ns2=\"http://www.globus.org/2008/06/workspace\">%d</ns2:WorkspaceKey></ns1:ReferenceProperties><ns1:ReferenceParameters xsi:type=\"ns1:ReferenceParametersType\"/></WORKSPACE_EPR>" % (self.nimbus_hostname, self.workspace_id)
+
+    def test_for_good_epr_parameters(self):
+        txml = cloudscheduler.nimbus_xml.ws_epr(self.workspace_id, self.nimbus_hostname)
+
+        self.assertEqual(txml, self.epr_xml)
+
+    def test_for_bad_epr_parameters(self):
+        txml = cloudscheduler.nimbus_xml.ws_epr(self.bad_workspace_id, self.nimbus_hostname)
+
+        self.assertEqual(txml, None)
 
     def test_for_good_optional_parameters(self):
         txml = cloudscheduler.nimbus_xml.ws_optional_factory(self.custom_tasks)
