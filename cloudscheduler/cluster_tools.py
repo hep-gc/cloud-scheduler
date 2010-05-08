@@ -498,7 +498,7 @@ class NimbusCluster(ICluster):
         log.debug("Destroying VM with command: " + string.join(destroy_cmd, " "))
 
         # Execute the workspace shutdown command.
-        shutdown_return = self.vm_execute(shutdown_cmd)
+        shutdown_return = self.vm_exec_silent(shutdown_cmd)
         if (shutdown_return != 0):
             log.warning("(vm_destroy) - VM shutdown request failed, moving directly to destroy.")
         else:
@@ -509,7 +509,7 @@ class NimbusCluster(ICluster):
         time.sleep(self.VM_SHUTDOWN)
 
         # Execute the workspace destroy command: wait for return, stdout to log.
-        destroy_return = self.vm_execute(destroy_cmd)
+        destroy_return = self.vm_exec_silent(destroy_cmd)
 
         # Check destroy return code. If successful, continue. Otherwise, set VM to
         # error state (wait, and the polling thread will attempt a destroy later)
@@ -649,6 +649,27 @@ class NimbusCluster(ICluster):
             log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
             return (-1, "", "")
 
+    def vm_exec_silent(self, cmd):
+        """
+        vm_exec_silent executes a given command list, and discards the output
+
+        parameter: cmd -- a list of a command and arguments
+
+        returns: the return value of the command that was run
+
+        """
+
+        try:
+            sp = Popen(cmd, executable=config.workspace_path, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ret = sp.wait()
+            return ret
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            return -1
+        except:
+            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
+            return -1
 
     # The following _factory methods take the given parameters and return a list
     # representing the corresponding workspace command.
