@@ -115,8 +115,14 @@ class Scheduler(threading.Thread):
                 for job in self.job_pool.new_jobs[user]:
                     if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                         bad_jobs.append(job)
-            while len(bad_jobs) > 0:
-                self.job_pool.remove_system_job(bad_jobs.pop())
+	    if not self.job_pool.write_lock.acquire():
+                log.debug("update_jobs couldn't get a write lock on the job lists")
+            else:
+                try:            
+                    while len(bad_jobs) > 0:
+		        self.job_pool.remove_system_job(bad_jobs.pop())
+		finally:
+		    self.job_pool.write_lock.release()
 
             ## Figure out distribution of VMs requested and available
             desired_types = self.job_pool.job_type_distribution()

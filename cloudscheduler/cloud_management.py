@@ -448,3 +448,4 @@ class ResourcePool:
             changed[n] = changed[n].split('.')[0]
         return changed
 
+    
