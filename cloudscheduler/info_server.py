@@ -154,8 +154,8 @@ class CloudSchedulerInfoServer(threading.Thread,):
 class VMJSONEncoder(json.JSONEncoder):
     def default(self, vm):
         if not isinstance (vm, VM):
-           log.error("Cannot use VMJSONEncoder on non VM object")
-           return
+            log.error("Cannot use VMJSONEncoder on non VM object")
+            return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
                 'cloudtype': vm.cloudtype, 'network': vm.network, 
@@ -167,8 +167,8 @@ class VMJSONEncoder(json.JSONEncoder):
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
         if not isinstance (cluster, ICluster):
-           log.error("Cannot use ClusterJSONEncoder on non Cluster object")
-           return
+            log.error("Cannot use ClusterJSONEncoder on non Cluster object")
+            return
         vmEncodes = []
         for vm in cluster.vms:
             vmEncodes.append(VMJSONEncoder().encode(vm))
@@ -185,8 +185,8 @@ class ClusterJSONEncoder(json.JSONEncoder):
 class ResourcePoolJSONEncoder(json.JSONEncoder):
     def default(self, res_pool):
         if not isinstance (res_pool, ResourcePool):
-           log.error("Cannot use ResourcePoolJSONEncoder on non ResourcePool Object")
-           return
+            log.error("Cannot use ResourcePoolJSONEncoder on non ResourcePool Object")
+            return
         pool = []
         for cluster in res_pool.resources:
             pool.append(ClusterJSONEncoder().encode(cluster))

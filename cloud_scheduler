@@ -115,14 +115,14 @@ class Scheduler(threading.Thread):
                 for job in self.job_pool.new_jobs[user]:
                     if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                         bad_jobs.append(job)
-	    if not self.job_pool.write_lock.acquire():
+            if not self.job_pool.write_lock.acquire():
                 log.debug("update_jobs couldn't get a write lock on the job lists")
             else:
                 try:            
                     while len(bad_jobs) > 0:
-		        self.job_pool.remove_system_job(bad_jobs.pop())
-		finally:
-		    self.job_pool.write_lock.release()
+                        self.job_pool.remove_system_job(bad_jobs.pop())
+                finally:
+                    self.job_pool.write_lock.release()
 
             ## Figure out distribution of VMs requested and available
             desired_types = self.job_pool.job_type_distribution()
@@ -200,21 +200,21 @@ class Scheduler(threading.Thread):
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_imageloc, job.req_memory, job.req_cpucores,
                                     job.req_storage, customization=customizations,
-				    vm_keepalive=job.keep_alive)
+                                    vm_keepalive=job.keep_alive)
                             elif resource.__class__.__name__ == "EC2Cluster":
                                 create_ret = resource.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_ami, job.req_memory, job.req_cpucores,
                                     job.req_storage, customization=customizations,
-				    vm_keepalive=job.keep_alive)
+                                    vm_keepalive=job.keep_alive)
 
                             # If the VM create fails, try again on another resource
                             if (create_ret != 0):
                                 log.debug("Creating VM for job %s failed on %s. " % (job.id, resource.name))
                                 continue
 
-			    # If the vm create didn't fail, break out of the loop
-			    break
+                            # If the vm create didn't fail, break out of the loop
+                            break
 
                         # If VM creation fails for user-job on all resources move to next user
                         if create_ret != 0:
@@ -258,55 +258,55 @@ class Scheduler(threading.Thread):
                 # Go over the types and find idle machines to remove
                 self.remove_idle_machines(machineList, to_remove)
 
-		# Balancing Resources
-		num_to_change = {}
-		vm_count = self.resource_pool.vm_count()
-		for vmtype, val in diff_types.iteritems():
-		    num_to_change[vmtype] = int(round(val * vm_count))
-		
-		if config.graceful_shutdown:
-		    #TODO graceful shutdown via hold / release
-		    for vmtype in diff_types.keys():
-			if diff_types[vmtype] > 0:
-			    self.job_pool.hold_vmtype(vmtype)
-			else:
-			    self.job_pool.release_vmtype(vmtype)
-		    self.remove_idle_machines(machineList, num_to_change)
-		    # TODO Check for the idle machines to shutdown
-		else:
-		    # Compare current Machine List with Previous
-		    # Looking for machines that have changed jobs since last check
-		    # and are of a type that has an higher than wanted distribution
-		    # based on diff_types
-		    vm_matches = []
-		    #vm_starting = []
-		    changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
-		    for cluster in self.resource_pool.resources:
-			for vm in cluster.vms:
-			    if vm.hostname in changed:
-				vm_matches.append(vm)
-			    #if vm.status == "Starting":
-			    #    vm_starting.append(vm)
-		    to_shutdown = []
-		    # Removed to avoid job starvation in case where job is scheduled and VM gets shutdown
-		    # Since in sched_jobs a new VM will not be created for it to run
-		    #for vm in vm_starting:
-		    #    if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-		    #        to_shutdown.append(vm)
-		    #        num_to_change[vm.vmtype] -= 1
-		    for vm in vm_matches:
-			if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-			    to_shutdown.append(vm)
-			    num_to_change[vm.vmtype] -= 1
-		    for vm in to_shutdown:
-			log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
-			cluster = self.resource_pool.get_cluster_with_vm(vm)
-			log.debug("VM %s on cluster %s shutting down" % (vm.name, cluster.name))
-			destroy_ret = cluster.vm_destroy(vm)
-			if destroy_ret != 0:
-			    log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
-    
-		prevMachineList = machineList
+                # Balancing Resources
+                num_to_change = {}
+                vm_count = self.resource_pool.vm_count()
+                for vmtype, val in diff_types.iteritems():
+                    num_to_change[vmtype] = int(round(val * vm_count))
+
+                if config.graceful_shutdown:
+                    #TODO graceful shutdown via hold / release
+                    for vmtype in diff_types.keys():
+                        if diff_types[vmtype] > 0:
+                            self.job_pool.hold_vmtype(vmtype)
+                        else:
+                            self.job_pool.release_vmtype(vmtye)
+                    self.remove_idle_machines(machineList, num_to_change)
+                    # TODO Check for the idle machines to shutdown
+                else:
+                    # Compare current Machine List with Previous
+                    # Looking for machines that have changed jobs since last check
+                    # and are of a type that has an higher than wanted distribution
+                    # based on diff_types
+                    vm_matches = []
+                    #vm_starting = []
+                    changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
+                    for cluster in self.resource_pool.resources:
+                        for vm in cluster.vms:
+                            if vm.hostname in changed:
+                                vm_matches.append(vm)
+                            #if vm.status == "Starting":
+                            #    vm_starting.append(vm)
+                    to_shutdown = []
+                    # Removed to avoid job starvation in case where job is scheduled and VM gets shutdown
+                    # Since in sched_jobs a new VM will not be created for it to run
+                    #for vm in vm_starting:
+                    #    if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
+                    #        to_shutdown.append(vm)
+                    #        num_to_change[vm.vmtype] -= 1
+                    for vm in vm_matches:
+                        if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
+                            to_shutdown.append(vm)
+                            num_to_change[vm.vmtype] -= 1
+                    for vm in to_shutdown:
+                        log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
+                        cluster = self.resource_pool.get_cluster_with_vm(vm)
+                        log.debug("VM %s on cluster %s shutting down" % (vm.name, cluster.name))
+                        destroy_ret = cluster.vm_destroy(vm)
+                        if destroy_ret != 0:
+                            log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
+
+                prevMachineList = machineList
             else:
                 log.debug("No Machines returned by Condor Collector Query")
             ## Poll all remaining system VMs
@@ -381,7 +381,7 @@ class Scheduler(threading.Thread):
             log.error("The following VMs could not be destroyed properly:")
             for vm in remaining_vms:
                 log.error("VM: %s, ID: %s" % (vm.name, vm.id))
-		
+
     def remove_idle_machines(self, machineList, to_remove):
         for vmtype, count in to_remove.iteritems():
             log.debug("Attemping to remove %i VMs of type %s" % (count, vmtype))
@@ -397,33 +397,33 @@ class Scheduler(threading.Thread):
             elif len_unused < count:
                 num_to_shutdown = len_unused
             for x in range(0, num_to_shutdown):
-		log.debug("Name of Condor Machine to shutdown: %s" % unused_vms_of_type[x]['Name'])
-		condor_names = unused_vms_of_type[x]['Name'].split('.')
-		condor_name = condor_names[0]
-		# Track if machine found or not so can break from loop early
-		found_vm = False
-		for cluster in self.resource_pool.resources:
-		    for vm in cluster.vms:
-			log.debug("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
-			if vm.hostname.split(".")[0] == condor_name and vm.vmtype == vmtype:
-			    found_vm = True
-			    if vm.idle_start:
-				# Check that enough time has passed to shutdown
-				now = int(time.time())
-				if now - vm.idle_start > vm.keep_alive:
-				    log.info("VM of type %s no longer required for remaining jobs" % vm.vmtype)
-			            vm.log_dbg()
-			            destroy_ret = cluster.vm_destroy(vm)
-			            if destroy_ret != 0:
-				        log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
-			            else:
-				        break
-			    else:
-				vm.idle_start = int(time.time())
-				break
+                log.debug("Name of Condor Machine to shutdown: %s" % unused_vms_of_type[x]['Name'])
+                condor_names = unused_vms_of_type[x]['Name'].split('.')
+                condor_name = condor_names[0]
+                # Track if machine found or not so can break from loop early
+                found_vm = False
+                for cluster in self.resource_pool.resources:
+                    for vm in cluster.vms:
+                        log.debug("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
+                        if vm.hostname.split(".")[0] == condor_name and vm.vmtype == vmtype:
+                            found_vm = True
+                            if vm.idle_start:
+                                # Check that enough time has passed to shutdown
+                                now = int(time.time())
+                                if now - vm.idle_start > vm.keep_alive:
+                                    log.info("VM of type %s no longer required for remaining jobs" % vm.vmtype)
+                                    vm.log_dbg()
+                                    destroy_ret = cluster.vm_destroy(vm)
+                                    if destroy_ret != 0:
+                                        log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+                                    else:
+                                        break
+                            else:
+                                vm.idle_start = int(time.time())
+                                break
 
-		    if found_vm:
-			break	
+                    if found_vm:
+                        break
 
 ##
 ## Functions
