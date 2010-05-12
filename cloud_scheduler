@@ -309,46 +309,8 @@ class Scheduler(threading.Thread):
                 prevMachineList = machineList
             else:
                 log.debug("No Machines returned by Condor Collector Query")
-            ## Poll all remaining system VMs
-            log.debug("Polling all running VMs...")
 
-            for cluster in self.resource_pool.resources:
-                for vm in cluster.vms:
-                    now = int(time.time())
-
-                    if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
-                        log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
-                        continue
-                    elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
-                        log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
-                        continue
-
-                    ret_state = cluster.vm_poll(vm)
-
-                    # Print polled VM's state and details
-                    log.debug("Polled VM: ")
-                    vm.log_dbg()
-
-                    ## If the VM is in an error state, keep track of error and
-                    # after passing some threshold destroy the machine.
-                    # Decrementing to avoid a long running VM from accumulating periodic
-                    # errors and being destroyed
-                    if ret_state == "Error":
-                        vm.errorcount += 1
-                    elif vm.errorcount > 0:
-                        vm.errorcount = 0
-                    # Implement a config option to set this?
-                    if vm.errorcount >= config.polling_error_threshold:
-                        log.info("VM %s in error state. Destroying..." % vm.name)
-
-                        # Destroy the VM
-                        destroy_ret = cluster.vm_destroy(vm)
-                        if (destroy_ret != 0):
-                            log.error("Destroying VM failed. Leaving VM in error state.")
-                            continue
-
-                    # ENDIF - if VM in error state
-                # ENDFOR - for each VM in cluster vms list
+            self.poll_all_machines()
 
             ## Wait for a number of seconds
             log.debug("Scheduler - Waiting %ss" % self.scheduling_interval)
@@ -381,6 +343,48 @@ class Scheduler(threading.Thread):
             log.error("The following VMs could not be destroyed properly:")
             for vm in remaining_vms:
                 log.error("VM: %s, ID: %s" % (vm.name, vm.id))
+
+    def poll_all_machines(self):
+        """
+        poll_all_machines - internal function to poll all running VMs,
+                            and then update their status
+        """
+        log.debug("Polling all running VMs...")
+
+        for cluster in self.resource_pool.resources:
+            for vm in cluster.vms:
+                now = int(time.time())
+
+                if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
+                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                    continue
+                elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
+                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                    continue
+
+                ret_state = cluster.vm_poll(vm)
+
+                # Print polled VM's state and details
+                log.debug("Polled VM: ")
+                vm.log_dbg()
+
+                # If the VM is in an error state, keep track of error and
+                # after passing some threshold destroy the machine.
+                # Decrementing to avoid a long running VM from accumulating periodic
+                # errors and being destroyed
+                if ret_state == "Error":
+                    vm.errorcount += 1
+                elif vm.errorcount > 0:
+                    vm.errorcount = 0
+                if vm.errorcount >= config.polling_error_threshold:
+                    log.info("VM %s in error state. Destroying..." % vm.name)
+
+                    # Destroy the VM
+                    destroy_ret = cluster.vm_destroy(vm)
+                    if (destroy_ret != 0):
+                        log.error("Destroying VM failed. Leaving VM in error state.")
+                        continue
+
 
     def remove_idle_machines(self, machineList, to_remove):
         for vmtype, count in to_remove.iteritems():
@@ -431,7 +435,7 @@ class Scheduler(threading.Thread):
 
 def main():
     # Log entry message (for timestamp in log)
-    log.info("Cloud Scheduler system starting...")
+    log.info("Cloud Scheduler starting...")
 
     # Create a parser and process commandline arguments
     version_str = "Cloud Scheduler " + version.version
