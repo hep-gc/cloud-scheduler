@@ -146,7 +146,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
                     log.debug("Killing info server...")
                     break
             except socket.timeout:
-                pass
+                log.warning("info server's socket timed out. Don't panic!")
 
     def stop(self):
         self.done = True
