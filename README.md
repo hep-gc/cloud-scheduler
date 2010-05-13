@@ -41,7 +41,8 @@ Cloud Scheduler works with [Condor](http://www.cs.wisc.edu/condor/), which needs
 to be installed and able to manage resources. You can install it on the same
 machine that runs Cloud Scheduler (or not). You need to enable SOAP to allow
 Cloud Scheduler to communicate with Condor. You can do this by adding the
-following to your Condor install:
+following to your Condor config file, which is usually located at:
+/etc/condor/condor_config:
 
     ## CLOUD SCHEDULER SETTINGS
     ENABLE_SOAP = TRUE
@@ -50,10 +51,13 @@ following to your Condor install:
     ALLOW_SOAP=localhost, 127.0.0.1
     SCHEDD_ARGS = -p 8080
 
-We also recommend the following settings.
+We also recommend the following settings, especially if you're planning on
+using Condor CCB:
 
     UPDATE_COLLECTOR_WITH_TCP=True
-    COLLECTOR_SOCKET_CACHE_SIZE=1000
+    COLLECTOR_SOCKET_CACHE_SIZE=10000
+    COLLECTOR.MAX_FILE_DESCRIPTORS = 10000
+
 
 We have also placed an example Condor config in scripts/condor/manager
 
