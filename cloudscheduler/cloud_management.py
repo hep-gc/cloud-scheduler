@@ -383,7 +383,6 @@ class ResourcePool:
             log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s)"
                       % (config.condor_collector_url))
-            raise
 
     # Get a Dictionary of required VM Types with how many of that type running
     # Uses the dict-list structure returned by SOAP query
