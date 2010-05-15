@@ -204,14 +204,13 @@ class JobPool:
             log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
                       "reason: %s"
-                      % (config.condor_webservice_url, e.reason[1]))
-            return
+                      % (config.condor_webservice_url, e.reason))
+            return None
         except:
             log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason: "
+                      "Condor scheduler web service (%s). Unknown reason."
                       % (config.condor_webservice_url))
-            raise
+            return None
 
         # Create the condor_jobs list to store jobs
         condor_jobs = []
@@ -591,14 +590,13 @@ class JobPool:
                 log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
                       "reason: %s"
-                      % (config.condor_webservice_url, e.reason[1]))
-                return
+                      % (config.condor_webservice_url, e.reason))
+                return None
             except:
                 log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason: "
+                      "Condor scheduler web service (%s). Unknown reason."
                       % (config.condor_webservice_url))
-                raise
+                return None
         return failed
 
     # Attempts to release a list of jobs that have been previously held
@@ -615,14 +613,13 @@ class JobPool:
                 log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
                       "reason: %s"
-                      % (config.condor_webservice_url, e.reason[1]))
-                return
+                      % (config.condor_webservice_url, e.reason))
+                return None
             except:
                 log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason: "
+                      "Condor scheduler web service (%s). Unknown reason."
                       % (config.condor_webservice_url))
-                raise
+                return None
         return failed        
     
     def hold_user(self, user):    
@@ -800,54 +797,6 @@ class JobPool:
         for jobset in jobs.values():
             for job in jobset:
                 log.debug("\tJob: %s, %10s, %4d, %10s" % (job.id, job.user, job.priority, job.req_vmtype))
-
-
-    # A function to encapsulate command execution via Popen.
-    # condor_execwait executes the given cmd list, waits for the process to finish,
-    # and returns the return code of the process. STDOUT and STDERR are returned
-    # Parameters:
-    #    cmd   - A list of strings containing the command to be executed
-    # Returns:
-    #    ret   - The return value of the executed command
-    #    out   - The STDOUT of the executed command
-    #    err   - The STDERR of the executed command
-    # The return of this function is a 3-tuple
-    def condor_execwait(self, cmd):
-        try:
-            sp = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, \
-                     stderr=subprocess.PIPE)
-            ret = sp.wait()
-            (out, err) = sp.communicate(input=None)
-            return (ret, out, err)
-        except OSError:
-            log.error("Couldn't run the following command: '%s' Are the Condor binaries in your $PATH?"
-                      % string.join(cmd, " "))
-            raise SystemExit
-        except:
-            log.error("Couldn't run %s command." % string.join(cmd, " "))
-            raise
-
-
-    # Return an arbitrary subset of the jobs list (unscheduled jobs)
-    # Parameters:
-    #   size   - (int) The number of jobs to return
-    # Returns:
-    #   subset - (Job list) A list of the jobs selected from the 'jobs' list
-    def jobs_subset(self, size):
-        # TODO: Write method
-        log.warning("jobs_subset - Method not yet implemented")
-
-
-    # Return a subset of size 'size' of the highest priority jobs from the list
-    # of unscheduled jobs
-    # Parameters:
-    #   size   - (int) The number of jobs to return
-    # Returns:
-    #   subset - (Job list) A list of the highest priority unscheduled jobs (of
-    #            length 'size)
-    def jobs_priorityset(self, size):
-        # TODO: Write method
-        log.warning("jobs_priorityset - Method not yet implemented")
 
 
 
