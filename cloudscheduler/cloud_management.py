@@ -24,6 +24,10 @@ from suds.client import Client
 import cloudscheduler.config as config
 from urllib2 import URLError
 from decimal import *
+try:
+       import cPickle as pickle
+except:
+       import pickle
 
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
@@ -32,6 +36,7 @@ from cloudscheduler.utilities import get_or_none
 ## GLOBALS
 ##
 log = None
+log = logging.getLogger("cloudscheduler")
 
 ##
 ## CLASSES
@@ -59,6 +64,7 @@ class ResourcePool:
 
     # Read in defined clouds from cloud definition file
     def setup(self, config_file):
+        #TODO: Merge this with _init_
 
         log.info("Reading cloud resource configuration file %s" % config_file)
         # Check for config files with ~ in the path
@@ -116,6 +122,8 @@ class ResourcePool:
             if new_cluster:
                 self.add_resource(new_cluster)
         #END For
+
+        self.load_persistence()
 
 
     # Add a cluster resource to the pool's resource list
@@ -447,3 +455,56 @@ class ResourcePool:
             changed[n] = changed[n].split('.')[0]
         return changed
 
+    def save_persistence(self):
+        """
+        save_persistence - pickle the resources list to the persistence file
+        """
+        try:
+            persistence_file = open(config.persistence_file, "wb")
+            pickle.dump(self.resources, persistence_file)
+            persistence_file.close()
+        except IOError, e:
+
+            log.error("Couldn't write persistence file to %s! \"%s\"" % 
+                      (config.persistence_file, e.strerror))
+        except:
+            log.error("Unknown problem saving persistence file!")
+
+    def load_persistence(self):
+        """
+        load_persistence - if a pickled persistence file exists, load it and 
+                           check to see if the resources described in it are
+                           valid. If so, add them to the list of resources.
+        """
+
+        try:
+            log.info("Loading persistence file from last run.")
+            persistence_file = open(config.persistence_file, "rb")
+        except IOError, e:
+            log.debug("No persistence file to load. Exited normally last time.")
+            return
+
+        old_resources = pickle.load(persistence_file)
+        persistence_file.close()
+
+        for old_cluster in old_resources:
+            old_cluster.setup_logging()
+
+            for vm in old_cluster.vms:
+
+                log.debug("Found VM %s" % vm.id)
+                if old_cluster.vm_poll(vm) != "Error":
+                    new_cluster = self.get_cluster(old_cluster.name)
+
+                    if new_cluster:
+                        new_cluster.vms.append(vm)
+                        new_cluster.resource_checkout(vm)
+                        log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
+                    else:
+                        log.info("%s doesn't seem to exist, so destroying vm %s." %
+                                 (old_cluster.name, vm.id))
+                        old_cluster.vm_destroy(vm)
+                else:
+                    log.info("Found persisted VM %s from %s in an error state, destroying it." %
+                             (vm.id, old_cluster.name))
+                    old_cluster.vm_destroy(vm)

@@ -310,6 +310,7 @@ class Scheduler(threading.Thread):
             else:
                 log.debug("No Machines returned by Condor Collector Query")
 
+            self.resource_pool.save_persistence()
             self.poll_all_machines()
 
             ## Wait for a number of seconds
@@ -337,6 +338,8 @@ class Scheduler(threading.Thread):
                     log.error("Destroying VM failed. Continuing anyway... check VM logs")
                     remaining_vms.append(cluster.vms[i])
         #ENDFOR - Attempt to destroy each remaining VM in the system
+
+        self.resource_pool.save_persistence()
 
         # Print list of VMs cloud scheduler failed to destroy before exit.
         if (remaining_vms != []):

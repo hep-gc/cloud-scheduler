@@ -33,6 +33,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.cloud_resource_config = "/home/testuser/cloud"
         self.info_server_port = "1234"
         self.workspace_path = "/path/to/workspace"
+        self.persistence_file = "/path/to/persistence"
 
         self.log_level = "ERROR"
         self.log_location = "/tmp/test.log"
@@ -56,6 +57,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'scratch_attach_device', self.scratch_attach_device)
         testconfig.set('global', 'info_server_port', self.info_server_port)
         testconfig.set('global', 'workspace_path', self.workspace_path)
+        testconfig.set('global', 'persistence_file', self.persistence_file)
 
         testconfig.add_section('logging')
         testconfig.set('logging', 'log_level', self.log_level)
@@ -109,6 +111,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_workspace_path(self):
         self.assertEqual(self.workspace_path, cloudscheduler.config.workspace_path)
+
+    def test_persistence_file(self):
+        self.assertEqual(self.persistence_file, cloudscheduler.config.persistence_file)
 
     def test_log_level(self):
         self.assertEqual(self.log_level, cloudscheduler.config.log_level)

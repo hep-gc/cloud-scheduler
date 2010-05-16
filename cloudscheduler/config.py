@@ -31,6 +31,7 @@ image_attach_device = "sda"
 scratch_attach_device = "sdb"
 info_server_port = 8111
 workspace_path = "workspace"
+persistence_file = "/var/run/cloudscheduler.persistence"
 polling_error_threshold = 10
 graceful_shutdown = False
 
@@ -58,6 +59,7 @@ def setup(path=None):
     global scratch_attach_device
     global info_server_port
     global workspace_path
+    global persistence_file
     global polling_error_threshold
     global graceful_shutdown
 
@@ -150,6 +152,9 @@ def setup(path=None):
 
     if config_file.has_option("global", "workspace_path"):
         workspace_path = config_file.get("global", "workspace_path")
+
+    if config_file.has_option("global", "persistence_file"):
+        persistence_file = config_file.get("global", "persistence_file")
 
     if config_file.has_option("global", "polling_error_threshold"):
         try:

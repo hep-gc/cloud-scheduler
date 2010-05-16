@@ -144,9 +144,12 @@ class ICluster:
         self.storageGB = storage
         self.vms = [] # List of running VMs
 
+        self.setup_logging()
+        log.info("New cluster %s created" % self.name)
+
+    def setup_logging(self):
         global log
         log = logging.getLogger("cloudscheduler")
-        log.info("New cluster %s created" % self.name)
 
 
     # Print cluster information
@@ -328,6 +331,16 @@ class NimbusCluster(ICluster):
          "Cancelled"      : "Error",
     }
 
+    def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
+                 memory=[], cpu_archs=[], networks=[], vm_slots=0,
+                 cpu_cores=0, storage=0,
+                 access_key_id=None, secret_access_key=None, security_group=None):
+
+        # Call super class's init
+        ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
+                         memory=memory, cpu_archs=cpu_archs, networks=networks,
+                         vm_slots=vm_slots, cpu_cores=cpu_cores,
+                         storage=storage,)
 
     # TODO: Explain parameters and returns
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
