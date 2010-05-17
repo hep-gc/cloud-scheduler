@@ -6,9 +6,12 @@ import sys
 import tempfile
 import ConfigParser
 from cStringIO import StringIO
+from lxml import etree
+
 
 import cloudscheduler.config
 import cloudscheduler.cloud_management
+import cloudscheduler.job_management
 import cloudscheduler.nimbus_xml
 import cloudscheduler.utilities as utilities
 
@@ -285,6 +288,617 @@ class NimbusXMLTests(unittest.TestCase):
         txml = cloudscheduler.nimbus_xml.ws_optional_factory(bad_custom_task)
 
         self.assertEqual(None, txml)
+
+class JobPoolTests(unittest.TestCase):
+
+    def setUp(self):
+        self.hello = "hi"
+
+    def test_condorxml_to_native_empty_list(self):
+
+        condor_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:condor="urn:condor"><SOAP-ENV:Header></SOAP-ENV:Header><SOAP-ENV:Body><condor:getJobAdsResponse><response><status><code>SUCCESS</code><message>Success</message></status><classAdArray></classAdArray></response></condor:getJobAdsResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>"""
+
+        xml2native = cloudscheduler.job_management.JobPool._condor_job_xml_to_native_list
+        jobs = xml2native(condor_xml)
+        self.assertEqual([], jobs)
+
+    def test_condorxml_to_native_not_success(self):
+
+        condor_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:condor="urn:condor"><SOAP-ENV:Header></SOAP-ENV:Header><SOAP-ENV:Body><condor:getJobAdsResponse><response><status><code>FAIL</code><message>Success</message></status><classAdArray></classAdArray></response></condor:getJobAdsResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>"""
+
+        xml2native = cloudscheduler.job_management.JobPool._condor_job_xml_to_native_list
+        jobs = xml2native(condor_xml)
+        self.assertEqual([], jobs)
+
+    def test_condorxml_to_native_one_job(self):
+
+        condor_xml = """<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:condor="urn:condor">
+  <SOAP-ENV:Header></SOAP-ENV:Header>
+  <SOAP-ENV:Body>
+    <condor:getJobAdsResponse>
+      <response>
+        <status>
+          <code>SUCCESS</code>
+          <message>Success</message>
+        </status>
+        <classAdArray>
+          <item>
+            <item>
+              <name>MyType</name>
+              <type>STRING-ATTR</type>
+              <value>Job</value>
+            </item>
+            <item>
+              <name>TargetType</name>
+              <type>STRING-ATTR</type>
+              <value>Machine</value>
+            </item>
+            <item>
+              <name>ServerTime</name>
+              <type>INTEGER-ATTR</type>
+              <value>1274118753</value>
+            </item>
+            <item>
+              <name>LastJobStatus</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>JobCurrentStartDate</name>
+              <type>INTEGER-ATTR</type>
+              <value>1274118697</value>
+            </item>
+            <item>
+              <name>PublicClaimId</name>
+              <type>STRING-ATTR</type>
+              <value>
+              &lt;192.168.107.12:40000&gt;#1274063306#3#...</value>
+            </item>
+            <item>
+              <name>RemoteHost</name>
+              <type>STRING-ATTR</type>
+              <value>musecloud12</value>
+            </item>
+            <item>
+              <name>NumJobMatches</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>JobStatus</name>
+              <type>INTEGER-ATTR</type>
+              <value>2</value>
+            </item>
+            <item>
+              <name>EnteredCurrentStatus</name>
+              <type>INTEGER-ATTR</type>
+              <value>1274118697</value>
+            </item>
+            <item>
+              <name>ShadowBday</name>
+              <type>INTEGER-ATTR</type>
+              <value>1274118697</value>
+            </item>
+            <item>
+              <name>StartdPrincipal</name>
+              <type>STRING-ATTR</type>
+              <value>142.104.61.62</value>
+            </item>
+            <item>
+              <name>GlobalJobId</name>
+              <type>STRING-ATTR</type>
+              <value>vmcgs35.phys.uvic.ca#85.0#1274118681</value>
+            </item>
+            <item>
+              <name>JobStartDate</name>
+              <type>INTEGER-ATTR</type>
+              <value>1274118697</value>
+            </item>
+            <item>
+              <name>LastJobLeaseRenewal</name>
+              <type>INTEGER-ATTR</type>
+              <value>1274118713</value>
+            </item>
+            <item>
+              <name>ProcId</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>OrigMaxHosts</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>CurrentHosts</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>AutoClusterAttrs</name>
+              <type>STRING-ATTR</type>
+              <value>
+              JobUniverse,LastCheckpointPlatform,NumCkpts,CondorLoadAvg,DiskUsage,ImageSize,RequestMemory,Requirements,NiceUser,ConcurrencyLimits</value>
+            </item>
+            <item>
+              <name>WantMatchDiagnostics</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>TRUE</value>
+            </item>
+            <item>
+              <name>StartdIpAddr</name>
+              <type>STRING-ATTR</type>
+              <value>
+              &lt;192.168.107.12:40000?CCBID=142.104.63.35:9618#608&gt;</value>
+            </item>
+            <item>
+              <name>AutoClusterId</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>LastMatchTime</name>
+              <type>INTEGER-ATTR</type>
+              <value>1274118697</value>
+            </item>
+            <item>
+              <name>NumShadowStarts</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>CurrentTime</name>
+              <type>EXPRESSION-ATTR</type>
+              <value>time()</value>
+            </item>
+            <item>
+              <name>JobRunCount</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>RemoteSlotID</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>LastSuspensionTime</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>Out</name>
+              <type>STRING-ATTR</type>
+              <value>x.out</value>
+            </item>
+            <item>
+              <name>VMLoc</name>
+              <type>STRING-ATTR</type>
+              <value>
+              http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.img.gz</value>
+            </item>
+            <item>
+              <name>BufferBlockSize</name>
+              <type>INTEGER-ATTR</type>
+              <value>32768</value>
+            </item>
+            <item>
+              <name>JobNotification</name>
+              <type>INTEGER-ATTR</type>
+              <value>2</value>
+            </item>
+            <item>
+              <name>TransferFiles</name>
+              <type>STRING-ATTR</type>
+              <value>ONEXIT</value>
+            </item>
+            <item>
+              <name>JobLeaseDuration</name>
+              <type>INTEGER-ATTR</type>
+              <value>1200</value>
+            </item>
+            <item>
+              <name>ImageSize_RAW</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>StreamOut</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>NumRestarts</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>Cmd</name>
+              <type>STRING-ATTR</type>
+              <value>/home/patricka/dumb.sh</value>
+            </item>
+            <item>
+              <name>ImageSize</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>LeaveJobInQueue</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>PeriodicRemove</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>Iwd</name>
+              <type>STRING-ATTR</type>
+              <value>/home/patricka</value>
+            </item>
+            <item>
+              <name>PeriodicHold</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>CondorPlatform</name>
+              <type>STRING-ATTR</type>
+              <value>$CondorPlatform: I386-LINUX_RHEL5 $</value>
+            </item>
+            <item>
+              <name>NumCkpts</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>ExitBySignal</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>EnteredCurrentStatus</name>
+              <type>INTEGER-ATTR</type>
+              <value>1274118681</value>
+            </item>
+            <item>
+              <name>In</name>
+              <type>STRING-ATTR</type>
+              <value>/dev/null</value>
+            </item>
+            <item>
+              <name>ClusterId</name>
+              <type>INTEGER-ATTR</type>
+              <value>85</value>
+            </item>
+            <item>
+              <name>RemoteUserCpu</name>
+              <type>FLOAT-ATTR</type>
+              <value>0.000000</value>
+            </item>
+            <item>
+              <name>CondorVersion</name>
+              <type>STRING-ATTR</type>
+              <value>$CondorVersion: 7.5.1 Mar 1 2010 BuildID:
+              220663 $</value>
+            </item>
+            <item>
+              <name>NumSystemHolds</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>MinHosts</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>WantRemoteSyscalls</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>JobUniverse</name>
+              <type>INTEGER-ATTR</type>
+              <value>5</value>
+            </item>
+            <item>
+              <name>Environment</name>
+              <type>STRING-ATTR</type>
+              <value></value>
+            </item>
+            <item>
+              <name>PeriodicRelease</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>RequestDisk</name>
+              <type>EXPRESSION-ATTR</type>
+              <value>DiskUsage</value>
+            </item>
+            <item>
+              <name>CumulativeSuspensionTime</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>ExecutableSize</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>RootDir</name>
+              <type>STRING-ATTR</type>
+              <value>/</value>
+            </item>
+            <item>
+              <name>Requirements</name>
+              <type>EXPRESSION-ATTR</type>
+              <value>( VMType =?= "canfarbase" ) &amp;&amp; (
+              TARGET.Arch == "INTEL" ) &amp;&amp; ( TARGET.OpSys ==
+              "LINUX" ) &amp;&amp; ( TARGET.Disk &gt;= DiskUsage )
+              &amp;&amp; ( ( ( TARGET.Memory * 1024 ) &gt;=
+              ImageSize ) &amp;&amp; ( ( RequestMemory * 1024 )
+              &gt;= ImageSize ) ) &amp;&amp; (
+              TARGET.HasFileTransfer )</value>
+            </item>
+            <item>
+              <name>ShouldTransferFiles</name>
+              <type>STRING-ATTR</type>
+              <value>YES</value>
+            </item>
+            <item>
+              <name>LocalSysCpu</name>
+              <type>FLOAT-ATTR</type>
+              <value>0.000000</value>
+            </item>
+            <item>
+              <name>DiskUsage</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>WhenToTransferOutput</name>
+              <type>STRING-ATTR</type>
+              <value>ON_EXIT</value>
+            </item>
+            <item>
+              <name>UserLog</name>
+              <type>STRING-ATTR</type>
+              <value>/home/patricka/x.log</value>
+            </item>
+            <item>
+              <name>RequestMemory</name>
+              <type>EXPRESSION-ATTR</type>
+              <value>ceiling(ifThenElse(JobVMMemory =!=
+              undefined,JobVMMemory,ImageSize /
+              1024.000000))</value>
+            </item>
+            <item>
+              <name>KillSig</name>
+              <type>STRING-ATTR</type>
+              <value>SIGTERM</value>
+            </item>
+            <item>
+              <name>NumCkpts_RAW</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>ExecutableSize_RAW</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>MaxHosts</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>CoreSize</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>WantCheckpoint</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>Err</name>
+              <type>STRING-ATTR</type>
+              <value>x.error</value>
+            </item>
+            <item>
+              <name>CurrentHosts</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>VMStorage</name>
+              <type>INTEGER-ATTR</type>
+              <value>10</value>
+            </item>
+            <item>
+              <name>VMAMI</name>
+              <type>STRING-ATTR</type>
+              <value>ami-fdee0094</value>
+            </item>
+            <item>
+              <name>DiskUsage_RAW</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>CommittedTime</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>RemoteSysCpu</name>
+              <type>FLOAT-ATTR</type>
+              <value>0.000000</value>
+            </item>
+            <item>
+              <name>OnExitRemove</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>TRUE</value>
+            </item>
+            <item>
+              <name>TotalSuspensions</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>RequestCpus</name>
+              <type>INTEGER-ATTR</type>
+              <value>1</value>
+            </item>
+            <item>
+              <name>LocalUserCpu</name>
+              <type>FLOAT-ATTR</type>
+              <value>0.000000</value>
+            </item>
+            <item>
+              <name>StreamErr</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>NiceUser</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>QDate</name>
+              <type>INTEGER-ATTR</type>
+              <value>1274118681</value>
+            </item>
+            <item>
+              <name>CompletionDate</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>Rank</name>
+              <type>FLOAT-ATTR</type>
+              <value>0.000000</value>
+            </item>
+            <item>
+              <name>OnExitHold</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+            <item>
+              <name>RemoteWallClockTime</name>
+              <type>FLOAT-ATTR</type>
+              <value>0.000000</value>
+            </item>
+            <item>
+              <name>JobPrio</name>
+              <type>INTEGER-ATTR</type>
+              <value>10</value>
+            </item>
+            <item>
+              <name>NumJobStarts</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>Args</name>
+              <type>STRING-ATTR</type>
+              <value>4 10</value>
+            </item>
+            <item>
+              <name>WantRemoteIO</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>TRUE</value>
+            </item>
+            <item>
+              <name>User</name>
+              <type>STRING-ATTR</type>
+              <value>patricka@vmcgs35.phys.uvic.ca</value>
+            </item>
+            <item>
+              <name>CurrentTime</name>
+              <type>EXPRESSION-ATTR</type>
+              <value>time()</value>
+            </item>
+            <item>
+              <name>BufferSize</name>
+              <type>INTEGER-ATTR</type>
+              <value>524288</value>
+            </item>
+            <item>
+              <name>ExitStatus</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>LastSuspensionTime</name>
+              <type>INTEGER-ATTR</type>
+              <value>0</value>
+            </item>
+            <item>
+              <name>Owner</name>
+              <type>STRING-ATTR</type>
+              <value>patricka</value>
+            </item>
+            <item>
+              <name>TransferIn</name>
+              <type>BOOLEAN-ATTR</type>
+              <value>FALSE</value>
+            </item>
+          </item>
+        </classAdArray>
+      </response>
+    </condor:getJobAdsResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+"""
+
+        xml2native = cloudscheduler.job_management.JobPool._condor_job_xml_to_native_list
+        jobs = xml2native(condor_xml)
+
+        job_dictionary = {'GlobalJobId': 'vmcgs35.phys.uvic.ca#85.0#1274118681',
+                          'Owner': 'patricka',
+                          'JobPrio': 10,
+                          'JobStatus': 2,
+                          'ClusterId': 85,
+                          'ProcId': 0,
+                          'VMType': 'canfarbase',
+                          'VMAMI': 'ami-fdee0094',
+                          'VMLoc': 'http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.img.gz',
+                          'VMStorage': 10,
+                          }
+
+        test_job = cloudscheduler.job_management.Job(**job_dictionary)
+        parsed_job = jobs[0]
+        self.assertEqual(parsed_job.id, test_job.id)
+        self.assertEqual(parsed_job.user, test_job.user)
+        self.assertEqual(parsed_job.priority, test_job.priority)
+        self.assertEqual(parsed_job.job_status, test_job.job_status)
+        self.assertEqual(parsed_job.cluster_id, test_job.cluster_id)
+        self.assertEqual(parsed_job.proc_id, test_job.proc_id)
+        self.assertEqual(parsed_job.req_vmtype, test_job.req_vmtype)
+        self.assertEqual(parsed_job.req_network, test_job.req_network)
+        self.assertEqual(parsed_job.req_cpuarch, test_job.req_cpuarch)
+        self.assertEqual(parsed_job.req_image, test_job.req_image)
+        self.assertEqual(parsed_job.req_imageloc, test_job.req_imageloc)
+        self.assertEqual(parsed_job.req_ami, test_job.req_ami)
+        self.assertEqual(parsed_job.req_memory, test_job.req_memory)
+        self.assertEqual(parsed_job.req_cpucores, test_job.req_cpucores)
+        self.assertEqual(parsed_job.req_storage, test_job.req_storage)
+        self.assertEqual(parsed_job.keep_alive, test_job.keep_alive)
 
 class GetOrNoneTests(unittest.TestCase):
 

@@ -20,11 +20,12 @@ For more documentation on the cloud scheduler, please refer to the following pag
 * A working Condor 7.5.x install (details below)
 * [Suds](https://fedorahosted.org/suds/)
 * [boto](http://code.google.com/p/boto/)
+* [lxml](http://codespeak.net/lxml/)
 * [simple-json](http://undefined.org/python/#simplejson) For python 2.4/2.5
 
 You can install these on RHEL5 (and clones) with the following:
 
-    # yum install python-simplejson
+    # yum install python-simplejson lxml
     # wget https://fedorahosted.org/releases/s/u/suds/python-suds-0.3.9-1.fc11.noarch.rpm
     # yum localinstall python-suds.0.3.9-1.fc11.noarch.rpm
     # wget http://boto.googlecode.com/files/boto-1.9b.tar.gz
@@ -34,7 +35,7 @@ You can install these on RHEL5 (and clones) with the following:
 
 On Mac OS X, using Macports, you can install these with the following:
 
-    # sudo port install py-suds py-boto
+    # sudo port install py-suds py-boto py-lxml
 
 ## Condor Install
 Cloud Scheduler works with [Condor](http://www.cs.wisc.edu/condor/), which needs

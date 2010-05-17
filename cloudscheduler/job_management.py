@@ -33,6 +33,11 @@ import threading
 import subprocess
 from urllib2 import URLError
 try:
+    from lxml import etree
+except:
+    print >> sys.stderr, "Couldn't import lxml. You should install it from http://codespeak.net/lxml/, or your package manager."
+    sys.exit(1)
+try:
     from suds.client import Client
 except:
     print >> sys.stderr, "Couldn't import Suds. You should install it from https://fedorahosted.org/suds/, or your package manager"
@@ -191,6 +196,9 @@ class JobPool:
                         + "/wsdl/condorSchedd.wsdl"
         self.condor_schedd = Client(_schedd_wsdl,
                                     location=config.condor_webservice_url)
+        self.condor_schedd_as_xml = Client(_schedd_wsdl,
+                                    location=config.condor_webservice_url,
+                                    retxml=True)
 
 
     def job_querySOAP(self):
@@ -198,7 +206,7 @@ class JobPool:
 
         # Get job classAds from the condor scheduler
         try:
-            job_ads = self.condor_schedd.service.getJobAds(None, None)
+            job_ads = self.condor_schedd_as_xml.service.getJobAds(None, None)
             log.debug("Done querying schedd")
         except URLError, e:
             log.error("There was a problem connecting to the "
@@ -213,47 +221,81 @@ class JobPool:
             return None
 
         # Create the condor_jobs list to store jobs
-        condor_jobs = []
-
-        # If the query succeeds and there are jobs present, process them
-        if job_ads.status.code == "SUCCESS" and job_ads.classAdArray:
-
-            # Convert ugly data structure from soap into list of dictionaries
-            classads = []
-            for soap_classad in job_ads.classAdArray.item:
-                new_classad = {}
-                for attribute in soap_classad.item:
-                    attribute_key = str(attribute.name)
-                    new_classad[attribute_key] = attribute.value
-                classads.append(new_classad)
-
-            for classad in classads:
-                job_dict = self.make_job_dict(classad)
-
-                # Create Jobs from the classAd data
-                # Note: using the '**' operator, which calls a named-parameter function with the values
-                # of dictionary keys of the same name (as the function parameters)
-                con_job = Job(**job_dict)
-                condor_jobs.append(con_job)
-
-            # DBG: Print condor jobs recvd from scheduler.
-            log.debug("Jobs read from condor scheduler, stored in condor jobs list: ")
-            self.log_jobs_list(condor_jobs)
-
-        # Otherwise, if the query succeeds but there are no jobs in the queue
-        elif job_ads.status.code == "SUCCESS" and not job_ads.classAdArray:
-            log.debug("Job query (status: %s) returned no jobs." % job_ads.status.code)
-
-        # Otherwise, log an error and return None
-        else:
-            log.error("Job query (status: %s) failed." % job_ads.status.code)
-            return None
+        condor_jobs = self._condor_job_xml_to_job_list(job_ads)
 
         # When querying finishes successfully, reset last query timestamp
         last_query = datetime.datetime.now()
+        log.debug("Done parsing jobs from Condor Schedd SOAP")
 
         # Return condor_jobs list
         return condor_jobs
+
+    @staticmethod
+    def _condor_job_xml_to_job_list(condor_xml):
+        """
+        _condor_job_xml_to_job_list - Converts Condor SOAP XML from Condor
+                to a list of Job Objects
+
+                returns [] if there are no jobs
+        """
+        def _job_attribute(xml, element):
+            try:
+                return xml.xpath(".//item[name='%s']/value" % element)[0].text
+            except:
+                return ""
+
+        def _add_if_exists(xml, dictionary, attribute):
+            job_value = string.strip(_job_attribute(xml, attribute))
+            if job_value:
+                dictionary[attribute] = job_value
+
+        def _attribute_from_requirements(requirements, attribute):
+            regex = "%s\s=\?=\s\"(?P<value>.+?)\"" % attribute
+            match = re.search(regex, requirements)
+            if match:
+                return match.group("value")
+            else:
+                return ""
+
+        jobs = []
+
+        condor_jobs = etree.fromstring(condor_xml)
+
+        status = condor_jobs.findtext(".//status/code")
+
+        if status == "SUCCESS":
+            xml_jobs = condor_jobs.findall(".//classAdArray/item")
+
+            for xml_job in xml_jobs:
+                job_dictionary = {}
+                # Mandatory parameters
+                job_dictionary['GlobalJobId'] = _job_attribute(xml_job, "GlobalJobId")
+                job_dictionary['Owner'] = _job_attribute(xml_job, "Owner")
+                job_dictionary['JobPrio'] = _job_attribute(xml_job, "JobPrio")
+                job_dictionary['JobStatus'] = _job_attribute(xml_job, "JobStatus")
+                job_dictionary['ClusterId'] = _job_attribute(xml_job, "ClusterId")
+                job_dictionary['ProcId'] = _job_attribute(xml_job, "ProcId")
+
+                # Optional parameters
+                _add_if_exists(xml_job, job_dictionary, "VMNetwork")
+                _add_if_exists(xml_job, job_dictionary, "VMCPUArch")
+                _add_if_exists(xml_job, job_dictionary, "VMName")
+                _add_if_exists(xml_job, job_dictionary, "VMLoc")
+                _add_if_exists(xml_job, job_dictionary, "VMAMI")
+                _add_if_exists(xml_job, job_dictionary, "VMMem")
+                _add_if_exists(xml_job, job_dictionary, "VMCPUCores")
+                _add_if_exists(xml_job, job_dictionary, "VMStorage")
+                _add_if_exists(xml_job, job_dictionary, "VMKeepAlive")
+
+                # Requirements requires special fiddling
+                requirements = _job_attribute(xml_job, "Requirements")
+                if requirements:
+                    vmtype = _attribute_from_requirements(requirements, "VMType")
+                    if vmtype:
+                        job_dictionary['VMType'] = vmtype
+
+                jobs.append(Job(**job_dictionary))
+        return jobs
 
 
     # Updates the system jobs:
