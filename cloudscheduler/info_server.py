@@ -29,6 +29,8 @@ import cloudscheduler.config as config
 from cluster_tools import ICluster
 from cluster_tools import VM
 from cloud_management import ResourcePool
+from job_management import Job
+from job_management import JobPool
 # JSON lib included in 2.6+
 if sys.version_info < (2, 6):
     try:
@@ -46,8 +48,9 @@ class RequestHandler(SimpleXMLRPCRequestHandler):
 class CloudSchedulerInfoServer(threading.Thread,):
 
     cloud_resources = None
+    job_pool = None
 
-    def __init__(self, c_resources):
+    def __init__(self, c_resources, c_job_pool):
 
         global log
         log = logging.getLogger("cloudscheduler")
@@ -56,6 +59,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
         threading.Thread.__init__(self)
         self.done = False
         cloud_resources = c_resources
+        job_pool = c_job_pool
         host_name = "0.0.0.0"
         #set up server
         try:
@@ -132,6 +136,38 @@ class CloudSchedulerInfoServer(threading.Thread,):
                 except:
                     return "You need to have Guppy installed to get developer " \
                            "information" 
+            def get_newjobs(self):
+                output = "%-15s %-10s %-10s %-15s %-25s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status")
+                for user in job_pool.new_jobs.keys():
+                    for job in job_pool.new_jobs[user]:
+                        output += job.get_job_info()
+                return output
+            def get_schedjobs(self):
+                output = "%-15s %-10s %-10s %-15s %-25s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status")
+                for user in job_pool.sched_jobs.keys():
+                    for job in job_pool.sched_jobs[user]:
+                        output += job.get_job_info()
+                return output
+            def get_job(self, jobid):
+                output = "Job not found."
+                job_match = None
+                for job in job_pool.new_jobs.values() + job_pool.sched_jobs.values():
+                    if job.id == jobid:
+                        job_match = job
+                        break
+                output = job_match.get_job_info_pretty()
+                return output
+            def get_json_job(self, jobid):
+                output = '{}'
+                job_match = None
+                for job in job_pool.new_jobs.values() + job_pool.sched_jobs.values():
+                    if job.id == jobid:
+                        job_match = job
+                        break
+                return JobJSONEncoder().encode(job)
+            def get_json_jobpool(self):
+                return JobPoolJSONEncoder().encode(job_pool)
+
 
         self.server.register_instance(externalFunctions())
 
@@ -194,3 +230,38 @@ class ResourcePoolJSONEncoder(json.JSONEncoder):
         for cluster in pool:
             poolDecodes.append(json.loads(cluster))
         return {'resources': poolDecodes}
+
+class JobJSONEncoder(json.JSONEncoder):
+    def default(self, job):
+        if not isinstance(job, Job):
+            log.error("Cannot use JobJSONEncoder on non Job Object")
+            return
+        return {'id': job.id, 'user': job.user, 'priority': job.priority,
+                'job_status': job.job_status, 'cluster_id': job.cluster_id,
+                'proc_id': job.proc_id, 'req_vmtype': job.req_vmtype,
+                'req_network': job.req_network, 'req_cpuarch': job.req_cpuarch,
+                'req_image': job.req_image, 'req_imageloc': job.req_imageloc,
+                'req_ami': job.req_ami, 'req_memory': job.req_memory,
+                'req_cpucores': job.req_cpucores, 'req_storage': job.req_storage,
+                'keep_alive': job.keep_alive, 'status': job.status}
+
+class JobPoolJSONEncoder(json.JSONEncoder):
+    def default(self, job_pool):
+        if not isinstance(job_pool, JobPool):
+            log.error("Cannot use JobPoolJSONEncoder on non JobPool Object")
+            return
+        new_queue = []
+        for user in job_pool.new_jobs.keys():
+            for job in job_pool.new_jobs[user]:
+                new_queue.append(JobJSONEncoder().encode(job))
+        sched_queue = []
+        for user in job_pool.sched_jobs.keys():
+            for job in job_pool.sched_jobs[user]:
+                sched_queue.append(JobJSONEncoder().encode(job))
+        new_decodes = []
+        for job in new_queue:
+            new_decodes.append(json.load(job))
+        sched_decodes = []
+        for job in sched_queue:
+            sched_decodes.append(json.load(job))
+        return {'new_jobs': new_decodes, 'sched_jobs': sched_decodes}

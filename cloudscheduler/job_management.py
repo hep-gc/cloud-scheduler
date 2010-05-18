@@ -125,7 +125,15 @@ class Job:
     def log_dbg(self):
         log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory))
-
+    def get_job_info(self):
+        return "%-15s %-10s %-10s %-15i %-25s\n" % (self.id[-15:], self.user[-10:], self.req_vmtype[-10:], self.job_status, self.status[-25:])
+    @staticmethod
+    def get_job_info_header(self):
+        return "%-15s %-10s %-10s %-15s %-25s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status")
+    def get_job_info_pretty(self):
+        output = self.get_job_info_header()
+        output += self.get_job_info()
+        return output
     # Get ID
     # Returns the job's id string
     def get_id(self):

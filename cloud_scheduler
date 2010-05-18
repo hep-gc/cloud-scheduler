@@ -270,7 +270,7 @@ class Scheduler(threading.Thread):
                         if diff_types[vmtype] > 0:
                             self.job_pool.hold_vmtype(vmtype)
                         else:
-                            self.job_pool.release_vmtype(vmtye)
+                            self.job_pool.release_vmtype(vmtype)
                     self.remove_idle_machines(machineList, num_to_change)
                     # TODO Check for the idle machines to shutdown
                 else:
@@ -502,7 +502,7 @@ def main():
     cloud_resources.log_pool()
 
     # Start the cloud scheduler info server for RPCs
-    info_serv = info_server.CloudSchedulerInfoServer(cloud_resources)
+    info_serv = info_server.CloudSchedulerInfoServer(cloud_resources, job_pool)
     info_serv.daemon = True
     info_serv.start()
 
