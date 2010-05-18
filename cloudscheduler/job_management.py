@@ -577,6 +577,16 @@ class JobPool:
         self.add_sched_job(job)
         log.debug("(schedule) - Job %s marked as scheduled." % job.id)
 
+    def unschedule(self, job):
+        if not ( (job.user in self.sched_jobs) and (job in self.sched_jobs[job.user]) ):
+            log.error("(unschedule) - Error: job %s not in the system's Scheduled jobs" % job.id)
+            log.error("(unschedule) - Cannot mark job as Unscheduled")
+            return
+        
+        self.remove_system_job(job)
+        job.set_status("Unscheduled")
+        self.add_new_job(job)
+        log.debug("(unschedule) Job %s marked as Unscheduled." % job.id)
 
     # Get required VM types
     # Returns a list (of strings) containing the unique required VM types

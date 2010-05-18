@@ -25,9 +25,9 @@ import cloudscheduler.config as config
 from urllib2 import URLError
 from decimal import *
 try:
-       import cPickle as pickle
+    import cPickle as pickle
 except:
-       import pickle
+    import pickle
 
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none

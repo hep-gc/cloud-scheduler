@@ -290,21 +290,20 @@ class Scheduler(threading.Thread):
                     # and are of a type that has an higher than wanted distribution
                     # based on diff_types
                     vm_matches = []
-                    #vm_starting = []
+                    vm_starting = []
                     changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
                     for cluster in self.resource_pool.resources:
                         for vm in cluster.vms:
                             if vm.hostname in changed:
                                 vm_matches.append(vm)
-                            #if vm.status == "Starting":
-                            #    vm_starting.append(vm)
+                            if vm.status == "Starting":
+                                vm_starting.append(vm)
                     to_shutdown = []
-                    # Removed to avoid job starvation in case where job is scheduled and VM gets shutdown
-                    # Since in sched_jobs a new VM will not be created for it to run
-                    #for vm in vm_starting:
-                    #    if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-                    #        to_shutdown.append(vm)
-                    #        num_to_change[vm.vmtype] -= 1
+
+                    for vm in vm_starting:
+                        if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
+                            to_shutdown.append(vm)
+                            num_to_change[vm.vmtype] -= 1
                     for vm in vm_matches:
                         if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
                             to_shutdown.append(vm)
@@ -443,6 +442,55 @@ class Scheduler(threading.Thread):
                     if found_vm:
                         break
 
+class Cleanup(threading.Thread):
+    """
+    Cleanup - Periodically syncs the new and scheduled job queues to better
+              reflect the state of the jobs
+    """
+
+    IDLE = 1
+    RUNNING = 2
+
+    def __init__(self, resource_pool, job_pool):
+        threading.Thread.__init__(self)
+        self.job_pool = job_pool
+        self.resource_pool = resource_pool
+        self.quit = False
+        self.polling_interval = 60 # seconds
+
+    def stop(self):
+        log.debug("Waiting for job polling loop to end")
+        self.quit = True
+
+    def run(self):
+        log.info("Starting job polling...")
+
+        while not self.quit:
+            log.debug("Syncing job queues")
+
+            # Check through new jobs for running jobs and move to sched
+            if not self.job_pool.write_lock.acquire():
+                log.debug("update_jobs couldn't get a write lock on the job lists")
+            else:
+                try:
+                    for user in self.job_pool.new_jobs.keys():
+                        for i in range(len(self.job_pool.new_jobs[user])-1, 0, -1):
+                            job = self.job_pool.new_jobs[user][i]
+                            if job.job_status == self.RUNNING:
+                                self.job_pool.schedule(job)
+                    vms = self.resource_pool.get_vmtypes_count_internal()
+                    for user in self.job_pool.sched_jobs.keys():
+                        for i in range(len(self.job_pool.sched_jobs[user])-1, 0, -1):
+                            job = self.job_pool.sched_jobs[user][i]
+                            if job.job_status == self.IDLE and job.req_vmtype not in vms.keys():
+                                self.job_pool.unschedule(job)
+                finally:
+                    self.job_pool.write_lock.release()
+
+            log.debug("Cleanup waiting %ds..." % self.polling_interval)
+            time.sleep(self.polling_interval)
+
+        log.debug("Exiting cleanup thread")
 ##
 ## Functions
 ##
@@ -525,6 +573,10 @@ def main():
     scheduler = Scheduler(cloud_resources, job_pool)
     scheduler.start()
 
+    # Create the Cleanup Thread
+    cleaner = Cleanup(cloud_resources, job_pool)
+    cleaner.start()
+
     # Set SIGTERM (kill) handler
     signal.signal(signal.SIGTERM, term_handler)
 
@@ -532,7 +584,7 @@ def main():
 
     # Wait for keyboard input to exit the cloud scheduler
     try:
-        while scheduler.isAlive() and job_poller.isAlive():
+        while scheduler.isAlive() and job_poller.isAlive() and cleaner.isAlive():
             time.sleep(2)
     except (SystemExit, KeyboardInterrupt):
         log.info("Exiting normally due to KeyboardInterrupt or SystemExit")
@@ -545,8 +597,10 @@ def main():
     log.info("System exiting gracefully")
     scheduler.stop()
     job_poller.stop()
+    cleaner.stop()
     scheduler.join()
     job_poller.join()
+    cleaner.join()
 
     info_serv.stop()
     info_serv.join()
