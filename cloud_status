@@ -52,6 +52,11 @@ def main(argv=None):
     parser.add_option("-d", "--developer-information", action="store_true",
                       dest="dev_info", default=False,
                       help="Show developer information about cloud_scheduler")
+    parser.add_option("-q", "--job-queue", metavar="QUEUE",
+                      action="store", dest="job_queue",
+                      type="choice", choices=['all', 'new', 'sched'],
+                      help="Get Information about the job queues")
+
     (cli_options, args) = parser.parse_args()
 
     # Initialize config
@@ -95,6 +100,18 @@ def main(argv=None):
             print s.get_json_cluster(cli_options.cluster_name)
         elif (cli_options.dev_info):
             print s.get_developer_information()
+        elif cli_options.job_queue:
+            if cli_options.job_queue.startswith('a'):
+                print "Jobs in Scheduled Queue"
+                print s.get_schedjobs()
+                print "Jobs in New Queue"
+                print s.get_newjobs()
+            elif cli_options.job_queue.startswith('n'):
+                print "Jobs in New Queue"
+                print s.get_newjobs()
+            elif cli_options.job_queue.startswith('s'):
+                print "Jobs in Scheduled Queue"
+                print s.get_schedjobs()
         else:
             print s.get_cloud_resources()
 
