@@ -84,6 +84,14 @@ class Scheduler(threading.Thread):
     Scheduler thread matches jobs to available resources, and starts
     VMs for them
     """
+    ## Condor Job Status mapping 
+    NEW      = 0
+    IDLE     = 1
+    RUNNING  = 2
+    REMOVED  = 3
+    COMPLETE = 4
+    HELD     = 5
+    ERROR    = 6
 
     def __init__(self, resource_pool, job_pool):
         threading.Thread.__init__(self)
@@ -149,6 +157,9 @@ class Scheduler(threading.Thread):
                 for job in self.job_pool.new_jobs[user]:
                     # Check that type of VM for job is needed
                     if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
+                        # Do not start VMs for jobs in a Hold state
+                        if job.job_status == self.HELD:
+                            continue
                         # Find resources that match the job's requirements
                         (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
                         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
