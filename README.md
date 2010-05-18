@@ -18,7 +18,7 @@ For more documentation on the cloud scheduler, please refer to the following pag
 ## Prerequisites
 
 * A working Condor 7.5.x install (details below)
-* [Suds](https://fedorahosted.org/suds/)
+* [Suds 0.3.9+](https://fedorahosted.org/suds/)
 * [boto](http://code.google.com/p/boto/)
 * [lxml](http://codespeak.net/lxml/)
 * [simple-json](http://undefined.org/python/#simplejson) For python 2.4/2.5
