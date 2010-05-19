@@ -114,7 +114,7 @@ class Job:
         global log
         log = logging.getLogger("cloudscheduler")
 
-        log.debug("New Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
+        log.verbose("New Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
 
 
@@ -337,10 +337,10 @@ class JobPool:
                 #   - remove finished jobs (job in system, not in jobs list)
 
                 # DBG: print both jobs dicts before updating system.
-                log.debug("System jobs prior to system update:")
-                log.debug("Unscheduled Jobs (new_jobs):")
+                log.verbose("System jobs prior to system update:")
+                log.verbose("Unscheduled Jobs (new_jobs):")
                 self.log_jobs_dict(self.new_jobs)
-                log.debug("Scheduled Jobs (sched_jobs):")
+                log.verbose("Scheduled Jobs (sched_jobs):")
                 self.log_jobs_dict(self.sched_jobs)
                 jobs_to_update = []
                 for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
@@ -383,17 +383,17 @@ class JobPool:
                 # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
                 for job in query_jobs:
                     self.add_new_job(job)
-                    log.debug("Job %s added to unscheduled jobs list" % job.id)
+                    log.verbose("Job %s added to unscheduled jobs list" % job.id)
                 # Update job status of all the non-new jobs
                 log.debug("Updating Job Status")
                 for job in jobs_to_update:
                     self.update_job_status(job)
 
                 # DBG: print both jobs dicts before updating system.
-                log.debug("System jobs after system update:")
-                log.debug("Unscheduled Jobs (new_jobs):")
+                log.verbose("System jobs after system update:")
+                log.verbose("Unscheduled Jobs (new_jobs):")
                 self.log_jobs_dict(self.new_jobs)
-                log.debug("Scheduled Jobs (sched_jobs):")
+                log.verbose("Scheduled Jobs (sched_jobs):")
                 self.log_jobs_dict(self.sched_jobs)
 
             finally:
@@ -461,7 +461,7 @@ class JobPool:
         if (job.user in self.new_jobs) and (self.has_job(self.new_jobs[job.user], job)):
             #self.new_jobs[job.user].remove(job)
             self.remove_job(self.new_jobs[job.user], job)
-            log.debug("remove_system_job - Removing job %s from unscheduled jobs."
+            log.verbose("remove_system_job - Removing job %s from unscheduled jobs."
                       % job.id)
 
             # If user's job list is empty, remove entry from the new_jobs dict
@@ -475,7 +475,7 @@ class JobPool:
         elif (job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[job.user], job)):
             #self.sched_jobs[job.user].remove(job)
             self.remove_job(self.sched_jobs[job.user], job)
-            log.debug("remove_system_job - Removing job %s from scheduled jobs."
+            log.verbose("remove_system_job - Removing job %s from scheduled jobs."
                       % job.id)
 
             # If user's job list is empty, remove entry from sched_jobs
@@ -498,7 +498,7 @@ class JobPool:
     # Returns:
     #   removed_list - (lost of Job) The removed Jobs
     def remove_job(self, job_list, target_job):
-        log.debug("(remove_job) - Target job: %s" % target_job.id)
+        log.verbose("(remove_job) - Target job: %s" % target_job.id)
         removed_list = []
         target_job_id = target_job.id
         removed = False
@@ -506,12 +506,12 @@ class JobPool:
         while (i != 0):
             i = i-1
             if (target_job_id == job_list[i].id):
-                log.debug("(remove_job) - Matching job found: %s" % job_list[i].id)
+                log.verbose("(remove_job) - Matching job found: %s" % job_list[i].id)
                 removed_list.append(job_list[i])
                 job_list.remove(job_list[i])
                 removed = True
         if not removed:
-            log.debug("(remove_job) - Job %s does not exist in given list. Doing nothing." % job_id)
+            log.verbose("(remove_job) - Job %s does not exist in given list. Doing nothing." % job_id)
         return removed_list
 
     # Update Job Status
@@ -843,16 +843,16 @@ class JobPool:
 
     def log_jobs_list(self, jobs):
         if jobs == []:
-            log.debug("(none)")
+            log.verbose("(none)")
         for job in jobs:
-            log.debug("\tJob: %s, %10s, %4d, %10s" % (job.id, job.user, job.priority, job.req_vmtype))
+            log.verbose("\tJob: %s, %10s, %4d, %10s" % (job.id, job.user, job.priority, job.req_vmtype))
 
     def log_jobs_dict(self, jobs):
         if jobs == {}:
-            log.debug("(none)")
+            log.verbose("(none)")
         for jobset in jobs.values():
             for job in jobset:
-                log.debug("\tJob: %s, %10s, %4d, %10s" % (job.id, job.user, job.priority, job.req_vmtype))
+                log.verbose("\tJob: %s, %10s, %4d, %10s" % (job.id, job.user, job.priority, job.req_vmtype))
 
 
 

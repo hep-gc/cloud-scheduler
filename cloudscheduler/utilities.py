@@ -20,6 +20,7 @@ def determine_path ():
         sys.exit ()
 
 LEVELS = {'DEBUG': logging.DEBUG,
+          'VERBOSE': logging.DEBUG-1,
           'INFO': logging.INFO,
           'WARNING': logging.WARNING,
           'ERROR': logging.ERROR,
