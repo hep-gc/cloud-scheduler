@@ -474,14 +474,12 @@ class Cleanup(threading.Thread):
             else:
                 try:
                     for user in self.job_pool.new_jobs.keys():
-                        for i in range(len(self.job_pool.new_jobs[user])-1, 0, -1):
-                            job = self.job_pool.new_jobs[user][i]
+                        for job in reversed(self.job_pool.new_jobs[user]):
                             if job.job_status == self.RUNNING:
                                 self.job_pool.schedule(job)
                     vms = self.resource_pool.get_vmtypes_count_internal()
                     for user in self.job_pool.sched_jobs.keys():
-                        for i in range(len(self.job_pool.sched_jobs[user])-1, 0, -1):
-                            job = self.job_pool.sched_jobs[user][i]
+                        for job in reversed(self.job_pool.sched_jobs[user]):
                             if job.job_status == self.IDLE and job.req_vmtype not in vms.keys():
                                 self.job_pool.unschedule(job)
                 finally:

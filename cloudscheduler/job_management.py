@@ -328,9 +328,7 @@ class JobPool:
                     return
                 
                 # Filter out any jobs in an error status
-                query_copy = []
-                query_copy.extend(query_jobs)
-                for job in query_copy:
+                for job in reversed(query_jobs):
                     if job.job_status >= self.ERROR:
                         self.remove_job(query_jobs, job)
                     
@@ -346,9 +344,7 @@ class JobPool:
                 self.log_jobs_dict(self.sched_jobs)
                 jobs_to_update = []
                 for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
-                    jobsetcopy = []
-                    jobsetcopy.extend(jobset)
-                    for sys_job in jobsetcopy:
+                    for sys_job in reversed(jobset):
 
                         # DBG: print job details in loop
                         log.debug("system job loop - %s, %10s, %4d, %10s" % (sys_job.id, sys_job.user, sys_job.priority, sys_job.req_vmtype))
