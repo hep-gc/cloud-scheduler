@@ -327,7 +327,7 @@ setup_ccb() {
 	if [ $NON_LOCAL -eq 1 ]; then
 		# All addresses are local
 		LOCAL_ADDRESS=`/sbin/ifconfig | grep "inet addr" | grep -v 127. | awk '{print $2}' | sed s/addr://`
-		echo $LOCAL_ADDRESS $HOSTNAME >> /etc/hosts
+		echo $LOCAL_ADDRESS $HOSTNAME "# Added for Condor CCB" >> /etc/hosts
 	fi
 }
 
@@ -353,6 +353,10 @@ setup_on_ec2() {
 		replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
 	fi
 
+}
+
+cleanup_ccb () {
+	sed -i '/# Added for Condor CCB/d' /etc/hosts
 }
 
 # Start condor.
@@ -386,6 +390,7 @@ start() {
 #
 # named xstop because stop causes problems on AIX and HPUX.
 xstop() {
+	cleanup_ccb
 	echon "Shutting down Condor (fast-shutdown mode)..."
 	master_pid=`condor_pid`
 	if [ "$master_pid" != "" ]; then
