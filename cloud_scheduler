@@ -127,7 +127,7 @@ class Scheduler(threading.Thread):
                     if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                         bad_jobs.append(job)
             if not self.job_pool.write_lock.acquire():
-                log.debug("update_jobs couldn't get a write lock on the job lists")
+                log.debug("remove bad jobs couldn't get a write lock on the job lists")
             else:
                 try:            
                     while len(bad_jobs) > 0:
@@ -311,13 +311,19 @@ class Scheduler(threading.Thread):
                         if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
                             to_shutdown.append(vm)
                             num_to_change[vm.vmtype] -= 1
-                    for vm in to_shutdown:
-                        log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
-                        cluster = self.resource_pool.get_cluster_with_vm(vm)
-                        log.debug("VM %s on cluster %s shutting down" % (vm.name, cluster.name))
-                        destroy_ret = cluster.vm_destroy(vm)
-                        if destroy_ret != 0:
-                            log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
+                    if not self.resource_pool.write_lock.acquire():
+                        log.debug("hard rebalance couldn't get a write lock on the resource_pool")
+                    else:
+                        try:
+                            for vm in to_shutdown:
+                                log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
+                                cluster = self.resource_pool.get_cluster_with_vm(vm)
+                                log.debug("VM %s on cluster %s shutting down" % (vm.name, cluster.name))
+                                destroy_ret = cluster.vm_destroy(vm)
+                                if destroy_ret != 0:
+                                    log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
+                        finally:
+                            self.resource_pool.write_lock.release()
 
                 prevMachineList = machineList
             else:
@@ -335,22 +341,27 @@ class Scheduler(threading.Thread):
 
         # Exit the scheduling thread - clean up VMs and exit
         log.info("Exiting scheduler thread")
-
-        # Destroy all VMs and finish
-        remaining_vms = []
-        log_with_line("Destroying all remaining VMs and exiting :-(")
-        for cluster in self.resource_pool.resources:
-            i = len(cluster.vms)
-            while (i != 0):
-                i = i-1
-
-                log.debug("Destroying VM:")
-                cluster.vms[i].log
-                destroy_ret = cluster.vm_destroy(cluster.vms[i])
-                if destroy_ret != 0:
-                    log.error("Destroying VM failed. Continuing anyway... check VM logs")
-                    remaining_vms.append(cluster.vms[i])
-        #ENDFOR - Attempt to destroy each remaining VM in the system
+        if not self.resource_pool.write_lock.acquire():
+                log.debug("exit block couldn't get a write lock on the resource_pool")
+        else:
+            try:
+                # Destroy all VMs and finish
+                remaining_vms = []
+                log_with_line("Destroying all remaining VMs and exiting :-(")
+                for cluster in self.resource_pool.resources:
+                    i = len(cluster.vms)
+                    while (i != 0):
+                        i = i-1
+        
+                        log.debug("Destroying VM:")
+                        cluster.vms[i].log
+                        destroy_ret = cluster.vm_destroy(cluster.vms[i])
+                        if destroy_ret != 0:
+                            log.error("Destroying VM failed. Continuing anyway... check VM logs")
+                            remaining_vms.append(cluster.vms[i])
+                #ENDFOR - Attempt to destroy each remaining VM in the system
+            finally:
+                self.resource_pool.write_lock.release()
 
         self.resource_pool.save_persistence()
 
@@ -366,40 +377,45 @@ class Scheduler(threading.Thread):
                             and then update their status
         """
         log.debug("Polling all running VMs...")
-
-        for cluster in self.resource_pool.resources:
-            for vm in cluster.vms:
-                now = int(time.time())
-
-                if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
-                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
-                    continue
-                elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
-                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
-                    continue
-
-                ret_state = cluster.vm_poll(vm)
-
-                # Print polled VM's state and details
-                log.debug("Polled VM: ")
-                vm.log_dbg()
-
-                # If the VM is in an error state, keep track of error and
-                # after passing some threshold destroy the machine.
-                # Decrementing to avoid a long running VM from accumulating periodic
-                # errors and being destroyed
-                if ret_state == "Error":
-                    vm.errorcount += 1
-                elif vm.errorcount > 0:
-                    vm.errorcount = 0
-                if vm.errorcount >= config.polling_error_threshold:
-                    log.info("VM %s in error state. Destroying..." % vm.name)
-
-                    # Destroy the VM
-                    destroy_ret = cluster.vm_destroy(vm)
-                    if (destroy_ret != 0):
-                        log.error("Destroying VM failed. Leaving VM in error state.")
-                        continue
+        if not self.resource_pool.write_lock.acquire():
+            log.debug("poll machines couldn't get a write lock on the resource_pool")
+        else:
+            try:
+                for cluster in self.resource_pool.resources:
+                    for vm in cluster.vms:
+                        now = int(time.time())
+        
+                        if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
+                            log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                            continue
+                        elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
+                            log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                            continue
+        
+                        ret_state = cluster.vm_poll(vm)
+        
+                        # Print polled VM's state and details
+                        log.debug("Polled VM: ")
+                        vm.log_dbg()
+        
+                        # If the VM is in an error state, keep track of error and
+                        # after passing some threshold destroy the machine.
+                        # Decrementing to avoid a long running VM from accumulating periodic
+                        # errors and being destroyed
+                        if ret_state == "Error":
+                            vm.errorcount += 1
+                        elif vm.errorcount > 0:
+                            vm.errorcount = 0
+                        if vm.errorcount >= config.polling_error_threshold:
+                            log.info("VM %s in error state. Destroying..." % vm.name)
+        
+                            # Destroy the VM
+                            destroy_ret = cluster.vm_destroy(vm)
+                            if (destroy_ret != 0):
+                                log.error("Destroying VM failed. Leaving VM in error state.")
+                                continue
+            finally:
+                self.resource_pool.write_lock.release()
 
 
     def remove_idle_machines(self, machineList, to_remove):
@@ -416,34 +432,41 @@ class Scheduler(threading.Thread):
                 num_to_shutdown = count
             elif len_unused < count:
                 num_to_shutdown = len_unused
-            for x in range(0, num_to_shutdown):
-                log.debug("Name of Condor Machine to shutdown: %s" % unused_vms_of_type[x]['Name'])
-                condor_names = unused_vms_of_type[x]['Name'].split('.')
-                condor_name = condor_names[0]
-                # Track if machine found or not so can break from loop early
-                found_vm = False
-                for cluster in self.resource_pool.resources:
-                    for vm in cluster.vms:
-                        log.debug("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
-                        if vm.hostname.split(".")[0] == condor_name and vm.vmtype == vmtype:
-                            found_vm = True
-                            if vm.idle_start:
-                                # Check that enough time has passed to shutdown
-                                now = int(time.time())
-                                if now - vm.idle_start > vm.keep_alive:
-                                    log.info("VM of type %s no longer required for remaining jobs" % vm.vmtype)
-                                    vm.log_dbg()
-                                    destroy_ret = cluster.vm_destroy(vm)
-                                    if destroy_ret != 0:
-                                        log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+                
+            if not self.resource_pool.write_lock.acquire():
+                log.debug("remove idle couldn't get a write lock on the resource_pool")
+            else:
+                try:
+                    for x in range(0, num_to_shutdown):
+                        log.debug("Name of Condor Machine to shutdown: %s" % unused_vms_of_type[x]['Name'])
+                        condor_names = unused_vms_of_type[x]['Name'].split('.')
+                        condor_name = condor_names[0]
+                        # Track if machine found or not so can break from loop early
+                        found_vm = False
+                        for cluster in self.resource_pool.resources:
+                            for vm in cluster.vms:
+                                log.debug("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
+                                if vm.hostname.split(".")[0] == condor_name and vm.vmtype == vmtype:
+                                    found_vm = True
+                                    if vm.idle_start:
+                                        # Check that enough time has passed to shutdown
+                                        now = int(time.time())
+                                        if now - vm.idle_start > vm.keep_alive:
+                                            log.info("VM of type %s no longer required for remaining jobs" % vm.vmtype)
+                                            vm.log_dbg()
+                                            destroy_ret = cluster.vm_destroy(vm)
+                                            if destroy_ret != 0:
+                                                log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+                                            else:
+                                                break
                                     else:
+                                        vm.idle_start = int(time.time())
                                         break
-                            else:
-                                vm.idle_start = int(time.time())
+                            if found_vm:
                                 break
-
-                    if found_vm:
-                        break
+                finally:
+                    self.resource_pool.write_lock.release()
+                    
 
 class Cleanup(threading.Thread):
     """
@@ -462,18 +485,18 @@ class Cleanup(threading.Thread):
         self.polling_interval = 60 # seconds
 
     def stop(self):
-        log.debug("Waiting for job polling loop to end")
+        log.debug("Waiting for cleanup loop to end")
         self.quit = True
 
     def run(self):
-        log.info("Starting job polling...")
+        log.info("Starting Cleanup Thread...")
 
         while not self.quit:
             log.debug("Syncing job queues")
 
             # Check through new jobs for running jobs and move to sched
             if not self.job_pool.write_lock.acquire():
-                log.debug("update_jobs couldn't get a write lock on the job lists")
+                log.debug("cleanup couldn't get a write lock on the job lists")
             else:
                 try:
                     for user in self.job_pool.new_jobs.keys():
@@ -487,6 +510,20 @@ class Cleanup(threading.Thread):
                                 self.job_pool.unschedule(job)
                 finally:
                     self.job_pool.write_lock.release()
+
+            req_vmtypes = self.job_pool.get_required_vmtypes()
+            if not self.resource_pool.write_lock.acquire():
+                log.debug("cleanup couldn't get a write lock on the resource_pool")
+            else:
+                try:
+                    for cluster in self.resource_pool.resources:
+                        for vm in reversed(cluster.vms):
+                            if vm.vmtype not in req_vmtypes:
+                                destroy_ret = cluster.vm_destroy(vm)
+                                if destroy_ret != 0:
+                                    log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+                finally:
+                    self.resource_pool.write_lock.release()
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
             time.sleep(self.polling_interval)

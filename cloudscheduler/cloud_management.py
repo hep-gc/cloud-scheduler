@@ -17,6 +17,7 @@
 import os
 import sys
 import logging
+import threading
 
 import ConfigParser
 import cluster_tools
@@ -58,6 +59,8 @@ class ResourcePool:
         log = logging.getLogger("cloudscheduler")
         log.debug("New ResourcePool " + name + " created")
         self.name = name
+        self.write_lock = threading.Lock()
+
         _collector_wsdl = "file://" + determine_path() \
                           + "/wsdl/condorCollector.wsdl"
         self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
