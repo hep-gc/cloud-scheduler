@@ -20,6 +20,7 @@ def determine_path ():
         sys.exit ()
 
 LEVELS = {'DEBUG': logging.DEBUG,
+          'VERBOSE': logging.DEBUG-1,
           'INFO': logging.INFO,
           'WARNING': logging.WARNING,
           'ERROR': logging.ERROR,
@@ -28,6 +29,16 @@ LEVELS = {'DEBUG': logging.DEBUG,
 class NullHandler(logging.Handler):
     def emit(self, record):
         pass
+
+def get_cloudscheduler_logger():
+    logging.VERBOSE = LEVELS["VERBOSE"]
+    logging.addLevelName(logging.VERBOSE, "VERBOSE")
+    log = logging.getLogger("cloudscheduler")
+    setattr(log, "verbose", lambda *args: log.log(logging.VERBOSE, *args))
+    log.addHandler(NullHandler())
+
+    return log
+
 
 def get_hostname_from_url(url):
     return urlparse(url)[1].split(":")[0]

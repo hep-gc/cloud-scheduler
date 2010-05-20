@@ -1,15 +1,15 @@
-# Cloud Scheduler 0.4 README
+# Cloud Scheduler 0.5 README
 
 ## Introduction
-The cloud scheduler: a cloud-enabled distributed resource manager.
+Cloud Scheduler: Automatically boot VMs for your HTC jobs
 
-The cloud scheduler manages virtual machines on clouds configured with Nimbus, 
-OpenNebula, Eucalyptus or EC2 interfaces to create an environment for batch 
-job execution. Users submit their jobs to a batch job queue like Condor, Sun 
-Grid Engine, or Platform LSF, and Cloud Scheduler boots VMs to suit those jobs,
-creating a malleable, virtual environment for efficient job execution.
+Cloud Scheduler manages virtual machines on clouds configured with Nimbus,
+Eucalyptus, or Amazon EC2 to create an environment for HTC batch job execution.
+Users submit their jobs to a Condor job queue, and Cloud Scheduler boots VMs to
+suit those jobs, creating a malleable environment for efficient job execution
+and resource utilization.
 
-For more documentation on the cloud scheduler, please refer to the following pages:
+For more documentation on Cloud Scheduler, please refer to:
 
 -  [Cloud Scheduler Wiki](http://wiki.github.com/hep-gc/cloud-scheduler)
 -  [Cloud Scheduler Homepage](http://cloudscheduler.org)
@@ -18,30 +18,33 @@ For more documentation on the cloud scheduler, please refer to the following pag
 ## Prerequisites
 
 * A working Condor 7.5.x install (details below)
-* [Suds](https://fedorahosted.org/suds/)
+* [Python 2.4+](http://www.python.org/)
+* [Suds 0.3.9+](https://fedorahosted.org/suds/)
 * [boto](http://code.google.com/p/boto/)
+* [lxml](http://codespeak.net/lxml/)
 * [simple-json](http://undefined.org/python/#simplejson) For python 2.4/2.5
 
 You can install these on RHEL5 (and clones) with the following:
 
-    # yum install python-simplejson
+    # yum install python-simplejson lxml
     # wget https://fedorahosted.org/releases/s/u/suds/python-suds-0.3.9-1.fc11.noarch.rpm
     # yum localinstall python-suds.0.3.9-1.fc11.noarch.rpm
-    # wget http://boto.googlecode.com/files/boto-1.9d.tar.gz
-    # tar xvf boto-1.9d.tar.gz
-    # cd boto-1.8d
+    # wget http://boto.googlecode.com/files/boto-1.9b.tar.gz
+    # tar xvf boto-1.9b.tar.gz
+    # cd boto-1.9b
     # python setup.py install
 
 On Mac OS X, using Macports, you can install these with the following:
 
-    # sudo port install py-suds py-boto
+    # sudo port install py-suds py-boto py-lxml
 
 ## Condor Install
 Cloud Scheduler works with [Condor](http://www.cs.wisc.edu/condor/), which needs
 to be installed and able to manage resources. You can install it on the same
 machine that runs Cloud Scheduler (or not). You need to enable SOAP to allow
 Cloud Scheduler to communicate with Condor. You can do this by adding the
-following to your Condor install:
+following to your Condor config file, which is usually located at:
+/etc/condor/condor_config:
 
     ## CLOUD SCHEDULER SETTINGS
     ENABLE_SOAP = TRUE
@@ -50,10 +53,13 @@ following to your Condor install:
     ALLOW_SOAP=localhost, 127.0.0.1
     SCHEDD_ARGS = -p 8080
 
-We also recommend the following settings.
+We also recommend the following settings, especially if you're planning on
+using Condor CCB:
 
     UPDATE_COLLECTOR_WITH_TCP=True
-    COLLECTOR_SOCKET_CACHE_SIZE=1000
+    COLLECTOR_SOCKET_CACHE_SIZE=10000
+    COLLECTOR.MAX_FILE_DESCRIPTORS = 10000
+
 
 We have also placed an example Condor config in scripts/condor/manager
 

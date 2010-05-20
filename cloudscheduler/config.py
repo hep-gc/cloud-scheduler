@@ -29,13 +29,16 @@ key_file_on_vm = ""
 cloud_resource_config = None
 image_attach_device = "sda"
 scratch_attach_device = "sdb"
+info_server_port = 8111
+workspace_path = "workspace"
+persistence_file = "/var/run/cloudscheduler.persistence"
 polling_error_threshold = 10
+graceful_shutdown = False
 
 log_level = "INFO"
 log_location = None
 log_stdout = False
 log_max_size = None
-info_server_port = 8111
 
 
 # setup will look for a configuration file specified on the command line,
@@ -55,7 +58,10 @@ def setup(path=None):
     global image_attach_device
     global scratch_attach_device
     global info_server_port
+    global workspace_path
+    global persistence_file
     global polling_error_threshold
+    global graceful_shutdown
 
     global log_level
     global log_location
@@ -144,6 +150,12 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "workspace_path"):
+        workspace_path = config_file.get("global", "workspace_path")
+
+    if config_file.has_option("global", "persistence_file"):
+        persistence_file = config_file.get("global", "persistence_file")
+
     if config_file.has_option("global", "polling_error_threshold"):
         try:
             polling_error_threshold = config_file.getint("global", "polling_error_threshold")
@@ -152,6 +164,9 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "graceful_shutdown"):
+        graceful_shutdown = config_file.getboolean("global", "graceful_shutdown")
+            
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")
 

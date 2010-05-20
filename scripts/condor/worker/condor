@@ -319,6 +319,18 @@ set_central_manager() {
 	replace_or_append "CONDOR_HOST" "CONDOR_HOST=$condor_host" $local_file
 }
 
+# set up condor ccb if only private networking is available
+setup_ccb() {
+	/sbin/ifconfig | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null
+	NON_LOCAL=$?
+
+	if [ $NON_LOCAL -eq 1 ]; then
+		# All addresses are local
+		LOCAL_ADDRESS=`/sbin/ifconfig | grep "inet addr" | grep -v 127. | awk '{print $2}' | sed s/addr://`
+		echo $LOCAL_ADDRESS $HOSTNAME "# Added for Condor CCB" >> /etc/hosts
+	fi
+}
+
 setup_on_ec2() {
 
 	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
@@ -343,13 +355,20 @@ setup_on_ec2() {
 
 }
 
+cleanup_ccb () {
+	sed -i '/# Added for Condor CCB/d' /etc/hosts
+}
+
 # Start condor.
 start() {
 	setup_on_ec2
-        set_central_manager $CENTRAL_MANAGER
+	setup_ccb
+	set_central_manager $CENTRAL_MANAGER
 	init_condor_master
 	echon "Starting up Condor..."
 	"$CONDOR_MASTER" -pidfile "$PIDFILE"
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/condor;
 	echo "done."
 	return 0
 }
@@ -371,6 +390,7 @@ start() {
 #
 # named xstop because stop causes problems on AIX and HPUX.
 xstop() {
+	cleanup_ccb
 	echon "Shutting down Condor (fast-shutdown mode)..."
 	master_pid=`condor_pid`
 	if [ "$master_pid" != "" ]; then
@@ -397,6 +417,8 @@ xstop() {
 	fi
 
 	echo "done."
+
+	rm /var/lock/subsys/condor
 
 	return 0
 }
