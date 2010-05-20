@@ -300,7 +300,7 @@ class JobPoolTests(unittest.TestCase):
         condor_xml = """<?xml version="1.0" encoding="UTF-8"?>
         <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:condor="urn:condor"><SOAP-ENV:Header></SOAP-ENV:Header><SOAP-ENV:Body><condor:getJobAdsResponse><response><status><code>SUCCESS</code><message>Success</message></status><classAdArray></classAdArray></response></condor:getJobAdsResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>"""
 
-        xml2native = cloudscheduler.job_management.JobPool._condor_job_xml_to_native_list
+        xml2native = cloudscheduler.job_management.JobPool._condor_job_xml_to_job_list
         jobs = xml2native(condor_xml)
         self.assertEqual([], jobs)
 
@@ -309,7 +309,7 @@ class JobPoolTests(unittest.TestCase):
         condor_xml = """<?xml version="1.0" encoding="UTF-8"?>
         <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:condor="urn:condor"><SOAP-ENV:Header></SOAP-ENV:Header><SOAP-ENV:Body><condor:getJobAdsResponse><response><status><code>FAIL</code><message>Success</message></status><classAdArray></classAdArray></response></condor:getJobAdsResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>"""
 
-        xml2native = cloudscheduler.job_management.JobPool._condor_job_xml_to_native_list
+        xml2native = cloudscheduler.job_management.JobPool._condor_job_xml_to_job_list
         jobs = xml2native(condor_xml)
         self.assertEqual([], jobs)
 
@@ -867,7 +867,7 @@ xmlns:condor="urn:condor">
 </SOAP-ENV:Envelope>
 """
 
-        xml2native = cloudscheduler.job_management.JobPool._condor_job_xml_to_native_list
+        xml2native = cloudscheduler.job_management.JobPool._condor_job_xml_to_job_list
         jobs = xml2native(condor_xml)
 
         job_dictionary = {'GlobalJobId': 'vmcgs35.phys.uvic.ca#85.0#1274118681',
