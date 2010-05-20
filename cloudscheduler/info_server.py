@@ -84,8 +84,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
                     output += cluster.get_cluster_info_short()+"\n"
                 return output
             def get_cluster_vm_resources(self):
-                output = "%-15s %-10s %-15s %-25s\n" % \
-                          ("VM ID", "VM TYPE", "STATUS", "CLUSTER")
+                output = VM.get_vm_info_header()
                 for cluster in cloud_resources.resources:
                     output += cluster.get_cluster_vms_info()
                 return output
