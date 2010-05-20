@@ -15,6 +15,7 @@ import cloudscheduler.job_management
 import cloudscheduler.nimbus_xml
 import cloudscheduler.utilities as utilities
 
+log = utilities.get_cloudscheduler_logger()
 
 held, sys.stderr = sys.stderr, StringIO() # Hide stderr
 

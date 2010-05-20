@@ -15,11 +15,7 @@ import logging
 import platform
 
 import cloudscheduler.utilities as utilities 
-# We need to set up logging with a Null Handler before we
-# import our modules, since they use it. 
-log = logging.getLogger("cloudscheduler")
-null_handler = utilities.NullHandler()
-log.addHandler(null_handler)
+log = utilities.get_cloudscheduler_logger()
 
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.config as config

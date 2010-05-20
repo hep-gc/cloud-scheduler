@@ -37,13 +37,7 @@ import cloudscheduler.info_server as info_server
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
 
-# Logging set up
-logging.VERBOSE = utilities.LEVELS["VERBOSE"]
-logging.addLevelName(logging.VERBOSE, "VERBOSE")
-log = logging.getLogger("cloudscheduler")
-setattr(log, "verbose", lambda *args: log.log(logging.VERBOSE, *args))
-null_handler = utilities.NullHandler()
-log.addHandler(null_handler)
+log = utilities.get_cloudscheduler_logger()
 
 
 # Threaded Classes
