@@ -292,11 +292,9 @@ class NimbusXMLTests(unittest.TestCase):
 
 class JobPoolTests(unittest.TestCase):
 
-    def setUp(self):
-        self.hello = "hi"
-
     def test_condorxml_to_native_empty_list(self):
 
+        from cloudscheduler.job_management import JobPool
         condor_xml = """<?xml version="1.0" encoding="UTF-8"?>
         <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:condor="urn:condor"><SOAP-ENV:Header></SOAP-ENV:Header><SOAP-ENV:Body><condor:getJobAdsResponse><response><status><code>SUCCESS</code><message>Success</message></status><classAdArray></classAdArray></response></condor:getJobAdsResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>"""
 
@@ -900,6 +898,7 @@ xmlns:condor="urn:condor">
         self.assertEqual(parsed_job.req_cpucores, test_job.req_cpucores)
         self.assertEqual(parsed_job.req_storage, test_job.req_storage)
         self.assertEqual(parsed_job.keep_alive, test_job.keep_alive)
+        self.assertEqual(parsed_job.instance_type, test_job.instance_type)
 
 class GetOrNoneTests(unittest.TestCase):
 

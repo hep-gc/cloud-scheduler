@@ -732,6 +732,57 @@ class EC2Cluster(ICluster):
     }
 
     ERROR = 1
+    DEFAULT_INSTANCE_TYPE = "m1.small"
+
+    def _get_connection(self):
+        """
+            _get_connection - get a boto connection object to this cluster
+
+            returns a boto connection object, or none in the case of an error
+        """
+
+        connection = None
+
+        if self.cloud_type == "AmazonEC2":
+            try:
+                connection = boto.connect_ec2(
+                                   aws_access_key_id=self.access_key_id,
+                                   aws_secret_access_key=self.secret_access_key,
+                                   )
+                log.debug("Created a connection to Amazon EC2")
+
+            except boto.exception.EC2ResponseError, e:
+                log.error("Couldn't connect to Amazon EC2 because: %s" %
+                                                                e.error_message)
+
+        elif self.cloud_type == "Eucalyptus":
+            try:
+                region = boto.ec2.regioninfo.RegionInfo(name=self.name,
+                                                 endpoint=self.network_address)
+                connection = boto.connect_ec2(
+                                   aws_access_key_id=self.access_key_id,
+                                   aws_secret_access_key=self.secret_access_key,
+                                   is_secure=False,
+                                   region=region,
+                                   port=8773,
+                                   path="/services/Eucalyptus",
+                                   )
+                log.debug("Created a connection to Eucalyptus (%s)" % self.name)
+
+            except boto.exception.EC2ResponseError, e:
+                log.error("Couldn't connect to Amazon EC2 because: %s" %
+                                                               e.error_message)
+
+        elif self.cloud_type == "OpenNebula":
+
+            log.error("OpenNebula support isn't ready yet.")
+            raise NotImplementedError
+        else:
+            log.error("EC2Cluster don't know how to handle a %s cluster." %
+                                                               self.cloud_type)
+
+        return connection
+
 
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], cpu_archs=[], networks=[], vm_slots=0,
@@ -752,70 +803,35 @@ class EC2Cluster(ICluster):
             log.error("Cannot connect to cluster %s "
                       "because you haven't specified an access_key_id or "
                       "a secret_access_key" % self.name)
-            #return None
 
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
 
-
-        if self.cloud_type == "AmazonEC2":
-            try:
-                self.connection = boto.connect_ec2(
-                                   aws_access_key_id=self.access_key_id,
-                                   aws_secret_access_key=self.secret_access_key,
-                                   )
-                log.debug("Created a connection to Amazon EC2")
-
-            except boto.exception.EC2ResponseError, e:
-                log.error("Couldn't connect to Amazon EC2 because: %s" %
-                                                                e.error_message)
-                return None
-
-        elif self.cloud_type == "Eucalyptus":
-            try:
-                region = boto.ec2.regioninfo.RegionInfo(name=self.name,
-                                                 endpoint=self.network_address)
-                self.connection = boto.connect_ec2(
-                                   aws_access_key_id=self.access_key_id,
-                                   aws_secret_access_key=self.secret_access_key,
-                                   is_secure=False,
-                                   region=region,
-                                   port=8773,
-                                   path="/services/Eucalyptus",
-                                   )
-                log.debug("Created a connection to Eucalyptus (%s)" % self.name)
-
-            except boto.exception.EC2ResponseError, e:
-                log.error("Couldn't connect to Amazon EC2 because: %s" %
-                                                               e.error_message)
-                return None
-
-
-        elif self.cloud_type == "OpenNebula":
-
-            log.error("OpenNebula support isn't ready yet.")
-            raise NotImplementedError
-        else:
-            log.error("EC2Cluster don't know how to handle a %s cluster." %
-                                                               self.cloud_type)
-            return None
+        connection = self._get_connection()
 
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
-                  vm_keepalive=0):
+                  vm_keepalive=0, instance_type=""):
 
         log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
-        if customization:
-            self.user_data = nimbus_xml.ws_optional(customization)
+        if instance_type:
+            instance_type = instance_type
         else:
-            self.user_data = ""
+            instance_type = DEFAULT_INSTANCE_TYPE
+
+        if customization:
+            user_data = nimbus_xml.ws_optional(customization)
+        else:
+            user_data = ""
+
 
         try:
+            connection = self._get_connection()
             image = None
             if not "Eucalyptus" == self.cloud_type:
-                image = self.connection.get_image(vm_image)
+                image = connection.get_image(vm_image)
 
             else: #HACK: for some reason Eucalyptus won't respond properly to
                   #      get_image("whateverimg"). Use a linear search until
@@ -829,8 +845,9 @@ class EC2Cluster(ICluster):
 
             if image:
                 reservation = image.run(1,1,
-                                        user_data=self.user_data,
-                                        security_groups=self.security_groups)
+                                        user_data=user_data,
+                                        security_groups=self.security_groups,
+                                        instance_type=instance_type)
                 instance = reservation.instances[0]
                 log.debug("Booted VM %s" % instance.id)
             else:
@@ -870,7 +887,8 @@ class EC2Cluster(ICluster):
         log.debug("Polling vm with instance id %s" % vm.id)
         # We should only get on reservation, and one instance back
         try:
-            reservations = self.connection.get_all_instances([vm.id])
+            connection = self._get_connection()
+            reservations = connection.get_all_instances([vm.id])
             instance = reservations[0].instances[0]
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
@@ -888,7 +906,8 @@ class EC2Cluster(ICluster):
 
         # Kill VM on EC2
         try:
-            reservations = self.connection.get_all_instances([vm.id])
+            connection = self._get_connection()
+            reservations = connection.get_all_instances([vm.id])
             instance = reservations[0].instances[0]
             instance.stop()
         except boto.exception.EC2ResponseError, e:

@@ -471,7 +471,7 @@ class ResourcePool:
             log.error("Couldn't write persistence file to %s! \"%s\"" % 
                       (config.persistence_file, e.strerror))
         except:
-            log.error("Unknown problem saving persistence file!")
+            log.exception("Unknown problem saving persistence file!")
 
     def load_persistence(self):
         """

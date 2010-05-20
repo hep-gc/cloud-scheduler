@@ -71,7 +71,7 @@ class Job:
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default", 
              VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
-             VMKeepAlive=0):
+             VMKeepAlive=0, VMInstanceType=""):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -86,7 +86,8 @@ class Job:
      VMMem      - (int) The amount of memory in MB the job requires
      VMCPUCores - (int) The number of cpu cores the job requires
      VMStorage  - (int) The amount of storage space the job requires
-     VMKeepAlive- (int) The Length of time to keep alive before idle shutdown
+     VMKeepAlive - (int) The Length of time to keep alive before idle shutdown
+     VMInstanceType - (str) The ec2 instance type of the VM requested
      NOTE: The image field is used as a name field for the image the job will
 
      TODO: Set default job properties in the cloud scheduler main config file
@@ -107,6 +108,7 @@ class Job:
         self.req_cpucores = int(VMCPUCores)
         self.req_storage  = int(VMStorage)
         self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
+        self.instance_type = VMInstanceType
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -294,6 +296,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMCPUCores")
                 _add_if_exists(xml_job, job_dictionary, "VMStorage")
                 _add_if_exists(xml_job, job_dictionary, "VMKeepAlive")
+                _add_if_exists(xml_job, job_dictionary, "VMInstanceType")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -732,62 +735,6 @@ class JobPool:
     ##
     ## JobPool Private methods (Support methods)
     ##
-
-    # Create a dictionary for Job creation from a full Condor classAd job dictionary
-    # If a key for a required job parameter does not exist, add nothing to the new
-    # job dictionary (non-present parameters will invoke the default function parameter
-    # value).
-    # Parameters:
-    #   job_classad (dict) - A dictionary of ALL the Condor job classad fields
-    # Return:
-    #   Returns a dictionary of the Job object parameters the exist in the given
-    #   Condor job classad
-    #
-    # TODO: This needs to be replaced with something more efficient.
-    def make_job_dict(self, job_classad):
-        log.debug("make_job_dict - Cutting Condor classad dictionary into Job dictionary.")
-
-        job = {}
-
-        # Check for all required Job fields. Add to job dict. if present.
-        if ('GlobalJobId' in job_classad):
-            job['GlobalJobId'] = job_classad['GlobalJobId']
-        if ('Owner' in job_classad):
-            job['Owner'] = job_classad['Owner']
-        if ('JobPrio' in job_classad):
-            job['JobPrio'] = job_classad['JobPrio']
-        if ('JobStatus' in job_classad):
-            job['JobStatus'] = job_classad['JobStatus']
-        if ('ClusterId' in job_classad):
-            job['ClusterId'] = job_classad['ClusterId']
-        if ('ProcId' in job_classad):
-            job['ProcId'] = job_classad['ProcId']
-        if ('Requirements' in job_classad):
-            vmtype = self.parse_classAd_requirements(job_classad['Requirements'])
-            # If vmtype exists (is not None), store it in job dictionary
-            if (vmtype):
-                job['VMType'] = vmtype
-            # else, no VMType field in Job dictionary. Job constructor uses its default value.
-        if ('VMNetwork' in job_classad):
-            job['VMNetwork'] = job_classad['VMNetwork']
-        if ('VMCPUArch' in job_classad):
-            job['VMCPUArch'] = job_classad['VMCPUArch']
-        if ('VMName' in job_classad):
-            job['VMName'] = job_classad['VMName']
-        if ('VMLoc' in job_classad):
-            job['VMLoc'] = job_classad['VMLoc']
-        if ('VMAMI' in job_classad):
-            job['VMAMI'] = job_classad['VMAMI']
-        if ('VMMem' in job_classad):
-            job['VMMem'] = job_classad['VMMem']
-        if ('VMCPUCores' in job_classad):
-            job['VMCPUCores'] = job_classad['VMCPUCores']
-        if ('VMStorage' in job_classad):
-            job['VMStorage'] = job_classad['VMStorage']
-        if ('VMKeepAlive' in job_classad):
-            job['VMKeepAlive'] = job_classad['VMKeepAlive']
-
-        return job
 
     # Parse classAd Requirements string.
     # Takes the Requirements string from a condor job classad and retrieves the
