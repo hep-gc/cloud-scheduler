@@ -310,7 +310,7 @@ class ResourcePool:
                 mostbal_vms = cluster.num_vms()
             elif (cluster.num_vms() < nextbal_vms):
                 nextbal_cluster = cluster
-                nextbal_vms = cluster.unm_vms()
+                nextbal_vms = cluster.num_vms()
 
         # Return the most balanced cluster after considering all fitting clusters.
         return (mostbal_cluster, nextbal_cluster)
