@@ -819,7 +819,7 @@ class EC2Cluster(ICluster):
         if instance_type:
             instance_type = instance_type
         else:
-            instance_type = DEFAULT_INSTANCE_TYPE
+            instance_type = self.DEFAULT_INSTANCE_TYPE
 
         if customization:
             user_data = nimbus_xml.ws_optional(customization)
