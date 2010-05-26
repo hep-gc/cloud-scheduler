@@ -200,7 +200,7 @@ class JobPool:
         log.debug("New JobPool %s created" % name)
         self.name = name
         self.last_query = datetime.datetime.now()
-        self.write_lock = threading.Lock()
+        self.write_lock = threading.RLock()
 
         _schedd_wsdl  = "file://" + determine_path() \
                         + "/wsdl/condorSchedd.wsdl"
@@ -316,91 +316,83 @@ class JobPool:
     # Parameters:
     #   jobs - (list of Job objects) The jobs received from a condor query
     def update_jobs(self, query_jobs):
+        # If no jobs recvd, remove all jobs from the system (all have finished or have been removed)
+        if (query_jobs == []):
+            log.debug("No jobs received from job query. Removing all jobs from the system.")
+            for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
+                for job in jobset:
+                    self.remove_system_job(job)
+                    log.info("Job %s finished or removed. Cleared job from system." % job.id)
+            return
+        
+        # Filter out any jobs in an error status
+        for job in reversed(query_jobs):
+            if job.job_status >= self.ERROR:
+                self.remove_job(query_jobs, job)
+            
+        # Update all system jobs:
+        #   - remove jobs already in the system from the jobs list
+        #   - remove finished jobs (job in system, not in jobs list)
 
-        if not self.write_lock.acquire(False):
-            log.debug("update_jobs couldn't get a write lock on the job lists")
-        else:
-            try:
-                # If no jobs recvd, remove all jobs from the system (all have finished or have been removed)
-                if (query_jobs == []):
-                    log.debug("No jobs received from job query. Removing all jobs from the system.")
-                    for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
-                        for job in jobset:
-                            self.remove_system_job(job)
-                            log.info("Job %s finished or removed. Cleared job from system." % job.id)
-                    return
-                
-                # Filter out any jobs in an error status
-                for job in reversed(query_jobs):
-                    if job.job_status >= self.ERROR:
-                        self.remove_job(query_jobs, job)
-                    
-                # Update all system jobs:
-                #   - remove jobs already in the system from the jobs list
-                #   - remove finished jobs (job in system, not in jobs list)
+        # DBG: print both jobs dicts before updating system.
+        log.verbose("System jobs prior to system update:")
+        log.verbose("Unscheduled Jobs (new_jobs):")
+        self.log_jobs_dict(self.new_jobs)
+        log.verbose("Scheduled Jobs (sched_jobs):")
+        self.log_jobs_dict(self.sched_jobs)
+        jobs_to_update = []
+        for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
+            for sys_job in reversed(jobset):
 
-                # DBG: print both jobs dicts before updating system.
-                log.verbose("System jobs prior to system update:")
-                log.verbose("Unscheduled Jobs (new_jobs):")
-                self.log_jobs_dict(self.new_jobs)
-                log.verbose("Scheduled Jobs (sched_jobs):")
-                self.log_jobs_dict(self.sched_jobs)
-                jobs_to_update = []
-                for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
-                    for sys_job in reversed(jobset):
+                # DBG: print job details in loop
+                log.debug("system job loop - %s, %10s, %4d, %10s" % (sys_job.id, sys_job.user, sys_job.priority, sys_job.req_vmtype))
 
-                        # DBG: print job details in loop
-                        log.debug("system job loop - %s, %10s, %4d, %10s" % (sys_job.id, sys_job.user, sys_job.priority, sys_job.req_vmtype))
+                # If the sys job is not in the query jobs, sys job has finished / been removed
+                if not (self.has_job(query_jobs, sys_job)):
+                    self.remove_system_job(sys_job)
+                    log.info("Job %s finished or removed. Cleared job from system." % sys_job.id)
 
-                        # If the sys job is not in the query jobs, sys job has finished / been removed
-                        if not (self.has_job(query_jobs, sys_job)):
-                            self.remove_system_job(sys_job)
-                            log.info("Job %s finished or removed. Cleared job from system." % sys_job.id)
+                # Otherwise, the system job is in the condor queue - remove it from condor_jobs
+                # and append a job to update to list
+                else:
+                    removed_jobs = self.remove_job(query_jobs, sys_job)
+                    jobs_to_update += removed_jobs
+                    log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
 
-                        # Otherwise, the system job is in the condor queue - remove it from condor_jobs
-                        # and append a job to update to list
-                        else:
-                            removed_jobs = self.remove_job(query_jobs, sys_job)
-                            jobs_to_update += removed_jobs
-                            log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
+                # NOTE: The code below also conceptually achieves the above functionality.
+                #       However, due to a Python 2.4.x quirk, iterating through lists
+                #       in the order given below causes occasional errors. This has been
+                #       changed in Python 2.5+. For support of 2.4.3 (SL standard), use the
+                #       above code, and generally watch out for in-loop list manipulation.
+                # If system job is in the jobs list, remove from the jobs list
+                #if (self.has_job(query_jobs, sys_job)):
+                #    log.debug("Job %s is already in the system." % sys_job.id)
+                #    self.remove_job(query_jobs, sys_job)
+                #
+                #    # DBG: Print query_jobs after modification by update loop
+                #    log.debug("Query jobs after removal (system already has job):")
+                #    self.log_jobs_list(query_jobs)
 
-                        # NOTE: The code below also conceptually achieves the above functionality.
-                        #       However, due to a Python 2.4.x quirk, iterating through lists
-                        #       in the order given below causes occasional errors. This has been
-                        #       changed in Python 2.5+. For support of 2.4.3 (SL standard), use the
-                        #       above code, and generally watch out for in-loop list manipulation.
-                        # If system job is in the jobs list, remove from the jobs list
-                        #if (self.has_job(query_jobs, sys_job)):
-                        #    log.debug("Job %s is already in the system." % sys_job.id)
-                        #    self.remove_job(query_jobs, sys_job)
-                        #
-                        #    # DBG: Print query_jobs after modification by update loop
-                        #    log.debug("Query jobs after removal (system already has job):")
-                        #    self.log_jobs_list(query_jobs)
+                # Otherwise, if system job is not in recvd jobs, remove job from system
+                #else:
+                #    log.info("Job %s finished or removed. Clearing job from system." % sys_job.id)
+                #   self.remove_system_job(sys_job)
 
-                        # Otherwise, if system job is not in recvd jobs, remove job from system
-                        #else:
-                        #    log.info("Job %s finished or removed. Clearing job from system." % sys_job.id)
-                        #   self.remove_system_job(sys_job)
+        # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
+        for job in query_jobs:
+            self.add_new_job(job)
+            log.verbose("Job %s added to unscheduled jobs list" % job.id)
+        # Update job status of all the non-new jobs
+        log.debug("Updating Job Status")
+        for job in jobs_to_update:
+            self.update_job_status(job)
 
-                # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
-                for job in query_jobs:
-                    self.add_new_job(job)
-                    log.verbose("Job %s added to unscheduled jobs list" % job.id)
-                # Update job status of all the non-new jobs
-                log.debug("Updating Job Status")
-                for job in jobs_to_update:
-                    self.update_job_status(job)
-
-                # DBG: print both jobs dicts before updating system.
-                log.verbose("System jobs after system update:")
-                log.verbose("Unscheduled Jobs (new_jobs):")
-                self.log_jobs_dict(self.new_jobs)
-                log.verbose("Scheduled Jobs (sched_jobs):")
-                self.log_jobs_dict(self.sched_jobs)
-
-            finally:
-                self.write_lock.release()
+        # DBG: print both jobs dicts before updating system.
+        log.verbose("System jobs after system update:")
+        log.verbose("Unscheduled Jobs (new_jobs):")
+        self.log_jobs_dict(self.new_jobs)
+        log.verbose("Scheduled Jobs (sched_jobs):")
+        self.log_jobs_dict(self.sched_jobs)
 
 
     # Add New Job
@@ -433,7 +425,9 @@ class JobPool:
             return
         # Check if job has highest priority in list
         elif (job_list[0].priority < job.priority):
+            self.write_lock.acquire()
             job_list.insert(0, job)
+            self.write_lock.release()
             return
         # Check back of the list - equal priorites, append
         elif (job_list[-1].priority >= job.priority):
@@ -446,7 +440,9 @@ class JobPool:
             while (i != 0):
                 i = i-1
                 if (job_list[i].priority >= job.priority):
+                    self.write_lock.acquire()
                     job_list.insert(i+1, job)
+                    self.write_lock.release()
                     break
             return
 
@@ -462,7 +458,7 @@ class JobPool:
         # Check for job in unscheduled job set
         # if (job.user in self.new_jobs) and (job in self.new_jobs[job.user]):
         if (job.user in self.new_jobs) and (self.has_job(self.new_jobs[job.user], job)):
-            #self.new_jobs[job.user].remove(job)
+            self.write_lock.acquire()
             self.remove_job(self.new_jobs[job.user], job)
             log.verbose("remove_system_job - Removing job %s from unscheduled jobs."
                       % job.id)
@@ -472,11 +468,11 @@ class JobPool:
                 del self.new_jobs[job.user]
                 log.debug("User %s has no more jobs in the Unscheduled Jobs set. Removing user from queue."
                           % job.user)
-
+            self.write_lock.release()
         # Check for job in scheduled job set
         # elif (job.user in self.sched_jobs) and (job in self.sched_jobs[job.user]):
         elif (job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[job.user], job)):
-            #self.sched_jobs[job.user].remove(job)
+            self.write_lock.acquire()
             self.remove_job(self.sched_jobs[job.user], job)
             log.verbose("remove_system_job - Removing job %s from scheduled jobs."
                       % job.id)
@@ -486,6 +482,7 @@ class JobPool:
                 del self.sched_jobs[job.user]
                 log.debug("User %s has no more jobs in the Scheduled Jobs set. Removing user from queue."
                           % job.user)
+            self.write_lock.release()
         else:
             log.warning("remove_system_job - Job does not exist in system."
                       + " Doing nothing.")
@@ -499,7 +496,7 @@ class JobPool:
     #   job_list - (list of Job) the list from which to remove jobs
     #   target_job   - (Job object) the job to be removed
     # Returns:
-    #   removed_list - (lost of Job) The removed Jobs
+    #   removed_list - (list of Job) The removed Jobs
     def remove_job(self, job_list, target_job):
         log.verbose("(remove_job) - Target job: %s" % target_job.id)
         removed_list = []
@@ -527,17 +524,21 @@ class JobPool:
     def update_job_status(self, target_job):
         ret = False
         if (target_job.user in self.new_jobs) and (self.has_job(self.new_jobs[target_job.user], target_job)):
+            self.write_lock.acquire()
             for job in self.new_jobs[target_job.user]:
                 if target_job.id == job.id:
                     job.job_status = target_job.job_status
                     ret = True
                     break
+            self.write_lock.release()
         elif (target_job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[target_job.user], target_job)):
+            self.write_lock.acquire()
             for job in self.sched_jobs[target_job.user]:
                 if target_job.id == job.id:
                     job.job_status = target_job.job_status
                     ret = True
                     break
+            self.write_lock.release()
         else:
             log.warning("update_job_status - Job does not exist in system."
                       + " Doing nothing.")
