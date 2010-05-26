@@ -19,6 +19,7 @@ import logging
 import datetime
 import tempfile
 import subprocess
+import threading
 
 log = None
 
@@ -143,6 +144,8 @@ class ICluster:
         self.cpu_cores = cpu_cores
         self.storageGB = storage
         self.vms = [] # List of running VMs
+        self.vms_lock = threading.RLock()
+        self.res_lock = threading.RLock()
 
         self.setup_logging()
         log.info("New cluster %s created" % self.name)
@@ -280,9 +283,11 @@ class ICluster:
     # EXPAND HERE as checkout/return become more complex
     def resource_checkout(self, vm):
         log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
+        self.res_lock.acquire()
         self.vm_slots -= 1
         self.storageGB -= vm.storage
         self.memory[vm.mementry] -= vm.memory
+        self.res_lock.release()
 
     # Returns the resources taken by the passed in VM to the Cluster's internal
     # storage.
@@ -290,10 +295,12 @@ class ICluster:
     # Notes: (as for checkout)
     def resource_return(self, vm):
         log.info("Returning resources used by VM %s to Cluster %s" % (vm.id, self.name))
+        self.res_lock.acquire()
         self.vm_slots += 1
         self.storageGB += vm.storage
         # ISSUE: No way to know what mementry a VM is running on
         self.memory[vm.mementry] += vm.memory
+        self.res_lock.release()
 
 
 ## Implements cloud management functionality with the Nimbus service as part of
@@ -533,7 +540,9 @@ class NimbusCluster(ICluster):
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
         self.resource_return(vm)
+        self.vms_lock.acquire()
         self.vms.remove(vm)
+        self.vms_lock.release()
 
         # Delete EPR
         os.remove(vm_epr)
@@ -556,6 +565,7 @@ class NimbusCluster(ICluster):
         (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd)
         log.debug("(vm_poll) - Poll command completed with return code: %d" % poll_return)
 
+        self.vms_lock.acquire()
         # Check the poll command return
         if (poll_return != 0):
             log.warning("(vm_poll) - Failed polling VM %s (ID: %s)" % (vm.name, vm.id))
@@ -588,6 +598,7 @@ class NimbusCluster(ICluster):
         vm.lastpoll = int(time.time())
 
         os.remove(vm_epr)
+        self.vms_lock.release()
 
         # Return the VM status as a string
         return vm.status
@@ -893,11 +904,14 @@ class EC2Cluster(ICluster):
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
+        self.vms_lock.acquire()
         if vm.status != self.VM_STATES.get(instance.state, "Starting"):
             vm.last_state_change = int(time.time())
         vm.status = self.VM_STATES.get(instance.state, "Starting")
         vm.hostname = instance.public_dns_name
         vm.lastpoll = int(time.time())
+        self.vms_lock.release()
+        self.vms_lock.release()
         return vm.status
 
 
@@ -916,7 +930,9 @@ class EC2Cluster(ICluster):
 
         # Delete references to this VM
         self.resource_return(vm)
+        self.vms_lock.acquire()
         self.vms.remove(vm)
+        self.vms_lock.release()
 
         return 0
 
