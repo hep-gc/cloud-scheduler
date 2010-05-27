@@ -485,8 +485,15 @@ class ResourcePool:
         except IOError, e:
             log.debug("No persistence file to load. Exited normally last time.")
             return
+        except:
+            log.exception("Unknown problem opening persistence file!")
+            return
 
-        old_resources = pickle.load(persistence_file)
+        try:
+            old_resources = pickle.load(persistence_file)
+        except:
+            log.exception("Unknown problem opening persistence file!")
+            return
         persistence_file.close()
 
         for old_cluster in old_resources:
