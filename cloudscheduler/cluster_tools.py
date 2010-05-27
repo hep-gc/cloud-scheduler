@@ -911,7 +911,6 @@ class EC2Cluster(ICluster):
         vm.hostname = instance.public_dns_name
         vm.lastpoll = int(time.time())
         self.vms_lock.release()
-        self.vms_lock.release()
         return vm.status
 
 
