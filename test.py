@@ -733,6 +733,11 @@ xmlns:condor="urn:condor">
               <value>ami-fdee0094</value>
             </item>
             <item>
+              <name>VMMaximumPrice</name>
+              <type>INTEGER-ATTR</type>
+              <value>15</value>
+            </item>
+            <item>
               <name>DiskUsage_RAW</name>
               <type>INTEGER-ATTR</type>
               <value>1</value>
@@ -878,6 +883,7 @@ xmlns:condor="urn:condor">
                           'VMAMI': 'ami-fdee0094',
                           'VMLoc': 'http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.img.gz',
                           'VMStorage': 10,
+                          'VMMaximumPrice': 15,
                           }
 
         test_job = cloudscheduler.job_management.Job(**job_dictionary)
@@ -899,6 +905,7 @@ xmlns:condor="urn:condor">
         self.assertEqual(parsed_job.req_storage, test_job.req_storage)
         self.assertEqual(parsed_job.keep_alive, test_job.keep_alive)
         self.assertEqual(parsed_job.instance_type, test_job.instance_type)
+        self.assertEqual(parsed_job.maximum_price, test_job.maximum_price)
 
 class GetOrNoneTests(unittest.TestCase):
 

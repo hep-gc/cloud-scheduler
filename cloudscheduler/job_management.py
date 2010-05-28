@@ -71,7 +71,7 @@ class Job:
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default", 
              VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
-             VMKeepAlive=0, VMInstanceType=""):
+             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -87,11 +87,12 @@ class Job:
      VMCPUCores - (int) The number of cpu cores the job requires
      VMStorage  - (int) The amount of storage space the job requires
      VMKeepAlive - (int) The Length of time to keep alive before idle shutdown
-     VMInstanceType - (str) The ec2 instance type of the VM requested
-     NOTE: The image field is used as a name field for the image the job will
+     VMInstanceType - (str) The EC2 instance type of the VM requested
+     VMMaximumPrice - (str) The maximum price in cents per hour for a VM (EC2 Only)
 
-     TODO: Set default job properties in the cloud scheduler main config file
-          (Have option to set them there, and default values) """
+     """
+     #TODO: Set default job properties in the cloud scheduler main config file
+     #     (Have option to set them there, and default values)
         self.id           = GlobalJobId
         self.user         = Owner
         self.priority     = int(JobPrio)
@@ -109,6 +110,7 @@ class Job:
         self.req_storage  = int(VMStorage)
         self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
         self.instance_type = VMInstanceType
+        self.maximum_price = int(VMMaximumPrice)
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -297,6 +299,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMStorage")
                 _add_if_exists(xml_job, job_dictionary, "VMKeepAlive")
                 _add_if_exists(xml_job, job_dictionary, "VMInstanceType")
+                _add_if_exists(xml_job, job_dictionary, "VMMaximumPrice")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")

@@ -208,13 +208,14 @@ class Scheduler(threading.Thread):
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_imageloc, job.req_memory, job.req_cpucores,
                                     job.req_storage, customization=customizations,
-                                    vm_keepalive=job.keep_alive)
+                                    vm_keepalive=job.keep_alive,)
                             elif resource.__class__.__name__ == "EC2Cluster":
                                 create_ret = resource.vm_create(job.req_image,
                                     job.req_vmtype, job.req_network, job.req_cpuarch,
                                     job.req_ami, job.req_memory, job.req_cpucores,
                                     job.req_storage, customization=customizations,
-                                    vm_keepalive=job.keep_alive,instance_type=job.instance_type)
+                                    vm_keepalive=job.keep_alive, instance_type=job.instance_type,
+                                    maximum_price=job.maximum_price,)
 
                             # If the VM create fails, try again on another resource
                             if (create_ret != 0):

@@ -21,18 +21,24 @@ import tempfile
 import subprocess
 import threading
 
-log = None
-
 from subprocess import Popen
-try:
-    import boto.ec2
-except ImportError:
-        print >> sys.stderr, "To use EC2-style clouds, you need to have boto " \
-              "installed. You can install it from your package manager, " \
-              "or get it from http://code.google.com/p/boto/"
 
 import nimbus_xml
 import config
+import cloudscheduler.utilities as utilities
+
+log = utilities.get_cloudscheduler_logger()
+
+try:
+    import boto.ec2
+    import boto
+
+
+except ImportError:
+    log.error("To use EC2-style clouds, you need to have boto " \
+            "installed. You can install it from your package manager, " \
+            "or get it from http://code.google.com/p/boto/")
+
 
 # A class for storing created VM information. Used to populate Cluster classes
 # 'vms' lists.
@@ -71,7 +77,7 @@ class VM:
             hostname="default_vmhostname", clusteraddr="default_hostname",
             cloudtype="def_cloudtype", network="public", cpuarch="x86",
             image="default_image", memory=0, mementry=0,
-            cpucores=0, storage=0, keep_alive=0):
+            cpucores=0, storage=0, keep_alive=0, spot_id=""):
         self.name = name
         self.id = id
         self.vmtype = vmtype
@@ -90,6 +96,7 @@ class VM:
         self.last_state_change = None
         self.keep_alive = keep_alive
         self.idle_start = None
+        self.spot_id = spot_id
         
 
         # Set a status variable on new creation
@@ -811,6 +818,10 @@ class EC2Cluster(ICluster):
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None):
 
+        # Janky minimum version test for boto
+        if float(boto.Version[:-1]) < 1.9:
+            log.warning("Versions of boto before 1.9 don't support spot instances")
+
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, cpu_archs=cpu_archs, networks=networks,
@@ -834,13 +845,11 @@ class EC2Cluster(ICluster):
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
-                  vm_keepalive=0, instance_type=""):
+                  vm_keepalive=0, instance_type="", maximum_price=0):
 
         log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
-        if instance_type:
-            instance_type = instance_type
-        else:
+        if not instance_type:
             instance_type = self.DEFAULT_INSTANCE_TYPE
 
         if customization:
@@ -864,14 +873,42 @@ class EC2Cluster(ICluster):
                 for potential_match in images:
                     if potential_match.id == vm_image:
                         image = potential_match
+                        break
 
             if image:
-                reservation = image.run(1,1,
-                                        user_data=user_data,
-                                        security_groups=self.security_groups,
-                                        instance_type=instance_type)
-                instance = reservation.instances[0]
-                log.debug("Booted VM %s" % instance.id)
+                if maximum_price is 0: # don't request a spot instance
+                    try:
+                        reservation = image.run(1,1,
+                                                user_data=user_data,
+                                                security_groups=self.security_groups,
+                                                instance_type=instance_type)
+                        instance_id = reservation.instances[0].id
+                        log.debug("Booted VM %s" % instance_id)
+                    except:
+                        log.exception("There was a problem creating an EC2 instance...")
+                        return self.ERROR
+
+                else: # get a spot instance of no more than maximum_price
+                    try:
+                        price_in_dollars = str(float(maximum_price) / 100)
+                        reservation = connection.request_spot_instances(
+                                                  price_in_dollars,
+                                                  image.id,
+                                                  user_data=user_data,
+                                                  security_groups=self.security_groups,
+                                                  instance_type=instance_type)
+                        spot_id = str(reservation[0].id)
+                        instance_id = ""
+                        log.debug("Reserved instance %s at no more than %s" % (spot_id, price_in_dollars))
+                    except AttributeError:
+                        log.exception("Your version of boto doesn't seem to support "\
+                                  "spot instances. You need at least 1.9")
+                        return self.ERROR
+                    except:
+                        log.exception("Problem creating an EC2 spot instance...")
+                        return self.ERROR
+
+
             else:
                 log.error("Couldn't find image %s on %s" % (vm_image, self.host))
                 return self.ERROR
@@ -882,15 +919,13 @@ class EC2Cluster(ICluster):
 
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
-            # At this point, there should always be a valid mementry, as the
-            # ResourcePool get_resource methods have selected this cluster
-            # based on having an open  memory entry that fits VM requirements.
+            #TODO: this is kind of pointless with EC2...
             log.debug("Cluster memory list has no sufficient memory " +\
                       "entries (Not supposed to happen). Returning error.")
             return self.ERROR
         log.debug("vm_create - Memory entry found in given cluster: %d" %
                                                                     vm_mementry)
-        new_vm = VM(name = vm_name, id = instance.id, vmtype = vm_type,
+        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     cpuarch = vm_cpuarch, image= vm_image,
@@ -898,7 +933,9 @@ class EC2Cluster(ICluster):
                     cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive)
 
-        new_vm.status = self.VM_STATES.get(instance.state, "Starting")
+        if spot_id:
+            new_vm.spot_id = spot_id
+
         self.resource_checkout(new_vm)
         self.vms.append(new_vm)
 
@@ -906,17 +943,30 @@ class EC2Cluster(ICluster):
 
 
     def vm_poll(self, vm):
-        log.debug("Polling vm with instance id %s" % vm.id)
-        # We should only get on reservation, and one instance back
         try:
+            log.debug("Polling vm with instance id %s" % vm.id)
             connection = self._get_connection()
+
+            if vm.spot_id:
+                try:
+                    spot_reservation = connection.get_all_spot_instance_requests(vm.spot_id)[0]
+                    vm.id = str(spot_reservation.instanceId)
+                except AttributeError:
+                    log.debug("Spot reservation %s doesn't have a VM id yet." % vm.spot_id)
+                    return vm.status
+                except:
+                    log.exception("Problem getting information for spot vm %s" % vm.spot_id)
+                    return vm.status
+
             reservations = connection.get_all_instances([vm.id])
             instance = reservations[0].instances[0]
+
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
         self.vms_lock.acquire()
         if vm.status != self.VM_STATES.get(instance.state, "Starting"):
+
             vm.last_state_change = int(time.time())
         vm.status = self.VM_STATES.get(instance.state, "Starting")
         vm.hostname = instance.public_dns_name
@@ -931,11 +981,17 @@ class EC2Cluster(ICluster):
         # Kill VM on EC2
         try:
             connection = self._get_connection()
-            reservations = connection.get_all_instances([vm.id])
-            instance = reservations[0].instances[0]
-            instance.stop()
+
+            if vm.spot_id:
+                connection.cancel_spot_instance_requests([vm.spot_id])
+
+            if vm.id:
+                reservations = connection.get_all_instances([vm.id])
+                instance = reservations[0].instances[0]
+                instance.stop()
+
         except boto.exception.EC2ResponseError, e:
-            log.error("Couldn't destroy vm because: %s" % e.error_message)
+            log.exception("Couldn't destroy vm!")
             return self.ERROR
 
         # Delete references to this VM
