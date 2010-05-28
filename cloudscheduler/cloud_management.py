@@ -59,7 +59,6 @@ class ResourcePool:
         log = logging.getLogger("cloudscheduler")
         log.debug("New ResourcePool " + name + " created")
         self.name = name
-        self.write_lock = threading.Lock()
 
         _collector_wsdl = "file://" + determine_path() \
                           + "/wsdl/condorCollector.wsdl"
