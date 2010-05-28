@@ -150,16 +150,16 @@ class ICluster:
         self.setup_logging()
         log.info("New cluster %s created" % self.name)
 
-        def __getstate__(self):
-            state = self.__dict__.copy()
-            del state['vms_lock']
-            del state['res_lock']
-            return state
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['vms_lock']
+        del state['res_lock']
+        return state
 
-        def __setstate__(self, state):
-            self.__dict__ = state
-            self.vms_lock = threading.RLock()
-            self.res_lock = threading.RLock()
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self.vms_lock = threading.RLock()
+        self.res_lock = threading.RLock()
 
     def setup_logging(self):
         global log
