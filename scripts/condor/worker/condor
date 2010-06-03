@@ -359,11 +359,29 @@ cleanup_ccb () {
 	sed -i '/# Added for Condor CCB/d' /etc/hosts
 }
 
+verify_execute () {
+	execute_dir=`get_condor_config_val EXECUTE`
+	if [ ! -d $execute_dir ]; then
+		mkdir -p $execute_dir
+	fi
+
+	execute_owner=`stat -c %U $execute_dir`
+	if [ "$execute_owner" != "condor" ]; then
+		chown condor:condor $execute_dir
+	fi
+
+	execute_rights=`stat -c %a $execute_dir`
+	if [ $execute_rights -ne 755 ]; then
+		chmod 755 $execute_dir
+	fi
+}
+
 # Start condor.
 start() {
 	setup_on_ec2
 	setup_ccb
 	set_central_manager $CENTRAL_MANAGER
+	verify_execute
 	init_condor_master
 	echon "Starting up Condor..."
 	"$CONDOR_MASTER" -pidfile "$PIDFILE"
