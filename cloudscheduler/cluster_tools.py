@@ -73,10 +73,10 @@ class VM:
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
     # errorcount   - (int) Number of Polling Errors VM has had
-    def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType",
-            hostname="default_vmhostname", clusteraddr="default_hostname",
-            cloudtype="def_cloudtype", network="public", cpuarch="x86",
-            image="default_image", memory=0, mementry=0,
+    def __init__(self, name="", id="", vmtype="",
+            hostname="", clusteraddr="",
+            cloudtype="", network="public", cpuarch="x86",
+            image="", memory=0, mementry=0,
             cpucores=0, storage=0, keep_alive=0, spot_id=""):
         self.name = name
         self.id = id
@@ -432,7 +432,7 @@ class NimbusCluster(ICluster):
 
         # Get the first part of the hostname given to the VM
         hostname = re.search("Hostname:\s(\w*)", create_out)
-        vm_hostname = "default_vmhostname"
+        vm_hostname = ""
         if hostname:
             vm_hostname = hostname.group(1)
             log.debug("Hostname for vm_id %s is %s" % (vm_id, vm_hostname))
