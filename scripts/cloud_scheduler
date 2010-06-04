@@ -44,6 +44,14 @@ stop () {
     fi
 }
 
+reconfig () {
+    if [ -f $PIDFILE ]; then
+        echo -n $"Reconfiguring $SERVICE..."
+        kill -s SIGUSR1 `cat $PIDFILE`
+        echo
+    fi
+}
+
 RETVAL=0
 
 case "$1" in
@@ -52,6 +60,9 @@ case "$1" in
         ;;
     stop)
         stop
+        ;;
+    reconfig)
+        reconfig
         ;;
     status)
 	if [ -f $PIDFILE ]; then

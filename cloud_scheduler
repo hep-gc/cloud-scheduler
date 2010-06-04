@@ -598,8 +598,7 @@ def main():
     job_pool = job_management.JobPool("Job Pool")
 
     # Create a resource pool
-    cloud_resources = cloud_management.ResourcePool("Resource Pool")
-    cloud_resources.setup(config.cloud_resource_config)
+    cloud_resources = cloud_management.ResourcePool(config.cloud_resource_config)
 
     # Log the resource pool
     cloud_resources.log_pool()
@@ -629,6 +628,11 @@ def main():
 
     # Set SIGTERM (kill) handler
     signal.signal(signal.SIGTERM, term_handler)
+
+    # Set SIGUSR1 (reconfig) handler
+    reconfig_handler = make_reconfig_handler(cloud_resources)
+    signal.signal(signal.SIGUSR1, reconfig_handler)
+
 
     should_be_running = True
 
@@ -660,9 +664,21 @@ def main():
     info_serv.join()
     sys.exit()
 
+
 def term_handler(signal, handler):
     log.info("Recieved SIGTERM signal")
     sys.exit()
+
+def make_reconfig_handler(resource_pool):
+    """
+    make_reconfig_handler - make a signal handler that can reconfig the passed
+                            ResourcePool object
+    """
+    def reconfig_handler(signal, handler):
+        log.info("Recieved SIGUSR1 (reconfig) signal. Reloading resources file...")
+        resource_pool.setup()
+
+    return reconfig_handler
 
 # Sets the command-line options for a passed in OptionParser object (via optparse)
 def set_options(parser):
