@@ -274,21 +274,27 @@ class ResourcePool:
         for cluster in self.resources:
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
+                log.debug("get_fitting_resources - No free slots in %s" % cluster.name)
                 continue
             # If the cluster does not have the required CPU architecture
             if (cpuarch not in cluster.cpu_archs):
+                log.debug("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
                 continue
             # If required network is NOT in cluster's network associations
             if (network not in cluster.network_pools):
+                log.debug("get_fitting_resources - No matching networks in %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
+                log.debug("get_fitting_resources - No available memory entry in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient CPU cores
             if (cpucores > cluster.cpu_cores):
+                log.debug("get_fitting_resources - Not enough CPU Cores in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient storage capacity
             if (storage > cluster.storageGB):
+                log.debug("get_fitting_resources - Not enough storage in %s" % cluster.name)
                 continue
             # Add cluster to the list to be returned (meets all job reqs)
             fitting_clusters.append(cluster)

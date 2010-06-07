@@ -348,7 +348,7 @@ class JobPool:
             for sys_job in reversed(jobset):
 
                 # DBG: print job details in loop
-                log.debug("system job loop - %s, %10s, %4d, %10s" % (sys_job.id, sys_job.user, sys_job.priority, sys_job.req_vmtype))
+                log.verbose("system job loop - %s, %10s, %4d, %10s" % (sys_job.id, sys_job.user, sys_job.priority, sys_job.req_vmtype))
 
                 # If the sys job is not in the query jobs, sys job has finished / been removed
                 if not (self.has_job(query_jobs, sys_job)):
@@ -360,7 +360,7 @@ class JobPool:
                 else:
                     removed_jobs = self.remove_job(query_jobs, sys_job)
                     jobs_to_update += removed_jobs
-                    log.debug("Job %s already in the system. Ignoring job." % sys_job.id)
+                    log.verbose("Job %s already in the system. Ignoring job." % sys_job.id)
 
                 # NOTE: The code below also conceptually achieves the above functionality.
                 #       However, due to a Python 2.4.x quirk, iterating through lists
