@@ -431,10 +431,8 @@ class NimbusCluster(ICluster):
             log.error("vm_create - couldn't find workspace id for new VM")
 
         # Get the first part of the hostname given to the VM
-        hostname = re.search("Hostname:\s(\w*)", create_out)
-        vm_hostname = ""
-        if hostname:
-            vm_hostname = hostname.group(1)
+        vm_hostname = self._extract_hostname(create_out)
+        if vm_hostname:
             log.debug("Hostname for vm_id %s is %s" % (vm_id, vm_hostname))
         else:
             log.warning("Unable to get the VM hostname, for vm_id %s" % vm_id)
@@ -750,6 +748,21 @@ class NimbusCluster(ICluster):
         ws_list = [config.workspace_path, "-e", epr_file, "--rpquery"]
         return ws_list
 
+    @staticmethod
+    def _extract_hostname(create_response):
+        """
+        _extract_hostname -- extracts the hostname from a Nimbus create call
+
+        returns short hostname of VM as string
+        """
+
+        try:
+            matches = re.search("Hostname:\s(.*)[\.\s]", create_response)
+            hostname = matches.group(1)
+        except:
+            return ""
+
+        return hostname
 
 class EC2Cluster(ICluster):
 

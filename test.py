@@ -203,7 +203,8 @@ class ResourcePoolSetup(unittest.TestCase):
         cloudscheduler.config.setup(path=self.configfilename)
 
         self.test_pool = cloudscheduler.cloud_management.ResourcePool("Test Pool")
-        self.test_pool.setup(self.configfilename)
+        self.test_pool.config_file = self.configfilename
+        self.test_pool.setup()
 
     def test_cluster_is_created(self):
 
@@ -221,19 +222,6 @@ class ResourcePoolSetup(unittest.TestCase):
                 found_cluster1 = True
         self.assertTrue(found_cluster1)
 
-    def test_for_spaces_before_values(self):
-
-        config_with_spaces = '''[cluster]
- host = "localhost"
-        '''
-
-        configfile = open(self.configfilename, 'wb')
-        configfile.write(config_with_spaces)
-        configfile.close()
-
-        self.assertRaises(ConfigParser.ParsingError,
-                          self.test_pool.setup,
-                          self.configfilename)
 
     def tearDown(self):
         os.remove(self.configfilename)
@@ -289,6 +277,47 @@ class NimbusXMLTests(unittest.TestCase):
         txml = cloudscheduler.nimbus_xml.ws_optional_factory(bad_custom_task)
 
         self.assertEqual(None, txml)
+
+class NimbusClusterTests(unittest.TestCase):
+
+    def test_extract_hostname(self):
+        from cloudscheduler.cluster_tools import NimbusCluster
+        nimbus_string = """
+Workspace Factory Service:
+    https://calliopex.phys.uvic.ca:8443/wsrf/services/WorkspaceFactoryService
+
+Read metadata file: "/tmp/nimbus.1276022787.xml"
+Read deployment request file: "/tmp/nimbus.deployment.1276022787.xml"
+Duration argument provided: overriding duration found in deployment request file, it is now: 100 minutes
+
+Creating workspace "http://calliopex.phys.uvic.ca/sl54base_i386.img.gz"... done.
+
+
+
+Workspace created: id 2
+eth0
+      Association: private
+       IP address: 192.168.107.1
+         Hostname: musecloud-01
+          Gateway: 192.168.1.217
+
+       Start time: Tue Jun 08 11:46:29 PDT 2010
+         Duration: 100 minutes.
+    Shutdown time: Tue Jun 08 13:26:29 PDT 2010
+ Termination time: Tue Jun 08 13:36:29 PDT 2010
+
+Wrote EPR to "./nimbus.1276022787.epr"
+
+
+Waiting for updates.
+
+"http://calliopex.phys.uvic.ca/sl54base_i386.img.gz" state change: Unstaged --> Unpropagated
+"""
+        extracted_host = NimbusCluster._extract_hostname(nimbus_string)
+        self.assertEqual("musecloud-01", extracted_host)
+
+        bad_host = NimbusCluster._extract_hostname("")
+        self.assertEqual("", bad_host)
 
 class JobPoolTests(unittest.TestCase):
 
