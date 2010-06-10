@@ -506,6 +506,25 @@ class ResourcePool:
             types[type] *= count
         return types
 
+    # VM Type resource usage
+    # Counts up how much/many of each resource (RAM, Cores, Storage)
+    # are being used by each type of VM
+    def vmtype_resource_usage(self):
+        types = {}
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.vmtype in types.keys():
+                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+                else:
+                    types[vm.vmtype] = []
+                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+        results = {}
+        for vmtype in types.keys():
+            results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
+        return results
+
+
+
     # Take the current and previous machineLists
     # Figure out which machines have changed jobs
     # return list of machine names that have
