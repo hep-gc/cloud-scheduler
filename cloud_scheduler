@@ -146,6 +146,7 @@ class Scheduler(threading.Thread):
                     diff_types[type] = -desired_types[type]
 
             ## Schedule user jobs
+            job_to_start = self.schedule_memory()
             # TODO: This should be less explicit in its reference to JobPool class parts.
             #       Something like 'for job in self.job_pool.get_unsched_jobs()'
             log.debug("Attempt to schedule user jobs")
@@ -173,68 +174,10 @@ class Scheduler(threading.Thread):
                             log.info("Leaving job unscheduled, moving to %s's next job" % user)
                             continue
 
-
-                        # Create an optional customization metadata file
-                        customizations = []
-                        if config.condor_host != "localhost" and config.condor_context_file:
-                            customizations.append((config.condor_host, config.condor_context_file))
-
-                        if config.cert_file:
-                            file_contents = open(config.cert_file).read()
-
-                            if config.cert_file_on_vm:
-                                file_location = config.cert_file_on_vm
-                            else:
-                                file_location = config.cert_file
-
-                            customizations.append((file_contents, file_location))
-
-                        if config.key_file:
-                            file_contents = open(config.key_file).read()
-
-                            if config.key_file_on_vm:
-                                file_location = config.key_file_on_vm
-                            else:
-                                file_location = config.key_file
-
-                            customizations.append((file_contents, file_location))
-
-
-                        for resource in good_resources:
-                            # Print details of the resource selected
-                            log.debug("Booting VM for job %s on %s:" % (job.id, resource.name))
-                            resource.log()
-
-                            if resource.__class__.__name__ == "NimbusCluster":
-                                create_ret = resource.vm_create(job.req_image,
-                                    job.req_vmtype, job.req_network, job.req_cpuarch,
-                                    job.req_imageloc, job.req_memory, job.req_cpucores,
-                                    job.req_storage, customization=customizations,
-                                    vm_keepalive=job.keep_alive,)
-                            elif resource.__class__.__name__ == "EC2Cluster":
-                                create_ret = resource.vm_create(job.req_image,
-                                    job.req_vmtype, job.req_network, job.req_cpuarch,
-                                    job.req_ami, job.req_memory, job.req_cpucores,
-                                    job.req_storage, customization=customizations,
-                                    vm_keepalive=job.keep_alive, instance_type=job.instance_type,
-                                    maximum_price=job.maximum_price,)
-
-                            # If the VM create fails, try again on another resource
-                            if (create_ret != 0):
-                                log.debug("Creating VM for job %s failed on %s. " % (job.id, resource.name))
-                                continue
-
-                            # If the vm create didn't fail, break out of the loop
-                            break
-
-                        # If VM creation fails for user-job on all resources move to next user
-                        if create_ret != 0:
-                            log.debug("None of the resources could boot a vm for job %s. " % job.id + \
-                                      "Leaving %s's jobs unscheduled, moving on to next user" % user)
-                            break
-
-                        # Mark job as scheduled
-                        self.job_pool.schedule(job)
+                        create_ret = self.vm_creation(job, good_resources)
+                        if create_ret == 0:
+                            # Mark job as scheduled
+                            self.job_pool.schedule(job)
                         # break out of this user's job and try next user
                         break
                     else:
@@ -356,6 +299,69 @@ class Scheduler(threading.Thread):
             for vm in remaining_vms:
                 log.error("VM: %s, ID: %s" % (vm.name, vm.id))
 
+    def vm_creation(self, job, good_resources):
+        # Create an optional customization metadata file
+        customizations = []
+        create_ret = None
+        if config.condor_host != "localhost" and config.condor_context_file:
+            customizations.append((config.condor_host, config.condor_context_file))
+
+        if config.cert_file:
+            file_contents = open(config.cert_file).read()
+
+            if config.cert_file_on_vm:
+                file_location = config.cert_file_on_vm
+            else:
+                file_location = config.cert_file
+
+            customizations.append((file_contents, file_location))
+
+        if config.key_file:
+            file_contents = open(config.key_file).read()
+
+            if config.key_file_on_vm:
+                file_location = config.key_file_on_vm
+            else:
+                file_location = config.key_file
+
+            customizations.append((file_contents, file_location))
+
+
+        for resource in good_resources:
+            # Print details of the resource selected
+            log.debug("Booting VM for job %s on %s:" % (job.id, resource.name))
+            resource.log()
+
+            if resource.__class__.__name__ == "NimbusCluster":
+                create_ret = resource.vm_create(job.req_image,
+                    job.req_vmtype, job.req_network, job.req_cpuarch,
+                    job.req_imageloc, job.req_memory, job.req_cpucores,
+                    job.req_storage, customization=customizations,
+                    vm_keepalive=job.keep_alive,)
+            elif resource.__class__.__name__ == "EC2Cluster":
+                create_ret = resource.vm_create(job.req_image,
+                    job.req_vmtype, job.req_network, job.req_cpuarch,
+                    job.req_ami, job.req_memory, job.req_cpucores,
+                    job.req_storage, customization=customizations,
+                    vm_keepalive=job.keep_alive, instance_type=job.instance_type,
+                    maximum_price=job.maximum_price,)
+
+            # If the VM create fails, try again on another resource
+            if (create_ret != 0):
+                log.debug("Creating VM for job %s failed on %s. " % (job.id, resource.name))
+                continue
+
+            # If the vm create didn't fail, break out of the loop
+            break
+
+        # If VM creation fails for user-job on all resources move to next user
+        if create_ret != 0:
+            log.debug("None of the resources could boot a vm for job %s. " % job.id + \
+                      "Leaving %s's jobs unscheduled, moving on to next user" % user)
+        return create_ret
+
+
+
     def poll_all_machines(self):
         """
         poll_all_machines - internal function to poll all running VMs,
@@ -438,6 +444,27 @@ class Scheduler(threading.Thread):
                                 break
                     if found_vm:
                         break
+
+    def schedule_memory(self):
+        usage = self.resource_pool.vmtype_resource_usage()
+        req_types = self.job_pool.get_required_vmtypes()
+        for vmtype in req_types:
+            if vmtype not in usage.keys():
+                usage[vmtype] = (0,0,0)
+        ordered = sorted(usage.iteritems(), key=lambda (k,v): v[0])
+        
+        job_to_schedule = None
+        for vmtype in ordered:
+            for user in self.job_pool.new_jobs.keys():
+                for job in self.job_pool.new_jobs[user]:
+                    if job.req_vmtype == vmtype:
+                        job_to_schedule = job
+                        break
+                if job_to_schedule != None:
+                    break
+            if job_to_schedule != None:
+                break
+        return job_to_schedule
 
 class Cleanup(threading.Thread):
     """
