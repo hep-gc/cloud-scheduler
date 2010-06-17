@@ -130,7 +130,8 @@ class Job:
         log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory))
     def get_job_info(self):
-        return "%-15s %-10s %-10s %-15i %-25s\n" % (self.id[-15:], self.user[-10:], self.req_vmtype[-10:], self.job_status, self.status[-25:])
+        CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
+        return "%-15s %-10s %-10s %-15s %-25s\n" % (self.id[-15:], self.user[-10:], self.req_vmtype[-10:], CONDOR_STATUS[self.job_status], self.status[-25:])
     @staticmethod
     def get_job_info_header(self):
         return "%-15s %-10s %-10s %-15s %-25s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status")
@@ -530,7 +531,7 @@ class JobPool:
             self.write_lock.acquire()
             for job in self.new_jobs[target_job.user]:
                 if target_job.id == job.id:
-                    job.job_status = target_job.job_status
+                    job.job_status = int(target_job.job_status)
                     ret = True
                     break
             self.write_lock.release()
@@ -538,7 +539,7 @@ class JobPool:
             self.write_lock.acquire()
             for job in self.sched_jobs[target_job.user]:
                 if target_job.id == job.id:
-                    job.job_status = target_job.job_status
+                    job.job_status = int(target_job.job_status)
                     ret = True
                     break
             self.write_lock.release()
@@ -635,8 +636,8 @@ class JobPool:
             else:
                 type_desired[vmtype] = 1
         num_users = Decimal(len(self.new_jobs.keys()))
-        for type in type_desired.keys():
-            type_desired[type] = type_desired[type] / num_users
+        for vmtype in type_desired.keys():
+            type_desired[vmtype] = type_desired[vmtype] / num_users
         return type_desired
 
     # Attempts to place a list of jobs into a Hold Status to prevent running
