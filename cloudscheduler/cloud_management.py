@@ -502,8 +502,23 @@ class ResourcePool:
         if count == 0:
             return {}
         count = 1 / count
-        for type in types.keys():
-            types[type] *= count
+        for vmtype in types.keys():
+            types[vmtype] *= count
+        return types
+
+    # VM Type Memory Distribution
+    def vmtype_mem_distribution(self):
+        usage = self.vmtype_resource_usage()
+        types = {}
+        mem_total = 0
+        for vmtype in usage:
+            types[vmtype] = usage[vmtype][0]
+            mem_total += usage[vmtype][0]
+        if mem_total == 0:
+            return {}
+        mem_total = 1 / Decimal(mem_total)
+        for vmtype in types.keys():
+            types[vmtype] *= mem_total
         return types
 
     # VM Type resource usage
