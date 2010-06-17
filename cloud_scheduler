@@ -132,8 +132,14 @@ class Scheduler(threading.Thread):
                     self.job_pool.write_lock.release()
 
             ## Figure out distribution of VMs requested and available
+            current_types = {}
+            if config.scheduling_metric == "slot":
+                current_types = self.resource_pool.vmtype_distribution()
+            if config.scheduling_metric == "memory":
+                current_types = self.resource_pool.vmtype_mem_distribution()
+
             desired_types = self.job_pool.job_type_distribution()
-            current_types = self.resource_pool.vmtype_distribution()
+
             # Negative difference means will need to create that type
             diff_types = {}
             for type in current_types.keys():
@@ -146,7 +152,6 @@ class Scheduler(threading.Thread):
                     diff_types[type] = -desired_types[type]
 
             ## Schedule user jobs
-            job_to_start = self.schedule_memory()
             # TODO: This should be less explicit in its reference to JobPool class parts.
             #       Something like 'for job in self.job_pool.get_unsched_jobs()'
             log.debug("Attempt to schedule user jobs")
@@ -223,7 +228,7 @@ class Scheduler(threading.Thread):
                 if config.graceful_shutdown:
                     #TODO graceful shutdown via hold / release
                     for vmtype in diff_types.keys():
-                        if diff_types[vmtype] > 0:
+                        if diff_types[vmtype] > Decimal(0.1):
                             self.job_pool.hold_vmtype(vmtype)
                         else:
                             self.job_pool.release_vmtype(vmtype)
@@ -359,7 +364,7 @@ class Scheduler(threading.Thread):
         # If VM creation fails for user-job on all resources move to next user
         if create_ret != 0:
             log.debug("None of the resources could boot a vm for job %s. " % job.id + \
-                      "Leaving %s's jobs unscheduled, moving on to next user" % user)
+                      "Leaving %s's jobs unscheduled, moving on to next user" % job.user)
         return create_ret
 
 
@@ -447,26 +452,6 @@ class Scheduler(threading.Thread):
                     if found_vm:
                         break
 
-    def schedule_memory(self):
-        usage = self.resource_pool.vmtype_resource_usage()
-        req_types = self.job_pool.get_required_vmtypes()
-        for vmtype in req_types:
-            if vmtype not in usage.keys():
-                usage[vmtype] = (0,0,0)
-        ordered = sorted(usage.iteritems(), key=lambda (k,v): v[0])
-        
-        job_to_schedule = None
-        for vmtype in ordered:
-            for user in self.job_pool.new_jobs.keys():
-                for job in self.job_pool.new_jobs[user]:
-                    if job.req_vmtype == vmtype:
-                        job_to_schedule = job
-                        break
-                if job_to_schedule != None:
-                    break
-            if job_to_schedule != None:
-                break
-        return job_to_schedule
 
 class Cleanup(threading.Thread):
     """
