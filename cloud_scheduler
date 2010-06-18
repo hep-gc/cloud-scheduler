@@ -29,6 +29,7 @@ import threading
 import ConfigParser
 import logging.handlers
 from optparse import OptionParser
+from decimal import *
 
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
@@ -228,7 +229,7 @@ class Scheduler(threading.Thread):
                 if config.graceful_shutdown:
                     #TODO graceful shutdown via hold / release
                     for vmtype in diff_types.keys():
-                        if diff_types[vmtype] > Decimal(0.1):
+                        if diff_types[vmtype] > Decimal('0.1'):
                             self.job_pool.hold_vmtype(vmtype)
                         else:
                             self.job_pool.release_vmtype(vmtype)
