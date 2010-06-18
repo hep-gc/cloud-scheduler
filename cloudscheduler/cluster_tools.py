@@ -545,14 +545,20 @@ class NimbusCluster(ICluster):
         time.sleep(self.VM_SHUTDOWN)
 
         # Execute the workspace destroy command: wait for return, stdout to log.
-        destroy_return = self.vm_exec_silent(destroy_cmd)
+        (destroy_return, destroy_out, destroy_error) = self.vm_execwait(destroy_cmd)
 
         # Check destroy return code. If successful, continue. Otherwise, set VM to
         # error state (wait, and the polling thread will attempt a destroy later)
         if (destroy_return != 0):
+            remove_vm = False
             log.warning("(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code.")
             vm.status = "Error"
-            return destroy_return
+            if vm.errorcount >= config.polling_error_threshold:
+                if destroy_error.find('workspace is unknown to the service') > 0:
+                    log.warning("Unknown VM id, removing vm %s on %s from system" % (vm.id, vm.clusteraddr))
+                    remove_vm = True
+            if not remove_vm:
+                return destroy_return
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
         self.resource_return(vm)
