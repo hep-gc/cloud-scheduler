@@ -563,7 +563,10 @@ class NimbusCluster(ICluster):
         # Return checked out resources And remove VM from the Cluster's 'vms' list
         self.resource_return(vm)
         self.vms_lock.acquire()
-        self.vms.remove(vm)
+        try:
+            self.vms.remove(vm)
+        except ValueError:
+            log.error("Attempted to remove vm from list that was already removed.")
         self.vms_lock.release()
 
         # Delete EPR
@@ -643,8 +646,8 @@ class NimbusCluster(ICluster):
         # and return return value.
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False)
-            ret = sp.wait()
-            return ret
+            (out, err) = sp.communicate(input=None)
+            return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return -1
@@ -663,8 +666,8 @@ class NimbusCluster(ICluster):
     def vm_execdump(self, cmd, out):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out)
-            ret = sp.wait()
-            return ret
+            (out, err) = sp.communicate(input=None)
+            return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
             return -1
@@ -688,9 +691,9 @@ class NimbusCluster(ICluster):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            ret = sp.wait()
+            #ret = sp.wait()
             (out, err) = sp.communicate(input=None)
-            return (ret, out, err)
+            return (sp.returncode, out, err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return (-1, "", "")
@@ -711,8 +714,8 @@ class NimbusCluster(ICluster):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            ret = sp.wait()
-            return ret
+            (out, err) = sp.communicate(input=None)
+            return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return -1
