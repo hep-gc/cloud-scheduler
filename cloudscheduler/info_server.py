@@ -85,8 +85,13 @@ class CloudSchedulerInfoServer(threading.Thread,):
                 return output
             def get_cluster_vm_resources(self):
                 output = VM.get_vm_info_header()
+                clusters = 0
+                vm_count = 0
                 for cluster in cloud_resources.resources:
+                    clusters += 1
+                    vm_count += len(cluster.vms)
                     output += cluster.get_cluster_vms_info()
+                output += '\nTotal VMs: %i. Total Clouds: %i' % (vm_count, clusters)
                 return output
             def get_cluster_info(self, cluster_name):
                 output = "Cluster Info: %s\n" % cluster_name
