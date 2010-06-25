@@ -80,9 +80,9 @@ new_condor_job_file = open(tempfile.mkstemp()[1], 'w')
 for line in original_condor_job_file:
     if line.strip() == 'Queue':
         new_condor_job_file.write('# MyProxy server and credentials information:\n')
-        new_condor_job_file.write('+VMMyProxyCredsName     = "%s"\n' % (creds_id,))
-        new_condor_job_file.write('+VMMyProxyServer        = "%s"\n' % (options.myproxy_server,))
-        new_condor_job_file.write('+VMMyProxyServerPort    = "%d"\n' % (options.myproxy_server_port,))
+        new_condor_job_file.write('+CSMyProxyCredsName     = "%s"\n' % (creds_id,))
+        new_condor_job_file.write('+CSMyProxyServer        = "%s"\n' % (options.myproxy_server,))
+        new_condor_job_file.write('+CSMyProxyServerPort    = "%d"\n' % (options.myproxy_server_port,))
         new_condor_job_file.write('\n')
 
     new_condor_job_file.write(line)
