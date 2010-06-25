@@ -20,18 +20,18 @@ log = logging.getLogger('cs-submit')
 #
 parser = OptionParser()
 
-parser.set_default(myproxy_server="alto.cloud.nrc.ca")
-parser.set_default(myproxy_server_port=7512)
-parser.set_default(cloud_scheduler_DN="/C=CA/O=Grid/CN=host/vm129.cloud.nrc.ca")
-parser.set_default(debug_output=False)
+parser.set_defaults(myproxy_server="alto.cloud.nrc.ca")
+parser.set_defaults(myproxy_server_port=7512)
+parser.set_defaults(cloud_scheduler_DN="/C=CA/O=Grid/CN=host/vm129.cloud.nrc.ca")
+parser.set_defaults(debug_output=False)
 
 parser.add_option("--myproxy-server", action="store", type="string", dest="myproxy_server", help="hostname of the myproxy server to user")
 parser.add_option("--myproxy-server-port", action="store", type="int", dest="myproxy_server_port", help="port of the myproxy server to user", default=7512)
 parser.add_option("--cs-dn", action="store", type="string", dest="cloud_scheduler_DN", help="DN of the cloud scheduler that will retreive the credentials")
-parser.add_option("-d", "--debug", action="store_true", dest="debug_output", help="Enable verbose output")
+parser.add_option("--debug", action="store_true", dest="debug_output", help="Enable verbose output")
 
 (options, args) = parser.parse_args()
-if debug_output == True:
+if options.debug_output == True:
     log.setLevel(logging.DEBUG)
 
 # Let's make sure that the command line arguments contains a 'condor_submit' element
