@@ -72,7 +72,8 @@ class Job:
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default", 
              VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
-             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0):
+             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, 
+             CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -90,7 +91,9 @@ class Job:
      VMKeepAlive - (int) The Length of time to keep alive before idle shutdown
      VMInstanceType - (str) The EC2 instance type of the VM requested
      VMMaximumPrice - (str) The maximum price in cents per hour for a VM (EC2 Only)
-
+     CSMyProxyCredsName - (str) The name of the credentials to retreive from the myproxy server
+     CSMyProxyServer - (str) The hostname of the myproxy server to retreive user creds from
+     CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
      """
      #TODO: Set default job properties in the cloud scheduler main config file
      #     (Have option to set them there, and default values)
@@ -112,6 +115,9 @@ class Job:
         self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
         self.instance_type = VMInstanceType
         self.maximum_price = int(VMMaximumPrice)
+        self.myproxy_server = CSMyProxyServer
+        self.myproxy_server_port = CSMyProxyServerPort
+        self.myproxy_creds_name = CSMyProxyCredsName
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -125,11 +131,12 @@ class Job:
 
     # Log a short string representing the job
     def log(self):
-        log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory))
+        log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyProxyServer, self.CSMyProxyServerPort))
     def log_dbg(self):
-        log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory))
+        log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyPr\
+oxyServer, self.CSMyProxyServerPort))
     def get_job_info(self):
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
         return "%-15s %-10s %-10s %-15s %-25s\n" % (self.id[-15:], self.user[-10:], self.req_vmtype[-10:], CONDOR_STATUS[self.job_status], self.status[-25:])
@@ -170,7 +177,26 @@ class Job:
             return
         self.status = status
 
+    def get_myproxy_server(self):
+        return self.myproxy_server
 
+    def get_myproxy_server_port(self):
+        return self.myproxy_server_port
+
+    def get_myproxy_creds_name(self):
+        return self.myproxy_creds_name
+
+    def set_myproxy_server(self, v):
+        self.myproxy_server = v
+        return
+
+    def set_myproxy_server_port(self, v):
+        self.myproxy_server_port = v
+        return
+
+    def set_myproxy_creds_name(self, v):
+        self.myproxy_creds_name = v
+        return
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
 # complete. Keeps scheduled and unscheduled jobs.
@@ -298,6 +324,10 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMKeepAlive")
                 _add_if_exists(xml_job, job_dictionary, "VMInstanceType")
                 _add_if_exists(xml_job, job_dictionary, "VMMaximumPrice")
+                _add_if_exists(xml_job, job_dictionary, "CSMyProxyCredsName")
+                _add_if_exists(xml_job, job_dictionary, "CSMyProxyServer")
+                _add_if_exists(xml_job, job_dictionary, "CSMyProxyServerPort")
+                
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")

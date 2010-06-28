@@ -372,6 +372,8 @@ class NimbusCluster(ICluster):
 
         log.debug("Nimbus cloud create command")
 
+        # TODO: Add the code to fetch the proxy from MyProxy server here? (Andre)
+        
         # Create a workspace metadata xml file
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
                 vm_cpuarch, vm_image)
