@@ -514,6 +514,7 @@ class ResourcePool:
         for vmtype in usage:
             types[vmtype] = usage[vmtype][0]
             mem_total += usage[vmtype][0]
+        del usage
         if mem_total == 0:
             return {}
         mem_total = 1 / Decimal(mem_total)
@@ -536,6 +537,7 @@ class ResourcePool:
         results = {}
         for vmtype in types.keys():
             results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
+        del types
         return results
 
 
@@ -547,6 +549,8 @@ class ResourcePool:
         auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current if 'GlobalJobId' in d.keys())
         auxPrevious = dict((d['Name'], d['GlobalJobId']) for d in previous if 'GlobalJobId' in d.keys())
         changed = [k for k,v in auxPrevious.items() if k in auxCurrent and auxCurrent[k] != v]
+        del auxCurrent
+        del auxPrevious
         for n in range(0, len(changed)):
             changed[n] = changed[n].split('.')[0]
         return changed

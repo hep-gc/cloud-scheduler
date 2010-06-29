@@ -73,7 +73,7 @@ class JobPoller(threading.Thread):
                 self.job_pool.update_jobs(condor_jobs)
             else:
                 log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
-
+            del condor_jobs
             log.debug("Job Poller waiting %ds..." % self.polling_interval)
             time.sleep(self.polling_interval)
 
@@ -116,7 +116,6 @@ class Scheduler(threading.Thread):
         while (not self.quit):
             log_with_line("Scheduler Cycle:")
 
-
             ## Check that jobs are valid for the clusters available
             bad_jobs = []
             for user in self.job_pool.new_jobs.keys():
@@ -151,7 +150,8 @@ class Scheduler(threading.Thread):
             for type in desired_types.keys():
                 if type not in current_types.keys():
                     diff_types[type] = -desired_types[type]
-
+            del desired_types
+            del current_types
             ## Schedule user jobs
             # TODO: This should be less explicit in its reference to JobPool class parts.
             #       Something like 'for job in self.job_pool.get_unsched_jobs()'
@@ -217,6 +217,8 @@ class Scheduler(threading.Thread):
                     # This type no longer needed, remove all remaining
                     else:
                         to_remove[vmtype] = count
+                del available_vmtypes_dict
+                del required_vmtypes_dict
                 # Go over the types and find idle machines to remove
                 self.remove_idle_machines(machineList, to_remove)
 

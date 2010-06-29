@@ -65,7 +65,7 @@ class Job:
 
     """
     # A list of possible statuses for internal job representation
-    statuses = ["Unscheduled", "Scheduled"]
+    statuses = ("Unscheduled", "Scheduled")
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1, 
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default", 
@@ -235,7 +235,7 @@ class JobPool:
 
         # Create the condor_jobs list to store jobs
         condor_jobs = self._condor_job_xml_to_job_list(job_ads)
-
+        del job_ads
         # When querying finishes successfully, reset last query timestamp
         last_query = datetime.datetime.now()
         log.debug("Done parsing jobs from Condor Schedd SOAP")
@@ -278,7 +278,7 @@ class JobPool:
 
         if status == "SUCCESS":
             xml_jobs = condor_jobs.findall(".//classAdArray/item")
-
+            del condor_jobs
             for xml_job in xml_jobs:
                 job_dictionary = {}
                 # Mandatory parameters
@@ -386,10 +386,12 @@ class JobPool:
         for job in query_jobs:
             self.add_new_job(job)
             log.verbose("Job %s added to unscheduled jobs list" % job.id)
+        del query_jobs
         # Update job status of all the non-new jobs
         log.debug("Updating Job Status")
         for job in jobs_to_update:
             self.update_job_status(job)
+        del jobs_to_update
 
         # DBG: print both jobs dicts before updating system.
         log.verbose("System jobs after system update:")
