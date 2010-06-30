@@ -19,19 +19,26 @@ import logging
 import datetime
 import tempfile
 import subprocess
-
-log = None
+import threading
 
 from subprocess import Popen
-try:
-    import boto.ec2
-except ImportError:
-        print >> sys.stderr, "To use EC2-style clouds, you need to have boto " \
-              "installed. You can install it from your package manager, " \
-              "or get it from http://code.google.com/p/boto/"
 
 import nimbus_xml
 import config
+import cloudscheduler.utilities as utilities
+
+log = utilities.get_cloudscheduler_logger()
+
+try:
+    import boto.ec2
+    import boto
+
+
+except ImportError:
+    log.error("To use EC2-style clouds, you need to have boto " \
+            "installed. You can install it from your package manager, " \
+            "or get it from http://code.google.com/p/boto/")
+
 
 # A class for storing created VM information. Used to populate Cluster classes
 # 'vms' lists.
@@ -66,11 +73,11 @@ class VM:
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
     # errorcount   - (int) Number of Polling Errors VM has had
-    def __init__(self, name="default_VM", id="default_VMID", vmtype="default_VMType",
-            hostname="default_vmhostname", clusteraddr="default_hostname",
-            cloudtype="def_cloudtype", network="public", cpuarch="x86",
-            image="default_image", memory=0, mementry=0,
-            cpucores=0, storage=0, keep_alive=0):
+    def __init__(self, name="", id="", vmtype="",
+            hostname="", clusteraddr="",
+            cloudtype="", network="public", cpuarch="x86",
+            image="", memory=0, mementry=0,
+            cpucores=0, storage=0, keep_alive=0, spot_id=""):
         self.name = name
         self.id = id
         self.vmtype = vmtype
@@ -89,6 +96,7 @@ class VM:
         self.last_state_change = None
         self.keep_alive = keep_alive
         self.idle_start = None
+        self.spot_id = spot_id
         
 
         # Set a status variable on new creation
@@ -143,9 +151,22 @@ class ICluster:
         self.cpu_cores = cpu_cores
         self.storageGB = storage
         self.vms = [] # List of running VMs
+        self.vms_lock = threading.RLock()
+        self.res_lock = threading.RLock()
 
         self.setup_logging()
         log.info("New cluster %s created" % self.name)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['vms_lock']
+        del state['res_lock']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self.vms_lock = threading.RLock()
+        self.res_lock = threading.RLock()
 
     def setup_logging(self):
         global log
@@ -280,9 +301,11 @@ class ICluster:
     # EXPAND HERE as checkout/return become more complex
     def resource_checkout(self, vm):
         log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
+        self.res_lock.acquire()
         self.vm_slots -= 1
         self.storageGB -= vm.storage
         self.memory[vm.mementry] -= vm.memory
+        self.res_lock.release()
 
     # Returns the resources taken by the passed in VM to the Cluster's internal
     # storage.
@@ -290,10 +313,12 @@ class ICluster:
     # Notes: (as for checkout)
     def resource_return(self, vm):
         log.info("Returning resources used by VM %s to Cluster %s" % (vm.id, self.name))
+        self.res_lock.acquire()
         self.vm_slots += 1
         self.storageGB += vm.storage
         # ISSUE: No way to know what mementry a VM is running on
         self.memory[vm.mementry] += vm.memory
+        self.res_lock.release()
 
 
 ## Implements cloud management functionality with the Nimbus service as part of
@@ -406,10 +431,8 @@ class NimbusCluster(ICluster):
             log.error("vm_create - couldn't find workspace id for new VM")
 
         # Get the first part of the hostname given to the VM
-        hostname = re.search("Hostname:\s(\w*)", create_out)
-        vm_hostname = "default_vmhostname"
-        if hostname:
-            vm_hostname = hostname.group(1)
+        vm_hostname = self._extract_hostname(create_out)
+        if vm_hostname:
             log.debug("Hostname for vm_id %s is %s" % (vm_id, vm_hostname))
         else:
             log.warning("Unable to get the VM hostname, for vm_id %s" % vm_id)
@@ -522,18 +545,29 @@ class NimbusCluster(ICluster):
         time.sleep(self.VM_SHUTDOWN)
 
         # Execute the workspace destroy command: wait for return, stdout to log.
-        destroy_return = self.vm_exec_silent(destroy_cmd)
+        (destroy_return, destroy_out, destroy_error) = self.vm_execwait(destroy_cmd)
 
         # Check destroy return code. If successful, continue. Otherwise, set VM to
         # error state (wait, and the polling thread will attempt a destroy later)
         if (destroy_return != 0):
+            remove_vm = False
             log.warning("(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code.")
             vm.status = "Error"
-            return destroy_return
+            if vm.errorcount >= config.polling_error_threshold:
+                if destroy_error.find('workspace is unknown to the service') > 0:
+                    log.warning("Unknown VM id, removing vm %s on %s from system" % (vm.id, vm.clusteraddr))
+                    remove_vm = True
+            if not remove_vm:
+                return destroy_return
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
         self.resource_return(vm)
-        self.vms.remove(vm)
+        self.vms_lock.acquire()
+        try:
+            self.vms.remove(vm)
+        except ValueError:
+            log.error("Attempted to remove vm from list that was already removed.")
+        self.vms_lock.release()
 
         # Delete EPR
         os.remove(vm_epr)
@@ -556,6 +590,7 @@ class NimbusCluster(ICluster):
         (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd)
         log.debug("(vm_poll) - Poll command completed with return code: %d" % poll_return)
 
+        self.vms_lock.acquire()
         # Check the poll command return
         if (poll_return != 0):
             log.warning("(vm_poll) - Failed polling VM %s (ID: %s)" % (vm.name, vm.id))
@@ -576,6 +611,9 @@ class NimbusCluster(ICluster):
                     vm.last_state_change = int(time.time())
                 vm.status = self.VM_STATES[tmp_state]
                 log.debug("(vm_poll) - VM state: %s, Nimbus state: %s" % (vm.status, tmp_state))
+
+                vm.hostname = self._extract_hostname(poll_out)
+
             else:
                 log.error("(vm_poll) - Error: state %s not in VM_STATES." % tmp_state)
                 log.debug("(vm_poll) - Setting VM status to \'Error\'")
@@ -588,6 +626,7 @@ class NimbusCluster(ICluster):
         vm.lastpoll = int(time.time())
 
         os.remove(vm_epr)
+        self.vms_lock.release()
 
         # Return the VM status as a string
         return vm.status
@@ -607,8 +646,8 @@ class NimbusCluster(ICluster):
         # and return return value.
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False)
-            ret = sp.wait()
-            return ret
+            (out, err) = sp.communicate(input=None)
+            return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return -1
@@ -627,8 +666,8 @@ class NimbusCluster(ICluster):
     def vm_execdump(self, cmd, out):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out)
-            ret = sp.wait()
-            return ret
+            (out, err) = sp.communicate(input=None)
+            return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
             return -1
@@ -652,9 +691,9 @@ class NimbusCluster(ICluster):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            ret = sp.wait()
+            #ret = sp.wait()
             (out, err) = sp.communicate(input=None)
-            return (ret, out, err)
+            return (sp.returncode, out, err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return (-1, "", "")
@@ -675,8 +714,8 @@ class NimbusCluster(ICluster):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            ret = sp.wait()
-            return ret
+            (out, err) = sp.communicate(input=None)
+            return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return -1
@@ -721,6 +760,21 @@ class NimbusCluster(ICluster):
         ws_list = [config.workspace_path, "-e", epr_file, "--rpquery"]
         return ws_list
 
+    @staticmethod
+    def _extract_hostname(create_response):
+        """
+        _extract_hostname -- extracts the hostname from a Nimbus create call
+
+        returns short hostname of VM as string
+        """
+
+        try:
+            matches = re.search("Hostname:\s(.*)[\.\s]", create_response)
+            hostname = matches.group(1)
+        except:
+            return ""
+
+        return hostname
 
 class EC2Cluster(ICluster):
 
@@ -789,6 +843,10 @@ class EC2Cluster(ICluster):
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None):
 
+        # Janky minimum version test for boto
+        if float(boto.Version[:-1]) < 1.9:
+            log.warning("Versions of boto before 1.9 don't support spot instances")
+
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, cpu_archs=cpu_archs, networks=networks,
@@ -812,13 +870,11 @@ class EC2Cluster(ICluster):
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
-                  vm_keepalive=0, instance_type=""):
+                  vm_keepalive=0, instance_type="", maximum_price=0):
 
         log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
-        if instance_type:
-            instance_type = instance_type
-        else:
+        if not instance_type:
             instance_type = self.DEFAULT_INSTANCE_TYPE
 
         if customization:
@@ -842,14 +898,42 @@ class EC2Cluster(ICluster):
                 for potential_match in images:
                     if potential_match.id == vm_image:
                         image = potential_match
+                        break
 
             if image:
-                reservation = image.run(1,1,
-                                        user_data=user_data,
-                                        security_groups=self.security_groups,
-                                        instance_type=instance_type)
-                instance = reservation.instances[0]
-                log.debug("Booted VM %s" % instance.id)
+                if maximum_price is 0: # don't request a spot instance
+                    try:
+                        reservation = image.run(1,1,
+                                                user_data=user_data,
+                                                security_groups=self.security_groups,
+                                                instance_type=instance_type)
+                        instance_id = reservation.instances[0].id
+                        log.debug("Booted VM %s" % instance_id)
+                    except:
+                        log.exception("There was a problem creating an EC2 instance...")
+                        return self.ERROR
+
+                else: # get a spot instance of no more than maximum_price
+                    try:
+                        price_in_dollars = str(float(maximum_price) / 100)
+                        reservation = connection.request_spot_instances(
+                                                  price_in_dollars,
+                                                  image.id,
+                                                  user_data=user_data,
+                                                  security_groups=self.security_groups,
+                                                  instance_type=instance_type)
+                        spot_id = str(reservation[0].id)
+                        instance_id = ""
+                        log.debug("Reserved instance %s at no more than %s" % (spot_id, price_in_dollars))
+                    except AttributeError:
+                        log.exception("Your version of boto doesn't seem to support "\
+                                  "spot instances. You need at least 1.9")
+                        return self.ERROR
+                    except:
+                        log.exception("Problem creating an EC2 spot instance...")
+                        return self.ERROR
+
+
             else:
                 log.error("Couldn't find image %s on %s" % (vm_image, self.host))
                 return self.ERROR
@@ -860,15 +944,13 @@ class EC2Cluster(ICluster):
 
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
-            # At this point, there should always be a valid mementry, as the
-            # ResourcePool get_resource methods have selected this cluster
-            # based on having an open  memory entry that fits VM requirements.
+            #TODO: this is kind of pointless with EC2...
             log.debug("Cluster memory list has no sufficient memory " +\
                       "entries (Not supposed to happen). Returning error.")
             return self.ERROR
         log.debug("vm_create - Memory entry found in given cluster: %d" %
                                                                     vm_mementry)
-        new_vm = VM(name = vm_name, id = instance.id, vmtype = vm_type,
+        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     cpuarch = vm_cpuarch, image= vm_image,
@@ -876,7 +958,9 @@ class EC2Cluster(ICluster):
                     cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive)
 
-        new_vm.status = self.VM_STATES.get(instance.state, "Starting")
+        if spot_id:
+            new_vm.spot_id = spot_id
+
         self.resource_checkout(new_vm)
         self.vms.append(new_vm)
 
@@ -884,20 +968,35 @@ class EC2Cluster(ICluster):
 
 
     def vm_poll(self, vm):
-        log.debug("Polling vm with instance id %s" % vm.id)
-        # We should only get on reservation, and one instance back
         try:
+            log.debug("Polling vm with instance id %s" % vm.id)
             connection = self._get_connection()
+
+            if vm.spot_id:
+                try:
+                    spot_reservation = connection.get_all_spot_instance_requests(vm.spot_id)[0]
+                    vm.id = str(spot_reservation.instanceId)
+                except AttributeError:
+                    log.debug("Spot reservation %s doesn't have a VM id yet." % vm.spot_id)
+                    return vm.status
+                except:
+                    log.exception("Problem getting information for spot vm %s" % vm.spot_id)
+                    return vm.status
+
             reservations = connection.get_all_instances([vm.id])
             instance = reservations[0].instances[0]
+
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
+        self.vms_lock.acquire()
         if vm.status != self.VM_STATES.get(instance.state, "Starting"):
+
             vm.last_state_change = int(time.time())
         vm.status = self.VM_STATES.get(instance.state, "Starting")
         vm.hostname = instance.public_dns_name
         vm.lastpoll = int(time.time())
+        self.vms_lock.release()
         return vm.status
 
 
@@ -907,16 +1006,24 @@ class EC2Cluster(ICluster):
         # Kill VM on EC2
         try:
             connection = self._get_connection()
-            reservations = connection.get_all_instances([vm.id])
-            instance = reservations[0].instances[0]
-            instance.stop()
+
+            if vm.spot_id:
+                connection.cancel_spot_instance_requests([vm.spot_id])
+
+            if vm.id:
+                reservations = connection.get_all_instances([vm.id])
+                instance = reservations[0].instances[0]
+                instance.stop()
+
         except boto.exception.EC2ResponseError, e:
-            log.error("Couldn't destroy vm because: %s" % e.error_message)
+            log.exception("Couldn't destroy vm!")
             return self.ERROR
 
         # Delete references to this VM
         self.resource_return(vm)
+        self.vms_lock.acquire()
         self.vms.remove(vm)
+        self.vms_lock.release()
 
         return 0
 

@@ -49,84 +49,137 @@ class ResourcePool:
 
     ## Instance variables
     resources = []
+    config_file = ""
 
     ## Instance methods
 
     # Constructor
     # name   - The name of the ResourcePool being created
-    def __init__(self, name):
+    def __init__(self, config_file, name="Resources"):
         global log
         log = logging.getLogger("cloudscheduler")
+
         log.debug("New ResourcePool " + name + " created")
         self.name = name
-        self.write_lock = threading.Lock()
 
         _collector_wsdl = "file://" + determine_path() \
                           + "/wsdl/condorCollector.wsdl"
         self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
 
-    # Read in defined clouds from cloud definition file
-    def setup(self, config_file):
-        #TODO: Merge this with _init_
+        self.config_file = os.path.expanduser(config_file)
 
-        log.info("Reading cloud resource configuration file %s" % config_file)
-        # Check for config files with ~ in the path
-        config_file = os.path.expanduser(config_file)
+        self.setup()
+        self.load_persistence()
 
-        cloud_config = ConfigParser.ConfigParser()
+    def setup(self):
+
+        log.info("Loading cloud resource configuration file %s" % self.config_file)
+
+        new_resources = []
+
         try:
-            cloud_config.read(config_file)
+            cloud_config = ConfigParser.ConfigParser()
+            cloud_config.read(self.config_file)
         except ConfigParser.ParsingError:
-            print >> sys.stderr, "Cloud config problem: Couldn't " \
+            log.exception("Cloud config problem: Couldn't " \
                   "parse your cloud config file. Check for spaces " \
-                  "before or after variables."
-            raise
-
+                  "before or after variables.")
+            sys.exit(1)
 
         # Read in config file, parse into Cluster objects
         for cluster in cloud_config.sections():
 
-            cloud_type = get_or_none(cloud_config, cluster, "cloud_type")
-
-            # Create a new cluster according to cloud_type
-            if cloud_type == "Nimbus":
-                new_cluster = cluster_tools.NimbusCluster(name = cluster,
-                               host = get_or_none(cloud_config, cluster, "host"),
-                               cloud_type = get_or_none(cloud_config, cluster, "cloud_type"),
-                               memory = map(int, get_or_none(cloud_config, cluster, "memory").split(",")),
-                               cpu_archs = get_or_none(cloud_config, cluster, "cpu_archs").split(","),
-                               networks = get_or_none(cloud_config, cluster, "networks").split(","),
-                               vm_slots = int(get_or_none(cloud_config, cluster, "vm_slots")),
-                               cpu_cores = int(get_or_none(cloud_config, cluster, "cpu_cores")),
-                               storage = int(get_or_none(cloud_config, cluster, "storage")),
-                               )
-
-            elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus":
-                new_cluster = cluster_tools.EC2Cluster(name = cluster,
-                               host = get_or_none(cloud_config, cluster, "host"),
-                               cloud_type = get_or_none(cloud_config, cluster, "cloud_type"),
-                               memory = map(int, get_or_none(cloud_config, cluster, "memory").split(",")),
-                               cpu_archs = get_or_none(cloud_config, cluster, "cpu_archs").split(","),
-                               networks = get_or_none(cloud_config, cluster, "networks").split(","),
-                               vm_slots = int(get_or_none(cloud_config, cluster, "vm_slots")),
-                               cpu_cores = int(get_or_none(cloud_config, cluster, "cpu_cores")),
-                               storage = int(get_or_none(cloud_config, cluster, "storage")),
-                               access_key_id = get_or_none(cloud_config, cluster, "access_key_id"),
-                               secret_access_key = get_or_none(cloud_config, cluster, "secret_access_key"),
-                               security_group = get_or_none(cloud_config, cluster, "security_group"),
-                               )
-
-            else:
-                log.error("ResourcePool.setup doesn't know what to do with the"
-                          + "%s cloud_type" % cloud_type)
-                continue
-
-            # Add the new cluster to a resource pool
+            new_cluster = self._cluster_from_config(cloud_config, cluster)
             if new_cluster:
-                self.add_resource(new_cluster)
-        #END For
+                new_resources.append(new_cluster)
 
-        self.load_persistence()
+        # Check to see if we are removing any clusters. If so,
+        # shut down all the VMs of the cluster we're removing
+        original_resource_names = [cluster.name for cluster in self.resources]
+        new_resource_names = [cluster.name for cluster in new_resources]
+
+        removed_names = set(original_resource_names) - set(new_resource_names)
+        added_names = set(new_resource_names) - set(original_resource_names)
+        updated_names = set(original_resource_names) & set(new_resource_names)
+
+
+        # Set resources list to empty to make sure no VMs are started
+        # while we're shuffling things around.
+        old_resources = []
+        for cluster in reversed(self.resources):
+            old_resources.append(cluster)
+            self.resources.remove(cluster)
+
+        # Update resources
+        # Do this by replacing each updated cluster object with the
+        # cluster object built by reading the config file, then copying
+        # over to the new object. Feel free to refactor me. I dare you.
+        for updated_name in updated_names:
+            for old_cluster in old_resources:
+                if old_cluster.name == updated_name:
+
+                    for new_cluster in new_resources:
+                        if new_cluster.name == updated_name:
+
+                            new_cluster.vms = old_cluster.vms
+                            self.resources.append(new_cluster)
+
+        # Add new resources
+        for new_cluster_name in added_names:
+            for new_cluster in new_resources:
+                if new_cluster.name == new_cluster_name:
+                    self.resources.append(new_cluster)
+
+        # Remove resources
+        # TODO: Check with mike if this is okay.
+        for removed_cluster_name in removed_names:
+            for cluster in reversed(old_resources):
+                if cluster.name == removed_cluster_name:
+                    log.info("Removing %s from available resources" % 
+                                                          removed_cluster_name)
+                    for vm in cluster.vms:
+                        cluster.vm_destroy(vm)
+
+                    old_resources.remove(cluster)
+
+
+    @staticmethod
+    def _cluster_from_config(config, cluster):
+        """
+        Create a new cluster object from a config file's specification
+        """
+        cloud_type = get_or_none(config, cluster, "cloud_type")
+        if cloud_type == "Nimbus":
+            return cluster_tools.NimbusCluster(name = cluster,
+                    host = get_or_none(config, cluster, "host"),
+                    cloud_type = get_or_none(config, cluster, "cloud_type"),
+                    memory = map(int, get_or_none(config, cluster, "memory").split(",")),
+                    cpu_archs = get_or_none(config, cluster, "cpu_archs").split(","),
+                    networks = get_or_none(config, cluster, "networks").split(","),
+                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
+                    storage = int(get_or_none(config, cluster, "storage")),
+                    )
+
+        elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus":
+            return cluster_tools.EC2Cluster(name = cluster,
+                    host = get_or_none(config, cluster, "host"),
+                    cloud_type = get_or_none(config, cluster, "cloud_type"),
+                    memory = map(int, get_or_none(config, cluster, "memory").split(",")),
+                    cpu_archs = get_or_none(config, cluster, "cpu_archs").split(","),
+                    networks = get_or_none(config, cluster, "networks").split(","),
+                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
+                    storage = int(get_or_none(config, cluster, "storage")),
+                    access_key_id = get_or_none(config, cluster, "access_key_id"),
+                    secret_access_key = get_or_none(config, cluster, "secret_access_key"),
+                    security_group = get_or_none(config, cluster, "security_group"),
+                    )
+
+        else:
+            log.error("ResourcePool.setup doesn't know what to do with the"
+                    + "%s cloud_type" % cloud_type)
+            return None
 
 
     # Add a cluster resource to the pool's resource list
@@ -221,21 +274,27 @@ class ResourcePool:
         for cluster in self.resources:
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
+                log.debug("get_fitting_resources - No free slots in %s" % cluster.name)
                 continue
             # If the cluster does not have the required CPU architecture
             if (cpuarch not in cluster.cpu_archs):
+                log.debug("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
                 continue
             # If required network is NOT in cluster's network associations
             if (network not in cluster.network_pools):
+                log.debug("get_fitting_resources - No matching networks in %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
+                log.debug("get_fitting_resources - No available memory entry in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient CPU cores
             if (cpucores > cluster.cpu_cores):
+                log.debug("get_fitting_resources - Not enough CPU Cores in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient storage capacity
             if (storage > cluster.storageGB):
+                log.debug("get_fitting_resources - Not enough storage in %s" % cluster.name)
                 continue
             # Add cluster to the list to be returned (meets all job reqs)
             fitting_clusters.append(cluster)
@@ -443,9 +502,45 @@ class ResourcePool:
         if count == 0:
             return {}
         count = 1 / count
-        for type in types.keys():
-            types[type] *= count
+        for vmtype in types.keys():
+            types[vmtype] *= count
         return types
+
+    # VM Type Memory Distribution
+    def vmtype_mem_distribution(self):
+        usage = self.vmtype_resource_usage()
+        types = {}
+        mem_total = 0
+        for vmtype in usage:
+            types[vmtype] = usage[vmtype][0]
+            mem_total += usage[vmtype][0]
+        del usage
+        if mem_total == 0:
+            return {}
+        mem_total = 1 / Decimal(mem_total)
+        for vmtype in types.keys():
+            types[vmtype] *= mem_total
+        return types
+
+    # VM Type resource usage
+    # Counts up how much/many of each resource (RAM, Cores, Storage)
+    # are being used by each type of VM
+    def vmtype_resource_usage(self):
+        types = {}
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.vmtype in types.keys():
+                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+                else:
+                    types[vm.vmtype] = []
+                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+        results = {}
+        for vmtype in types.keys():
+            results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
+        del types
+        return results
+
+
 
     # Take the current and previous machineLists
     # Figure out which machines have changed jobs
@@ -454,6 +549,8 @@ class ResourcePool:
         auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current if 'GlobalJobId' in d.keys())
         auxPrevious = dict((d['Name'], d['GlobalJobId']) for d in previous if 'GlobalJobId' in d.keys())
         changed = [k for k,v in auxPrevious.items() if k in auxCurrent and auxCurrent[k] != v]
+        del auxCurrent
+        del auxPrevious
         for n in range(0, len(changed)):
             changed[n] = changed[n].split('.')[0]
         return changed
@@ -486,8 +583,15 @@ class ResourcePool:
         except IOError, e:
             log.debug("No persistence file to load. Exited normally last time.")
             return
+        except:
+            log.exception("Unknown problem opening persistence file!")
+            return
 
-        old_resources = pickle.load(persistence_file)
+        try:
+            old_resources = pickle.load(persistence_file)
+        except:
+            log.exception("Unknown problem opening persistence file!")
+            return
         persistence_file.close()
 
         for old_cluster in old_resources:

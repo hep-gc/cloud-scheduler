@@ -34,6 +34,8 @@ workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
 polling_error_threshold = 10
 graceful_shutdown = False
+getclouds = False
+scheduling_metric = "slot"
 
 log_level = "INFO"
 log_location = None
@@ -62,6 +64,8 @@ def setup(path=None):
     global persistence_file
     global polling_error_threshold
     global graceful_shutdown
+    global getclouds
+    global scheduling_metric
 
     global log_level
     global log_location
@@ -166,7 +170,13 @@ def setup(path=None):
 
     if config_file.has_option("global", "graceful_shutdown"):
         graceful_shutdown = config_file.getboolean("global", "graceful_shutdown")
-            
+
+    if config_file.has_option("global", "getclouds"):
+        getclouds = config_file.getboolean("global", "getclouds")
+        
+    if config_file.has_option("global", "scheduling_metric"):
+        scheduling_metric = config_file.get("global", "scheduling_metric")
+
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")
 
