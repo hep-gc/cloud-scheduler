@@ -25,19 +25,20 @@ For more documentation on Cloud Scheduler, please refer to:
 * [lxml](http://codespeak.net/lxml/)
 * [simple-json](http://undefined.org/python/#simplejson) For python 2.4/2.5
 
-You can install these on RHEL5 (and clones) with the following:
+You can install the Python libraries listed above with pip:
 
-    # yum install python-simplejson lxml
-    # wget https://fedorahosted.org/releases/s/u/suds/python-suds-0.3.9-1.fc11.noarch.rpm
-    # yum localinstall python-suds.0.3.9-1.fc11.noarch.rpm
-    # wget http://boto.googlecode.com/files/boto-1.9b.tar.gz
-    # tar xvf boto-1.9b.tar.gz
-    # cd boto-1.9b
-    # python setup.py install
+lxml requires libxml2 and libxslt to be installed. On RHEL5 and friends, you
+can do this with yum:
 
-On Mac OS X, using Macports, you can install these with the following:
+    # yum install -y python-setuptools gcc libxslt libxslt-devel libxml2-devel libxml2
 
-    # sudo port install py-suds py-boto py-lxml
+Now install pip:
+
+    # easy_install pip
+
+And all your packages:
+
+    # pip install simplejson suds boto lxml
 
 ## Install
 To install cloud scheduler, as root, run:
@@ -93,6 +94,9 @@ Normally, the workspace reference client, workspace.sh, isn't executable. The
 way Cloud Scheduler uses it makes this neccessary. 
 
     $ chmod +x nimbus-cloud-client-015/lib/workspace.sh
+
+You'll need to point your Cloud Scheduler install to this client. Set the
+workspace_path otion to point there.
 
 Be sure that you have a valid x509 proxy available before starting Cloud
 Scheduler. You can create one with:
