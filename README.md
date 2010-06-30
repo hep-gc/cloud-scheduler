@@ -18,6 +18,7 @@ For more documentation on Cloud Scheduler, please refer to:
 ## Prerequisites
 
 * A working Condor 7.5.x install (details below)
+* Nimbus Cloud Client tools (details below)
 * [Python 2.4+](http://www.python.org/)
 * [Suds 0.3.9+](https://fedorahosted.org/suds/)
 * [boto](http://code.google.com/p/boto/)
@@ -37,6 +38,11 @@ You can install these on RHEL5 (and clones) with the following:
 On Mac OS X, using Macports, you can install these with the following:
 
     # sudo port install py-suds py-boto py-lxml
+
+## Install
+To install cloud scheduler, as root, run:
+
+    # python setup.py install
 
 ## Condor Install
 Cloud Scheduler works with [Condor](http://www.cs.wisc.edu/condor/), which needs
@@ -72,10 +78,26 @@ is a sample configuration for your Condor installation in scripts/condor/worker/
 condor_config, condor_config.local and central_manager must be in /etc/condor/
 and you must use the customized condor init script scripts/condor/worker/condor
 
-## Install
-To install cloud scheduler, as root, run:
+## Installing Nimbus Cloud Client
 
-    # python setup.py install
+The Nimbus Cloud Client is the standard client used to connect to Nimbus
+clouds.Cloud Scheduler uses this client to communicate with Nimbus.
+
+Until Nimbus Cloud Client 015 is released, you need to install a patched
+version of Cloud Client. We assume you want to install Cloud Client to /opt.
+
+    $ wget http://cloud.github.com/downloads/oldpatricka/nimbus/nimbus-cloud-client-015.tar.gz
+    $ tar xzf nimbus-cloud-client-015.tar.gz
+
+Normally, the workspace reference client, workspace.sh, isn't executable. The
+way Cloud Scheduler uses it makes this neccessary. 
+
+    $ chmod +x nimbus-cloud-client-015/lib/workspace.sh
+
+Be sure that you have a valid x509 proxy available before starting Cloud
+Scheduler. You can create one with:
+
+    $ nimbus-cloud-client-015/bin/grid-proxy-init.sh
 
 ## Configuration
 
