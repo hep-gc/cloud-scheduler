@@ -679,6 +679,7 @@ def main():
 
     info_serv.stop()
     info_serv.join()
+    log.info("Cloud Schedler stopped. Bye!")
     sys.exit()
 
 
