@@ -32,6 +32,7 @@ import datetime
 import threading
 import subprocess
 from urllib2 import URLError
+from StringIO import StringIO
 try:
     from lxml import etree
 except:
@@ -272,14 +273,10 @@ class JobPool:
 
         jobs = []
 
-        condor_jobs = etree.fromstring(condor_xml)
-
-        status = condor_jobs.findtext(".//status/code")
-
-        if status == "SUCCESS":
-            xml_jobs = condor_jobs.findall(".//classAdArray/item")
-            del condor_jobs
-            for xml_job in xml_jobs:
+        context = etree.iterparse(StringIO(condor_xml))
+        for action, elem in context:
+            if elem.tag == "item" and elem.getparent().tag == "classAdArray":
+                xml_job = elem
                 job_dictionary = {}
                 # Mandatory parameters
                 job_dictionary['GlobalJobId'] = _job_attribute(xml_job, "GlobalJobId")
@@ -310,7 +307,10 @@ class JobPool:
                         job_dictionary['VMType'] = vmtype
 
                 jobs.append(Job(**job_dictionary))
+
+                elem.clear()
         return jobs
+
 
 
     # Updates the system jobs:
