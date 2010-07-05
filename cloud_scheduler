@@ -17,7 +17,6 @@
 
 
 ## Imports
-
 import os
 import sys
 import time
@@ -178,7 +177,7 @@ class Scheduler(threading.Thread):
         ########################################################################
 
         while (not self.quit):
-            log_with_line("Scheduler Cycle:")
+            log.debug("### Scheduler Cycle:")
 
             ## Check that jobs are valid for the clusters available
             bad_jobs = []
@@ -350,7 +349,7 @@ class Scheduler(threading.Thread):
         log.debug("Exiting scheduler thread")
         # Destroy all VMs and finish
         remaining_vms = []
-        log_with_line("Destroying all remaining VMs and exiting :-(")
+        log.debug("### Destroying all remaining VMs and exiting :-(")
         for cluster in self.resource_pool.resources:
             i = len(cluster.vms)
             while (i != 0):
@@ -753,13 +752,6 @@ def set_options(parser):
     parser.add_option("-m", "--MDS", dest="mds_server", metavar="SERVER",
                       help="Designate an MDS server from which cloud cluster "
                            "information is obtained")
-
-
-# logs readable lined lines across the screen with message
-def log_with_line(msg):
-    msg_len = len(msg)
-    fill = "-" * (120-msg_len)
-    log.debug("-----"+msg+fill)
 
 
 ##
