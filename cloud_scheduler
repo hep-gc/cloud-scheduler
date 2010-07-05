@@ -656,20 +656,20 @@ def main():
     info_threads.append(info_serv)
 
     # Create the Job Polling thread
-    #job_poller = JobPoller(job_pool)
-    #service_threads.append(job_poller)
+    job_poller = JobPoller(job_pool)
+    service_threads.append(job_poller)
 
     # Create the VM Polling thread
-    #vm_poller = VMPoller(cloud_resources)
-    #service_threads.append(vm_poller)
+    vm_poller = VMPoller(cloud_resources)
+    service_threads.append(vm_poller)
 
     # Create the Scheduling thread
     scheduler = Scheduler(cloud_resources, job_pool)
     service_threads.append(scheduler)
 
     # Create the Cleanup Thread
-    #cleaner = Cleanup(cloud_resources, job_pool)
-    #service_threads.append(cleaner)
+    cleaner = Cleanup(cloud_resources, job_pool)
+    service_threads.append(cleaner)
 
     # Create the GetClouds Thread if wanted
     if config.getclouds:
