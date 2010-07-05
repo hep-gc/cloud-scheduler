@@ -245,8 +245,7 @@ class ICluster:
     #       - OpenNebula (and Eucalyptus?) vm_ids are names/numbers
     # TODO: Explain all params
 
-    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-            vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0):
+    def vm_create(self, **args):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
