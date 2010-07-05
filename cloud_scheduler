@@ -733,8 +733,12 @@ def main():
     for thread in service_threads:
         thread.join()
 
-    info_serv.stop()
-    info_serv.join()
+    for thread in info_threads:
+        thread.stop()
+
+    for thread in info_threads:
+        thread.join()
+
     log.info("Cloud Scheduler stopped. Bye!")
     sys.exit()
 
