@@ -42,8 +42,72 @@ import cloudscheduler.job_management as job_management
 
 log = utilities.get_cloudscheduler_logger()
 
-
 # Threaded Classes
+
+class VMPoller(threading.Thread):
+    """
+    VMPoller - Polls all the requested VMs, and checks on their status
+    """
+    def __init__(self, resource_pool):
+        threading.Thread.__init__(self)
+        self.resource_pool = resource_pool
+        self.quit          = False
+        self.starting_poll_interval = 120 # 2 minutes
+        self.running_poll_interval = 900 # 15 minutes
+        self.run_interval = 5 # seconds
+
+    def stop(self):
+        log.debug("Waiting for VM polling loop to end")
+        self.quit = True
+
+    def run(self):
+        log.info("Starting VM polling...")
+
+        while not self.quit:
+            self.poll_all_machines()
+            time.sleep(self.run_interval)
+            
+
+    def poll_all_machines(self):
+        """
+        poll_all_machines - internal function to poll all running VMs,
+                            and then update their status
+        """
+        log.debug("Polling all running VMs...")
+        for cluster in self.resource_pool.resources:
+            for vm in cluster.vms:
+                now = int(time.time())
+
+                if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
+                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                    continue
+                elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
+                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                    continue
+
+                ret_state = cluster.vm_poll(vm)
+
+                # Print polled VM's state and details
+                log.debug("Polled VM: ")
+                vm.log_dbg()
+
+                # If the VM is in an error state, keep track of error and
+                # after passing some threshold destroy the machine.
+                # Decrementing to avoid a long running VM from accumulating periodic
+                # errors and being destroyed
+                if ret_state == "Error":
+                    vm.errorcount += 1
+                elif vm.errorcount > 0:
+                    vm.errorcount = 0
+                if vm.errorcount >= config.polling_error_threshold:
+                    log.info("VM %s in error state. Destroying..." % vm.name)
+
+                    # Destroy the VM
+                    destroy_ret = cluster.vm_destroy(vm)
+                    if (destroy_ret != 0):
+                        log.error("Destroying VM failed. Leaving VM in error state.")
+                        continue
+
 
 class JobPoller(threading.Thread):
     """
@@ -274,7 +338,6 @@ class Scheduler(threading.Thread):
                 log.debug("No Machines returned by Condor Collector Query")
 
             self.resource_pool.save_persistence()
-            self.poll_all_machines()
 
             ## Wait for a number of seconds
             log.debug("Scheduler - Waiting %ss" % self.scheduling_interval)
@@ -284,7 +347,7 @@ class Scheduler(threading.Thread):
         # ENDWHILE - End of the main scheduler loop
 
         # Exit the scheduling thread - clean up VMs and exit
-        log.info("Exiting scheduler thread")
+        log.debug("Exiting scheduler thread")
         # Destroy all VMs and finish
         remaining_vms = []
         log_with_line("Destroying all remaining VMs and exiting :-(")
@@ -371,46 +434,6 @@ class Scheduler(threading.Thread):
         return create_ret
 
 
-
-    def poll_all_machines(self):
-        """
-        poll_all_machines - internal function to poll all running VMs,
-                            and then update their status
-        """
-        log.debug("Polling all running VMs...")
-        for cluster in self.resource_pool.resources:
-            for vm in cluster.vms:
-                now = int(time.time())
-
-                if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
-                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
-                    continue
-                elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
-                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
-                    continue
-
-                ret_state = cluster.vm_poll(vm)
-
-                # Print polled VM's state and details
-                log.debug("Polled VM: ")
-                vm.log_dbg()
-
-                # If the VM is in an error state, keep track of error and
-                # after passing some threshold destroy the machine.
-                # Decrementing to avoid a long running VM from accumulating periodic
-                # errors and being destroyed
-                if ret_state == "Error":
-                    vm.errorcount += 1
-                elif vm.errorcount > 0:
-                    vm.errorcount = 0
-                if vm.errorcount >= config.polling_error_threshold:
-                    log.info("VM %s in error state. Destroying..." % vm.name)
-
-                    # Destroy the VM
-                    destroy_ret = cluster.vm_destroy(vm)
-                    if (destroy_ret != 0):
-                        log.error("Destroying VM failed. Leaving VM in error state.")
-                        continue
 
     def remove_idle_machines(self, machineList, to_remove):
         for vmtype, count in to_remove.iteritems():
@@ -620,28 +643,38 @@ def main():
     # Log the resource pool
     cloud_resources.log_pool()
 
+    # We maintain two lists of threads, service and info. Service threads
+    # are neccessary for cloud scheduler to actually do anything, and the
+    # info threads are to give the user information about what's going on.
+
+    service_threads = []
+    info_threads = []
+
     # Start the cloud scheduler info server for RPCs
     info_serv = info_server.CloudSchedulerInfoServer(cloud_resources, job_pool)
     info_serv.daemon = True
-    info_serv.start()
+    info_threads.append(info_serv)
 
     # Create the Job Polling thread
-    job_poller = JobPoller(job_pool)
-    job_poller.start()
+    #job_poller = JobPoller(job_pool)
+    #service_threads.append(job_poller)
+
+    # Create the VM Polling thread
+    #vm_poller = VMPoller(cloud_resources)
+    #service_threads.append(vm_poller)
 
     # Create the Scheduling thread
     scheduler = Scheduler(cloud_resources, job_pool)
-    scheduler.start()
+    service_threads.append(scheduler)
 
     # Create the Cleanup Thread
-    cleaner = Cleanup(cloud_resources, job_pool)
-    cleaner.start()    
+    #cleaner = Cleanup(cloud_resources, job_pool)
+    #service_threads.append(cleaner)
 
     # Create the GetClouds Thread if wanted
-    getclouds = None
     if config.getclouds:
         getclouds = GetClouds(cloud_resources)
-        getclouds.start()
+        service_threads.append(getclouds)
 
     # Set SIGTERM (kill) handler
     signal.signal(signal.SIGTERM, term_handler)
@@ -651,35 +684,41 @@ def main():
     signal.signal(signal.SIGUSR1, reconfig_handler)
 
 
+    # Start all the threads
+    for thread in info_threads:
+        thread.start()
+
+    for thread in service_threads:
+        thread.start()
+
     should_be_running = True
 
     # Wait for keyboard input to exit the cloud scheduler
     try:
-        while scheduler.isAlive() and job_poller.isAlive() \
-            and cleaner.isAlive() and (not config.getclouds or getclouds.isAlive()):
-            time.sleep(2)
+        while True:
+            for thread in service_threads:
+                if not thread.isAlive():
+                    break
+            time.sleep(1)
     except (SystemExit, KeyboardInterrupt):
-        log.info("Exiting normally due to KeyboardInterrupt or SystemExit")
+        log.info("Caught a signal that someone wants me to quit!")
         should_be_running = False
 
     if should_be_running:
         log.error("Whoops. Wasn't expecting to exit. Did a thread crash?")
 
-    # Clean up out threads (shuts down all running VMs)
-    log.info("System exiting gracefully")
-    scheduler.stop()
-    job_poller.stop()
-    cleaner.stop()
-    scheduler.join()
-    job_poller.join()
-    cleaner.join()
-    if config.getclouds:
-        getclouds.stop()
-        getclouds.join()
+    log.info("Cloud Scheduler quitting normally. (It might take a while, don't panic!)")
+
+    # Kill all the service threads, then the info_server
+    for thread in service_threads:
+        thread.stop()
+
+    for thread in service_threads:
+        thread.join()
 
     info_serv.stop()
     info_serv.join()
-    log.info("Cloud Schedler stopped. Bye!")
+    log.info("Cloud Scheduler stopped. Bye!")
     sys.exit()
 
 
