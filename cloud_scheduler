@@ -64,7 +64,10 @@ class VMPoller(threading.Thread):
 
         while not self.quit:
             self.poll_all_machines()
-            time.sleep(self.run_interval)
+            sleep_tics = self.run_interval
+            while (not self.quit) and sleep_tics > 0:
+                time.sleep(1)
+                sleep_tics -= 1
             
 
     def poll_all_machines(self):
@@ -137,8 +140,12 @@ class JobPoller(threading.Thread):
             else:
                 log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
             del condor_jobs
+
             log.debug("Job Poller waiting %ds..." % self.polling_interval)
-            time.sleep(self.polling_interval)
+            sleep_tics = self.polling_interval
+            while (not self.quit) and sleep_tics > 0:
+                time.sleep(1)
+                sleep_tics -= 1
 
         log.debug("Exiting job polling thread")
 
@@ -176,7 +183,7 @@ class Scheduler(threading.Thread):
         ## Full scheduler loop
         ########################################################################
 
-        while (not self.quit):
+        while not self.quit:
             log.debug("### Scheduler Cycle:")
 
             ## Check that jobs are valid for the clusters available
@@ -215,6 +222,7 @@ class Scheduler(threading.Thread):
                     diff_types[type] = -desired_types[type]
             del desired_types
             del current_types
+
             ## Schedule user jobs
             # TODO: This should be less explicit in its reference to JobPool class parts.
             #       Something like 'for job in self.job_pool.get_unsched_jobs()'
@@ -340,13 +348,17 @@ class Scheduler(threading.Thread):
 
             ## Wait for a number of seconds
             log.debug("Scheduler - Waiting %ss" % self.scheduling_interval)
-            time.sleep(self.scheduling_interval)
+            sleep_tics = self.scheduling_interval
+            while (not self.quit) and sleep_tics > 0:
+                time.sleep(1)
+                sleep_tics -= 1
 
             # ENDFOR - For each cluster in the resource pool
         # ENDWHILE - End of the main scheduler loop
 
         # Exit the scheduling thread - clean up VMs and exit
         log.debug("Exiting scheduler thread")
+
         # Destroy all VMs and finish
         remaining_vms = []
         log.debug("### Destroying all remaining VMs and exiting :-(")
@@ -530,7 +542,10 @@ class Cleanup(threading.Thread):
                             log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
-            time.sleep(self.polling_interval)
+            sleep_tics = self.polling_interval
+            while (not self.quit) and sleep_tics > 0:
+                time.sleep(1)
+                sleep_tics -= 1
 
         log.debug("Exiting cleanup thread")
 
@@ -571,7 +586,10 @@ class GetClouds(threading.Thread):
 
 
             log.debug("getclouds waiting %ds..." % self.polling_interval)
-            time.sleep(self.polling_interval)
+            sleep_tics = self.polling_interval
+            while (not self.quit) and sleep_tics > 0:
+                time.sleep(1)
+                sleep_tics -= 1
 
         log.debug("Exiting getclouds thread")
 ##
