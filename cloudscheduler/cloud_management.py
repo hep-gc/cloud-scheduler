@@ -25,6 +25,8 @@ from suds.client import Client
 import cloudscheduler.config as config
 from urllib2 import URLError
 from decimal import *
+from lxml import etree
+from StringIO import StringIO
 try:
     import cPickle as pickle
 except:
@@ -65,6 +67,8 @@ class ResourcePool:
         _collector_wsdl = "file://" + determine_path() \
                           + "/wsdl/condorCollector.wsdl"
         self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
+        self.condor_collector_as_xml = Client(_collector_wsdl, cache=None,
+                                              location=config.condor_collector_url, retxml=True)
 
         self.config_file = os.path.expanduser(config_file)
 
@@ -437,22 +441,55 @@ class ResourcePool:
     def resource_querySOAP(self):
         log.debug("Querying condor startd with SOAP API")
         try:
-            machines = self.condor_collector.service.queryStartdAds()
-            if len(machines) != 0:
-                machineList = self.convert_classad_list(machines)
-            else:
-                machineList = None
-            return machineList
+            machines_xml = self.condor_collector_as_xml.service.queryStartdAds()
+            machine_list = self._condor_machine_xml_to_machine_list(machines_xml)
+
+            return machine_list
 
         except URLError, e:
             log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
                       "reason: %s"
                       % (config.condor_collector_url, e.reason[1]))
+            return []
         except:
-            log.error("There was a problem connecting to the "
+            log.exception("There was a problem connecting to the "
                       "Condor scheduler web service (%s)"
                       % (config.condor_collector_url))
+            return []
+
+    @staticmethod
+    def _condor_machine_xml_to_machine_list(condor_xml):
+        """
+        _condor_machine_xml_to_machine_list - Converts Condor SOAP XML from Condor
+                to a list of dictionarties with the attributes from the Condor 
+                machine ad.
+
+                returns [] if there are no jobs
+        """
+        def _item_attribute(xml, element):
+            try:
+                return xml.xpath(".//%s" % element)[0].text
+            except:
+                return ""
+
+        machines = []
+
+        context = etree.iterparse(StringIO(condor_xml))
+        for action, elem in context:
+            if elem.tag == "item" and elem.getparent().tag == "result":
+                xml_machine = elem
+                machine = {}
+                for item in xml_machine.iter("item"):
+                    name = _item_attribute(item, "name")
+                    value = _item_attribute(item, "value")
+                    machine[name] = value
+
+                machines.append(machine)
+                elem.clear()
+
+        return machines
+
 
     # Get a Dictionary of required VM Types with how many of that type running
     # Uses the dict-list structure returned by SOAP query
