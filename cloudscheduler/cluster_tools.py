@@ -368,11 +368,46 @@ class NimbusCluster(ICluster):
 
     # TODO: Explain parameters and returns
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
-            vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0):
+            vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
+            myproxy_server=None, myproxy_server_port=None, myproxy_creds_name=None):
 
         log.debug("Nimbus cloud create command")
 
-        # TODO: Add the code to fetch the proxy from MyProxy server here? (Andre)
+        if myproxy_creds_name != None:
+            log.debug("myproxy_creds_name: %s" % (myproxy_creds_name))
+            if myproxy_server == None:
+                log.warning("MyProxy credential name given but missing MyProxy server host. Defaulting to localhost")
+                myproxy_server = "localhost"
+
+            if myproxy_server_port == None:
+                log.debug("No MyProxy server port given; using default port (7512)")
+                myproxy_server_port = "7512"
+
+            # Check to see if $GLOBUS_LOCATION is defined.
+            if os.environ["GLOBUS_LOCATION"] == None:
+                log.error("GLOBUS_LOCATION not set.  Please set GLOBUS_LOCATION.")
+                return -1
+
+            # Check to see of myproxy-logon is present in globus installation
+            if not os.path.exists(os.environ["GLOBUS_LOCATION"] + "/bin/myproxy-logon"):
+                log.error("MyProxy credentials specified but $GLOBUS_LOCATION/bin/myproxy-logon not found.  Make sure you have a valid MyProxy client installation on your system.")
+                return -1
+
+            job_proxy_file_path = "/tmp/" + myproxy_creds_name + ".cs_x509proxy"
+            log.debug("job_proxy_file_path: %s" % (job_proxy_file_path))
+            myproxy_logon_cmd = '. $GLOBUS_LOCATION/etc/globus-user-env.sh && $GLOBUS_LOCATION/bin/myproxy-logon -s %s -p %s -l %s -o %s -n' % (myproxy_server, myproxy_server_port, myproxy_creds_name, job_proxy_file_path)
+            log.debug('myproxy-logon command: [%s]' % (myproxy_logon_cmd))
+            log.debug('Invoking myproxy-logon command...')
+            myproxy_logon_process = subprocess.Popen(myproxy_logon_cmd, shell=True)
+            myproxy_logon_process.wait()
+            log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
+            if myproxy_logon_process.returncode != 0:
+                log.error("Error fetching proxy from MyProxy server.  Aborting vm creation...")
+                return -1
+            
+        else:
+            log.debug("No MyProxy credentials given.  Proceeding without fetching credentials from MyProxy server.")
+
         
         # Create a workspace metadata xml file
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
@@ -397,12 +432,18 @@ class NimbusCluster(ICluster):
 
         # Create the workspace command as a list (private method)
         ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest, optional_file=vm_optional)
+        
+
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
         # Execute the workspace create command: returns immediately.
-        (create_return, create_out, create_err) = self.vm_execwait(ws_cmd)
+        if job_proxy_file_path != None:
+            log.debug("Prepending environment configuration to use user's proxy certificate for authentication of workspace creation...")
+            (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env={'X509_USER_PROXY':job_proxy_file_path})
+        else:
+            (create_return, create_out, create_err) = self.vm_execwait(ws_cmd)
         if (create_return != 0):
-            log.warning("vm_create - Error in executing workspace create command.")
+            log.warning("vm_create - Error in executing workspace create command.\n%s" % (create_err))
             log.warning("vm_create - VM %s (ID: %s) not created. Returning error code." \
               % (vm_name, vm_epr))
             return create_return
@@ -413,6 +454,11 @@ class NimbusCluster(ICluster):
         os.remove(vm_deploymentrequest)
         if vm_optional:
             os.remove(vm_optional)
+
+        # Clean up tempory user proxy file if present.
+        if job_proxy_file_path != None:
+            log.debug("Deleting user proxy file %s" % (job_proxy_file_path))
+            os.remove(job_proxy_file_path)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
@@ -688,10 +734,10 @@ class NimbusCluster(ICluster):
     #    out   - The STDOUT of the executed command
     #    err   - The STDERR of the executed command
     # The return of this function is a 3-tuple
-    def vm_execwait(self, cmd):
+    def vm_execwait(self, cmd, env=None):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
             #ret = sp.wait()
             (out, err) = sp.communicate(input=None)
             return (sp.returncode, out, err)

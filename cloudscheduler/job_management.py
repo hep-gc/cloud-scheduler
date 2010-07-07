@@ -135,8 +135,7 @@ class Job:
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyProxyServer, self.CSMyProxyServerPort))
     def log_dbg(self):
         log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyPr\
-oxyServer, self.CSMyProxyServerPort))
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyProxyServer, self.CSMyProxyServerPort))
     def get_job_info(self):
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
         return "%-15s %-10s %-10s %-15s %-25s\n" % (self.id[-15:], self.user[-10:], self.req_vmtype[-10:], CONDOR_STATUS[self.job_status], self.status[-25:])

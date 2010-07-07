@@ -426,7 +426,10 @@ class Scheduler(threading.Thread):
                         'vm_cores':job.req_cpucores,
                         'vm_storage':job.req_storage,
                         'customization':customizations,
-                        'vm_keepalive':job.keep_alive}
+                        'vm_keepalive':job.keep_alive,
+                        'myproxy_server':job.get_myproxy_server(),
+                        'myproxy_server_port':job.get_myproxy_server_port(),
+                        'myproxy_creds_name':job.get_myproxy_creds_name()}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "EC2Cluster":
                 args = {'vm_name':job.req_image,
