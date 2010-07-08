@@ -594,6 +594,7 @@ class NimbusCluster(ICluster):
             vm.status = "Error"
 
             # Return the VM status as a string (exit this method)
+            self.vms_lock.release()
             return vm.status
 
         # Print output, and parse the VM status from it
