@@ -72,12 +72,14 @@ class VM:
     # memory       - (int) The memory used by the VM
     # mementry     - (int) The index of the entry in the host cluster's memory list
     #                from which this VM is taking memory
+    # proxy_file   - the proxy that was used to authenticate this VM's creation
     # errorcount   - (int) Number of Polling Errors VM has had
     def __init__(self, name="", id="", vmtype="",
             hostname="", clusteraddr="",
             cloudtype="", network="public", cpuarch="x86",
             image="", memory=0, mementry=0,
-            cpucores=0, storage=0, keep_alive=0, spot_id=""):
+            cpucores=0, storage=0, keep_alive=0, spot_id="",
+            proxy_file=None):
         self.name = name
         self.id = id
         self.vmtype = vmtype
@@ -97,6 +99,7 @@ class VM:
         self.keep_alive = keep_alive
         self.idle_start = None
         self.spot_id = spot_id
+        self.proxy_file = proxy_file
         
 
         # Set a status variable on new creation
@@ -126,6 +129,17 @@ class VM:
         output += get_vm_info()
         return output
 
+    def get_proxy_file(self):
+        return self.proxy_file
+
+    # The following method will return the environment that should
+    # be used when executing subprocesses.  This is needed for setting
+    # the user's x509 proxy for example.
+    def get_env(self):
+        if self.get_proxy_file() != None:
+            return {'X509_USER_PROXY':vm.get_proxy_file()}
+        else:
+            return None
 
 ## The ICluster interface provides the basic structure for cluster information,
 ## and provides the framework (interface) for cloud management functionality.
@@ -369,45 +383,9 @@ class NimbusCluster(ICluster):
     # TODO: Explain parameters and returns
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
-            myproxy_server=None, myproxy_server_port=None, myproxy_creds_name=None):
+            job_proxy_file_path=None):
 
         log.debug("Nimbus cloud create command")
-
-        if myproxy_creds_name != None:
-            log.debug("myproxy_creds_name: %s" % (myproxy_creds_name))
-            if myproxy_server == None:
-                log.warning("MyProxy credential name given but missing MyProxy server host. Defaulting to localhost")
-                myproxy_server = "localhost"
-
-            if myproxy_server_port == None:
-                log.debug("No MyProxy server port given; using default port (7512)")
-                myproxy_server_port = "7512"
-
-            # Check to see if $GLOBUS_LOCATION is defined.
-            if os.environ["GLOBUS_LOCATION"] == None:
-                log.error("GLOBUS_LOCATION not set.  Please set GLOBUS_LOCATION.")
-                return -1
-
-            # Check to see of myproxy-logon is present in globus installation
-            if not os.path.exists(os.environ["GLOBUS_LOCATION"] + "/bin/myproxy-logon"):
-                log.error("MyProxy credentials specified but $GLOBUS_LOCATION/bin/myproxy-logon not found.  Make sure you have a valid MyProxy client installation on your system.")
-                return -1
-
-            job_proxy_file_path = "/tmp/" + myproxy_creds_name + ".cs_x509proxy"
-            log.debug("job_proxy_file_path: %s" % (job_proxy_file_path))
-            myproxy_logon_cmd = '. $GLOBUS_LOCATION/etc/globus-user-env.sh && $GLOBUS_LOCATION/bin/myproxy-logon -s %s -p %s -l %s -o %s -n' % (myproxy_server, myproxy_server_port, myproxy_creds_name, job_proxy_file_path)
-            log.debug('myproxy-logon command: [%s]' % (myproxy_logon_cmd))
-            log.debug('Invoking myproxy-logon command...')
-            myproxy_logon_process = subprocess.Popen(myproxy_logon_cmd, shell=True)
-            myproxy_logon_process.wait()
-            log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
-            if myproxy_logon_process.returncode != 0:
-                log.error("Error fetching proxy from MyProxy server.  Aborting vm creation...")
-                return -1
-            
-        else:
-            log.debug("No MyProxy credentials given.  Proceeding without fetching credentials from MyProxy server.")
-
         
         # Create a workspace metadata xml file
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
@@ -437,16 +415,22 @@ class NimbusCluster(ICluster):
         log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
 
         # Execute the workspace create command: returns immediately.
+        env = None;
         if job_proxy_file_path != None:
-            log.debug("Prepending environment configuration to use user's proxy certificate for authentication of workspace creation...")
-            (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env={'X509_USER_PROXY':job_proxy_file_path})
-        else:
-            (create_return, create_out, create_err) = self.vm_execwait(ws_cmd)
+            env = {'X509_USER_PROXY':job_proxy_file_path}
+        
+        (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
         if (create_return != 0):
             log.warning("vm_create - Error in executing workspace create command.\n%s" % (create_err))
             log.warning("vm_create - VM %s (ID: %s) not created. Returning error code." \
               % (vm_name, vm_epr))
+            # Clean up tempory user proxy file if present.
+            if job_proxy_file_path != None:
+                log.debug("VM creation failed, so deleting user proxy file %s" % (job_proxy_file_path))
+                os.remove(job_proxy_file_path)
+
             return create_return
+
         log.debug("(vm_create) - workspace create command executed.")
 
         log.debug("vm_create - Deleting temporary Nimbus Metadata files")
@@ -454,11 +438,6 @@ class NimbusCluster(ICluster):
         os.remove(vm_deploymentrequest)
         if vm_optional:
             os.remove(vm_optional)
-
-        # Clean up tempory user proxy file if present.
-        if job_proxy_file_path != None:
-            log.debug("Deleting user proxy file %s" % (job_proxy_file_path))
-            os.remove(job_proxy_file_path)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
@@ -491,7 +470,8 @@ class NimbusCluster(ICluster):
             cloudtype = self.cloud_type,network = vm_networkassoc,
             cpuarch = vm_cpuarch, image = vm_image,
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
-            storage = vm_storage, keep_alive = vm_keepalive)
+            storage = vm_storage, keep_alive = vm_keepalive, 
+            proxy_file = job_proxy_file_path)
 
         # Add the new VM object to the cluster's vms list And check out required resources
         self.vms.append(new_vm)
@@ -515,14 +495,16 @@ class NimbusCluster(ICluster):
         vm_memory  = vm.memory
         vm_cores   = vm.cpucores
         vm_storage = vm.storage
+        vm_proxy_file = vm.get_proxy_file()
 
         # Print VM parameters
         log.debug("(vm_recreate) - name: %s network: %s cpuarch: %s imageloc: %s memory: %d" \
           % (vm_name, vm_network, vm_cpuarch, vm_image, vm_memory))
 
-        # Call destroy on the given VM
+        # Call destroy on the given VM, but keep the user proxy if any because
+        # it is going to be re-used by the new VM.
         log.debug("(vm_recreate) - Destroying VM %s..." % vm_name)
-        destroy_ret = self.vm_destroy(vm)
+        destroy_ret = self.vm_destroy(vm, cleanup_proxy=False)
         if (destroy_ret != 0):
             log.warning("(vm_recreate) - Destroying VM failed. Aborting recreate.")
             return destroy_ret
@@ -530,7 +512,7 @@ class NimbusCluster(ICluster):
         # Call create with the given VM's parameters
         log.debug("(vm_recreate) - Recreating VM %s..." % vm_name)
         create_ret = self.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, \
-          vm_image, vm_memory, vm_cores, vm_storage)
+          vm_image, vm_memory, vm_cores, vm_storage, job_proxy_file_path=vm_proxy_file)
         if (create_ret != 0):
             log.warning("(vm_recreate) - Recreating VM %s failed. Aborting recreate.")
             return create_ret
@@ -550,7 +532,7 @@ class NimbusCluster(ICluster):
         log.debug("(vm_reboot) - Command: " + string.join(ws_cmd, " "))
 
         # Execute the reboot command: wait for return
-        reboot_return = self.vm_execute(ws_cmd)
+        reboot_return = self.vm_execute(ws_cmd, env=vm.get_env())
 
         # Check reboot return code. If successful, continue. Otherwise, set
         # VM state to "Error" and return.
@@ -567,7 +549,7 @@ class NimbusCluster(ICluster):
 
 
     # TODO: Explain parameters and returns
-    def vm_destroy(self, vm):
+    def vm_destroy(self, vm, cleanup_proxy=True):
 
         # Create an epr for workspace.sh
         vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
@@ -581,7 +563,8 @@ class NimbusCluster(ICluster):
         log.debug("Destroying VM with command: " + string.join(destroy_cmd, " "))
 
         # Execute the workspace shutdown command.
-        shutdown_return = self.vm_exec_silent(shutdown_cmd)
+        shutdown_return = self.vm_exec_silent(shutdown_cmd, env=vm.get_env())
+
         if (shutdown_return != 0):
             log.warning("(vm_destroy) - VM shutdown request failed, moving directly to destroy.")
         else:
@@ -620,6 +603,13 @@ class NimbusCluster(ICluster):
         os.remove(vm_epr)
 
         log.info("Destroyed vm %s on %s" % (vm.id, vm.clusteraddr))
+
+        # Delete proxy file if needed.
+        if cleanup_proxy:
+            if vm.get_proxy_file() != None:
+                log.debug("Deleting user proxy file %s" % (vm.get_proxy_file()))
+                os.remove(vm.get_proxy_file())
+
         return destroy_return
 
 
@@ -634,7 +624,8 @@ class NimbusCluster(ICluster):
         log.debug("(vm_poll) - Running Nimbus poll command:\n%s" % string.join(ws_cmd, " "))
 
         # Execute the workspace poll (wait, retrieve return code, stdout, and stderr)
-        (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd)
+        (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd, env=vm.get_env())
+
         log.debug("(vm_poll) - Poll command completed with return code: %d" % poll_return)
 
         self.vms_lock.acquire()
@@ -688,11 +679,11 @@ class NimbusCluster(ICluster):
     # Parameters:
     #    ws_cmd   - The command to be executed, as a list of strings (commands
     #               created by the _factory methods).
-    def vm_execute(self, cmd):
+    def vm_execute(self, cmd, env=None):
         # Execute a workspace command with the passed cmd list. Wait for return,
         # and return return value.
         try:
-            sp = Popen(cmd, executable=config.workspace_path, shell=False)
+            sp = Popen(cmd, executable=config.workspace_path, shell=False, env=env)
             (out, err) = sp.communicate(input=None)
             return sp.returncode
         except OSError, e:
@@ -710,9 +701,9 @@ class NimbusCluster(ICluster):
     #            dumped.
     # Returns:
     #    ret   - The return value of the executed command
-    def vm_execdump(self, cmd, out):
+    def vm_execdump(self, cmd, out, env=None):
         try:
-            sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out)
+            sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out, env=env)
             (out, err) = sp.communicate(input=None)
             return sp.returncode
         except OSError, e:
@@ -748,7 +739,7 @@ class NimbusCluster(ICluster):
             log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
             return (-1, "", "")
 
-    def vm_exec_silent(self, cmd):
+    def vm_exec_silent(self, cmd, env=None):
         """
         vm_exec_silent executes a given command list, and discards the output
 
@@ -760,7 +751,7 @@ class NimbusCluster(ICluster):
 
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
             (out, err) = sp.communicate(input=None)
             return sp.returncode
         except OSError, e:

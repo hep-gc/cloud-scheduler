@@ -417,6 +417,10 @@ class Scheduler(threading.Thread):
             resource.log()
 
             if resource.__class__.__name__ == "NimbusCluster":
+
+                # Get proxy from MyProxy server if needed.
+                job_proxy_file_path = utilities.myproxy_init(job.get_myproxy_server(), job.get_myproxy_server_port(), job.get_myproxy_creds_name())
+
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_networkassoc':job.req_network,
@@ -427,9 +431,7 @@ class Scheduler(threading.Thread):
                         'vm_storage':job.req_storage,
                         'customization':customizations,
                         'vm_keepalive':job.keep_alive,
-                        'myproxy_server':job.get_myproxy_server(),
-                        'myproxy_server_port':job.get_myproxy_server_port(),
-                        'myproxy_creds_name':job.get_myproxy_creds_name()}
+                        'job_proxy_file_path':job_proxy_file_path}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "EC2Cluster":
                 args = {'vm_name':job.req_image,
