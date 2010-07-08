@@ -15,10 +15,14 @@
 ## Using optparse for command line options (http://docs.python.org/library/optparse.html)
 ##
 
-
 ## Imports
-import os
 import sys
+
+if sys.version_info[:2] < (2,5):
+    print "You need at least Python 2.5 to run Cloud Scheduler"
+    sys.exit(1)
+
+import os
 import time
 import string
 import getopt
