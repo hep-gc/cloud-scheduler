@@ -191,6 +191,10 @@ class JobPool:
     COMPLETE = 4
     HELD     = 5
     ERROR    = 6
+
+    # The condor timeout is so huge because busy schedds with lots of jobs
+    # can take a REALLY long time to return the XML list of jobs
+    CONDOR_TIMEOUT = 1200 # seconds (20min)
     
     ## Instance Methods
 
@@ -212,7 +216,7 @@ class JobPool:
                                     location=config.condor_webservice_url)
         self.condor_schedd_as_xml = Client(_schedd_wsdl,
                                     location=config.condor_webservice_url,
-                                    retxml=True)
+                                    retxml=True, timeout=self.CONDOR_TIMEOUT)
 
 
     def job_querySOAP(self):
