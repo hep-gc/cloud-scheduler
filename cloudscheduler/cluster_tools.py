@@ -136,10 +136,10 @@ class VM:
     # be used when executing subprocesses.  This is needed for setting
     # the user's x509 proxy for example.
     def get_env(self):
+        env = None
         if self.get_proxy_file() != None:
-            return {'X509_USER_PROXY':vm.get_proxy_file()}
-        else:
-            return None
+            env = {'X509_USER_PROXY':self.get_proxy_file()}
+        return env
 
 ## The ICluster interface provides the basic structure for cluster information,
 ## and provides the framework (interface) for cloud management functionality.
