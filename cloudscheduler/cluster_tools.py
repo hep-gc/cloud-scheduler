@@ -400,9 +400,7 @@ class NimbusCluster(ICluster):
         # Execute the workspace create command: returns immediately.
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd)
         if (create_return != 0):
-            log.warning("vm_create - Error in executing workspace create command.")
-            log.warning("vm_create - VM %s (ID: %s) not created. Returning error code." \
-              % (vm_name, vm_epr))
+            log.warning("vm_create - Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
             return create_return
         log.debug("(vm_create) - workspace create command executed.")
 
@@ -502,13 +500,13 @@ class NimbusCluster(ICluster):
         log.debug("(vm_reboot) - Command: " + string.join(ws_cmd, " "))
 
         # Execute the reboot command: wait for return
-        reboot_return = self.vm_execute(ws_cmd)
+        (reboot_return, reboot_out, reboot_err) = self.vm_execwait(ws_cmd)
 
         # Check reboot return code. If successful, continue. Otherwise, set
         # VM state to "Error" and return.
         if (reboot_return != 0):
-            log.warning("(vm_reboot) - Error in executing workspace reboot command.")
-            log.warning("(vm_reboot) - VM failed to reboot. Setting VM to error state and returning error code.")
+            log.warning("vm_reboot - Error rebooting VM %s: %s %s" % (vm.id, reboot_out, reboot_err))
+            log.warning("vm_reboot - Setting VM status 'Error'.")
             vm.status = "Error"
             return reboot_return
 
@@ -550,7 +548,7 @@ class NimbusCluster(ICluster):
         # error state (wait, and the polling thread will attempt a destroy later)
         if (destroy_return != 0):
             remove_vm = False
-            log.warning("(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code.")
+            log.warning("(vm_destroy) - VM %s was not correctly destroyed: %s %s" % (vm.id, destroy_out, destroy_error))
             vm.status = "Error"
             if vm.errorcount >= config.polling_error_threshold:
                 if destroy_error.find('workspace is unknown to the service') > 0:
@@ -583,16 +581,15 @@ class NimbusCluster(ICluster):
 
         # Create workspace poll command
         ws_cmd = self.vmpoll_factory(vm_epr)
-        log.debug("(vm_poll) - Running Nimbus poll command:\n%s" % string.join(ws_cmd, " "))
+        log.verbose("(vm_poll) - Running Nimbus poll command:\n%s" % string.join(ws_cmd, " "))
 
         # Execute the workspace poll (wait, retrieve return code, stdout, and stderr)
         (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd)
-        log.debug("(vm_poll) - Poll command completed with return code: %d" % poll_return)
 
         self.vms_lock.acquire()
         # Check the poll command return
         if (poll_return != 0):
-            log.warning("(vm_poll) - Failed polling VM %s (ID: %s)" % (vm.name, vm.id))
+            log.warning("(vm_poll) - Failed polling VM %s (ID: %s): %s %s" % (vm.name, vm.id, poll_out, poll_err))
             log.debug("(vm_poll) - Setting VM status to \'Error\'")
             vm.status = "Error"
 
@@ -609,7 +606,7 @@ class NimbusCluster(ICluster):
                 if vm.status != self.VM_STATES[tmp_state]:
                     vm.last_state_change = int(time.time())
                 vm.status = self.VM_STATES[tmp_state]
-                log.debug("(vm_poll) - VM state: %s, Nimbus state: %s" % (vm.status, tmp_state))
+                log.debug("VM %s state: %s, Nimbus state: %s" % (vm.id, vm.status, tmp_state))
 
                 vm.hostname = self._extract_hostname(poll_out)
 
