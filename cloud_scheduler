@@ -549,7 +549,6 @@ class Cleanup(threading.Thread):
                     for user in self.job_pool.sched_jobs.keys():
                         for job in reversed(self.job_pool.sched_jobs[user]):
                             if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
-                                print 'unscheduled job due to %s' % ('less vm than sched' if vms[job.req_vmtype] < job_req_count[job.req_vmtype] else 'not there')
                                 self.job_pool.unschedule(job)
                     
                 finally:
