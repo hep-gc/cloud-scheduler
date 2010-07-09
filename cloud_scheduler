@@ -305,6 +305,7 @@ class Scheduler(threading.Thread):
                     for cluster in self.resource_pool.resources:
                         for vm in cluster.vms:
                             if vm == machine:
+                                log.debug("Shutting down VM that has not registered with Condor after %i" % (config.condor_register_time_limit))
                                 cluster.vm_destroy(machine)
                                 killedIt = True
                                 break
