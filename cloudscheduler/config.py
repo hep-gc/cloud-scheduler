@@ -33,6 +33,7 @@ info_server_port = 8111
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
 polling_error_threshold = 10
+condor_register_time_limit = 900
 graceful_shutdown = False
 getclouds = False
 scheduling_metric = "slot"
@@ -63,6 +64,7 @@ def setup(path=None):
     global workspace_path
     global persistence_file
     global polling_error_threshold
+    global condor_register_time_limit
     global graceful_shutdown
     global getclouds
     global scheduling_metric
@@ -165,6 +167,14 @@ def setup(path=None):
             polling_error_threshold = config_file.getint("global", "polling_error_threshold")
         except ValueError:
             print "Configuration file problem: polling_error_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "condor_register_time_limit"):
+        try:
+            condor_register_time_limit = 60*config_file.getint("global", "condor_register_time_limit")
+        except ValueError:
+            print "Configuration file problem: condor_register_time_limit must be an " \
                   "integer value."
             sys.exit(1)
 

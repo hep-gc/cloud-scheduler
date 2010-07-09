@@ -280,6 +280,38 @@ class Scheduler(threading.Thread):
 
             machineList = self.resource_pool.resource_querySOAP()
             if machineList:
+                # Make sure VMs have registered with Condor
+                unregisteredvms = []
+                for cluster in self.resource_pool.resources:
+                    for vm in cluster.vms:
+                        foundvm = False
+                        if vm.status == 'Running':
+                            host = vm.hostname.split('.')[0]
+                            for machine in machineList:
+                                condName = machine['Name'].split('.')[0]
+                                if condName == host:
+                                    foundvm = True
+                                    break
+                            if not foundvm:
+                                unregisteredvms.append(vm)
+                to_kill = []
+                for vm in unregisteredvms:
+                    # now -state change will be how long VM 'running'
+                    running_time = int(time.time()) - vm.last_state_change
+                    if running_time > config.condor_register_time_limit:
+                        to_kill.append(vm)
+                for machine in to_kill:
+                    killedIt = False
+                    for cluster in self.resource_pool.resources:
+                        for vm in cluster.vms:
+                            if vm == machine:
+                                cluster.vm_destroy(machine)
+                                killedIt = True
+                                break
+                        if killedIt:
+                            break
+
+
                 available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
                 required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
                 # Remove excess VMs when available VM type exceedes required by jobs
