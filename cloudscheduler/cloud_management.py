@@ -13,6 +13,7 @@
 ##
 ## IMPORTS
 ##
+from __future__ import with_statement
 
 import os
 import sys
@@ -126,6 +127,17 @@ class ResourcePool:
                         if new_cluster.name == updated_name:
 
                             new_cluster.vms = old_cluster.vms
+                            for vm in reversed(new_cluster.vms):
+                                try:
+                                    new_cluster.resource_checkout(vm)
+                                except new_cluster.NoResourcesError, e:
+                                    log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
+                                                (vm.id, new_cluster.name, e.resource))
+                                    new_cluster.vm_destroy(vm, return_resources=False)
+                                except:
+                                    log.exception("Unexpected error checking out resources. Killing %s on %s" %
+                                                  (vm.id, new_cluster.name))
+                                    new_cluster.vm_destroy(vm, return_resources=False)
                             self.resources.append(new_cluster)
 
         # Add new resources
@@ -135,7 +147,6 @@ class ResourcePool:
                     self.resources.append(new_cluster)
 
         # Remove resources
-        # TODO: Check with mike if this is okay.
         for removed_cluster_name in removed_names:
             for cluster in reversed(old_resources):
                 if cluster.name == removed_cluster_name:

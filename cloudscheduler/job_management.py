@@ -24,6 +24,7 @@
 ##
 ## IMPORTS
 ##
+from __future__ import with_statement
 import re
 import sys
 import string

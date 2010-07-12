@@ -10,6 +10,8 @@
 ## This file contains the VM class, ICluster interface, as well as the
 ## implementations of this interface.
 
+from __future__ import with_statement
+
 import os
 import re
 import sys
@@ -168,6 +170,17 @@ class ICluster:
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
 
+    class NoResourcesError(Exception):
+        """Exception raised for errors where not enough resources are available
+
+        Attributes:
+            resource -- name of resource that is insufficient
+
+        """
+
+        def __init__(self, resource):
+            self.resource = resource
+
     def setup_logging(self):
         global log
         log = logging.getLogger("cloudscheduler")
@@ -257,7 +270,7 @@ class ICluster:
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_reboot'
 
-    def vm_destroy(self, vm):
+    def vm_destroy(self, vm, return_resources=True):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_destroy'
 
@@ -289,22 +302,36 @@ class ICluster:
         # If no entries found, return error code.
         return(-1)
 
-    # Checks out resources taken by a VM in creation from the internal rep-
-    # resentation of the Cluster
-    # Parameters:
-    #    vm   - the VM object used to check out resources from the Cluster.
-    #           The VMs memory and mementry fields are used to check out memory
-    #           from the appropriate Cluster fields.
-    # Note: No bounds checking is done as of yet.
-    # Note: vm_slots is automatically decremeneted by one (1).
-    # EXPAND HERE as checkout/return become more complex
     def resource_checkout(self, vm):
+        """
+        Checks out resources taken by a VM in creation from the internal rep-
+        resentation of the Cluster
+
+        Parameters:
+        vm   - the VM object used to check out resources from the Cluster.
+
+        Raises NoResourcesError if there are not enough available resources
+        to check out.
+        """
         log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
-        self.res_lock.acquire()
-        self.vm_slots -= 1
-        self.storageGB -= vm.storage
-        self.memory[vm.mementry] -= vm.memory
-        self.res_lock.release()
+        with self.res_lock:
+            remaining_vm_slots = self.vm_slots - 1
+            if remaining_vm_slots < 0:
+                raise self.NoResourcesError("vm_slots")
+            else:
+                self.vm_slots = remaining_vm_slots
+
+            remaining_storage = self.storageGB - vm.storage
+            if remaining_storage < 0:
+                raise self.NoResourcesError("storage")
+            else:
+                self.storageGB = remaining_storage
+
+            remaining_memory = self.memory[vm.mementry]
+            if remaining_memory < 0:
+                raise self.NoResourcesError("memory")
+            else:
+                self.memory[vm.mementry] -= remaining_memory
 
     # Returns the resources taken by the passed in VM to the Cluster's internal
     # storage.
@@ -516,8 +543,14 @@ class NimbusCluster(ICluster):
         return reboot_return
 
 
-    # TODO: Explain parameters and returns
-    def vm_destroy(self, vm):
+    def vm_destroy(self, vm, return_resources=True):
+        """
+        Shutdown, destroy and return resources of a VM to it's cluster
+
+        Parameters:
+        vm -- vm to shutdown and destroy
+        return_resources -- if set to false, do not return resources from VM to cluster
+        """
 
         # Create an epr for workspace.sh
         vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
@@ -558,13 +591,13 @@ class NimbusCluster(ICluster):
                 return destroy_return
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
-        self.resource_return(vm)
-        self.vms_lock.acquire()
-        try:
-            self.vms.remove(vm)
-        except ValueError:
-            log.error("Attempted to remove vm from list that was already removed.")
-        self.vms_lock.release()
+        if return_resources:
+            self.resource_return(vm)
+        with self.vms_lock:
+            try:
+                self.vms.remove(vm)
+            except ValueError:
+                log.error("Attempted to remove vm from list that was already removed.")
 
         # Delete EPR
         os.remove(vm_epr)
@@ -997,10 +1030,16 @@ class EC2Cluster(ICluster):
         return vm.status
 
 
-    def vm_destroy(self, vm):
+    def vm_destroy(self, vm, return_resources=True):
+        """
+        Shutdown, destroy and return resources of a VM to it's cluster
+
+        Parameters:
+        vm -- vm to shutdown and destroy
+        return_resources -- if set to false, do not return resources from VM to cluster
+        """
         log.debug("Destroying vm with instance id %s" % vm.id)
 
-        # Kill VM on EC2
         try:
             connection = self._get_connection()
 
@@ -1017,10 +1056,10 @@ class EC2Cluster(ICluster):
             return self.ERROR
 
         # Delete references to this VM
-        self.resource_return(vm)
-        self.vms_lock.acquire()
-        self.vms.remove(vm)
-        self.vms_lock.release()
+        if return_resources:
+            self.resource_return(vm)
+        with vms_lock:
+            self.vms.remove(vm)
 
         return 0
 
