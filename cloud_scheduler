@@ -421,6 +421,15 @@ class Scheduler(threading.Thread):
                 # Get proxy from MyProxy server if needed.
                 job_proxy_file_path = utilities.myproxy_init(job.get_myproxy_server(), job.get_myproxy_server_port(), job.get_myproxy_creds_name())
 
+                # Add the owner restriction requirement (Andre)
+                # Take the user's id from the proxy retreived above, not from the id
+                # found in the job submission classad, else the user might be able to
+                # start a VM using somebody else's proxy certificate and then allow that
+                # VM to run his/her jobs.
+                # Might need to do some DN -> username mapping here eventually... (Andre)
+                proxy_DN = utilities.get_cert_DN(job_proxy_file_path)
+                customizations.append('(RemoteUser == "%s")' % (proxy_DN), '/etc/condor/start_req_config')  # (Andre)
+
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_networkassoc':job.req_network,

@@ -73,7 +73,8 @@ class Job:
              VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
              VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, 
-             CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None):
+             CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
+             x509userproxysubject=None):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -94,6 +95,7 @@ class Job:
      CSMyProxyCredsName - (str) The name of the credentials to retreive from the myproxy server
      CSMyProxyServer - (str) The hostname of the myproxy server to retreive user creds from
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
+     x509userproxysubject - (str) The DN of the authenticated user
      """
      #TODO: Set default job properties in the cloud scheduler main config file
      #     (Have option to set them there, and default values)
@@ -118,6 +120,7 @@ class Job:
         self.myproxy_server = CSMyProxyServer
         self.myproxy_server_port = CSMyProxyServerPort
         self.myproxy_creds_name = CSMyProxyCredsName
+        self.x509userproxysubject = x509userproxysubject
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -196,6 +199,9 @@ class Job:
     def set_myproxy_creds_name(self, v):
         self.myproxy_creds_name = v
         return
+
+    def get_x509userproxysubject(self):
+        return self.x509userproxysubject
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
 # complete. Keeps scheduled and unscheduled jobs.
@@ -326,6 +332,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyCredsName")
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyServer")
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyServerPort")
+                _add_if_exists(xml_job, job_dictionary, "x509userproxysubject")
                 
 
                 # Requirements requires special fiddling

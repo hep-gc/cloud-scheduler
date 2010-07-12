@@ -87,3 +87,13 @@ def myproxy_init(myproxy_server, myproxy_server_port, myproxy_creds_name):
 
     
     return job_proxy_file_path
+
+
+# This utility function will extract the subject DN from an x509
+# certificate.
+# It requires the openssl package to the installed.
+def get_cert_DN(cert_file_path):
+    log = get_cloudscheduler_logger()
+    openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-subject', '-noout']
+    return subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
+    

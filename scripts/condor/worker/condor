@@ -57,6 +57,9 @@ EC2_METADATA=instance-data.ec2.internal
 # Central Manager of your condor pool
 CENTRAL_MANAGER=`cat /etc/condor/central_manager`
 
+# START requirement for resource
+START_REQUIREMENT=`cat /etc/condor/start_req_config`
+
 # Path to your primary condor configuration file.
 CONDOR_CONFIG=/etc/condor/condor_config
 
@@ -319,6 +322,12 @@ set_central_manager() {
 	replace_or_append "CONDOR_HOST" "CONDOR_HOST=$condor_host" $local_file
 }
 
+set_start_requirement() {
+	req=$1
+	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+	replace_or_append "START" "START=$req" $local_file
+}
+
 # set up condor ccb if only private networking is available
 setup_ccb() {
 	/sbin/ifconfig | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null
@@ -381,6 +390,7 @@ start() {
 	setup_on_ec2
 	setup_ccb
 	set_central_manager $CENTRAL_MANAGER
+	set_start_requirement $START_REQUIREMENT
 	verify_execute
 	init_condor_master
 	echon "Starting up Condor..."
