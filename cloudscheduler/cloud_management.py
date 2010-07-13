@@ -289,34 +289,35 @@ class ResourcePool:
         for cluster in self.resources:
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
-                log.debug("get_fitting_resources - No free slots in %s" % cluster.name)
+                log.verbose("get_fitting_resources - No free slots in %s" % cluster.name)
                 continue
             # If the cluster does not have the required CPU architecture
             if (cpuarch not in cluster.cpu_archs):
-                log.debug("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
+                log.verbose("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
                 continue
             # If required network is NOT in cluster's network associations
             if (network not in cluster.network_pools):
-                log.debug("get_fitting_resources - No matching networks in %s" % cluster.name)
+                log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
-                log.debug("get_fitting_resources - No available memory entry in %s" % cluster.name)
+                log.verbose("get_fitting_resources - No available memory entry in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient CPU cores
             if (cpucores > cluster.cpu_cores):
-                log.debug("get_fitting_resources - Not enough CPU Cores in %s" % cluster.name)
+                log.verbose("get_fitting_resources - Not enough CPU Cores in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient storage capacity
             if (storage > cluster.storageGB):
-                log.debug("get_fitting_resources - Not enough storage in %s" % cluster.name)
+                log.verbose("get_fitting_resources - Not enough storage in %s" % cluster.name)
                 continue
             # Add cluster to the list to be returned (meets all job reqs)
             fitting_clusters.append(cluster)
 
         # Return the list clusters that fit given requirements
-        log.debug("List of fitting clusters: ")
-        self.log_list(fitting_clusters)
+        if fitting_clusters:
+            log.debug("List of fitting clusters: ")
+            self.log_list(fitting_clusters)
         return fitting_clusters
 
 
@@ -352,12 +353,12 @@ class ResourcePool:
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
-            log.debug("No clusters fit requirements. Fitting resources list is empty.")
+            log.verbose("No clusters fit requirements. Fitting resources list is empty.")
             return (None, None)
 
         # If the list has only 1 item, return immediately
         if len(fitting_clusters) == 1:
-            log.debug("Only one cluster fits parameters. Returning that cluster.")
+            log.verbose("Only one cluster fits parameters. Returning that cluster.")
             return (fitting_clusters[0], None)
 
         # Set the most-balanced and next-most-balanced initial values

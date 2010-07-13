@@ -251,8 +251,8 @@ class Scheduler(threading.Thread):
 
                         # If no resource fits, continue to next job in user's list
                         if good_resources[0] == None:
-                            log.info("No resource to match job: %s" % job.id)
-                            log.info("Leaving job unscheduled, moving to %s's next job" % user)
+                            log.verbose("No resource to match job: %s" % job.id)
+                            log.verbose("Leaving job unscheduled, moving to %s's next job" % user)
                             continue
 
                         create_ret = self.vm_creation(job, good_resources)
@@ -312,10 +312,9 @@ class Scheduler(threading.Thread):
                         if killedIt:
                             break
 
-
+                # Remove excess VMs when available VM type exceedes required by jobs.
                 available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
                 required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
-                # Remove excess VMs when available VM type exceedes required by jobs
                 log.debug("Removing excess VMs from the system.")
                 to_remove = {}
                 for vmtype, count in available_vmtypes_dict.iteritems():
