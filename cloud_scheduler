@@ -591,13 +591,19 @@ class Cleanup(threading.Thread):
                 finally:
                     self.job_pool.write_lock.release()
 
-            req_vmtypes = self.job_pool.get_required_vmtypes()
-            for cluster in self.resource_pool.resources:
-                for vm in reversed(cluster.vms):
-                    if vm.vmtype not in req_vmtypes:
-                        destroy_ret = cluster.vm_destroy(vm)
-                        if destroy_ret != 0:
-                            log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+            # Remove unneeded VMs.
+            # Make sure we only do this if we have ever gotten a list of jobs
+            # from Condor. Otherwise, when we persist from a previous run
+            # we would shut down all the VMs for those jobs. Sometimes querying
+            # a slow schedd can take quite a few minutes
+            if self.job_pool.last_query:
+                req_vmtypes = self.job_pool.get_required_vmtypes()
+                for cluster in self.resource_pool.resources:
+                    for vm in reversed(cluster.vms):
+                        if vm.vmtype not in req_vmtypes:
+                            destroy_ret = cluster.vm_destroy(vm)
+                            if destroy_ret != 0:
+                                log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
