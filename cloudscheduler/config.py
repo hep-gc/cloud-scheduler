@@ -42,6 +42,7 @@ log_level = "INFO"
 log_location = None
 log_stdout = False
 log_max_size = None
+log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
 
 
 # setup will look for a configuration file specified on the command line,
@@ -73,6 +74,7 @@ def setup(path=None):
     global log_location
     global log_stdout
     global log_max_size
+    global log_format
 
     homedir = os.path.expanduser('~')
 
@@ -203,6 +205,9 @@ def setup(path=None):
             print "Configuration file problem: log_max_size must be an " \
                   "integer value in bytes."
             sys.exit(1)
+
+    if config_file.has_option("logging", "log_format"):
+        log_format = config_file.get("logging", "log_format")
 
     # Derived options
     if condor_host_on_vm:

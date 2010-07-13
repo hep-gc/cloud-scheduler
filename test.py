@@ -43,6 +43,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.log_location = "/tmp/test.log"
         self.log_stdout = "true"
         self.log_max_size = "1312312"
+        self.log_format = "format_string"
 
         # build config file
         (self.configfile, self.configfilename) = tempfile.mkstemp()
@@ -68,6 +69,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('logging', 'log_location', self.log_location)
         testconfig.set('logging', 'log_stdout', self.log_stdout)
         testconfig.set('logging', 'log_max_size', self.log_max_size)
+        testconfig.set('logging', 'log_format', self.log_format)
 
         # write temporary config file
         configfile = open(self.configfilename, 'wb')
@@ -130,6 +132,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_log_max_size(self):
         self.assertEqual(int(self.log_max_size), cloudscheduler.config.log_max_size)
+
+    def test_log_format(self):
+        self.assertEqual(self.log_format, cloudscheduler.config.log_format)
 
     def test_for_spaces_before_values(self):
 

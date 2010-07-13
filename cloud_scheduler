@@ -677,8 +677,7 @@ def main():
 
     # Set up logging
     log.setLevel(utilities.LEVELS[config.log_level])
-    log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
-                                      "- %(message)s")
+    log_formatter = logging.Formatter(config.log_format)
     if config.log_stdout:
         stream_handler = logging.StreamHandler()
         stream_handler.setFormatter(log_formatter)
