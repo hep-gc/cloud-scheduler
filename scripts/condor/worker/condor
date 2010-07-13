@@ -63,6 +63,9 @@ CONDOR_CONFIG=/etc/condor/condor_config
 # Path to condor_config_val
 CONDOR_CONFIG_VAL=/usr/bin/condor_config_val
 
+# Path to condor_config.local.modifications
+CONDOR_CONFIG_LOCAL_MODIFS=/etc/condor/condor_config.local.modifications
+
 # A file used to track the running instance. Needs to be writable
 # and deletable.  If left blank, defaults to $RUN/master.pid,
 # where $RUN is the RUN directory in your CONDOR_CONFIG, will be
@@ -319,6 +322,18 @@ set_central_manager() {
 	replace_or_append "CONDOR_HOST" "CONDOR_HOST=$condor_host" $local_file
 }
 
+update_condor_local_config() {
+    if [ -f $CONDOR_CONFIG_LOCAL_MODIFS ]; then
+	echo "Applying modifications to local condor configuration..."
+	while read LINE
+	do
+	    variable=`expr "${LINE}" : '\([[:alnum:]]\+\)=.*$'`
+	    value=`expr "${LINE}" : '[[:alnum:]]\+=\(.*\)$'`
+	    replace_or_append "${variable}" "${variable}=${value}" $local_file
+	done < $modif_file
+    fi
+}
+
 # set up condor ccb if only private networking is available
 setup_ccb() {
 	/sbin/ifconfig | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null
@@ -381,6 +396,7 @@ start() {
 	setup_on_ec2
 	setup_ccb
 	set_central_manager $CENTRAL_MANAGER
+	update_condor_local_config
 	verify_execute
 	init_condor_master
 	echon "Starting up Condor..."
