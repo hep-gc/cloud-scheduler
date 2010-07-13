@@ -57,7 +57,7 @@ class VMPoller(threading.Thread):
         self.quit          = False
         self.starting_poll_interval = 120 # 2 minutes
         self.running_poll_interval = 900 # 15 minutes
-        self.run_interval = 5 # seconds
+        self.run_interval = config.vm_poller_interval
 
     def stop(self):
         log.debug("Waiting for VM polling loop to end")
@@ -124,7 +124,7 @@ class JobPoller(threading.Thread):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.job_pool = job_pool
         self.quit = False
-        self.polling_interval = 5 # seconds
+        self.polling_interval = config.job_poller_interval
 
     def stop(self):
         log.debug("Waiting for job polling loop to end")
@@ -172,9 +172,7 @@ class Scheduler(threading.Thread):
         self.resource_pool = resource_pool
         self.job_pool      = job_pool
         self.quit          = False
-        self.scheduling_interval = 5 # seconds
-        self.starting_poll_interval = 120 # 2 minutes
-        self.running_poll_interval = 900 # 15 minutes
+        self.scheduling_interval = config.scheduler_interval
 
     def stop(self):
         log.debug("Waiting for scheduling loop to end")
@@ -553,7 +551,7 @@ class Cleanup(threading.Thread):
         self.job_pool = job_pool
         self.resource_pool = resource_pool
         self.quit = False
-        self.polling_interval = 5 # seconds
+        self.polling_interval = config.cleanup_interval
 
     def stop(self):
         log.debug("Waiting for cleanup loop to end")
