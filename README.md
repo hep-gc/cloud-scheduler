@@ -19,20 +19,67 @@ For more documentation on Cloud Scheduler, please refer to:
 
 * A working Condor 7.5.x install (details below)
 * Nimbus Cloud Client tools (details below)
-* [Python 2.4+](http://www.python.org/)
+* [Python 2.6+](http://www.python.org/)
 * [Suds 0.3.9+](https://fedorahosted.org/suds/)
 * [boto](http://code.google.com/p/boto/)
 * [lxml](http://codespeak.net/lxml/)
 * [simple-json](http://undefined.org/python/#simplejson) For python 2.4/2.5
 
+### Special help for RHEL 5
+
+Since Cloud Scheduler requires Python 2.6, and we recognize that RHEL 5 comes
+with and requires Python 2.4, here's a quick guide to getting Python 2.6 
+installed on those systems:
+
+Install the tools we need to build Python and its modules:
+
+    # yum install gcc gdbm-devel readline-devel ncurses-devel zlib-devel \
+      bzip2-devel sqlite-devel db4-devel openssl-devel tk-devel \
+      bluez-libs-devel libxslt libxslt-devel libxml2-devel libxml2
+
+Download and compile Python 2.6:
+
+    $ VERSION=2.6.5
+    $ mkdir /tmp/src 
+    $ cd /tmp/src/
+    $ wget http://python.org/ftp/python/$VERSION/Python-$VERSION.tar.bz2
+    $ tar xjf Python-$VERSION.tar.bz2
+    $ rm Python-$VERSION.tar.bz2
+    $ cd Python-$VERSION 
+    $ ./configure --prefix=/opt
+    $ make
+    $ sudo make install
+
+Now we need to install Python setuputils:
+
+    $ cd /tmp/src
+    $ wget http://pypi.python.org/packages/2.6/s/setuptools/setuptools-0.6c11-py2.6.egg#md5=bfa92100bd772d5a213eedd356d64086
+    $ sudo PATH=/opt/bin:$PATH sh setuptools-0.6c11-py2.6.egg
+
+Now install pip to install the rest of our dependencies:
+
+    $ sudo /opt/bin/easy_install pip
+
+And the rest of our dependencies:
+ 
+    $ sudo /opt/bin/pip install simplejson suds boto lxml virtualenv
+
+Now clean everything up:
+
+    $ sudo rm -Rf /tmp/src/
+
+Finally, once you've set up the rest of Cloud Scheduler, you'll want to set
+your Python version in the Cloud Scheduler init script, or use virtualenv.
+
+    $ 
+
+### Other distros:
+
 You can install the Python libraries listed above with pip:
 
-lxml requires libxml2 and libxslt to be installed. On RHEL5 and friends, you
-can do this with yum:
+lxml requires libxml2 and libxslt and their development libs to be installed. 
 
-    # yum install -y python-setuptools gcc libxslt libxslt-devel libxml2-devel libxml2
-
-Now install pip:
+Install pip:
 
     # easy_install pip
 

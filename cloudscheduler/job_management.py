@@ -24,6 +24,7 @@
 ##
 ## IMPORTS
 ##
+from __future__ import with_statement
 import re
 import sys
 import string
@@ -222,6 +223,10 @@ class JobPool:
     COMPLETE = 4
     HELD     = 5
     ERROR    = 6
+
+    # The condor timeout is so huge because busy schedds with lots of jobs
+    # can take a REALLY long time to return the XML list of jobs
+    CONDOR_TIMEOUT = 1200 # seconds (20min)
     
     ## Instance Methods
 
@@ -243,7 +248,7 @@ class JobPool:
                                     location=config.condor_webservice_url)
         self.condor_schedd_as_xml = Client(_schedd_wsdl,
                                     location=config.condor_webservice_url,
-                                    retxml=True)
+                                    retxml=True, timeout=self.CONDOR_TIMEOUT)
 
 
     def job_querySOAP(self):
@@ -252,7 +257,6 @@ class JobPool:
         # Get job classAds from the condor scheduler
         try:
             job_ads = self.condor_schedd_as_xml.service.getJobAds(None, None)
-            log.debug("Done querying schedd")
         except URLError, e:
             log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
@@ -266,6 +270,7 @@ class JobPool:
             return None
 
         # Create the condor_jobs list to store jobs
+        log.debug("Parsing Condor job data from schedd")
         condor_jobs = self._condor_job_xml_to_job_list(job_ads)
         del job_ads
         # When querying finishes successfully, reset last query timestamp
@@ -374,13 +379,15 @@ class JobPool:
         #   - remove jobs already in the system from the jobs list
         #   - remove finished jobs (job in system, not in jobs list)
 
+        log.debug("PDA: Update jobs")
         # DBG: print both jobs dicts before updating system.
         log.verbose("System jobs prior to system update:")
         log.verbose("Unscheduled Jobs (new_jobs):")
         self.log_jobs_dict(self.new_jobs)
         log.verbose("Scheduled Jobs (sched_jobs):")
         self.log_jobs_dict(self.sched_jobs)
-        jobs_to_update = []
+
+        jobs_to_remove = []
         for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
             for sys_job in reversed(jobset):
 
@@ -395,29 +402,9 @@ class JobPool:
                 # Otherwise, the system job is in the condor queue - remove it from condor_jobs
                 # and append a job to update to list
                 else:
-                    removed_jobs = self.remove_job(query_jobs, sys_job)
-                    jobs_to_update += removed_jobs
-                    log.verbose("Job %s already in the system. Ignoring job." % sys_job.id)
+                    jobs_to_remove.append(sys_job.id)
 
-                # NOTE: The code below also conceptually achieves the above functionality.
-                #       However, due to a Python 2.4.x quirk, iterating through lists
-                #       in the order given below causes occasional errors. This has been
-                #       changed in Python 2.5+. For support of 2.4.3 (SL standard), use the
-                #       above code, and generally watch out for in-loop list manipulation.
-                # If system job is in the jobs list, remove from the jobs list
-                #if (self.has_job(query_jobs, sys_job)):
-                #    log.debug("Job %s is already in the system." % sys_job.id)
-                #    self.remove_job(query_jobs, sys_job)
-                #
-                #    # DBG: Print query_jobs after modification by update loop
-                #    log.debug("Query jobs after removal (system already has job):")
-                #    self.log_jobs_list(query_jobs)
-
-                # Otherwise, if system job is not in recvd jobs, remove job from system
-                #else:
-                #    log.info("Job %s finished or removed. Clearing job from system." % sys_job.id)
-                #   self.remove_system_job(sys_job)
-
+        jobs_to_update = self._remove_jobs_by_id(query_jobs, jobs_to_remove, self.write_lock)
         # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
         for job in query_jobs:
             self.add_new_job(job)
@@ -552,8 +539,29 @@ class JobPool:
                 removed_list.append(job_list[i])
                 job_list.remove(job_list[i])
                 removed = True
-        if not removed:
-            log.verbose("(remove_job) - Job %s does not exist in given list. Doing nothing." % job_id)
+        removed_list = filter(lambda job: job.id == target_job_id, job_list)
+        if removed_list == []:
+            log.verbose("(remove_job) - Job %s does not exist in given list. Doing nothing." % target_job.id )
+        return removed_list
+
+    def _remove_jobs_by_id(self, job_list, job_ids_to_remove, write_lock=None):
+        """
+        _remove_jobs_by_id - remove jobs from a list, with optional write lock
+
+        params:
+        job_list - list of job objects that you want manipulated
+        job_ids_to_remove - list of job ids that you want removed
+        write_lock - optional write lock for thread safety
+        """
+        job_ids = set(job_ids_to_remove)
+        removed_list = filter(lambda job: job.id in job_ids, job_list)
+        if write_lock:
+            with write_lock:
+                for job in removed_list:
+                    job_list.remove(job)
+        else:
+            for job in removed_list:
+                job_list.remove(job)
         return removed_list
 
     # Update Job Status

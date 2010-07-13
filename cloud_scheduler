@@ -15,10 +15,14 @@
 ## Using optparse for command line options (http://docs.python.org/library/optparse.html)
 ##
 
-
 ## Imports
-import os
 import sys
+
+if sys.version_info[:2] < (2,5):
+    print "You need at least Python 2.5 to run Cloud Scheduler"
+    sys.exit(1)
+
+import os
 import time
 import string
 import getopt
@@ -276,6 +280,39 @@ class Scheduler(threading.Thread):
 
             machineList = self.resource_pool.resource_querySOAP()
             if machineList:
+                # Make sure VMs have registered with Condor
+                unregisteredvms = []
+                for cluster in self.resource_pool.resources:
+                    for vm in cluster.vms:
+                        foundvm = False
+                        if vm.status == 'Running':
+                            host = vm.hostname.split('.')[0]
+                            for machine in machineList:
+                                condName = machine['Name'].split('.')[0]
+                                if condName == host:
+                                    foundvm = True
+                                    break
+                            if not foundvm:
+                                unregisteredvms.append(vm)
+                to_kill = []
+                for vm in unregisteredvms:
+                    # now -state change will be how long VM 'running'
+                    running_time = int(time.time()) - vm.last_state_change
+                    if running_time > config.condor_register_time_limit:
+                        to_kill.append(vm)
+                for machine in to_kill:
+                    killedIt = False
+                    for cluster in self.resource_pool.resources:
+                        for vm in cluster.vms:
+                            if vm == machine:
+                                log.debug("Shutting down VM that has not registered with Condor after %i" % (config.condor_register_time_limit))
+                                cluster.vm_destroy(machine)
+                                killedIt = True
+                                break
+                        if killedIt:
+                            break
+
+
                 available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
                 required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
                 # Remove excess VMs when available VM type exceedes required by jobs
@@ -563,7 +600,6 @@ class Cleanup(threading.Thread):
                     for user in self.job_pool.sched_jobs.keys():
                         for job in reversed(self.job_pool.sched_jobs[user]):
                             if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
-                                print 'unscheduled job due to %s' % ('less vm than sched' if vms[job.req_vmtype] < job_req_count[job.req_vmtype] else 'not there')
                                 self.job_pool.unschedule(job)
                     
                 finally:

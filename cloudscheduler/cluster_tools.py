@@ -10,6 +10,8 @@
 ## This file contains the VM class, ICluster interface, as well as the
 ## implementations of this interface.
 
+from __future__ import with_statement
+
 import os
 import re
 import sys
@@ -182,6 +184,17 @@ class ICluster:
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
 
+    class NoResourcesError(Exception):
+        """Exception raised for errors where not enough resources are available
+
+        Attributes:
+            resource -- name of resource that is insufficient
+
+        """
+
+        def __init__(self, resource):
+            self.resource = resource
+
     def setup_logging(self):
         global log
         log = logging.getLogger("cloudscheduler")
@@ -271,7 +284,7 @@ class ICluster:
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_reboot'
 
-    def vm_destroy(self, vm):
+    def vm_destroy(self, vm, return_resources=True):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_destroy'
 
@@ -303,22 +316,36 @@ class ICluster:
         # If no entries found, return error code.
         return(-1)
 
-    # Checks out resources taken by a VM in creation from the internal rep-
-    # resentation of the Cluster
-    # Parameters:
-    #    vm   - the VM object used to check out resources from the Cluster.
-    #           The VMs memory and mementry fields are used to check out memory
-    #           from the appropriate Cluster fields.
-    # Note: No bounds checking is done as of yet.
-    # Note: vm_slots is automatically decremeneted by one (1).
-    # EXPAND HERE as checkout/return become more complex
     def resource_checkout(self, vm):
+        """
+        Checks out resources taken by a VM in creation from the internal rep-
+        resentation of the Cluster
+
+        Parameters:
+        vm   - the VM object used to check out resources from the Cluster.
+
+        Raises NoResourcesError if there are not enough available resources
+        to check out.
+        """
         log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
-        self.res_lock.acquire()
-        self.vm_slots -= 1
-        self.storageGB -= vm.storage
-        self.memory[vm.mementry] -= vm.memory
-        self.res_lock.release()
+        with self.res_lock:
+            remaining_vm_slots = self.vm_slots - 1
+            if remaining_vm_slots < 0:
+                raise self.NoResourcesError("vm_slots")
+            else:
+                self.vm_slots = remaining_vm_slots
+
+            remaining_storage = self.storageGB - vm.storage
+            if remaining_storage < 0:
+                raise self.NoResourcesError("storage")
+            else:
+                self.storageGB = remaining_storage
+
+            remaining_memory = self.memory[vm.mementry]
+            if remaining_memory < 0:
+                raise self.NoResourcesError("memory")
+            else:
+                self.memory[vm.mementry] -= remaining_memory
 
     # Returns the resources taken by the passed in VM to the Cluster's internal
     # storage.
@@ -421,14 +448,11 @@ class NimbusCluster(ICluster):
         
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
         if (create_return != 0):
-            log.warning("vm_create - Error in executing workspace create command.\n%s" % (create_err))
-            log.warning("vm_create - VM %s (ID: %s) not created. Returning error code." \
-              % (vm_name, vm_epr))
+            log.warning("vm_create - Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
             # Clean up tempory user proxy file if present.
             if job_proxy_file_path != None:
                 log.debug("VM creation failed, so deleting user proxy file %s" % (job_proxy_file_path))
                 os.remove(job_proxy_file_path)
-
             return create_return
 
         log.debug("(vm_create) - workspace create command executed.")
@@ -532,13 +556,13 @@ class NimbusCluster(ICluster):
         log.debug("(vm_reboot) - Command: " + string.join(ws_cmd, " "))
 
         # Execute the reboot command: wait for return
-        reboot_return = self.vm_execute(ws_cmd, env=vm.get_env())
+        (reboot_return, reboot_out, reboot_err) = self.vm_execwait(ws_cmd, env=vm.get_env())
 
         # Check reboot return code. If successful, continue. Otherwise, set
         # VM state to "Error" and return.
         if (reboot_return != 0):
-            log.warning("(vm_reboot) - Error in executing workspace reboot command.")
-            log.warning("(vm_reboot) - VM failed to reboot. Setting VM to error state and returning error code.")
+            log.warning("vm_reboot - Error rebooting VM %s: %s %s" % (vm.id, reboot_out, reboot_err))
+            log.warning("vm_reboot - Setting VM status 'Error'.")
             vm.status = "Error"
             return reboot_return
 
@@ -548,8 +572,15 @@ class NimbusCluster(ICluster):
         return reboot_return
 
 
-    # TODO: Explain parameters and returns
-    def vm_destroy(self, vm, cleanup_proxy=True):
+    def vm_destroy(self, vm, return_resources=True, cleanup_proxy=True):
+        """
+        Shutdown, destroy and return resources of a VM to it's cluster
+
+        Parameters:
+        vm -- vm to shutdown and destroy
+        return_resources -- if set to false, do not return resources from VM to cluster
+        cleanup_proxy -- if True, then the proxy used to authentication this VM's creation will be cleaned up (deleted).
+        """
 
         # Create an epr for workspace.sh
         vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
@@ -581,7 +612,7 @@ class NimbusCluster(ICluster):
         # error state (wait, and the polling thread will attempt a destroy later)
         if (destroy_return != 0):
             remove_vm = False
-            log.warning("(vm_destroy) - VM was not correctly destroyed. Setting VM to error state and returning error code.")
+            log.warning("(vm_destroy) - VM %s was not correctly destroyed: %s %s" % (vm.id, destroy_out, destroy_error))
             vm.status = "Error"
             if vm.errorcount >= config.polling_error_threshold:
                 if destroy_error.find('workspace is unknown to the service') > 0:
@@ -591,13 +622,13 @@ class NimbusCluster(ICluster):
                 return destroy_return
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
-        self.resource_return(vm)
-        self.vms_lock.acquire()
-        try:
-            self.vms.remove(vm)
-        except ValueError:
-            log.error("Attempted to remove vm from list that was already removed.")
-        self.vms_lock.release()
+        if return_resources:
+            self.resource_return(vm)
+        with self.vms_lock:
+            try:
+                self.vms.remove(vm)
+            except ValueError:
+                log.error("Attempted to remove vm from list that was already removed.")
 
         # Delete EPR
         os.remove(vm_epr)
@@ -621,21 +652,20 @@ class NimbusCluster(ICluster):
 
         # Create workspace poll command
         ws_cmd = self.vmpoll_factory(vm_epr)
-        log.debug("(vm_poll) - Running Nimbus poll command:\n%s" % string.join(ws_cmd, " "))
+        log.verbose("(vm_poll) - Running Nimbus poll command:\n%s" % string.join(ws_cmd, " "))
 
         # Execute the workspace poll (wait, retrieve return code, stdout, and stderr)
         (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd, env=vm.get_env())
 
-        log.debug("(vm_poll) - Poll command completed with return code: %d" % poll_return)
-
         self.vms_lock.acquire()
         # Check the poll command return
         if (poll_return != 0):
-            log.warning("(vm_poll) - Failed polling VM %s (ID: %s)" % (vm.name, vm.id))
+            log.warning("(vm_poll) - Failed polling VM %s (ID: %s): %s %s" % (vm.name, vm.id, poll_out, poll_err))
             log.debug("(vm_poll) - Setting VM status to \'Error\'")
             vm.status = "Error"
 
             # Return the VM status as a string (exit this method)
+            self.vms_lock.release()
             return vm.status
 
         # Print output, and parse the VM status from it
@@ -648,7 +678,7 @@ class NimbusCluster(ICluster):
                 if vm.status != self.VM_STATES[tmp_state]:
                     vm.last_state_change = int(time.time())
                 vm.status = self.VM_STATES[tmp_state]
-                log.debug("(vm_poll) - VM state: %s, Nimbus state: %s" % (vm.status, tmp_state))
+                log.debug("VM %s state: %s, Nimbus state: %s" % (vm.id, vm.status, tmp_state))
 
                 vm.hostname = self._extract_hostname(poll_out)
 
@@ -1038,10 +1068,16 @@ class EC2Cluster(ICluster):
         return vm.status
 
 
-    def vm_destroy(self, vm):
+    def vm_destroy(self, vm, return_resources=True):
+        """
+        Shutdown, destroy and return resources of a VM to it's cluster
+
+        Parameters:
+        vm -- vm to shutdown and destroy
+        return_resources -- if set to false, do not return resources from VM to cluster
+        """
         log.debug("Destroying vm with instance id %s" % vm.id)
 
-        # Kill VM on EC2
         try:
             connection = self._get_connection()
 
@@ -1058,10 +1094,10 @@ class EC2Cluster(ICluster):
             return self.ERROR
 
         # Delete references to this VM
-        self.resource_return(vm)
-        self.vms_lock.acquire()
-        self.vms.remove(vm)
-        self.vms_lock.release()
+        if return_resources:
+            self.resource_return(vm)
+        with vms_lock:
+            self.vms.remove(vm)
 
         return 0
 
