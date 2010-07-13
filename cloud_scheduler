@@ -52,7 +52,7 @@ class VMPoller(threading.Thread):
     VMPoller - Polls all the requested VMs, and checks on their status
     """
     def __init__(self, resource_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.resource_pool = resource_pool
         self.quit          = False
         self.starting_poll_interval = 120 # 2 minutes
@@ -121,7 +121,7 @@ class JobPoller(threading.Thread):
     """
 
     def __init__(self, job_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.job_pool = job_pool
         self.quit = False
         self.polling_interval = 5 # seconds
@@ -168,7 +168,7 @@ class Scheduler(threading.Thread):
     ERROR    = 6
 
     def __init__(self, resource_pool, job_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.resource_pool = resource_pool
         self.job_pool      = job_pool
         self.quit          = False
@@ -550,7 +550,7 @@ class Cleanup(threading.Thread):
     RUNNING = 2
 
     def __init__(self, resource_pool, job_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.job_pool = job_pool
         self.resource_pool = resource_pool
         self.quit = False
@@ -621,7 +621,7 @@ class GetClouds(threading.Thread):
 
 
     def __init__(self, resource_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.resource_pool = resource_pool
         self.quit = False
         self.polling_interval = 10 # secondsgetCloudsClient
@@ -732,7 +732,7 @@ def main():
     info_threads = []
 
     # Start the cloud scheduler info server for RPCs
-    info_serv = info_server.CloudSchedulerInfoServer(cloud_resources, job_pool)
+    info_serv = info_server.InfoServer(cloud_resources, job_pool)
     info_serv.daemon = True
     info_threads.append(info_serv)
 
