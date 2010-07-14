@@ -327,7 +327,7 @@ class ICluster:
             else:
                 self.storageGB = remaining_storage
 
-            remaining_memory = self.memory[vm.mementry]
+            remaining_memory = self.memory[vm.mementry] - vm.memory
             if remaining_memory < 0:
                 raise self.NoResourcesError("memory")
             else:
