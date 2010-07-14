@@ -966,7 +966,7 @@ class EC2Cluster(ICluster):
 
 
             else:
-                log.error("Couldn't find image %s on %s" % (vm_image, self.host))
+                log.error("Couldn't find image %s on %s" % (vm_image, self.name))
                 return self.ERROR
 
         except boto.exception.EC2ResponseError, e:
