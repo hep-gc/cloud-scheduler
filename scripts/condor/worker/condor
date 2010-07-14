@@ -399,11 +399,7 @@ start() {
 	setup_on_ec2
 	setup_ccb
 	set_central_manager $CENTRAL_MANAGER
-<<<<<<< HEAD:scripts/condor/worker/condor
-	set_start_requirement $START_REQUIREMENT
-=======
 	update_condor_local_config
->>>>>>> e3bc2c6398d5fab9893104cbfcd6825c4dddc9e8:scripts/condor/worker/condor
 	verify_execute
 	init_condor_master
 	echon "Starting up Condor..."
