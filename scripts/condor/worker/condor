@@ -324,13 +324,14 @@ set_central_manager() {
 
 update_condor_local_config() {
     if [ -f $CONDOR_CONFIG_LOCAL_MODIFS ]; then
-	echo "Applying modifications to local condor configuration..."
+	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+	echo "Applying modifications to ${local_file} ..."
 	while read LINE
 	do
 	    variable=`expr "${LINE}" : '\([[:alnum:]]\+\)=.*$'`
 	    value=`expr "${LINE}" : '[[:alnum:]]\+=\(.*\)$'`
 	    replace_or_append "${variable}" "${variable}=${value}" $local_file
-	done < $modif_file
+	done < $CONDOR_CONFIG_LOCAL_MODIFS
     fi
 }
 
