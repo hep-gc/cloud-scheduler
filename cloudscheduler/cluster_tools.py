@@ -813,6 +813,7 @@ class EC2Cluster(ICluster):
             "pending" : "Starting",
             "shutting-down" : "Shutdown",
             "termimated" : "Shutdown",
+            "error" : "Error",
     }
 
     ERROR = 1
@@ -924,7 +925,7 @@ class EC2Cluster(ICluster):
                   #      this is fixed
                   # This is Eucalyptus bug #495670
                   # https://bugs.launchpad.net/eucalyptus/+bug/495670
-                images = self.connection.get_all_images()
+                images = connection.get_all_images()
                 for potential_match in images:
                     if potential_match.id == vm_image:
                         image = potential_match
@@ -988,8 +989,10 @@ class EC2Cluster(ICluster):
                     cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive)
 
-        if spot_id:
+        try:
             new_vm.spot_id = spot_id
+        except:
+            log.verbose("No spot ID to add to VM %s" % instance_id)
 
         self.resource_checkout(new_vm)
         self.vms.append(new_vm)
@@ -1013,8 +1016,18 @@ class EC2Cluster(ICluster):
                     log.exception("Problem getting information for spot vm %s" % vm.spot_id)
                     return vm.status
 
-            reservations = connection.get_all_instances([vm.id])
-            instance = reservations[0].instances[0]
+            instance = None
+            try:
+                reservations = connection.get_all_instances([vm.id])
+                instance = reservations[0].instances[0]
+            except IndexError:
+                log.error("%s on %s doesn't seem to exist anymore, setting status to Error" % (vm.id, self.network_address))
+                vm.status = self.VM_STATES['error']
+                vm.last_state_change = int(time.time())
+                return vm.status
+            except:
+                log.exception("Unexpected error polling %s" % vm.id)
+                return vm.status
 
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
@@ -1051,14 +1064,18 @@ class EC2Cluster(ICluster):
                 instance = reservations[0].instances[0]
                 instance.stop()
 
+        except IndexError:
+            log.warning("%s already seem to be gone... removing anyway." % vm.id)
         except boto.exception.EC2ResponseError, e:
-            log.exception("Couldn't destroy vm!")
+            log.exception("Couldn't connect to cloud to destroy vm!")
             return self.ERROR
+        except:
+            log.exception("Unexpected error destroying vm!")
 
         # Delete references to this VM
         if return_resources:
             self.resource_return(vm)
-        with vms_lock:
+        with self.vms_lock:
             self.vms.remove(vm)
 
         return 0
