@@ -541,20 +541,16 @@ class Scheduler(threading.Thread):
         for cluster in resources:
             if cluster.__class__.__name__ == 'NimbusCluster':
                 if job.req_imageloc in failures.keys():
-                    print 'nimbus cluster'
                     foundIt = False
                     for resource in failures[job.req_imageloc]:
                         if resource[0] == cluster.name:
-                            print 'inc count'
                             resource[1] += 1
                             foundIt = True
                         if foundIt:
                             break
                         else:
-                            print 'first time cluster'
                             failures[job.req_imageloc].append([cluster.name, 1])
                 else:
-                    print 'first fail job'
                     failures[job.req_imageloc] = []
                     failures[job.req_imageloc].append([cluster.name, 1])
             elif cluster.__class__.__name__ == 'EC2Cluster':
