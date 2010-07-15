@@ -461,7 +461,7 @@ class Scheduler(threading.Thread):
                 # start a VM using somebody else's proxy certificate and then allow that
                 # VM to run his/her jobs.
                 # Might need to do some DN -> username mapping here eventually... (Andre)
-                customizations.append(('START=(RemoteUser == "%s")' % (utilities.get_cert_DN(job_proxy_file_path)), '/etc/condor/condor_config.local.modifications'))
+                customizations.append(('START=(RemoteUser == "%s")\n' % (utilities.get_cert_DN(job_proxy_file_path)), '/etc/condor/condor_config.local.modifications'))
 
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
