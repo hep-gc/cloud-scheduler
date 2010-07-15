@@ -38,11 +38,16 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.info_server_port = "1234"
         self.workspace_path = "/path/to/workspace"
         self.persistence_file = "/path/to/persistence"
+        self.scheduler_interval = 42
+        self.vm_poller_interval = 42
+        self.job_poller_interval = 42
+        self.cleanup_interval = 42
 
         self.log_level = "ERROR"
         self.log_location = "/tmp/test.log"
         self.log_stdout = "true"
         self.log_max_size = "1312312"
+        self.log_format = "format_string"
 
         # build config file
         (self.configfile, self.configfilename) = tempfile.mkstemp()
@@ -62,12 +67,17 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'info_server_port', self.info_server_port)
         testconfig.set('global', 'workspace_path', self.workspace_path)
         testconfig.set('global', 'persistence_file', self.persistence_file)
+        testconfig.set('global', 'scheduler_interval', self.scheduler_interval)
+        testconfig.set('global', 'vm_poller_interval', self.vm_poller_interval)
+        testconfig.set('global', 'job_poller_interval', self.job_poller_interval)
+        testconfig.set('global', 'cleanup_interval', self.cleanup_interval)
 
         testconfig.add_section('logging')
         testconfig.set('logging', 'log_level', self.log_level)
         testconfig.set('logging', 'log_location', self.log_location)
         testconfig.set('logging', 'log_stdout', self.log_stdout)
         testconfig.set('logging', 'log_max_size', self.log_max_size)
+        testconfig.set('logging', 'log_format', self.log_format)
 
         # write temporary config file
         configfile = open(self.configfilename, 'wb')
@@ -119,6 +129,18 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
     def test_persistence_file(self):
         self.assertEqual(self.persistence_file, cloudscheduler.config.persistence_file)
 
+    def test_scheduler_interval(self):
+        self.assertEqual(int(self.scheduler_interval), cloudscheduler.config.scheduler_interval)
+
+    def test_vm_poller_interval(self):
+        self.assertEqual(int(self.vm_poller_interval), cloudscheduler.config.vm_poller_interval)
+
+    def test_job_poller_interval(self):
+        self.assertEqual(int(self.job_poller_interval), cloudscheduler.config.job_poller_interval)
+
+    def test_cleanup_interval(self):
+        self.assertEqual(int(self.cleanup_interval), cloudscheduler.config.cleanup_interval)
+
     def test_log_level(self):
         self.assertEqual(self.log_level, cloudscheduler.config.log_level)
 
@@ -130,6 +152,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_log_max_size(self):
         self.assertEqual(int(self.log_max_size), cloudscheduler.config.log_max_size)
+
+    def test_log_format(self):
+        self.assertEqual(self.log_format, cloudscheduler.config.log_format)
 
     def test_for_spaces_before_values(self):
 

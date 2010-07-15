@@ -239,7 +239,7 @@ class JobPool:
         log = logging.getLogger("cloudscheduler")
         log.debug("New JobPool %s created" % name)
         self.name = name
-        self.last_query = datetime.datetime.now()
+        self.last_query = None
         self.write_lock = threading.RLock()
 
         _schedd_wsdl  = "file://" + determine_path() \
@@ -274,7 +274,7 @@ class JobPool:
         condor_jobs = self._condor_job_xml_to_job_list(job_ads)
         del job_ads
         # When querying finishes successfully, reset last query timestamp
-        last_query = datetime.datetime.now()
+        self.last_query = datetime.datetime.now()
         log.debug("Done parsing jobs from Condor Schedd SOAP")
 
         # Return condor_jobs list

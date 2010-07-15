@@ -52,12 +52,12 @@ class VMPoller(threading.Thread):
     VMPoller - Polls all the requested VMs, and checks on their status
     """
     def __init__(self, resource_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.resource_pool = resource_pool
         self.quit          = False
         self.starting_poll_interval = 120 # 2 minutes
         self.running_poll_interval = 900 # 15 minutes
-        self.run_interval = 5 # seconds
+        self.run_interval = config.vm_poller_interval
 
     def stop(self):
         log.debug("Waiting for VM polling loop to end")
@@ -121,10 +121,10 @@ class JobPoller(threading.Thread):
     """
 
     def __init__(self, job_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.job_pool = job_pool
         self.quit = False
-        self.polling_interval = 5 # seconds
+        self.polling_interval = config.job_poller_interval
 
     def stop(self):
         log.debug("Waiting for job polling loop to end")
@@ -168,13 +168,11 @@ class Scheduler(threading.Thread):
     ERROR    = 6
 
     def __init__(self, resource_pool, job_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.resource_pool = resource_pool
         self.job_pool      = job_pool
         self.quit          = False
-        self.scheduling_interval = 5 # seconds
-        self.starting_poll_interval = 120 # 2 minutes
-        self.running_poll_interval = 900 # 15 minutes
+        self.scheduling_interval = config.scheduler_interval
 
     def stop(self):
         log.debug("Waiting for scheduling loop to end")
@@ -251,8 +249,8 @@ class Scheduler(threading.Thread):
 
                         # If no resource fits, continue to next job in user's list
                         if good_resources[0] == None:
-                            log.info("No resource to match job: %s" % job.id)
-                            log.info("Leaving job unscheduled, moving to %s's next job" % user)
+                            log.verbose("No resource to match job: %s" % job.id)
+                            log.verbose("Leaving job unscheduled, moving to %s's next job" % user)
                             continue
 
                         create_ret = self.vm_creation(job, good_resources)
@@ -312,10 +310,9 @@ class Scheduler(threading.Thread):
                         if killedIt:
                             break
 
-
+                # Remove excess VMs when available VM type exceedes required by jobs.
                 available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
                 required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
-                # Remove excess VMs when available VM type exceedes required by jobs
                 log.debug("Removing excess VMs from the system.")
                 to_remove = {}
                 for vmtype, count in available_vmtypes_dict.iteritems():
@@ -563,11 +560,11 @@ class Cleanup(threading.Thread):
     RUNNING = 2
 
     def __init__(self, resource_pool, job_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.job_pool = job_pool
         self.resource_pool = resource_pool
         self.quit = False
-        self.polling_interval = 5 # seconds
+        self.polling_interval = config.cleanup_interval
 
     def stop(self):
         log.debug("Waiting for cleanup loop to end")
@@ -604,13 +601,19 @@ class Cleanup(threading.Thread):
                 finally:
                     self.job_pool.write_lock.release()
 
-            req_vmtypes = self.job_pool.get_required_vmtypes()
-            for cluster in self.resource_pool.resources:
-                for vm in reversed(cluster.vms):
-                    if vm.vmtype not in req_vmtypes:
-                        destroy_ret = cluster.vm_destroy(vm)
-                        if destroy_ret != 0:
-                            log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+            # Remove unneeded VMs.
+            # Make sure we only do this if we have ever gotten a list of jobs
+            # from Condor. Otherwise, when we persist from a previous run
+            # we would shut down all the VMs for those jobs. Sometimes querying
+            # a slow schedd can take quite a few minutes
+            if self.job_pool.last_query:
+                req_vmtypes = self.job_pool.get_required_vmtypes()
+                for cluster in self.resource_pool.resources:
+                    for vm in reversed(cluster.vms):
+                        if vm.vmtype not in req_vmtypes:
+                            destroy_ret = cluster.vm_destroy(vm)
+                            if destroy_ret != 0:
+                                log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
@@ -628,7 +631,7 @@ class GetClouds(threading.Thread):
 
 
     def __init__(self, resource_pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.resource_pool = resource_pool
         self.quit = False
         self.polling_interval = 10 # secondsgetCloudsClient
@@ -685,8 +688,7 @@ def main():
 
     # Set up logging
     log.setLevel(utilities.LEVELS[config.log_level])
-    log_formatter = logging.Formatter("%(asctime)s - %(levelname)s " \
-                                      "- %(message)s")
+    log_formatter = logging.Formatter(config.log_format)
     if config.log_stdout:
         stream_handler = logging.StreamHandler()
         stream_handler.setFormatter(log_formatter)
@@ -739,7 +741,7 @@ def main():
     info_threads = []
 
     # Start the cloud scheduler info server for RPCs
-    info_serv = info_server.CloudSchedulerInfoServer(cloud_resources, job_pool)
+    info_serv = info_server.InfoServer(cloud_resources, job_pool)
     info_serv.daemon = True
     info_threads.append(info_serv)
 

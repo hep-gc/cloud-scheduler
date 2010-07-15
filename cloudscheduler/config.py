@@ -37,11 +37,16 @@ condor_register_time_limit = 900
 graceful_shutdown = False
 getclouds = False
 scheduling_metric = "slot"
+cleanup_interval = 5
+vm_poller_interval = 5
+job_poller_interval = 5
+scheduler_interval = 5
 
 log_level = "INFO"
 log_location = None
 log_stdout = False
 log_max_size = None
+log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
 
 
 # setup will look for a configuration file specified on the command line,
@@ -68,11 +73,16 @@ def setup(path=None):
     global graceful_shutdown
     global getclouds
     global scheduling_metric
+    global cleanup_interval
+    global vm_poller_interval
+    global job_poller_interval
+    global scheduler_interval
 
     global log_level
     global log_location
     global log_stdout
     global log_max_size
+    global log_format
 
     homedir = os.path.expanduser('~')
 
@@ -187,6 +197,38 @@ def setup(path=None):
     if config_file.has_option("global", "scheduling_metric"):
         scheduling_metric = config_file.get("global", "scheduling_metric")
 
+    if config_file.has_option("global", "scheduler_interval"):
+        try:
+            scheduler_interval = config_file.getint("global", "scheduler_interval")
+        except ValueError:
+            print "Configuration file problem: scheduler_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "vm_poller_interval"):
+        try:
+            vm_poller_interval = config_file.getint("global", "vm_poller_interval")
+        except ValueError:
+            print "Configuration file problem: vm_poller_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "job_poller_interval"):
+        try:
+            job_poller_interval = config_file.getint("global", "job_poller_interval")
+        except ValueError:
+            print "Configuration file problem: job_poller_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "cleanup_interval"):
+        try:
+            cleanup_interval = config_file.getint("global", "cleanup_interval")
+        except ValueError:
+            print "Configuration file problem: cleanup_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")
 
@@ -203,6 +245,9 @@ def setup(path=None):
             print "Configuration file problem: log_max_size must be an " \
                   "integer value in bytes."
             sys.exit(1)
+
+    if config_file.has_option("logging", "log_format"):
+        log_format = config_file.get("logging", "log_format")
 
     # Derived options
     if condor_host_on_vm:
