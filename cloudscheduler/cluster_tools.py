@@ -331,7 +331,7 @@ class ICluster:
             if remaining_memory < 0:
                 raise self.NoResourcesError("memory")
             else:
-                self.memory[vm.mementry] -= vm.memory
+                self.memory[vm.mementry] -= remaining_memory
 
     # Returns the resources taken by the passed in VM to the Cluster's internal
     # storage.
