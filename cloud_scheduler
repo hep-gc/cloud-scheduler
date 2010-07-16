@@ -242,7 +242,8 @@ class Scheduler(threading.Thread):
                             continue
                         # Find resources that match the job's requirements
                         (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
-                        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
+                        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
+                        job.req_ami, job.req_imageloc)
                         
                         good_resources = [pri_rsrc]
                         if sec_rsrc and pri_rsrc != sec_rsrc:
