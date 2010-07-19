@@ -181,6 +181,7 @@ class Scheduler(threading.Thread):
     def run(self):
         log.info("Starting job scheduling...")
         prevMachineList = []
+        failures = {}
         ########################################################################
         ## Full scheduler loop
         ########################################################################
@@ -241,7 +242,8 @@ class Scheduler(threading.Thread):
                             continue
                         # Find resources that match the job's requirements
                         (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
-                        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage)
+                        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
+                        job.req_ami, job.req_imageloc)
                         
                         good_resources = [pri_rsrc]
                         if sec_rsrc and pri_rsrc != sec_rsrc:
@@ -258,6 +260,7 @@ class Scheduler(threading.Thread):
                             # Mark job as scheduled
                             self.job_pool.schedule(job)
                         else:
+                            self.track_failures(failures, job, good_resources)
                             continue
                         # break out of this user's job and try next user
                         break
@@ -266,7 +269,6 @@ class Scheduler(threading.Thread):
                         break
                 # ENDFOR - for jobs in user's unscheduled job set
             #ENDFOR - Attempt to schedule each one job per user
-
 
             ## Clear all un-needed VMs from the system
             log.debug("Clearing all un-needed VMs from the system")
@@ -549,6 +551,38 @@ class Scheduler(threading.Thread):
                     if found_vm:
                         break
 
+    # Error Tracking to be used to ban / filter resources 
+    def track_failures(self, failures, job, resources):
+        for cluster in resources:
+            if cluster.__class__.__name__ == 'NimbusCluster':
+                if job.req_imageloc in failures.keys():
+                    foundIt = False
+                    for resource in failures[job.req_imageloc]:
+                        if resource[0] == cluster.name:
+                            resource[1] += 1
+                            foundIt = True
+                        if foundIt:
+                            break
+                        else:
+                            failures[job.req_imageloc].append([cluster.name, 1])
+                else:
+                    failures[job.req_imageloc] = []
+                    failures[job.req_imageloc].append([cluster.name, 1])
+            elif cluster.__class__.__name__ == 'EC2Cluster':
+                if job.req_ami in failures.keys():
+                    foundIt = False
+                    for resource in failures[job.req_ami]:
+                        if resource[0] == cluster.name:
+                            resource[1] += 1
+                            foundIt = True
+                        if foundIt:
+                            break
+                        else:
+                            failures[job.req_ami].append([cluster.name, 1])
+                else:
+                    failures[job.req_ami] = []
+                    failures[job.req_ami].append([cluster.name, 1])
+        return failures
 
 class Cleanup(threading.Thread):
     """

@@ -280,13 +280,25 @@ class ResourcePool:
     # Parameters: (as for get_resource methods)
     # Return: a list of Cluster objects representing clusters that meet given
     #         requirements for network, cpu, memory, and storage
-    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage):
+    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc):
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return list of fitting resources")
             return []
 
         fitting_clusters = []
         for cluster in self.resources:
+            if cluster.__class__.__name__ == "NimbusCluster":
+                # If not valid image file to download
+                if imageloc == "":
+                    continue
+                # If required network is NOT in cluster's network associations
+                if (network not in cluster.network_pools):
+                    log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
+                    continue
+            elif cluster.__class__.__name__ == "EC2Cluster":
+                # If no valid ami to boot from
+                if ami == "":
+                    continue
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
                 log.verbose("get_fitting_resources - No free slots in %s" % cluster.name)
@@ -294,10 +306,6 @@ class ResourcePool:
             # If the cluster does not have the required CPU architecture
             if (cpuarch not in cluster.cpu_archs):
                 log.verbose("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
-                continue
-            # If required network is NOT in cluster's network associations
-            if (network not in cluster.network_pools):
-                log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
@@ -346,10 +354,10 @@ class ResourcePool:
     #         Normal return, (Primary_Cluster, Secondary_Cluster)
     #         If no secondary cluster is found, (Cluster, None) is returned.
     #         If no fitting clusters are found, (None, None) is returned.
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage):
+    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc):
 
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage)
+        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:

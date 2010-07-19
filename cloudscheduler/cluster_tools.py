@@ -345,7 +345,7 @@ class ICluster:
             if remaining_memory < 0:
                 raise self.NoResourcesError("memory")
             else:
-                self.memory[vm.mementry] -= remaining_memory
+                self.memory[vm.mementry] = remaining_memory
 
     # Returns the resources taken by the passed in VM to the Cluster's internal
     # storage.
@@ -432,7 +432,7 @@ class NimbusCluster(ICluster):
         now = datetime.datetime.now()
 
         # Create an EPR file name (unique with timestamp)
-        (epr_handle, vm_epr) = tempfile.mkstemp()
+        (epr_handle, vm_epr) = tempfile.mkstemp(suffix=".vm_epr")
         os.close(epr_handle)
 
         # Create the workspace command as a list (private method)
@@ -477,6 +477,8 @@ class NimbusCluster(ICluster):
         # Get the id of the VM from the output of workspace.sh
         try:
             vm_id = re.search("Workspace created: id (\d*)", create_out).group(1)
+            # Renaming VM epr file for user-friendly reference.
+            os.rename(vm_epr, "%s.%s" % (vm_epr, vm_id))
         except:
             log.error("vm_create - couldn't find workspace id for new VM")
 
