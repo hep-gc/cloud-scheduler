@@ -180,7 +180,6 @@ class Scheduler(threading.Thread):
 
     def run(self):
         log.info("Starting job scheduling...")
-        prevMachineList = []
         failures = {}
         ########################################################################
         ## Full scheduler loop
@@ -270,115 +269,6 @@ class Scheduler(threading.Thread):
                 # ENDFOR - for jobs in user's unscheduled job set
             #ENDFOR - Attempt to schedule each one job per user
 
-            ## Clear all un-needed VMs from the system
-            log.debug("Clearing all un-needed VMs from the system")
-
-            # Count the number of jobs that require a certain VM type,
-            # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
-            log.debug("Gathering required VM types.")
-            required_vmtypes = self.job_pool.get_required_vmtypes()
-
-            machineList = self.resource_pool.resource_querySOAP()
-            if machineList:
-                # Make sure VMs have registered with Condor
-                unregisteredvms = []
-                for cluster in self.resource_pool.resources:
-                    for vm in cluster.vms:
-                        foundvm = False
-                        if vm.status == 'Running':
-                            host = vm.hostname.split('.')[0]
-                            for machine in machineList:
-                                condName = machine['Name'].split('.')[0]
-                                if condName == host:
-                                    foundvm = True
-                                    break
-                            if not foundvm:
-                                unregisteredvms.append(vm)
-                to_kill = []
-                for vm in unregisteredvms:
-                    # now -state change will be how long VM 'running'
-                    running_time = int(time.time()) - vm.last_state_change
-                    if running_time > config.condor_register_time_limit:
-                        to_kill.append(vm)
-                for machine in to_kill:
-                    killedIt = False
-                    for cluster in self.resource_pool.resources:
-                        for vm in cluster.vms:
-                            if vm == machine:
-                                log.debug("Shutting down VM that has not registered with Condor after %i" % (config.condor_register_time_limit))
-                                cluster.vm_destroy(machine)
-                                killedIt = True
-                                break
-                        if killedIt:
-                            break
-
-                # Remove excess VMs when available VM type exceedes required by jobs.
-                available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
-                required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
-                log.debug("Removing excess VMs from the system.")
-                to_remove = {}
-                for vmtype, count in available_vmtypes_dict.iteritems():
-                    if vmtype in required_vmtypes_dict.keys():
-                        if count > required_vmtypes_dict[vmtype]:
-                            to_remove[vmtype] = count - required_vmtypes_dict[vmtype]
-                    # This type no longer needed, remove all remaining
-                    else:
-                        to_remove[vmtype] = count
-                del available_vmtypes_dict
-                del required_vmtypes_dict
-                # Go over the types and find idle machines to remove
-                self.remove_idle_machines(machineList, to_remove)
-
-                # Balancing Resources
-                num_to_change = {}
-                vm_count = self.resource_pool.vm_count()
-                for vmtype, val in diff_types.iteritems():
-                    num_to_change[vmtype] = int(round(val * vm_count))
-
-                if config.graceful_shutdown:
-                    #TODO graceful shutdown via hold / release
-                    for vmtype in diff_types.keys():
-                        if diff_types[vmtype] > Decimal('0.1'):
-                            self.job_pool.hold_vmtype(vmtype)
-                        else:
-                            self.job_pool.release_vmtype(vmtype)
-                    self.remove_idle_machines(machineList, num_to_change)
-                    # TODO Check for the idle machines to shutdown
-                else:
-                    # Compare current Machine List with Previous
-                    # Looking for machines that have changed jobs since last check
-                    # and are of a type that has an higher than wanted distribution
-                    # based on diff_types
-                    vm_matches = []
-                    vm_starting = []
-                    changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
-                    for cluster in self.resource_pool.resources:
-                        for vm in cluster.vms:
-                            if vm.hostname in changed:
-                                vm_matches.append(vm)
-                            if vm.status == "Starting":
-                                vm_starting.append(vm)
-                    to_shutdown = []
-
-                    for vm in vm_starting:
-                        if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-                            to_shutdown.append(vm)
-                            num_to_change[vm.vmtype] -= 1
-                    for vm in vm_matches:
-                        if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-                            to_shutdown.append(vm)
-                            num_to_change[vm.vmtype] -= 1
-                    for vm in to_shutdown:
-                        log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
-                        cluster = self.resource_pool.get_cluster_with_vm(vm)
-                        log.debug("VM %s on cluster %s shutting down" % (vm.name, cluster.name))
-                        destroy_ret = cluster.vm_destroy(vm)
-                        if destroy_ret != 0:
-                            log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
-
-                prevMachineList = machineList
-            else:
-                log.debug("No Machines returned by Condor Collector Query")
 
             self.resource_pool.save_persistence()
 
@@ -594,6 +484,8 @@ class Cleanup(threading.Thread):
     def run(self):
         log.info("Starting Cleanup Thread...")
 
+        prevMachineList = []
+
         while not self.quit:
             log.debug("Syncing job queues")
 
@@ -635,6 +527,118 @@ class Cleanup(threading.Thread):
                             destroy_ret = cluster.vm_destroy(vm)
                             if destroy_ret != 0:
                                 log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+
+
+                #TODO: Clean this up, and refactor into multiple functions
+                ## Clear all un-needed VMs from the system
+                log.debug("Clearing all un-needed VMs from the system")
+
+                # Count the number of jobs that require a certain VM type,
+                # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
+                log.debug("Gathering required VM types.")
+                required_vmtypes = self.job_pool.get_required_vmtypes()
+
+                machineList = self.resource_pool.resource_querySOAP()
+                if machineList:
+                    # Make sure VMs have registered with Condor
+                    unregisteredvms = []
+                    for cluster in self.resource_pool.resources:
+                        for vm in cluster.vms:
+                            foundvm = False
+                            if vm.status == 'Running':
+                                host = vm.hostname.split('.')[0]
+                                for machine in machineList:
+                                    condName = machine['Name'].split('.')[0]
+                                    if condName == host:
+                                        foundvm = True
+                                        break
+                                if not foundvm:
+                                    unregisteredvms.append(vm)
+                    to_kill = []
+                    for vm in unregisteredvms:
+                        # now -state change will be how long VM 'running'
+                        running_time = int(time.time()) - vm.last_state_change
+                        if running_time > config.condor_register_time_limit:
+                            to_kill.append(vm)
+                    for machine in to_kill:
+                        killedIt = False
+                        for cluster in self.resource_pool.resources:
+                            for vm in cluster.vms:
+                                if vm == machine:
+                                    log.debug("Shutting down VM that has not registered with Condor after %i" % (config.condor_register_time_limit))
+                                    cluster.vm_destroy(machine)
+                                    killedIt = True
+                                    break
+                            if killedIt:
+                                break
+
+                    # Remove excess VMs when available VM type exceedes required by jobs.
+                    available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
+                    required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
+                    log.debug("Removing excess VMs from the system.")
+                    to_remove = {}
+                    for vmtype, count in available_vmtypes_dict.iteritems():
+                        if vmtype in required_vmtypes_dict.keys():
+                            if count > required_vmtypes_dict[vmtype]:
+                                to_remove[vmtype] = count - required_vmtypes_dict[vmtype]
+                        # This type no longer needed, remove all remaining
+                        else:
+                            to_remove[vmtype] = count
+                    del available_vmtypes_dict
+                    del required_vmtypes_dict
+                    # Go over the types and find idle machines to remove
+                    self.remove_idle_machines(machineList, to_remove)
+
+                    # Balancing Resources
+                    num_to_change = {}
+                    vm_count = self.resource_pool.vm_count()
+                    for vmtype, val in diff_types.iteritems():
+                        num_to_change[vmtype] = int(round(val * vm_count))
+
+                    if config.graceful_shutdown:
+                        #TODO graceful shutdown via hold / release
+                        for vmtype in diff_types.keys():
+                            if diff_types[vmtype] > Decimal('0.1'):
+                                self.job_pool.hold_vmtype(vmtype)
+                            else:
+                                self.job_pool.release_vmtype(vmtype)
+                        self.remove_idle_machines(machineList, num_to_change)
+                        # TODO Check for the idle machines to shutdown
+                    else:
+                        # Compare current Machine List with Previous
+                        # Looking for machines that have changed jobs since last check
+                        # and are of a type that has an higher than wanted distribution
+                        # based on diff_types
+                        vm_matches = []
+                        vm_starting = []
+                        changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
+                        for cluster in self.resource_pool.resources:
+                            for vm in cluster.vms:
+                                if vm.hostname in changed:
+                                    vm_matches.append(vm)
+                                if vm.status == "Starting":
+                                    vm_starting.append(vm)
+                        to_shutdown = []
+
+                        for vm in vm_starting:
+                            if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
+                                to_shutdown.append(vm)
+                                num_to_change[vm.vmtype] -= 1
+                        for vm in vm_matches:
+                            if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
+                                to_shutdown.append(vm)
+                                num_to_change[vm.vmtype] -= 1
+                        for vm in to_shutdown:
+                            log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
+                            cluster = self.resource_pool.get_cluster_with_vm(vm)
+                            log.debug("VM %s on cluster %s shutting down" % (vm.name, cluster.name))
+                            destroy_ret = cluster.vm_destroy(vm)
+                            if destroy_ret != 0:
+                                log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
+
+                    prevMachineList = machineList
+                else:
+                    log.debug("No Machines returned by Condor Collector Query")
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
