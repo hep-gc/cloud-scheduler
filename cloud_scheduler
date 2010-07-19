@@ -85,17 +85,16 @@ class VMPoller(threading.Thread):
                 now = int(time.time())
 
                 if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
-                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                    log.debug("Skiped polling %s, which has status %s" % (vm.id, vm.status))
                     continue
                 elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
-                    log.debug("Skip polling %s, which has status %s" % (vm.id, vm.status))
+                    log.debug("Skiped polling %s, which has status %s" % (vm.id, vm.status))
                     continue
 
                 ret_state = cluster.vm_poll(vm)
 
                 # Print polled VM's state and details
-                log.debug("Polled VM: ")
-                vm.log_dbg()
+                log.debug("Polled VM %s, which has status %s" % (vm.id, vm.status))
 
                 # If the VM is in an error state, keep track of error and
                 # after passing some threshold destroy the machine.

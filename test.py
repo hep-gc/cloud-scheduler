@@ -344,6 +344,33 @@ Waiting for updates.
         bad_host = NimbusCluster._extract_hostname("")
         self.assertEqual("", bad_host)
 
+    def test_extract_state(self):
+        from cloudscheduler.cluster_tools import NimbusCluster
+        nimbus_string_non_existant = """
+Problem: This workspace is unknown to the service (likely because it was terminated).
+"""
+        nimbus_string_good = """
+
+NIC: eth0
+  - Association: private
+  - IP: 192.168.107.1
+  - Hostname: musecloud01
+  - Gateway: 192.168.1.217
+
+Schedule:
+  -        Start time: Mon Jul 19 11:51:36 PDT 2010
+  -          Duration: 100 minutes.
+  -     Shutdown time: Mon Jul 19 13:31:36 PDT 2010
+  -  Termination time: Mon Jul 19 13:41:36 PDT 2010
+
+State: Unpropagated
+"""
+        extracted_state = NimbusCluster._extract_state(nimbus_string_good)
+        self.assertEqual("Starting", extracted_state)
+
+        destroyed = NimbusCluster._extract_state(nimbus_string_non_existant)
+        self.assertEqual("Destroyed", destroyed)
+
 
 class ResourcePoolTests(unittest.TestCase):
 

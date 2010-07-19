@@ -657,7 +657,14 @@ class ResourcePool:
             for vm in old_cluster.vms:
 
                 log.debug("Found VM %s" % vm.id)
-                if old_cluster.vm_poll(vm) != "Error":
+                vm_status = old_cluster.vm_poll(vm)
+                if vm_status == "Error":
+                    log.info("Found persisted VM %s from %s in an error state, destroying it." %
+                             (vm.id, old_cluster.name))
+                    old_cluster.vm_destroy(vm)
+                elif vm_status == "Destroyed":
+                    log.info("VM %s on %s no longer exists. Ignoring it." % (vm.id, old_cluster.name))
+                else:
                     new_cluster = self.get_cluster(old_cluster.name)
 
                     if new_cluster:
@@ -677,7 +684,3 @@ class ResourcePool:
                         log.info("%s doesn't seem to exist, so destroying vm %s." %
                                  (old_cluster.name, vm.id))
                         old_cluster.vm_destroy(vm)
-                else:
-                    log.info("Found persisted VM %s from %s in an error state, destroying it." %
-                             (vm.id, old_cluster.name))
-                    old_cluster.vm_destroy(vm)
