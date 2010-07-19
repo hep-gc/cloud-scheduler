@@ -343,7 +343,6 @@ class JobPool:
         #   - remove jobs already in the system from the jobs list
         #   - remove finished jobs (job in system, not in jobs list)
 
-        log.debug("PDA: Update jobs")
         # DBG: print both jobs dicts before updating system.
         log.verbose("System jobs prior to system update:")
         log.verbose("Unscheduled Jobs (new_jobs):")

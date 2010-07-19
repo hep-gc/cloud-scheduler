@@ -130,7 +130,7 @@ class ResourcePool:
                             for vm in reversed(new_cluster.vms):
                                 try:
                                     new_cluster.resource_checkout(vm)
-                                except new_cluster.NoResourcesError, e:
+                                except cluster_tools.NoResourcesError, e:
                                     log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
                                                 (vm.id, new_cluster.name, e.resource))
                                     new_cluster.vm_destroy(vm, return_resources=False)
@@ -661,9 +661,18 @@ class ResourcePool:
                     new_cluster = self.get_cluster(old_cluster.name)
 
                     if new_cluster:
-                        new_cluster.vms.append(vm)
-                        new_cluster.resource_checkout(vm)
-                        log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
+                        try:
+                            new_cluster.resource_checkout(vm)
+                            new_cluster.vms.append(vm)
+                            log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
+                        except cluster_tools.NoResourcesError, e:
+                            log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
+                                        (vm.id, new_cluster.name, e.resource))
+                            new_cluster.vm_destroy(vm, return_resources=False)
+                        except:
+                            log.exception("Unexpected error checking out resources. Killing %s on %s" %
+                                          (vm.id, new_cluster.name))
+                            new_cluster.vm_destroy(vm, return_resources=False)
                     else:
                         log.info("%s doesn't seem to exist, so destroying vm %s." %
                                  (old_cluster.name, vm.id))

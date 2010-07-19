@@ -128,6 +128,16 @@ class VM:
         output += get_vm_info()
         return output
 
+class NoResourcesError(Exception):
+    """Exception raised for errors where not enough resources are available
+
+    Attributes:
+        resource -- name of resource that is insufficient
+
+    """
+
+    def __init__(self, resource):
+        self.resource = resource
 
 ## The ICluster interface provides the basic structure for cluster information,
 ## and provides the framework (interface) for cloud management functionality.
@@ -169,17 +179,6 @@ class ICluster:
         self.__dict__ = state
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
-
-    class NoResourcesError(Exception):
-        """Exception raised for errors where not enough resources are available
-
-        Attributes:
-            resource -- name of resource that is insufficient
-
-        """
-
-        def __init__(self, resource):
-            self.resource = resource
 
     def setup_logging(self):
         global log
@@ -317,21 +316,20 @@ class ICluster:
         with self.res_lock:
             remaining_vm_slots = self.vm_slots - 1
             if remaining_vm_slots < 0:
-                raise self.NoResourcesError("vm_slots")
-            else:
-                self.vm_slots = remaining_vm_slots
+                raise NoResourcesError("vm_slots")
 
             remaining_storage = self.storageGB - vm.storage
             if remaining_storage < 0:
-                raise self.NoResourcesError("storage")
-            else:
-                self.storageGB = remaining_storage
+                raise NoResourcesError("storage")
 
             remaining_memory = self.memory[vm.mementry] - vm.memory
             if remaining_memory < 0:
-                raise self.NoResourcesError("memory")
-            else:
-                self.memory[vm.mementry] = remaining_memory
+                raise NoResourcesError("memory")
+
+            # Otherwise, we can check out these resources
+            self.vm_slots = remaining_vm_slots
+            self.storageGB = remaining_storage
+            self.memory[vm.mementry] = remaining_memory
 
     # Returns the resources taken by the passed in VM to the Cluster's internal
     # storage.
@@ -365,6 +363,8 @@ class NimbusCluster(ICluster):
     # Number of seconds to wait between executing a shutdown and a destroy.
     # (Used in vm_destroy method)
     VM_SHUTDOWN = 8
+
+    ERROR = 1
 
     # A dictionary mapping Nimbus states to global states (see VM class comments
     # for the global state information)
@@ -474,7 +474,11 @@ class NimbusCluster(ICluster):
 
         # Add the new VM object to the cluster's vms list And check out required resources
         self.vms.append(new_vm)
-        self.resource_checkout(new_vm)
+        try:
+            self.resource_checkout(new_vm)
+        except:
+            log.exception("Unexpected error checking out resources when creating a VM. Programming error?")
+            return self.ERROR
 
         log.info("Started vm %s on %s using image at %s" % (new_vm.id, new_vm.clusteraddr, new_vm.image))
         return create_return
@@ -996,7 +1000,13 @@ class EC2Cluster(ICluster):
         except:
             log.verbose("No spot ID to add to VM %s" % instance_id)
 
-        self.resource_checkout(new_vm)
+        try:
+            self.resource_checkout(new_vm)
+        except:
+            log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
+            self.vm_destroy(new_vm)
+            return self.ERROR
+
         self.vms.append(new_vm)
 
         return 0
