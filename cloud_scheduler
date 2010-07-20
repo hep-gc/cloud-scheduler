@@ -85,10 +85,10 @@ class VMPoller(threading.Thread):
                 now = int(time.time())
 
                 if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
-                    log.debug("Skiped polling %s, which has status %s" % (vm.id, vm.status))
+                    log.debug("Skipped polling %s, which has status %s" % (vm.id, vm.status))
                     continue
                 elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
-                    log.debug("Skiped polling %s, which has status %s" % (vm.id, vm.status))
+                    log.debug("Skipped polling %s, which has status %s" % (vm.id, vm.status))
                     continue
 
                 ret_state = cluster.vm_poll(vm)
