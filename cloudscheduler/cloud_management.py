@@ -52,6 +52,7 @@ class ResourcePool:
 
     ## Instance variables
     resources = []
+    machine_list = []
     config_file = ""
 
     ## Instance methods

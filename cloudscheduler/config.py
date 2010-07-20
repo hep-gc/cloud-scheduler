@@ -40,6 +40,7 @@ scheduling_metric = "slot"
 cleanup_interval = 5
 vm_poller_interval = 5
 job_poller_interval = 5
+machine_poller_interval = 5
 scheduler_interval = 5
 
 log_level = "INFO"
@@ -76,6 +77,7 @@ def setup(path=None):
     global cleanup_interval
     global vm_poller_interval
     global job_poller_interval
+    global machine_poller_interval
     global scheduler_interval
 
     global log_level
@@ -218,6 +220,14 @@ def setup(path=None):
             job_poller_interval = config_file.getint("global", "job_poller_interval")
         except ValueError:
             print "Configuration file problem: job_poller_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "machine_poller_interval"):
+        try:
+            machine_poller_interval = config_file.getint("global", "machine_poller_interval")
+        except ValueError:
+            print "Configuration file problem: machine_poller_interval must be an " \
                   "integer value."
             sys.exit(1)
 
