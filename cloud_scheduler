@@ -312,21 +312,22 @@ class Scheduler(threading.Thread):
             if machineList:
 
                 # Remove excess VMs when available VM type exceedes required by jobs.
-                available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
-                required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
-                log.debug("Removing excess VMs from the system.")
-                to_remove = {}
-                for vmtype, count in available_vmtypes_dict.iteritems():
-                    if vmtype in required_vmtypes_dict.keys():
-                        if count > required_vmtypes_dict[vmtype]:
-                            to_remove[vmtype] = count - required_vmtypes_dict[vmtype]
-                    # This type no longer needed, remove all remaining
-                    else:
-                        to_remove[vmtype] = count
-                del available_vmtypes_dict
-                del required_vmtypes_dict
-                # Go over the types and find idle machines to remove
-                self.remove_idle_machines(machineList, to_remove)
+                if self.job_pool.last_query:
+                    available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
+                    required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
+                    log.debug("Removing excess VMs from the system.")
+                    to_remove = {}
+                    for vmtype, count in available_vmtypes_dict.iteritems():
+                        if vmtype in required_vmtypes_dict.keys():
+                            if count > required_vmtypes_dict[vmtype]:
+                                to_remove[vmtype] = count - required_vmtypes_dict[vmtype]
+                        # This type no longer needed, remove all remaining
+                        else:
+                            to_remove[vmtype] = count
+                    del available_vmtypes_dict
+                    del required_vmtypes_dict
+                    # Go over the types and find idle machines to remove
+                    self.remove_idle_machines(machineList, to_remove)
 
                 # Balancing Resources
                 num_to_change = {}
