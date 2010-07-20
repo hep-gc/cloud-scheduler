@@ -442,7 +442,7 @@ class Scheduler(threading.Thread):
                 found_vm = False
                 for cluster in self.resource_pool.resources:
                     for vm in cluster.vms:
-                        log.debug("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
+                        log.verbose("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
                         if vm.hostname.split(".")[0] == condor_name and vm.vmtype == vmtype:
                             found_vm = True
                             if vm.idle_start:
