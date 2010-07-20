@@ -417,9 +417,8 @@ class JobPool:
             return
         # Check if job has highest priority in list
         elif (job_list[0].priority < job.priority):
-            self.write_lock.acquire()
-            job_list.insert(0, job)
-            self.write_lock.release()
+            with self.write_lock:
+                job_list.insert(0, job)
             return
         # Check back of the list - equal priorites, append
         elif (job_list[-1].priority >= job.priority):
@@ -432,9 +431,8 @@ class JobPool:
             while (i != 0):
                 i = i-1
                 if (job_list[i].priority >= job.priority):
-                    self.write_lock.acquire()
-                    job_list.insert(i+1, job)
-                    self.write_lock.release()
+                    with self.write_lock:
+                        job_list.insert(i+1, job)
                     break
             return
 
@@ -450,31 +448,29 @@ class JobPool:
         # Check for job in unscheduled job set
         # if (job.user in self.new_jobs) and (job in self.new_jobs[job.user]):
         if (job.user in self.new_jobs) and (self.has_job(self.new_jobs[job.user], job)):
-            self.write_lock.acquire()
-            self.remove_job(self.new_jobs[job.user], job)
-            log.verbose("remove_system_job - Removing job %s from unscheduled jobs."
-                      % job.id)
+            with self.write_lock:
+                self.remove_job(self.new_jobs[job.user], job)
+                log.verbose("remove_system_job - Removing job %s from unscheduled jobs."
+                          % job.id)
 
-            # If user's job list is empty, remove entry from the new_jobs dict
-            if (self.new_jobs[job.user] == []):
-                del self.new_jobs[job.user]
-                log.debug("User %s has no more jobs in the Unscheduled Jobs set. Removing user from queue."
-                          % job.user)
-            self.write_lock.release()
+                # If user's job list is empty, remove entry from the new_jobs dict
+                if (self.new_jobs[job.user] == []):
+                    del self.new_jobs[job.user]
+                    log.debug("User %s has no more jobs in the Unscheduled Jobs set. Removing user from queue."
+                              % job.user)
         # Check for job in scheduled job set
         # elif (job.user in self.sched_jobs) and (job in self.sched_jobs[job.user]):
         elif (job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[job.user], job)):
-            self.write_lock.acquire()
-            self.remove_job(self.sched_jobs[job.user], job)
-            log.verbose("remove_system_job - Removing job %s from scheduled jobs."
-                      % job.id)
+            with self.write_lock:
+                self.remove_job(self.sched_jobs[job.user], job)
+                log.verbose("remove_system_job - Removing job %s from scheduled jobs."
+                          % job.id)
 
-            # If user's job list is empty, remove entry from sched_jobs
-            if (self.sched_jobs[job.user] == []):
-                del self.sched_jobs[job.user]
-                log.debug("User %s has no more jobs in the Scheduled Jobs set. Removing user from queue."
-                          % job.user)
-            self.write_lock.release()
+                # If user's job list is empty, remove entry from sched_jobs
+                if (self.sched_jobs[job.user] == []):
+                    del self.sched_jobs[job.user]
+                    log.debug("User %s has no more jobs in the Scheduled Jobs set. Removing user from queue."
+                              % job.user)
         else:
             log.warning("remove_system_job - Job does not exist in system."
                       + " Doing nothing.")
@@ -537,21 +533,19 @@ class JobPool:
     def update_job_status(self, target_job):
         ret = False
         if (target_job.user in self.new_jobs) and (self.has_job(self.new_jobs[target_job.user], target_job)):
-            self.write_lock.acquire()
-            for job in self.new_jobs[target_job.user]:
-                if target_job.id == job.id:
-                    job.job_status = int(target_job.job_status)
-                    ret = True
-                    break
-            self.write_lock.release()
+            with self.write_lock:
+                for job in self.new_jobs[target_job.user]:
+                    if target_job.id == job.id:
+                        job.job_status = int(target_job.job_status)
+                        ret = True
+                        break
         elif (target_job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[target_job.user], target_job)):
-            self.write_lock.acquire()
-            for job in self.sched_jobs[target_job.user]:
-                if target_job.id == job.id:
-                    job.job_status = int(target_job.job_status)
-                    ret = True
-                    break
-            self.write_lock.release()
+            with self.write_lock:
+                for job in self.sched_jobs[target_job.user]:
+                    if target_job.id == job.id:
+                        job.job_status = int(target_job.job_status)
+                        ret = True
+                        break
         else:
             log.warning("update_job_status - Job does not exist in system."
                       + " Doing nothing.")

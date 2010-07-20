@@ -225,14 +225,9 @@ class Scheduler(threading.Thread):
                 for job in self.job_pool.new_jobs[user]:
                     if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                         bad_jobs.append(job)
-            if not self.job_pool.write_lock.acquire():
-                log.debug("remove bad jobs couldn't get a write lock on the job lists")
-            else:
-                try:            
-                    while len(bad_jobs) > 0:
-                        self.job_pool.remove_system_job(bad_jobs.pop())
-                finally:
-                    self.job_pool.write_lock.release()
+            with self.job_pool.write_lock:
+                while len(bad_jobs) > 0:
+                    self.job_pool.remove_system_job(bad_jobs.pop())
 
             ## Figure out distribution of VMs requested and available
             current_types = {}
@@ -601,29 +596,24 @@ class Cleanup(threading.Thread):
             log.debug("Syncing job queues")
 
             # Check through new jobs for running jobs and move to sched
-            if not self.job_pool.write_lock.acquire():
-                log.debug("cleanup couldn't get a write lock on the job lists")
-            else:
-                try:
-                    for user in self.job_pool.new_jobs.keys():
-                        for job in reversed(self.job_pool.new_jobs[user]):
-                            if job.job_status == self.RUNNING:
-                                self.job_pool.schedule(job)
-                    vms = self.resource_pool.get_vmtypes_count_internal()
-                    job_req_count = {}
-                    for user in self.job_pool.sched_jobs.keys():
-                        for job in self.job_pool.sched_jobs[user]:
-                            if job.req_vmtype in job_req_count:
-                                job_req_count[job.req_vmtype] += 1
-                            else:
-                                job_req_count[job.req_vmtype] = 1
-                    for user in self.job_pool.sched_jobs.keys():
-                        for job in reversed(self.job_pool.sched_jobs[user]):
-                            if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
-                                self.job_pool.unschedule(job)
+            with self.job_pool.write_lock:
+                for user in self.job_pool.new_jobs.keys():
+                    for job in reversed(self.job_pool.new_jobs[user]):
+                        if job.job_status == self.RUNNING:
+                            self.job_pool.schedule(job)
+                vms = self.resource_pool.get_vmtypes_count_internal()
+                job_req_count = {}
+                for user in self.job_pool.sched_jobs.keys():
+                    for job in self.job_pool.sched_jobs[user]:
+                        if job.req_vmtype in job_req_count:
+                            job_req_count[job.req_vmtype] += 1
+                        else:
+                            job_req_count[job.req_vmtype] = 1
+                for user in self.job_pool.sched_jobs.keys():
+                    for job in reversed(self.job_pool.sched_jobs[user]):
+                        if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
+                            self.job_pool.unschedule(job)
                     
-                finally:
-                    self.job_pool.write_lock.release()
 
             # Remove unneeded VMs.
             # Make sure we only do this if we have ever gotten a list of jobs
