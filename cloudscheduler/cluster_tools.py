@@ -567,13 +567,12 @@ class NimbusCluster(ICluster):
             # Execute the workspace shutdown command.
             shutdown_return = self.vm_exec_silent(shutdown_cmd)
             if (shutdown_return != 0):
-                log.warning("(vm_destroy) - VM shutdown request failed, moving directly to destroy.")
+                log.debug("(vm_destroy) - VM shutdown request failed, moving directly to destroy.")
+                # Sleep for a few seconds to allow for proper shutdown
+                log.debug("Waiting %ss for VM to shut down..." % self.VM_SHUTDOWN)
+                time.sleep(self.VM_SHUTDOWN)
             else:
                 log.debug("(vm_destroy) - workspace shutdown command executed successfully.")
-
-            # Sleep for a few seconds to allow for proper shutdown
-            log.debug("Waiting %ss for VM to shut down..." % self.VM_SHUTDOWN)
-            time.sleep(self.VM_SHUTDOWN)
 
 
         # Create the workspace command with destroy option as a list (priv.)
