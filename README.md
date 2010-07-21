@@ -23,7 +23,6 @@ For more documentation on Cloud Scheduler, please refer to:
 * [Suds 0.3.9+](https://fedorahosted.org/suds/)
 * [boto](http://code.google.com/p/boto/)
 * [lxml](http://codespeak.net/lxml/)
-* [simple-json](http://undefined.org/python/#simplejson) For python 2.4/2.5
 
 ### Special help for RHEL 5
 
@@ -70,8 +69,7 @@ Now clean everything up:
 
 Finally, once you've set up the rest of Cloud Scheduler, you'll want to set
 your Python version in the Cloud Scheduler init script, or use virtualenv.
-
-    $ 
+Do this by changing the PYTHON variable to /opt/bin/python
 
 ### Other distros:
 
