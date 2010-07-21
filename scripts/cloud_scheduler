@@ -5,8 +5,12 @@
 
 export GLOBUS_LOCATION=/usr/local/nimbus/
 
-# Set this only if "cloud_scheduler" isn't in your $PATH (ends in '/')
-EXECUTABLEPATH="" 
+# Set a non-default path to the cloud_scheduler executable
+# eg. "/opt/bin/cloud_scheduler"
+EXECUTABLEPATH="cloud_scheduler" 
+
+# Non-default python (eg. if you installed python 2.6 on RHEL5)
+PYTHON="python"
 
 # You probably won't want to change these.
 SERVICE=cloud_scheduler
@@ -18,10 +22,10 @@ start () {
     if [ ! -f $PIDFILE ]; then
         echo -n $"Starting $SERVICE..."
         if [ "$SUDO_COMMAND" ]; then
-            sudo nohup ${EXECUTABLEPATH}${SERVICE} </dev/null >/dev/null &
+            sudo nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >/dev/null &
             echo $! > $PIDFILE
         else
-            nohup ${EXECUTABLEPATH}${SERVICE} </dev/null >/dev/null &
+            nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >/dev/null &
             echo $! > $PIDFILE
         fi
         echo
@@ -47,7 +51,7 @@ stop () {
 reconfig () {
     if [ -f $PIDFILE ]; then
         echo -n $"Reconfiguring $SERVICE..."
-        kill -s SIGUSR1 `cat $PIDFILE`
+        /bin/kill -s SIGUSR1 `cat $PIDFILE`
         echo
     fi
 }
