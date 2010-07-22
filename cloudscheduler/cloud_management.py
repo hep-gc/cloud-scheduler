@@ -71,10 +71,6 @@ class ResourcePool:
         self.setup()
         self.load_persistence()
 
-        self.banned_job_resource = {}
-        self.failures = {}
-        self.load_banned_job_resource()
-
     def setup(self):
 
         log.info("Loading cloud resource configuration file %s" % self.config_file)
@@ -276,26 +272,6 @@ class ResourcePool:
 
         fitting_clusters = []
         for cluster in self.resources:
-            if cluster.__class__.__name__ == "NimbusCluster":
-                # If not valid image file to download
-                if imageloc == "":
-                    continue
-                # If image banned from cluster
-                if imageloc in self.banned_job_resource.keys():
-                    if cluster.name in self.banned_job_resource[imageloc]:
-                        continue
-                # If required network is NOT in cluster's network associations
-                if (network not in cluster.network_pools):
-                    log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
-                    continue
-            elif cluster.__class__.__name__ == "EC2Cluster":
-                # If no valid ami to boot from
-                if ami == "":
-                    continue
-                # If ami banned from cluster
-                if ami in self.banned_job_resource.keys():
-                    if cluster.name in self.banned_job_resource[ami]:
-                        continue
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
                 log.debug("get_fitting_resources - No free slots in %s" % cluster.name)
@@ -303,6 +279,10 @@ class ResourcePool:
             # If the cluster does not have the required CPU architecture
             if (cpuarch not in cluster.cpu_archs):
                 log.debug("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
+                continue
+            # If required network is NOT in cluster's network associations
+            if (network not in cluster.network_pools):
+                log.debug("get_fitting_resources - No matching networks in %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
@@ -635,44 +615,3 @@ class ResourcePool:
                     log.info("Found persisted VM %s from %s in an error state, destroying it." %
                              (vm.id, old_cluster.name))
                     old_cluster.vm_destroy(vm)
-
-    # Error Tracking to be used to ban / filter resources 
-    def track_failures(self, job, resources):
-        for cluster in resources:
-            if cluster.__class__.__name__ == 'NimbusCluster':
-                if job.req_imageloc in self.failures.keys():
-                    foundIt = False
-                    for resource in self.failures[job.req_imageloc]:
-                        if resource[0] == cluster.name:
-                            resource[1] += 1
-                            foundIt = True
-                        if foundIt:
-                            break
-                        else:
-                            self.failures[job.req_imageloc].append([cluster.name, 1])
-                else:
-                    self.failures[job.req_imageloc] = []
-                    self.failures[job.req_imageloc].append([cluster.name, 1])
-            elif cluster.__class__.__name__ == 'EC2Cluster':
-                if job.req_ami in self.failures.keys():
-                    foundIt = False
-                    for resource in self.failures[job.req_ami]:
-                        if resource[0] == cluster.name:
-                            resource[1] += 1
-                            foundIt = True
-                        if foundIt:
-                            break
-                        else:
-                            self.failures[job.req_ami].append([cluster.name, 1])
-                else:
-                    self.failures[job.req_ami] = []
-                    self.failures[job.req_ami].append([cluster.name, 1])
-
-    def check_failures(self):
-        pass
-
-    def save_banned_job_resource(self):
-        pass
-
-    def load_banned_job_resource(self):
-        pass
