@@ -185,6 +185,7 @@ class Scheduler(threading.Thread):
                             # Mark job as scheduled
                             self.job_pool.schedule(job)
                         else:
+                            self.resource_pool.track_failures(job, good_resources)
                             continue
                         # break out of this user's job and try next user
                         break
