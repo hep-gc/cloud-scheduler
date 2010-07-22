@@ -211,7 +211,6 @@ class Scheduler(threading.Thread):
     def run(self):
         log.info("Starting job scheduling...")
         prevMachineList = []
-        failures = {}
         ########################################################################
         ## Full scheduler loop
         ########################################################################
@@ -285,7 +284,7 @@ class Scheduler(threading.Thread):
                             # Mark job as scheduled
                             self.job_pool.schedule(job)
                         else:
-                            self.track_failures(failures, job, good_resources)
+                            self.resource_pool.track_failures(job, good_resources)
                             continue
                         # break out of this user's job and try next user
                         break
@@ -532,40 +531,6 @@ class Scheduler(threading.Thread):
             log.debug("None of the resources could boot a vm for job %s. " % job.id + \
                       "Leaving %s's jobs unscheduled, moving on to next user" % job.user)
         return create_ret
-
-
-    # Error Tracking to be used to ban / filter resources 
-    def track_failures(self, failures, job, resources):
-        for cluster in resources:
-            if cluster.__class__.__name__ == 'NimbusCluster':
-                if job.req_imageloc in failures.keys():
-                    foundIt = False
-                    for resource in failures[job.req_imageloc]:
-                        if resource[0] == cluster.name:
-                            resource[1] += 1
-                            foundIt = True
-                        if foundIt:
-                            break
-                        else:
-                            failures[job.req_imageloc].append([cluster.name, 1])
-                else:
-                    failures[job.req_imageloc] = []
-                    failures[job.req_imageloc].append([cluster.name, 1])
-            elif cluster.__class__.__name__ == 'EC2Cluster':
-                if job.req_ami in failures.keys():
-                    foundIt = False
-                    for resource in failures[job.req_ami]:
-                        if resource[0] == cluster.name:
-                            resource[1] += 1
-                            foundIt = True
-                        if foundIt:
-                            break
-                        else:
-                            failures[job.req_ami].append([cluster.name, 1])
-                else:
-                    failures[job.req_ami] = []
-                    failures[job.req_ami].append([cluster.name, 1])
-        return failures
 
 class Cleanup(threading.Thread):
     """
