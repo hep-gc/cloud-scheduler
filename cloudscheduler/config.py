@@ -32,6 +32,7 @@ scratch_attach_device = "sdb"
 info_server_port = 8111
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
+ban_file = "/var/run/cloudscheduler.banned"
 polling_error_threshold = 10
 condor_register_time_limit = 900
 graceful_shutdown = False
@@ -69,6 +70,7 @@ def setup(path=None):
     global info_server_port
     global workspace_path
     global persistence_file
+    global ban_file
     global polling_error_threshold
     global condor_register_time_limit
     global graceful_shutdown
@@ -173,6 +175,9 @@ def setup(path=None):
 
     if config_file.has_option("global", "persistence_file"):
         persistence_file = config_file.get("global", "persistence_file")
+
+    if config_file.has_option("global", "ban_file"):
+        ban_file = config_file.get("global", "ban_file")
 
     if config_file.has_option("global", "polling_error_threshold"):
         try:

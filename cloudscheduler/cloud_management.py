@@ -35,6 +35,7 @@ except:
 
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
+from cloudscheduler.utilities import ErrTrackQueue
 
 ##
 ## GLOBALS
@@ -735,11 +736,110 @@ class ResourcePool:
                     self.failures[job.req_ami] = []
                     self.failures[job.req_ami].append([cluster.name, 1])
 
+    def track_failures(self, job, resources,  value):
+        for cluster in resources:
+            if cluster.__class__.__name__ == 'NimbusCluster':
+                if job.req_imageloc in self.failures.keys():
+                    foundIt = False
+                    for resource in self.failures[job.req_imageloc]:
+                        if resource.name == cluster.name:
+                            resource.append(value)
+                            foundIt = True
+                        if foundIt:
+                            break
+                        else:
+                            queue = ErrTrackQueue(cluster.name)
+                            queue.append(value)
+                            self.failures[job.req_imageloc].append(queue)
+                else:
+                    self.failures[job.req_imageloc] = []
+                    queue = ErrTrackQueue(cluster.name)
+                    queue.append(value)
+                    self.failures[job.req_imageloc].append(queue)
+            elif cluster.__class__.__name__ == 'EC2Cluster':
+                if job.req_ami in self.failures.keys():
+                    foundIt = False
+                    for resource in self.failures[job.req_ami]:
+                        if resource.name == cluster.name:
+                            resource.append(value)
+                            foundIt = True
+                        if foundIt:
+                            break
+                        else:
+                            queue = ErrTrackQueue(cluster.name)
+                            queue.append(value)
+                            self.failures[job.req_ami].append(queue)
+                else:
+                    self.failures[job.req_ami] = []
+                    queue = ErrTrackQueue(cluster.name)
+                    queue.append(value)
+                    self.failures[job.req_ami].append(queue)
+
     def check_failures(self):
-        pass
+        banned_changed = False
+        for img in self.failures.keys():
+            for cq in self.failures[img]:
+                if cq.min_use() and cq.dist_false() == 1.0:
+                    # add this img / cluster entry to banned jobs
+                    if img in self.banned_job_resource.keys():
+                        if cq.name not in self.banned_job_resource[img]:
+                            self.banned_job_resource[img].append(cq.name)
+                            banned_changed = True
+                    else:
+                        self.banned_job_resource[img] = []
+                        self.banned_job_resource[img].append(cq.name)
+                        banned_changed = True
+        if banned_changed:
+            self.save_banned_job_resource()
+            log.debug("Updating Banned job file")
 
     def save_banned_job_resource(self):
-        pass
+        """
+        save_banned_job_resource - pickle the banned jobs list to file """
+        try:
+            ban_file = open(config.ban_file, "wb")
+            pickle.dump(self.banned_job_resource, ban_file)
+            ban_file.close()
+        except IOError, e:
+
+            log.error("Couldn't write ban file to %s! \"%s\"" % 
+                      (config.ban_file, e.strerror))
+        except:
+            log.exception("Unknown problem saving ban file!")
 
     def load_banned_job_resource(self):
-        pass
+        """
+        load_banned_job_resource - reload the file to update which images
+                    have been banned from clusters.
+        """
+
+        try:
+            log.info("Loading ban file.")
+            ban_file = open(config.ban_file, "rb")
+        except IOError, e:
+            log.debug("No ban file to load. No images banned.")
+            return
+        except:
+            log.exception("Unknown problem opening ban file!")
+            return
+
+        try:
+            updated_ban = pickle.load(ban_file)
+        except:
+            log.exception("Unknown problem opening ban file!")
+            return
+        ban_file.close()
+
+        # Need to go through the failures and 'reset' any of the 
+        # bans that have been removed
+        #removed = dict(set(self.banned_job_resource.items()) - set(updated_ban.items()))
+        #for image in removed:
+            #for cluster in removed[image]:
+                #foundIt = False
+                #for resource in self.failures[image]:
+                    #if resource.name == cluster.name:
+                        #resource.clear()
+                        #foundIt = True
+                    #if foundIt:
+                        #break
+        self.banned_job_resource = updated_ban

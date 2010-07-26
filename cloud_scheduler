@@ -251,6 +251,9 @@ class Scheduler(threading.Thread):
             del desired_types
             del current_types
 
+            ## Check failures to ban jobs on affected resources
+            self.resource_pool.check_failures()
+
             ## Schedule user jobs
             # TODO: This should be less explicit in its reference to JobPool class parts.
             #       Something like 'for job in self.job_pool.get_unsched_jobs()'
@@ -284,8 +287,9 @@ class Scheduler(threading.Thread):
                         if create_ret == 0:
                             # Mark job as scheduled
                             self.job_pool.schedule(job)
+                            self.resource_pool.track_failures(job, good_resources, True)
                         else:
-                            self.resource_pool.track_failures(job, good_resources)
+                            self.resource_pool.track_failures(job, good_resources, False)
                             continue
                         # break out of this user's job and try next user
                         break
@@ -812,6 +816,9 @@ def main():
     reconfig_handler = make_reconfig_handler(cloud_resources)
     signal.signal(signal.SIGUSR1, reconfig_handler)
 
+    # Set SIGUSR2 (reload_ban) handler
+    reload_ban_handler = make_banned_job_fileload_handler(cloud_resources)
+    signal.signal(signal.SIGUSR2, reload_ban_handler)
 
     # Start all the threads
     for thread in info_threads:
@@ -869,6 +876,17 @@ def make_reconfig_handler(resource_pool):
         resource_pool.setup()
 
     return reconfig_handler
+
+def make_banned_job_fileload_handler(resource_pool):
+    """
+    make_banned_job_fileload_handler - make a signal handler that can reload
+                                       the banned job file
+    """
+    def reload_ban_handler(signal, handler):
+        log.info("Recieved SIGUSR2 (reload bans) signal, Reloading banned jobs file...")
+        resource_pool.load_banned_job_resource()
+
+    return reload_ban_handler
 
 # Sets the command-line options for a passed in OptionParser object (via optparse)
 def set_options(parser):

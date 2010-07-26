@@ -50,6 +50,7 @@ def get_or_none(config, section, value):
     else:
         return None
 
+<<<<<<< HEAD
 def match_host_with_condor_host(hostname, condor_hostname):
     """
     match_host_with_condor_host -- determine if hostname matches condor's hostname
@@ -90,3 +91,44 @@ def match_host_with_condor_host(hostname, condor_hostname):
             return True
 
     return False
+=======
+class CircleQueue():
+    def __init__(self, length):
+        self.data = [None for x in range(0, length)]
+
+    def append(self, x):
+        self.data.pop(0)
+        self.data.append(x)
+
+    def get(self):
+        return self.data
+
+    def clear(self):
+        self.data = [None for x in range(0, len(self.data))]
+
+    def min_use(self):
+        nones = 0
+        min_use = True
+        for x in self.data:
+            if x == None:
+                nones += 1
+        if float(nones) / len(self.data) >= 0.7:
+            min_use = False
+        return min_use
+
+class ErrTrackQueue(CircleQueue):
+    def __init__(self, name):
+        CircleQueue.__init__(self, 10)
+        self.name = name
+
+    def dist_true(self):
+        tc = 0
+        for x in self.data:
+            if x:
+                tc += 1
+        return float(tc) / float(len(self.data))
+
+    def dist_false(self):
+        return 1.0 - self.dist_true()
+
+>>>>>>> Banning jobs from resources related.
