@@ -16,6 +16,7 @@
 ##
 
 ## Imports
+from __future__ import with_statement
 import sys
 
 if sys.version_info[:2] < (2,5):
