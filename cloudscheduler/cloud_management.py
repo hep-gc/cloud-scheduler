@@ -32,6 +32,7 @@ try:
     import cPickle as pickle
 except:
     import pickle
+import json
 
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
@@ -797,8 +798,8 @@ class ResourcePool:
         """
         save_banned_job_resource - pickle the banned jobs list to file """
         try:
-            ban_file = open(config.ban_file, "wb")
-            pickle.dump(self.banned_job_resource, ban_file)
+            ban_file = open(config.ban_file, "w")
+            ban_file.write(json.dumps(self.banned_job_resource))
             ban_file.close()
         except IOError, e:
 
@@ -806,6 +807,7 @@ class ResourcePool:
                       (config.ban_file, e.strerror))
         except:
             log.exception("Unknown problem saving ban file!")
+        print 'saved ban file'
 
     def load_banned_job_resource(self):
         """
@@ -815,7 +817,7 @@ class ResourcePool:
 
         try:
             log.info("Loading ban file.")
-            ban_file = open(config.ban_file, "rb")
+            ban_file = open(config.ban_file, "r")
         except IOError, e:
             log.debug("No ban file to load. No images banned.")
             return
@@ -824,7 +826,7 @@ class ResourcePool:
             return
 
         try:
-            updated_ban = pickle.load(ban_file)
+            updated_ban = json.loads(ban_file.read())
         except:
             log.exception("Unknown problem opening ban file!")
             return
@@ -832,14 +834,16 @@ class ResourcePool:
 
         # Need to go through the failures and 'reset' any of the 
         # bans that have been removed
-        #removed = dict(set(self.banned_job_resource.items()) - set(updated_ban.items()))
-        #for image in removed:
-            #for cluster in removed[image]:
-                #foundIt = False
-                #for resource in self.failures[image]:
-                    #if resource.name == cluster.name:
-                        #resource.clear()
-                        #foundIt = True
-                    #if foundIt:
-                        #break
+        for img in updated_ban.keys():
+            if img in self.banned_job_resource.keys():
+                diff = set(self.banned_job_resource[img]) - set(updated_ban[img])
+                for res in diff:
+                    foundit = False
+                    for cl in self.failures[img]:
+                        if cl.name == res:
+                            foundit = True
+                            cl.clear()
+                        if foundit:
+                            break
+
         self.banned_job_resource = updated_ban
