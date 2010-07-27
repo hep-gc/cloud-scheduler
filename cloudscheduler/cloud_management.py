@@ -112,6 +112,12 @@ class ResourcePool:
         added_names = set(new_resource_names) - set(original_resource_names)
         updated_names = set(original_resource_names) & set(new_resource_names)
 
+        if removed_names:
+            log.debug("Removing clusters: %s" % removed_names)
+        if added_names:
+            log.debug("Adding clusters: %s" % added_names)
+        if updated_names:
+            log.debug("Updating clusters: %s" % updated_names)
 
         # Set resources list to empty to make sure no VMs are started
         # while we're shuffling things around.
