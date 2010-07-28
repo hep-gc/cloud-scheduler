@@ -731,7 +731,12 @@ def main():
                                             config.log_location,
                                             maxBytes=config.log_max_size)
         else:
-            file_handler = logging.handlers.RotatingFileHandler(
+            try:
+                file_handler = logging.handlers.WatchedFileHandler(
+                                            config.log_location,)
+            except AttributeError:
+                # Python 2.5 doesn't support WatchedFileHandler
+                file_handler = logging.handlers.RotatingFileHandler(
                                             config.log_location,)
 
         file_handler.setFormatter(log_formatter)
