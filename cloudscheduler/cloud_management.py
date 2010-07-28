@@ -75,13 +75,15 @@ class ResourcePool:
                                               location=config.condor_collector_url, retxml=True)
 
         self.config_file = os.path.expanduser(config_file)
-
-        self.setup()
-        self.load_persistence()
-
+        self.ban_lock = threading.Lock()
         self.banned_job_resource = {}
         self.failures = {}
+
+        self.setup()
         self.load_banned_job_resource()
+        self.load_persistence()
+
+
 
     def setup(self):
 
@@ -777,22 +779,24 @@ class ResourcePool:
                     self.failures[job.req_ami].append(queue)
 
     def check_failures(self):
-        banned_changed = False
-        for img in self.failures.keys():
-            for cq in self.failures[img]:
-                if cq.min_use() and cq.dist_false() == 1.0:
-                    # add this img / cluster entry to banned jobs
-                    if img in self.banned_job_resource.keys():
-                        if cq.name not in self.banned_job_resource[img]:
+        with self.ban_lock:
+            banned_changed = False
+            for img in self.failures.keys():
+                for cq in self.failures[img]:
+                    if cq.min_use() and cq.dist_false() == 1.0:
+                        # add this img / cluster entry to banned jobs
+                        if img in self.banned_job_resource.keys():
+                            if cq.name not in self.banned_job_resource[img]:
+                                self.banned_job_resource[img].append(cq.name)
+                                banned_changed = True
+                                print cq.data
+                        else:
+                            self.banned_job_resource[img] = []
                             self.banned_job_resource[img].append(cq.name)
                             banned_changed = True
-                    else:
-                        self.banned_job_resource[img] = []
-                        self.banned_job_resource[img].append(cq.name)
-                        banned_changed = True
-        if banned_changed:
-            self.save_banned_job_resource()
-            log.debug("Updating Banned job file")
+            if banned_changed:
+                self.save_banned_job_resource()
+                log.debug("Updating Banned job file")
 
     def save_banned_job_resource(self):
         """
@@ -814,36 +818,48 @@ class ResourcePool:
         load_banned_job_resource - reload the file to update which images
                     have been banned from clusters.
         """
-
-        try:
-            log.info("Loading ban file.")
-            ban_file = open(config.ban_file, "r")
-        except IOError, e:
-            log.debug("No ban file to load. No images banned.")
-            return
-        except:
-            log.exception("Unknown problem opening ban file!")
-            return
-
-        try:
-            updated_ban = json.loads(ban_file.read())
-        except:
-            log.exception("Unknown problem opening ban file!")
-            return
-        ban_file.close()
-
-        # Need to go through the failures and 'reset' any of the 
-        # bans that have been removed
-        for img in updated_ban.keys():
-            if img in self.banned_job_resource.keys():
-                diff = set(self.banned_job_resource[img]) - set(updated_ban[img])
-                for res in diff:
-                    foundit = False
-                    for cl in self.failures[img]:
-                        if cl.name == res:
-                            foundit = True
-                            cl.clear()
-                        if foundit:
-                            break
-
-        self.banned_job_resource = updated_ban
+        with self.ban_lock:
+            no_bans = False
+            ban_file = None
+            try:
+                log.info("Loading ban file.")
+                ban_file = open(config.ban_file, "r")
+            except IOError, e:
+                log.debug("No ban file to load. No images banned.")
+                no_bans = True
+            except:
+                log.exception("Unknown problem opening ban file!")
+                return
+            updated_ban = {}
+            try:
+                if not no_bans:
+                    updated_ban = json.loads(ban_file.read())
+                    ban_file.close()
+            except:
+                log.exception("Unknown problem opening ban file!")
+                return
+            # Need to go through the failures and 'reset' any of the 
+            # bans that have been removed
+            if len(updated_ban) == 0:
+                for img in self.banned_job_resource.keys():
+                    for res in self.banned_job_resource[img]:
+                        foundit = False
+                        for cl in self.failures[img]:
+                            if cl.name == res:
+                                foundit = True
+                                cl.clear()
+                            if foundit:
+                                break
+            else:
+                for img in updated_ban.keys():
+                    if img in self.banned_job_resource.keys():
+                        diff = set(self.banned_job_resource[img]) - set(updated_ban[img])
+                        for res in diff:
+                            foundit = False
+                            for cl in self.failures[img]:
+                                if cl.name == res:
+                                    foundit = True
+                                    cl.clear()
+                                if foundit:
+                                    break
+            self.banned_job_resource = updated_ban
