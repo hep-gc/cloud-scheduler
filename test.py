@@ -177,6 +177,32 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
     def tearDown(self):
         os.remove(self.configfilename)
 
+class Utilities(unittest.TestCase):
+
+    def test_condor_host_match(self):
+        from cloudscheduler.utilities import match_host_with_condor_host
+
+        match = match_host_with_condor_host("condor.host", "condor.host")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("condor.host", "slot1@condor.host")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("192.168.1.1", "192.168.1.1")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("192.168.1.1", "slot2@192.168.1.1")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("192.168.1.2", "192.168.1.1")
+        self.assertFalse(match)
+
+        match = match_host_with_condor_host("condor.host", "condor")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("condor.host", "slot1@condor")
+        self.assertTrue(match)
+
 class ResourcePoolSetup(unittest.TestCase):
 
     def setUp(self):

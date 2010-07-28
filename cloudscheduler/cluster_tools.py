@@ -1033,7 +1033,7 @@ class EC2Cluster(ICluster):
 
     def vm_poll(self, vm):
         try:
-            log.debug("Polling vm with instance id %s" % vm.id)
+            log.verbose("Polling vm with instance id %s" % vm.id)
             connection = self._get_connection()
 
             if vm.spot_id:

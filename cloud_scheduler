@@ -432,14 +432,20 @@ class Scheduler(threading.Thread):
                 
             for x in range(0, num_to_shutdown):
                 log.debug("Name of Condor Machine to shutdown: %s" % unused_vms_of_type[x]['Name'])
-                condor_names = unused_vms_of_type[x]['Name'].split('.')
-                condor_name = condor_names[0]
+                condor_name = unused_vms_of_type[x]['Name']
                 # Track if machine found or not so can break from loop early
                 found_vm = False
                 for cluster in self.resource_pool.resources:
                     for vm in cluster.vms:
-                        log.verbose("vm hostname: %s, condor name: %s" % (vm.hostname, condor_name))
-                        if vm.hostname.split(".")[0] == condor_name and vm.vmtype == vmtype:
+                        if utilities.match_host_with_condor_host(vm.hostname, condor_name) and vm.vmtype == vmtype:
+
+                            # Verify that all slots of this VM are idle
+                            is_part_of_machine = {'Machine': vm.hostname}
+                            slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
+                            for slot in slots_of_machine:
+                                if slot['State'] != 'Unclaimed' and slot['Activity'] != 'Idle':
+                                    continue
+
                             found_vm = True
                             if vm.idle_start:
                                 # Check that enough time has passed to shutdown
@@ -532,6 +538,7 @@ class Scheduler(threading.Thread):
             log.debug("None of the resources could boot a vm for job %s. " % job.id + \
                       "Leaving %s's jobs unscheduled, moving on to next user" % job.user)
         return create_ret
+
 
 class Cleanup(threading.Thread):
     """
