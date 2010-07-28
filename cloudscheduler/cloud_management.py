@@ -485,10 +485,10 @@ class ResourcePool:
             return machine_list
 
         except URLError, e:
-            log.error("There was a problem connecting to the "
+            log.exception("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
-                      "reason: %s"
-                      % (config.condor_collector_url, e.reason[1]))
+                      "reason:"
+                      % config.condor_collector_url)
             return []
         except:
             log.exception("There was a problem connecting to the "
