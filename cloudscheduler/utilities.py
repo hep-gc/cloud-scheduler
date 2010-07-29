@@ -7,6 +7,7 @@ import socket
 import logging
 import ConfigParser
 from urlparse import urlparse
+import cloudscheduler.config as config
 
 def determine_path ():
     """Borrowed from wxglade.py"""
@@ -107,18 +108,14 @@ class CircleQueue():
         self.data = [None for x in range(0, len(self.data))]
 
     def min_use(self):
-        nones = 0
         min_use = True
-        for x in self.data:
-            if x == None:
-                nones += 1
-        if float(nones) / len(self.data) >= 0.7:
+        if self.data[0] == None:
             min_use = False
         return min_use
 
 class ErrTrackQueue(CircleQueue):
     def __init__(self, name):
-        CircleQueue.__init__(self, 10)
+        CircleQueue.__init__(self, config.ban_min_track)
         self.name = name
 
     def dist_true(self):

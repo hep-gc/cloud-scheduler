@@ -80,7 +80,8 @@ class ResourcePool:
         self.failures = {}
 
         self.setup()
-        self.load_banned_job_resource()
+        if config.ban_tracking:
+            self.load_banned_job_resource()
         self.load_persistence()
 
 
@@ -752,7 +753,7 @@ class ResourcePool:
             banned_changed = False
             for img in self.failures.keys():
                 for cq in self.failures[img]:
-                    if cq.min_use() and cq.dist_false() == 1.0:
+                    if cq.min_use() and cq.dist_false() == config.ban_failrate_threshold:
                         # add this img / cluster entry to banned jobs
                         if img in self.banned_job_resource.keys():
                             if cq.name not in self.banned_job_resource[img]:

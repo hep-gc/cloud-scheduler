@@ -32,7 +32,10 @@ scratch_attach_device = "sdb"
 info_server_port = 8111
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
+ban_tracking = False
 ban_file = "/var/run/cloudscheduler.banned"
+ban_min_track = 5
+ban_failrate_threshold = 1.0
 polling_error_threshold = 10
 condor_register_time_limit = 900
 graceful_shutdown = False
@@ -70,7 +73,10 @@ def setup(path=None):
     global info_server_port
     global workspace_path
     global persistence_file
+    global ban_tracking
     global ban_file
+    global ban_min_track
+    global ban_failrate_threshold
     global polling_error_threshold
     global condor_register_time_limit
     global graceful_shutdown
@@ -187,6 +193,25 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "ban_failrate_threshold"):
+        try:
+            ban_failrate_threshold = config_file.getfloat("global", "ban_failrate_threshold")
+            if ban_failrate_threshold == 0:
+                print "Please use a float value (0, 1.0]"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: ban_failrate_threshold must be an " \
+                  "float value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "ban_min_track"):
+        try:
+            ban_min_track = config_file.getint("global", "ban_min_track")
+        except ValueError:
+            print "Configuration file problem: ban_min_track must be an " \
+                  "integer value."
+            sys.exit(1)
+
     if config_file.has_option("global", "condor_register_time_limit"):
         try:
             condor_register_time_limit = 60*config_file.getint("global", "condor_register_time_limit")
@@ -194,6 +219,9 @@ def setup(path=None):
             print "Configuration file problem: condor_register_time_limit must be an " \
                   "integer value."
             sys.exit(1)
+
+    if config_file.has_option("global", "ban_tracking"):
+        ban_tracking = config_file.getboolean("global", "ban_tracking")
 
     if config_file.has_option("global", "graceful_shutdown"):
         graceful_shutdown = config_file.getboolean("global", "graceful_shutdown")

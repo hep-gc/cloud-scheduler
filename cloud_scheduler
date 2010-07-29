@@ -287,9 +287,11 @@ class Scheduler(threading.Thread):
                         if create_ret == 0:
                             # Mark job as scheduled
                             self.job_pool.schedule(job)
-                            self.resource_pool.track_failures(job, good_resources, True)
+                            if config.ban_tracking:
+                                self.resource_pool.track_failures(job, good_resources, True)
                         else:
-                            self.resource_pool.track_failures(job, good_resources, False)
+                            if config.ban_tracking:
+                                self.resource_pool.track_failures(job, good_resources, False)
                             continue
                         # break out of this user's job and try next user
                         break
