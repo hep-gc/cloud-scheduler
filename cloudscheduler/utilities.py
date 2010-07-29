@@ -7,7 +7,7 @@ import socket
 import logging
 import ConfigParser
 from urlparse import urlparse
-import cloudscheduler.config as config
+import config
 
 def determine_path ():
     """Borrowed from wxglade.py"""
