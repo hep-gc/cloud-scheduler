@@ -707,38 +707,7 @@ class ResourcePool:
                                  (old_cluster.name, vm.id))
                         old_cluster.vm_destroy(vm)
 
-    # Error Tracking to be used to ban / filter resources 
-    def track_failures(self, job, resources):
-        for cluster in resources:
-            if cluster.__class__.__name__ == 'NimbusCluster':
-                if job.req_imageloc in self.failures.keys():
-                    foundIt = False
-                    for resource in self.failures[job.req_imageloc]:
-                        if resource[0] == cluster.name:
-                            resource[1] += 1
-                            foundIt = True
-                        if foundIt:
-                            break
-                        else:
-                            self.failures[job.req_imageloc].append([cluster.name, 1])
-                else:
-                    self.failures[job.req_imageloc] = []
-                    self.failures[job.req_imageloc].append([cluster.name, 1])
-            elif cluster.__class__.__name__ == 'EC2Cluster':
-                if job.req_ami in self.failures.keys():
-                    foundIt = False
-                    for resource in self.failures[job.req_ami]:
-                        if resource[0] == cluster.name:
-                            resource[1] += 1
-                            foundIt = True
-                        if foundIt:
-                            break
-                        else:
-                            self.failures[job.req_ami].append([cluster.name, 1])
-                else:
-                    self.failures[job.req_ami] = []
-                    self.failures[job.req_ami].append([cluster.name, 1])
-
+    # Error Tracking to be used to ban / filter resources
     def track_failures(self, job, resources,  value):
         for cluster in resources:
             if cluster.__class__.__name__ == 'NimbusCluster':
@@ -789,7 +758,6 @@ class ResourcePool:
                             if cq.name not in self.banned_job_resource[img]:
                                 self.banned_job_resource[img].append(cq.name)
                                 banned_changed = True
-                                print cq.data
                         else:
                             self.banned_job_resource[img] = []
                             self.banned_job_resource[img].append(cq.name)
@@ -811,7 +779,6 @@ class ResourcePool:
                       (config.ban_file, e.strerror))
         except:
             log.exception("Unknown problem saving ban file!")
-        print 'saved ban file'
 
     def load_banned_job_resource(self):
         """
