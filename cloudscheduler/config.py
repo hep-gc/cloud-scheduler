@@ -12,7 +12,7 @@ import sys
 from urlparse import urlparse
 import ConfigParser
 
-import cloudscheduler.utilities as utilities
+import utilities
 
 # Cloud Scheduler Options Module.
 

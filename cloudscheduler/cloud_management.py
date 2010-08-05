@@ -774,7 +774,7 @@ class ResourcePool:
         save_banned_job_resource - pickle the banned jobs list to file """
         try:
             ban_file = open(config.ban_file, "w")
-            ban_file.write(json.dumps(self.banned_job_resource))
+            ban_file.write(json.dumps(self.banned_job_resource, encoding='ascii'))
             ban_file.close()
         except IOError, e:
 
@@ -803,7 +803,7 @@ class ResourcePool:
             updated_ban = {}
             try:
                 if not no_bans:
-                    updated_ban = json.loads(ban_file.read())
+                    updated_ban = json.loads(ban_file.read(), encoding='ascii')
                     ban_file.close()
             except:
                 log.exception("Unknown problem opening ban file!")
@@ -833,3 +833,26 @@ class ResourcePool:
                                 if foundit:
                                     break
             self.banned_job_resource = updated_ban
+
+    def do_condor_off(self, machine_name):
+        cmd = '/usr/sbin/condor_off -startd -peaceful -name %s' % (machine_name)
+        sp = subprocess.Popen(['/usr/bin/ssh','-i', '/hepuser/mhp/.ssh/pwl_id_rsa', 'clouddev', cmd], shell=False,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (out, err) = sp.communicate(input=None)
+        if sp.returncode == 0:
+            log.debug("Successfuly sent condor_off to %s" % (machine_name))
+        else:
+            log.debug("Failed to send condor_off to %s" % (machine_name))
+            log.debug("Reason: %s \n Error: %s" % (out, err))
+        return sp.returncode
+
+    def do_condor_on(self, machine_name):
+        cmd = '/usr/sbin/condor_on -startd -name %s' % (machine_name)
+        sp = subprocess.Popen(['/usr/bin/ssh','-i', '/hepuser/mhp/.ssh/pwl_id_rsa', 'clouddev', cmd], shell=False,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (out, err) = sp.communicate(input=None)
+        if sp.returncode == 0:
+            log.debug("Successfuly sent condor_on to %s" % (machine_name))
+        else:
+            log.debug("Failed to send condor_on to %s" % (machine_name))
+            log.debug("Reason: %s \n Error: %s" % (out, err))
