@@ -452,7 +452,10 @@ class NimbusCluster(ICluster):
             # Clean up tempory user proxy file if present.
             if job_proxy_file_path != None:
                 log.debug("VM creation failed, so deleting user proxy file %s" % (job_proxy_file_path))
-                os.remove(job_proxy_file_path)
+                try:
+                    os.remove(job_proxy_file_path)
+                except:
+                    log.warning("Could not delete user proxy file %s" % (job_proxy_file_path))
             return create_return
 
         log.debug("(vm_create) - workspace create command executed.")
@@ -641,7 +644,10 @@ class NimbusCluster(ICluster):
         if cleanup_proxy:
             if vm.get_proxy_file() != None:
                 log.debug("Deleting user proxy file %s" % (vm.get_proxy_file()))
-                os.remove(vm.get_proxy_file())
+                try:
+                    os.remove(vm.get_proxy_file())
+                except:
+                    log.warning("Could not delete user proxy file %s" % (vm.get_proxy_file()))
 
         return destroy_return
 
