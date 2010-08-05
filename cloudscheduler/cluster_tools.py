@@ -396,6 +396,14 @@ class NimbusCluster(ICluster):
 
         log.debug("Nimbus cloud create command")
 
+        if vm_networkassoc == "":
+            # No network specified, so just pick the first available one
+            try:
+                vm_networkassoc = self.network_pools[0]
+            except:
+                log.exception("No network pool available? Aborting vm creation.")
+                return self.ERROR
+
         # Create a workspace metadata xml file
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
                 vm_cpuarch, vm_image)

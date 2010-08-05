@@ -71,7 +71,7 @@ class Job:
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1, 
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default", 
-             VMNetwork="private", VMCPUArch="x86", VMName="Default-Image",
+             VMNetwork="", VMCPUArch="x86", VMName="Default-Image",
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
              VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0):
         """

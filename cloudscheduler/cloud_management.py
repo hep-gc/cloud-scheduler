@@ -308,7 +308,9 @@ class ResourcePool:
                 if imageloc == "":
                     continue
                 # If required network is NOT in cluster's network associations
-                if (network not in cluster.network_pools):
+                # if network is undefined then it means pick whatever, so we
+                # just always okay it.
+                if network and (network not in cluster.network_pools):
                     log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
                     continue
                 if imageloc in self.banned_job_resource.keys():
@@ -435,7 +437,7 @@ class ResourcePool:
             if not (cpuarch in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
-            if not (network in cluster.network_pools):
+            if network and not (network in cluster.network_pools):
                 continue
             # Cluster meets network and cpu reqs
             potential_fit = True
