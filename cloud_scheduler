@@ -337,14 +337,28 @@ class Scheduler(threading.Thread):
                     num_to_change[vmtype] = int(round(val * vm_count))
 
                 if config.graceful_shutdown:
-                    #TODO graceful shutdown via hold / release
-                    for vmtype in diff_types.keys():
-                        if diff_types[vmtype] > Decimal('0.1'):
-                            self.job_pool.hold_vmtype(vmtype)
-                        else:
-                            self.job_pool.release_vmtype(vmtype)
-                    self.remove_idle_machines(machineList, num_to_change)
-                    # TODO Check for the idle machines to shutdown
+                    graceful_shutdown_method = False
+                    if graceful_shutdown_method:
+                        for vmtype in diff_types.keys():
+                            if diff_types[vmtype] > Decimal('0.1'):
+                                self.job_pool.hold_vmtype(vmtype)
+                            else:
+                                self.job_pool.release_vmtype(vmtype)
+                        self.remove_idle_machines(machineList, num_to_change)
+                    else:
+                        # shutdown using condor_off
+                        for vmtype, val in num_to_change.iteritems():
+                            criteria = {'VMType': vmtype, 'Activity': 'Retiring'}
+                            retiring_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
+                            adjusted_val = val - len(retiring_vms_of_type)
+                            if adjusted_val > 0:
+                                criteria = {'VMType': vmtype, 'Activity': 'Busy'}
+                                busy_vms = self.resource_pool.find_in_where(machineList, criteria)
+                                for x in range(0, adjusted_val):
+                                    self.resource_pool.do_condor_off(busy_vms[x]['Name'])
+                            elif adjust_val < 0:
+                                for x in range(0, abs(adjust_val)):
+                                    self.resource_pool.do_condor_on(retiring_vms_of_type[x]['Name'])
                 else:
                     # Compare current Machine List with Previous
                     # Looking for machines that have changed jobs since last check

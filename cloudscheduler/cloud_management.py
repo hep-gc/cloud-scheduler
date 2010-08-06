@@ -163,13 +163,18 @@ class ResourcePool:
                     self.resources.append(new_cluster)
 
         # Remove resources
+        graceful_shutdown_method = False
         for removed_cluster_name in removed_names:
             for cluster in reversed(old_resources):
                 if cluster.name == removed_cluster_name:
                     log.info("Removing %s from available resources" % 
                                                           removed_cluster_name)
                     for vm in cluster.vms:
-                        cluster.vm_destroy(vm)
+                        if graceful_shutdown_method:
+                            cluster.vm_destroy(vm)
+                        else:
+                            # lacking full condor hostname ?
+                            self.do_condor_off(vm.hostname)
 
                     old_resources.remove(cluster)
 
