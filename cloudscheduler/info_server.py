@@ -45,7 +45,7 @@ log = None
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
 
-class CloudSchedulerInfoServer(threading.Thread,):
+class InfoServer(threading.Thread,):
 
     cloud_resources = None
     job_pool = None
@@ -56,7 +56,7 @@ class CloudSchedulerInfoServer(threading.Thread,):
         log = logging.getLogger("cloudscheduler")
 
         #set up class
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name=self.__class__.__name__)
         self.done = False
         cloud_resources = c_resources
         job_pool = c_job_pool

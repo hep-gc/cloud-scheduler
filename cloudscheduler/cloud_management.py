@@ -13,6 +13,7 @@
 ##
 ## IMPORTS
 ##
+from __future__ import with_statement
 
 import os
 import sys
@@ -25,13 +26,17 @@ from suds.client import Client
 import cloudscheduler.config as config
 from urllib2 import URLError
 from decimal import *
+from lxml import etree
+from StringIO import StringIO
 try:
     import cPickle as pickle
 except:
     import pickle
+import json
 
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
+from cloudscheduler.utilities import ErrTrackQueue
 
 ##
 ## GLOBALS
@@ -49,6 +54,7 @@ class ResourcePool:
 
     ## Instance variables
     resources = []
+    machine_list = []
     config_file = ""
 
     ## Instance methods
@@ -65,11 +71,20 @@ class ResourcePool:
         _collector_wsdl = "file://" + determine_path() \
                           + "/wsdl/condorCollector.wsdl"
         self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
+        self.condor_collector_as_xml = Client(_collector_wsdl, cache=None,
+                                              location=config.condor_collector_url, retxml=True)
 
         self.config_file = os.path.expanduser(config_file)
+        self.ban_lock = threading.Lock()
+        self.banned_job_resource = {}
+        self.failures = {}
 
         self.setup()
+        if config.ban_tracking:
+            self.load_banned_job_resource()
         self.load_persistence()
+
+
 
     def setup(self):
 
@@ -102,6 +117,12 @@ class ResourcePool:
         added_names = set(new_resource_names) - set(original_resource_names)
         updated_names = set(original_resource_names) & set(new_resource_names)
 
+        if removed_names:
+            log.debug("Removing clusters: %s" % removed_names)
+        if added_names:
+            log.debug("Adding clusters: %s" % added_names)
+        if updated_names:
+            log.debug("Updating clusters: %s" % updated_names)
 
         # Set resources list to empty to make sure no VMs are started
         # while we're shuffling things around.
@@ -122,6 +143,17 @@ class ResourcePool:
                         if new_cluster.name == updated_name:
 
                             new_cluster.vms = old_cluster.vms
+                            for vm in reversed(new_cluster.vms):
+                                try:
+                                    new_cluster.resource_checkout(vm)
+                                except cluster_tools.NoResourcesError, e:
+                                    log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
+                                                (vm.id, new_cluster.name, e.resource))
+                                    new_cluster.vm_destroy(vm, return_resources=False)
+                                except:
+                                    log.exception("Unexpected error checking out resources. Killing %s on %s" %
+                                                  (vm.id, new_cluster.name))
+                                    new_cluster.vm_destroy(vm, return_resources=False)
                             self.resources.append(new_cluster)
 
         # Add new resources
@@ -131,7 +163,6 @@ class ResourcePool:
                     self.resources.append(new_cluster)
 
         # Remove resources
-        # TODO: Check with mike if this is okay.
         for removed_cluster_name in removed_names:
             for cluster in reversed(old_resources):
                 if cluster.name == removed_cluster_name:
@@ -265,43 +296,61 @@ class ResourcePool:
     # Parameters: (as for get_resource methods)
     # Return: a list of Cluster objects representing clusters that meet given
     #         requirements for network, cpu, memory, and storage
-    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage):
+    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc):
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return list of fitting resources")
             return []
 
         fitting_clusters = []
         for cluster in self.resources:
+            if cluster.__class__.__name__ == "NimbusCluster":
+                # If not valid image file to download
+                if imageloc == "":
+                    continue
+                # If required network is NOT in cluster's network associations
+                # if network is undefined then it means pick whatever, so we
+                # just always okay it.
+                if network and (network not in cluster.network_pools):
+                    log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
+                    continue
+                if imageloc in self.banned_job_resource.keys():
+                    if cluster.name in self.banned_job_resource[imageloc]:
+                        continue
+            elif cluster.__class__.__name__ == "EC2Cluster":
+                # If no valid ami to boot from
+                if ami == "":
+                    continue
+                # If ami banned from cluster
+                if ami in self.banned_job_resource.keys():
+                    if cluster.name in self.banned_job_resource[ami]:
+                        continue
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
-                log.debug("get_fitting_resources - No free slots in %s" % cluster.name)
+                log.verbose("get_fitting_resources - No free slots in %s" % cluster.name)
                 continue
             # If the cluster does not have the required CPU architecture
             if (cpuarch not in cluster.cpu_archs):
-                log.debug("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
-                continue
-            # If required network is NOT in cluster's network associations
-            if (network not in cluster.network_pools):
-                log.debug("get_fitting_resources - No matching networks in %s" % cluster.name)
+                log.verbose("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
-                log.debug("get_fitting_resources - No available memory entry in %s" % cluster.name)
+                log.verbose("get_fitting_resources - No available memory entry in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient CPU cores
             if (cpucores > cluster.cpu_cores):
-                log.debug("get_fitting_resources - Not enough CPU Cores in %s" % cluster.name)
+                log.verbose("get_fitting_resources - Not enough CPU Cores in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient storage capacity
             if (storage > cluster.storageGB):
-                log.debug("get_fitting_resources - Not enough storage in %s" % cluster.name)
+                log.verbose("get_fitting_resources - Not enough storage in %s" % cluster.name)
                 continue
             # Add cluster to the list to be returned (meets all job reqs)
             fitting_clusters.append(cluster)
 
         # Return the list clusters that fit given requirements
-        log.debug("List of fitting clusters: ")
-        self.log_list(fitting_clusters)
+        if fitting_clusters:
+            log.debug("List of fitting clusters: ")
+            self.log_list(fitting_clusters)
         return fitting_clusters
 
 
@@ -330,19 +379,19 @@ class ResourcePool:
     #         Normal return, (Primary_Cluster, Secondary_Cluster)
     #         If no secondary cluster is found, (Cluster, None) is returned.
     #         If no fitting clusters are found, (None, None) is returned.
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage):
+    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc):
 
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage)
+        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
-            log.debug("No clusters fit requirements. Fitting resources list is empty.")
+            log.verbose("No clusters fit requirements. Fitting resources list is empty.")
             return (None, None)
 
         # If the list has only 1 item, return immediately
         if len(fitting_clusters) == 1:
-            log.debug("Only one cluster fits parameters. Returning that cluster.")
+            log.verbose("Only one cluster fits parameters. Returning that cluster.")
             return (fitting_clusters[0], None)
 
         # Set the most-balanced and next-most-balanced initial values
@@ -388,7 +437,7 @@ class ResourcePool:
             if not (cpuarch in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
-            if not (network in cluster.network_pools):
+            if network and not (network in cluster.network_pools):
                 continue
             # Cluster meets network and cpu reqs
             potential_fit = True
@@ -437,22 +486,55 @@ class ResourcePool:
     def resource_querySOAP(self):
         log.debug("Querying condor startd with SOAP API")
         try:
-            machines = self.condor_collector.service.queryStartdAds()
-            if len(machines) != 0:
-                machineList = self.convert_classad_list(machines)
-            else:
-                machineList = None
-            return machineList
+            machines_xml = self.condor_collector_as_xml.service.queryStartdAds()
+            machine_list = self._condor_machine_xml_to_machine_list(machines_xml)
+
+            return machine_list
 
         except URLError, e:
-            log.error("There was a problem connecting to the "
+            log.exception("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
-                      "reason: %s"
-                      % (config.condor_collector_url, e.reason[1]))
+                      "reason:"
+                      % config.condor_collector_url)
+            return []
         except:
-            log.error("There was a problem connecting to the "
+            log.exception("There was a problem connecting to the "
                       "Condor scheduler web service (%s)"
                       % (config.condor_collector_url))
+            return []
+
+    @staticmethod
+    def _condor_machine_xml_to_machine_list(condor_xml):
+        """
+        _condor_machine_xml_to_machine_list - Converts Condor SOAP XML from Condor
+                to a list of dictionarties with the attributes from the Condor 
+                machine ad.
+
+                returns [] if there are no jobs
+        """
+        def _item_attribute(xml, element):
+            try:
+                return xml.xpath(".//%s" % element)[0].text
+            except:
+                return ""
+
+        machines = []
+
+        context = etree.iterparse(StringIO(condor_xml))
+        for action, elem in context:
+            if elem.tag == "item" and elem.getparent().tag == "result":
+                xml_machine = elem
+                machine = {}
+                for item in xml_machine.iter("item"):
+                    name = _item_attribute(item, "name")
+                    value = _item_attribute(item, "value")
+                    machine[name] = value
+
+                machines.append(machine)
+                elem.clear()
+
+        return machines
+
 
     # Get a Dictionary of required VM Types with how many of that type running
     # Uses the dict-list structure returned by SOAP query
@@ -600,18 +682,177 @@ class ResourcePool:
             for vm in old_cluster.vms:
 
                 log.debug("Found VM %s" % vm.id)
-                if old_cluster.vm_poll(vm) != "Error":
+                vm_status = old_cluster.vm_poll(vm)
+                if vm_status == "Error":
+                    log.info("Found persisted VM %s from %s in an error state, destroying it." %
+                             (vm.id, old_cluster.name))
+                    old_cluster.vm_destroy(vm)
+                elif vm_status == "Destroyed":
+                    log.info("VM %s on %s no longer exists. Ignoring it." % (vm.id, old_cluster.name))
+                else:
                     new_cluster = self.get_cluster(old_cluster.name)
 
                     if new_cluster:
-                        new_cluster.vms.append(vm)
-                        new_cluster.resource_checkout(vm)
-                        log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
+                        try:
+                            new_cluster.resource_checkout(vm)
+                            new_cluster.vms.append(vm)
+                            log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
+                        except cluster_tools.NoResourcesError, e:
+                            log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
+                                        (vm.id, new_cluster.name, e.resource))
+                            new_cluster.vm_destroy(vm, return_resources=False)
+                        except:
+                            log.exception("Unexpected error checking out resources. Killing %s on %s" %
+                                          (vm.id, new_cluster.name))
+                            new_cluster.vm_destroy(vm, return_resources=False)
                     else:
                         log.info("%s doesn't seem to exist, so destroying vm %s." %
                                  (old_cluster.name, vm.id))
                         old_cluster.vm_destroy(vm)
+
+    # Error Tracking to be used to ban / filter resources
+    def track_failures(self, job, resources,  value):
+        for cluster in resources:
+            if cluster.__class__.__name__ == 'NimbusCluster':
+                if job.req_imageloc in self.failures.keys():
+                    foundIt = False
+                    for resource in self.failures[job.req_imageloc]:
+                        if resource.name == cluster.name:
+                            resource.append(value)
+                            foundIt = True
+                        if foundIt:
+                            break
+                        else:
+                            queue = ErrTrackQueue(cluster.name)
+                            queue.append(value)
+                            self.failures[job.req_imageloc].append(queue)
                 else:
-                    log.info("Found persisted VM %s from %s in an error state, destroying it." %
-                             (vm.id, old_cluster.name))
-                    old_cluster.vm_destroy(vm)
+                    self.failures[job.req_imageloc] = []
+                    queue = ErrTrackQueue(cluster.name)
+                    queue.append(value)
+                    self.failures[job.req_imageloc].append(queue)
+            elif cluster.__class__.__name__ == 'EC2Cluster':
+                if job.req_ami in self.failures.keys():
+                    foundIt = False
+                    for resource in self.failures[job.req_ami]:
+                        if resource.name == cluster.name:
+                            resource.append(value)
+                            foundIt = True
+                        if foundIt:
+                            break
+                        else:
+                            queue = ErrTrackQueue(cluster.name)
+                            queue.append(value)
+                            self.failures[job.req_ami].append(queue)
+                else:
+                    self.failures[job.req_ami] = []
+                    queue = ErrTrackQueue(cluster.name)
+                    queue.append(value)
+                    self.failures[job.req_ami].append(queue)
+
+    def check_failures(self):
+        with self.ban_lock:
+            banned_changed = False
+            for img in self.failures.keys():
+                for cq in self.failures[img]:
+                    if cq.min_use() and cq.dist_false() == config.ban_failrate_threshold:
+                        # add this img / cluster entry to banned jobs
+                        if img in self.banned_job_resource.keys():
+                            if cq.name not in self.banned_job_resource[img]:
+                                self.banned_job_resource[img].append(cq.name)
+                                banned_changed = True
+                        else:
+                            self.banned_job_resource[img] = []
+                            self.banned_job_resource[img].append(cq.name)
+                            banned_changed = True
+            if banned_changed:
+                self.save_banned_job_resource()
+                log.debug("Updating Banned job file")
+
+    def save_banned_job_resource(self):
+        """
+        save_banned_job_resource - pickle the banned jobs list to file """
+        try:
+            ban_file = open(config.ban_file, "w")
+            ban_file.write(json.dumps(self.banned_job_resource, encoding='ascii'))
+            ban_file.close()
+        except IOError, e:
+
+            log.error("Couldn't write ban file to %s! \"%s\"" % 
+                      (config.ban_file, e.strerror))
+        except:
+            log.exception("Unknown problem saving ban file!")
+
+    def load_banned_job_resource(self):
+        """
+        load_banned_job_resource - reload the file to update which images
+                    have been banned from clusters.
+        """
+        with self.ban_lock:
+            no_bans = False
+            ban_file = None
+            try:
+                log.info("Loading ban file.")
+                ban_file = open(config.ban_file, "r")
+            except IOError, e:
+                log.debug("No ban file to load. No images banned.")
+                no_bans = True
+            except:
+                log.exception("Unknown problem opening ban file!")
+                return
+            updated_ban = {}
+            try:
+                if not no_bans:
+                    updated_ban = json.loads(ban_file.read(), encoding='ascii')
+                    ban_file.close()
+            except:
+                log.exception("Unknown problem opening ban file!")
+                return
+            # Need to go through the failures and 'reset' any of the 
+            # bans that have been removed
+            if len(updated_ban) == 0:
+                for img in self.banned_job_resource.keys():
+                    for res in self.banned_job_resource[img]:
+                        foundit = False
+                        for cl in self.failures[img]:
+                            if cl.name == res:
+                                foundit = True
+                                cl.clear()
+                            if foundit:
+                                break
+            else:
+                for img in updated_ban.keys():
+                    if img in self.banned_job_resource.keys():
+                        diff = set(self.banned_job_resource[img]) - set(updated_ban[img])
+                        for res in diff:
+                            foundit = False
+                            for cl in self.failures[img]:
+                                if cl.name == res:
+                                    foundit = True
+                                    cl.clear()
+                                if foundit:
+                                    break
+            self.banned_job_resource = updated_ban
+
+    def do_condor_off(self, machine_name):
+        cmd = '/usr/sbin/condor_off -startd -peaceful -name %s' % (machine_name)
+        sp = subprocess.Popen(['/usr/bin/ssh','-i', '/hepuser/mhp/.ssh/pwl_id_rsa', 'clouddev', cmd], shell=False,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (out, err) = sp.communicate(input=None)
+        if sp.returncode == 0:
+            log.debug("Successfuly sent condor_off to %s" % (machine_name))
+        else:
+            log.debug("Failed to send condor_off to %s" % (machine_name))
+            log.debug("Reason: %s \n Error: %s" % (out, err))
+        return sp.returncode
+
+    def do_condor_on(self, machine_name):
+        cmd = '/usr/sbin/condor_on -startd -name %s' % (machine_name)
+        sp = subprocess.Popen(['/usr/bin/ssh','-i', '/hepuser/mhp/.ssh/pwl_id_rsa', 'clouddev', cmd], shell=False,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (out, err) = sp.communicate(input=None)
+        if sp.returncode == 0:
+            log.debug("Successfuly sent condor_on to %s" % (machine_name))
+        else:
+            log.debug("Failed to send condor_on to %s" % (machine_name))
+            log.debug("Reason: %s \n Error: %s" % (out, err))

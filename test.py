@@ -38,11 +38,17 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.info_server_port = "1234"
         self.workspace_path = "/path/to/workspace"
         self.persistence_file = "/path/to/persistence"
+        self.scheduler_interval = 42
+        self.vm_poller_interval = 42
+        self.job_poller_interval = 42
+        self.machine_poller_interval = 42
+        self.cleanup_interval = 42
 
         self.log_level = "ERROR"
         self.log_location = "/tmp/test.log"
         self.log_stdout = "true"
         self.log_max_size = "1312312"
+        self.log_format = "format_string"
 
         # build config file
         (self.configfile, self.configfilename) = tempfile.mkstemp()
@@ -62,12 +68,18 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'info_server_port', self.info_server_port)
         testconfig.set('global', 'workspace_path', self.workspace_path)
         testconfig.set('global', 'persistence_file', self.persistence_file)
+        testconfig.set('global', 'scheduler_interval', self.scheduler_interval)
+        testconfig.set('global', 'vm_poller_interval', self.vm_poller_interval)
+        testconfig.set('global', 'job_poller_interval', self.job_poller_interval)
+        testconfig.set('global', 'machine_poller_interval', self.machine_poller_interval)
+        testconfig.set('global', 'cleanup_interval', self.cleanup_interval)
 
         testconfig.add_section('logging')
         testconfig.set('logging', 'log_level', self.log_level)
         testconfig.set('logging', 'log_location', self.log_location)
         testconfig.set('logging', 'log_stdout', self.log_stdout)
         testconfig.set('logging', 'log_max_size', self.log_max_size)
+        testconfig.set('logging', 'log_format', self.log_format)
 
         # write temporary config file
         configfile = open(self.configfilename, 'wb')
@@ -119,6 +131,21 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
     def test_persistence_file(self):
         self.assertEqual(self.persistence_file, cloudscheduler.config.persistence_file)
 
+    def test_scheduler_interval(self):
+        self.assertEqual(int(self.scheduler_interval), cloudscheduler.config.scheduler_interval)
+
+    def test_vm_poller_interval(self):
+        self.assertEqual(int(self.vm_poller_interval), cloudscheduler.config.vm_poller_interval)
+
+    def test_job_poller_interval(self):
+        self.assertEqual(int(self.job_poller_interval), cloudscheduler.config.job_poller_interval)
+
+    def test_machine_poller_interval(self):
+        self.assertEqual(int(self.machine_poller_interval), cloudscheduler.config.machine_poller_interval)
+
+    def test_cleanup_interval(self):
+        self.assertEqual(int(self.cleanup_interval), cloudscheduler.config.cleanup_interval)
+
     def test_log_level(self):
         self.assertEqual(self.log_level, cloudscheduler.config.log_level)
 
@@ -130,6 +157,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_log_max_size(self):
         self.assertEqual(int(self.log_max_size), cloudscheduler.config.log_max_size)
+
+    def test_log_format(self):
+        self.assertEqual(self.log_format, cloudscheduler.config.log_format)
 
     def test_for_spaces_before_values(self):
 
@@ -146,6 +176,32 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def tearDown(self):
         os.remove(self.configfilename)
+
+class Utilities(unittest.TestCase):
+
+    def test_condor_host_match(self):
+        from cloudscheduler.utilities import match_host_with_condor_host
+
+        match = match_host_with_condor_host("condor.host", "condor.host")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("condor.host", "slot1@condor.host")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("192.168.1.1", "192.168.1.1")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("192.168.1.1", "slot2@192.168.1.1")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("192.168.1.2", "192.168.1.1")
+        self.assertFalse(match)
+
+        match = match_host_with_condor_host("condor.host", "condor")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("condor.host", "slot1@condor")
+        self.assertTrue(match)
 
 class ResourcePoolSetup(unittest.TestCase):
 
@@ -318,6 +374,677 @@ Waiting for updates.
 
         bad_host = NimbusCluster._extract_hostname("")
         self.assertEqual("", bad_host)
+
+    def test_extract_state(self):
+        from cloudscheduler.cluster_tools import NimbusCluster
+        nimbus_string_non_existant = """
+Problem: This workspace is unknown to the service (likely because it was terminated).
+"""
+        nimbus_string_good = """
+
+NIC: eth0
+  - Association: private
+  - IP: 192.168.107.1
+  - Hostname: musecloud01
+  - Gateway: 192.168.1.217
+
+Schedule:
+  -        Start time: Mon Jul 19 11:51:36 PDT 2010
+  -          Duration: 100 minutes.
+  -     Shutdown time: Mon Jul 19 13:31:36 PDT 2010
+  -  Termination time: Mon Jul 19 13:41:36 PDT 2010
+
+State: Unpropagated
+"""
+        extracted_state = NimbusCluster._extract_state(nimbus_string_good)
+        self.assertEqual("Starting", extracted_state)
+
+        destroyed = NimbusCluster._extract_state(nimbus_string_non_existant)
+        self.assertEqual("Destroyed", destroyed)
+
+
+class ResourcePoolTests(unittest.TestCase):
+
+    def test_condorxml_to_native_empty_list(self):
+
+        from cloudscheduler.cloud_management import ResourcePool
+        condor_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:condor="urn:condor"><SOAP-ENV:Header></SOAP-ENV:Header><SOAP-ENV:Body><condor:queryStartdAdsResponse><result></result></condor:queryStartdAdsResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>"""
+
+        xml2native = cloudscheduler.cloud_management.ResourcePool._condor_machine_xml_to_machine_list
+        machines = xml2native(condor_xml)
+        self.assertEqual([], machines)
+
+    def test_condorxml_to_native_one_machine(self):
+
+        from cloudscheduler.cloud_management import ResourcePool
+
+        ServerTime = "1278352861"
+
+        condor_xml = """<?xml version="1.0" encoding="utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:condor="urn:condor">
+  <SOAP-ENV:Header></SOAP-ENV:Header>
+  <SOAP-ENV:Body>
+    <condor:queryStartdAdsResponse>
+      <result>
+        <item>
+          <item>
+            <name>MyType</name>
+            <type>STRING-ATTR</type>
+            <value>Machine</value>
+          </item>
+          <item>
+            <name>TargetType</name>
+            <type>STRING-ATTR</type>
+            <value>Job</value>
+          </item>
+          <item>
+            <name>ServerTime</name>
+            <type>INTEGER-ATTR</type>
+            <value>1278352861</value>
+          </item>
+          <item>
+            <name>Machine</name>
+            <type>STRING-ATTR</type>
+            <value>hermes-xen057</value>
+          </item>
+          <item>
+            <name>LastHeardFrom</name>
+            <type>INTEGER-ATTR</type>
+            <value>1278352749</value>
+          </item>
+          <item>
+            <name>UpdateSequenceNumber</name>
+            <type>INTEGER-ATTR</type>
+            <value>1124</value>
+          </item>
+          <item>
+            <name>JavaVersion</name>
+            <type>STRING-ATTR</type>
+            <value>1.4.2</value>
+          </item>
+          <item>
+            <name>JobId</name>
+            <type>STRING-ATTR</type>
+            <value>202.571</value>
+          </item>
+          <item>
+            <name>HasMPI</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>TotalClaimRunTime</name>
+            <type>INTEGER-ATTR</type>
+            <value>5641</value>
+          </item>
+          <item>
+            <name>CpuIsBusy</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>FALSE</value>
+          </item>
+          <item>
+            <name>HasVM</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>FALSE</value>
+          </item>
+          <item>
+            <name>JavaVendor</name>
+            <type>STRING-ATTR</type>
+            <value>Free Software Foundation, Inc.</value>
+          </item>
+          <item>
+            <name>FileSystemDomain</name>
+            <type>STRING-ATTR</type>
+            <value>hermes-xen057</value>
+          </item>
+          <item>
+            <name>Name</name>
+            <type>STRING-ATTR</type>
+            <value>hermes-xen057</value>
+          </item>
+          <item>
+            <name>ImageSize</name>
+            <type>INTEGER-ATTR</type>
+            <value>151980</value>
+          </item>
+          <item>
+            <name>MonitorSelfTime</name>
+            <type>INTEGER-ATTR</type>
+            <value>1278352716</value>
+          </item>
+          <item>
+            <name>TimeToLive</name>
+            <type>INTEGER-ATTR</type>
+            <value>2147483647</value>
+          </item>
+          <item>
+            <name>KeyboardIdle</name>
+            <type>INTEGER-ATTR</type>
+            <value>377368</value>
+          </item>
+          <item>
+            <name>LastBenchmark</name>
+            <type>INTEGER-ATTR</type>
+            <value>1278344639</value>
+          </item>
+          <item>
+            <name>TotalDisk</name>
+            <type>INTEGER-ATTR</type>
+            <value>7505032</value>
+          </item>
+          <item>
+            <name>MaxJobRetirementTime</name>
+            <type>INTEGER-ATTR</type>
+            <value>0</value>
+          </item>
+          <item>
+            <name>CondorPlatform</name>
+            <type>STRING-ATTR</type>
+            <value>$CondorPlatform: I386-LINUX_RHEL5 $</value>
+          </item>
+          <item>
+            <name>Unhibernate</name>
+            <type>EXPRESSION-ATTR</type>
+            <value>MY.MachineLastMatchTime =!= undefined</value>
+          </item>
+          <item>
+            <name>HasJICLocalStdin</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>UpdatesTotal</name>
+            <type>INTEGER-ATTR</type>
+            <value>1050</value>
+          </item>
+          <item>
+            <name>IsValidCheckpointPlatform</name>
+            <type>EXPRESSION-ATTR</type>
+            <value>( ( ( TARGET.JobUniverse == 1 ) == false ) || (
+            ( MY.CheckpointPlatform =!= undefined ) &amp;&amp; ( (
+            TARGET.LastCheckpointPlatform =?= MY.CheckpointPlatform
+            ) || ( TARGET.NumCkpts == 0 ) ) ) )</value>
+          </item>
+          <item>
+            <name>Cpus</name>
+            <type>INTEGER-ATTR</type>
+            <value>1</value>
+          </item>
+          <item>
+            <name>MonitorSelfCPUUsage</name>
+            <type>FLOAT-ATTR</type>
+            <value>0.000000</value>
+          </item>
+          <item>
+            <name>TotalTimePreemptingKilling</name>
+            <type>INTEGER-ATTR</type>
+            <value>30</value>
+          </item>
+          <item>
+            <name>ClockDay</name>
+            <type>INTEGER-ATTR</type>
+            <value>1</value>
+          </item>
+          <item>
+            <name>IsWakeOnLanEnabled</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>FALSE</value>
+          </item>
+          <item>
+            <name>StarterAbilityList</name>
+            <type>STRING-ATTR</type>
+            <value>
+            HasMPI,HasVM,HasJICLocalStdin,HasJICLocalConfig,HasJava,HasJobDeferral,HasTDP,HasFileTransfer,HasPerFileEncryption,HasReconnect,HasRemoteSyscalls,HasCheckpointing</value>
+          </item>
+          <item>
+            <name>JavaSpecificationVersion</name>
+            <type>STRING-ATTR</type>
+            <value>1.4</value>
+          </item>
+          <item>
+            <name>TotalTimeUnclaimedIdle</name>
+            <type>INTEGER-ATTR</type>
+            <value>12087</value>
+          </item>
+          <item>
+            <name>CondorVersion</name>
+            <type>STRING-ATTR</type>
+            <value>$CondorVersion: 7.5.2 Apr 20 2010 BuildID:
+            232940 $</value>
+          </item>
+          <item>
+            <name>JobUniverse</name>
+            <type>INTEGER-ATTR</type>
+            <value>5</value>
+          </item>
+          <item>
+            <name>HasIOProxy</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>TotalTimeClaimedBusy</name>
+            <type>INTEGER-ATTR</type>
+            <value>362756</value>
+          </item>
+          <item>
+            <name>MonitorSelfImageSize</name>
+            <type>FLOAT-ATTR</type>
+            <value>10252.000000</value>
+          </item>
+          <item>
+            <name>TotalTimeOwnerIdle</name>
+            <type>INTEGER-ATTR</type>
+            <value>4</value>
+          </item>
+          <item>
+            <name>HibernationSupportedStates</name>
+            <type>STRING-ATTR</type>
+            <value>S3</value>
+          </item>
+          <item>
+            <name>ExecutableSize</name>
+            <type>INTEGER-ATTR</type>
+            <value>1</value>
+          </item>
+          <item>
+            <name>LastFetchWorkSpawned</name>
+            <type>INTEGER-ATTR</type>
+            <value>0</value>
+          </item>
+          <item>
+            <name>Requirements</name>
+            <type>EXPRESSION-ATTR</type>
+            <value>( START ) &amp;&amp; ( IsValidCheckpointPlatform
+            )</value>
+          </item>
+          <item>
+            <name>TotalTimeClaimedIdle</name>
+            <type>INTEGER-ATTR</type>
+            <value>2431</value>
+          </item>
+          <item>
+            <name>TotalMemory</name>
+            <type>INTEGER-ATTR</type>
+            <value>2048</value>
+          </item>
+          <item>
+            <name>DaemonStartTime</name>
+            <type>INTEGER-ATTR</type>
+            <value>1277975423</value>
+          </item>
+          <item>
+            <name>EnteredCurrentActivity</name>
+            <type>INTEGER-ATTR</type>
+            <value>1278347108</value>
+          </item>
+          <item>
+            <name>MyAddress</name>
+            <type>STRING-ATTR</type>
+            <value>
+            &lt;172.20.97.57:40021?CCBID=142.104.63.28:9618#56046&gt;</value>
+          </item>
+          <item>
+            <name>HasJICLocalConfig</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>GlobalJobId</name>
+            <type>STRING-ATTR</type>
+            <value>
+            canfarpool.phys.uvic.ca#202.571#1278178882</value>
+          </item>
+          <item>
+            <name>HasJava</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>EnteredCurrentState</name>
+            <type>INTEGER-ATTR</type>
+            <value>1278347108</value>
+          </item>
+          <item>
+            <name>CpuBusyTime</name>
+            <type>INTEGER-ATTR</type>
+            <value>0</value>
+          </item>
+          <item>
+            <name>CpuBusy</name>
+            <type>EXPRESSION-ATTR</type>
+            <value>( ( LoadAvg - CondorLoadAvg ) &gt;= 0.500000
+            )</value>
+          </item>
+          <item>
+            <name>COLLECTOR_HOST_STRING</name>
+            <type>STRING-ATTR</type>
+            <value>canfarpool.phys.uvic.ca</value>
+          </item>
+          <item>
+            <name>Memory</name>
+            <type>INTEGER-ATTR</type>
+            <value>2048</value>
+          </item>
+          <item>
+            <name>IsWakeAble</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>FALSE</value>
+          </item>
+          <item>
+            <name>MyCurrentTime</name>
+            <type>INTEGER-ATTR</type>
+            <value>1278352749</value>
+          </item>
+          <item>
+            <name>MonitorSelfRegisteredSocketCount</name>
+            <type>INTEGER-ATTR</type>
+            <value>3</value>
+          </item>
+          <item>
+            <name>TotalTimeUnclaimedBenchmarking</name>
+            <type>INTEGER-ATTR</type>
+            <value>9</value>
+          </item>
+          <item>
+            <name>TotalCpus</name>
+            <type>INTEGER-ATTR</type>
+            <value>1</value>
+          </item>
+          <item>
+            <name>ClockMin</name>
+            <type>INTEGER-ATTR</type>
+            <value>659</value>
+          </item>
+          <item>
+            <name>CurrentRank</name>
+            <type>FLOAT-ATTR</type>
+            <value>0.000000</value>
+          </item>
+          <item>
+            <name>AuthenticatedIdentity</name>
+            <type>STRING-ATTR</type>
+            <value>unauthenticated@unmapped</value>
+          </item>
+          <item>
+            <name>NextFetchWorkDelay</name>
+            <type>EXPRESSION-ATTR</type>
+            <value>-1</value>
+          </item>
+          <item>
+            <name>OpSys</name>
+            <type>STRING-ATTR</type>
+            <value>LINUX</value>
+          </item>
+          <item>
+            <name>State</name>
+            <type>STRING-ATTR</type>
+            <value>Claimed</value>
+          </item>
+          <item>
+            <name>UpdatesHistory</name>
+            <type>STRING-ATTR</type>
+            <value>0x00000000000000000000000000000000</value>
+          </item>
+          <item>
+            <name>UpdatesSequenced</name>
+            <type>INTEGER-ATTR</type>
+            <value>1049</value>
+          </item>
+          <item>
+            <name>KFlops</name>
+            <type>INTEGER-ATTR</type>
+            <value>1782641</value>
+          </item>
+          <item>
+            <name>Start</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>RemoteUser</name>
+            <type>STRING-ATTR</type>
+            <value>sharon@canfarpool.phys.uvic.ca</value>
+          </item>
+          <item>
+            <name>HasRemoteSyscalls</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>HasJobDeferral</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>HasCheckpointing</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>MonitorSelfResidentSetSize</name>
+            <type>INTEGER-ATTR</type>
+            <value>4920</value>
+          </item>
+          <item>
+            <name>Mips</name>
+            <type>INTEGER-ATTR</type>
+            <value>5562</value>
+          </item>
+          <item>
+            <name>Arch</name>
+            <type>STRING-ATTR</type>
+            <value>INTEL</value>
+          </item>
+          <item>
+            <name>Activity</name>
+            <type>STRING-ATTR</type>
+            <value>Busy</value>
+          </item>
+          <item>
+            <name>ClientMachine</name>
+            <type>STRING-ATTR</type>
+            <value>canfarpool.phys.UVic.CA</value>
+          </item>
+          <item>
+            <name>IsWakeOnLanSupported</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>FALSE</value>
+          </item>
+          <item>
+            <name>LastFetchWorkCompleted</name>
+            <type>INTEGER-ATTR</type>
+            <value>0</value>
+          </item>
+          <item>
+            <name>SubnetMask</name>
+            <type>STRING-ATTR</type>
+            <value>255.255.224.0</value>
+          </item>
+          <item>
+            <name>HasTDP</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>ConsoleIdle</name>
+            <type>INTEGER-ATTR</type>
+            <value>377368</value>
+          </item>
+          <item>
+            <name>UpdatesLost</name>
+            <type>INTEGER-ATTR</type>
+            <value>0</value>
+          </item>
+          <item>
+            <name>TotalJobRunTime</name>
+            <type>INTEGER-ATTR</type>
+            <value>5641</value>
+          </item>
+          <item>
+            <name>StartdIpAddr</name>
+            <type>STRING-ATTR</type>
+            <value>
+            &lt;172.20.97.57:40021?CCBID=142.104.63.28:9618#56046&gt;</value>
+          </item>
+          <item>
+            <name>WakeOnLanEnabledFlags</name>
+            <type>STRING-ATTR</type>
+            <value>NONE</value>
+          </item>
+          <item>
+            <name>NiceUser</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>FALSE</value>
+          </item>
+          <item>
+            <name>HibernationLevel</name>
+            <type>INTEGER-ATTR</type>
+            <value>0</value>
+          </item>
+          <item>
+            <name>HasFileTransfer</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>TotalLoadAvg</name>
+            <type>FLOAT-ATTR</type>
+            <value>1.000000</value>
+          </item>
+          <item>
+            <name>Rank</name>
+            <type>FLOAT-ATTR</type>
+            <value>0.000000</value>
+          </item>
+          <item>
+            <name>MonitorSelfSecuritySessions</name>
+            <type>INTEGER-ATTR</type>
+            <value>3</value>
+          </item>
+          <item>
+            <name>HibernationState</name>
+            <type>STRING-ATTR</type>
+            <value>NONE</value>
+          </item>
+          <item>
+            <name>JavaMFlops</name>
+            <type>FLOAT-ATTR</type>
+            <value>17.634478</value>
+          </item>
+          <item>
+            <name>MonitorSelfAge</name>
+            <type>INTEGER-ATTR</type>
+            <value>0</value>
+          </item>
+          <item>
+            <name>VMType</name>
+            <type>STRING-ATTR</type>
+            <value>canfarbase_seb</value>
+          </item>
+          <item>
+            <name>LoadAvg</name>
+            <type>FLOAT-ATTR</type>
+            <value>1.000000</value>
+          </item>
+          <item>
+            <name>WakeOnLanSupportedFlags</name>
+            <type>STRING-ATTR</type>
+            <value>NONE</value>
+          </item>
+          <item>
+            <name>HasPerFileEncryption</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>CheckpointPlatform</name>
+            <type>STRING-ATTR</type>
+            <value>LINUX INTEL 2.6.x normal 0x40000000</value>
+          </item>
+          <item>
+            <name>JobStart</name>
+            <type>INTEGER-ATTR</type>
+            <value>1278347108</value>
+          </item>
+          <item>
+            <name>CurrentTime</name>
+            <type>EXPRESSION-ATTR</type>
+            <value>time()</value>
+          </item>
+          <item>
+            <name>RemoteOwner</name>
+            <type>STRING-ATTR</type>
+            <value>sharon@canfarpool.phys.uvic.ca</value>
+          </item>
+          <item>
+            <name>Disk</name>
+            <type>INTEGER-ATTR</type>
+            <value>7505032</value>
+          </item>
+          <item>
+            <name>VirtualMemory</name>
+            <type>INTEGER-ATTR</type>
+            <value>0</value>
+          </item>
+          <item>
+            <name>TotalSlots</name>
+            <type>INTEGER-ATTR</type>
+            <value>1</value>
+          </item>
+          <item>
+            <name>TotalVirtualMemory</name>
+            <type>INTEGER-ATTR</type>
+            <value>0</value>
+          </item>
+          <item>
+            <name>UidDomain</name>
+            <type>STRING-ATTR</type>
+            <value>hermes-xen057</value>
+          </item>
+          <item>
+            <name>SlotID</name>
+            <type>INTEGER-ATTR</type>
+            <value>1</value>
+          </item>
+          <item>
+            <name>SlotWeight</name>
+            <type>EXPRESSION-ATTR</type>
+            <value>Cpus</value>
+          </item>
+          <item>
+            <name>HasReconnect</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+          <item>
+            <name>HardwareAddress</name>
+            <type>STRING-ATTR</type>
+            <value>a2:aa:bb:18:56:75</value>
+          </item>
+          <item>
+            <name>CanHibernate</name>
+            <type>BOOLEAN-ATTR</type>
+            <value>TRUE</value>
+          </item>
+        </item>
+      </result>
+    </condor:queryStartdAdsResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+"""
+
+        xml2native = cloudscheduler.cloud_management.ResourcePool._condor_machine_xml_to_machine_list
+        parsed_machines = xml2native(condor_xml)
+        parsed_machine = parsed_machines[0]
+        parsed_server_time = parsed_machine["ServerTime"]
+
+        self.assertEqual(parsed_server_time, ServerTime)
 
 class JobPoolTests(unittest.TestCase):
 
