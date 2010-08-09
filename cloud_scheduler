@@ -636,10 +636,10 @@ class Cleanup(threading.Thread):
                         for vm in cluster.vms:
                             foundvm = False
                             if vm.status == 'Running':
-                                host = vm.hostname.split('.')[0]
                                 for machine in machineList:
-                                    condName = machine['Name'].split('.')[0]
-                                    if condName == host:
+                                    if utilities.match_host_with_condor_host(vm.hostname, machine['Name']):
+                                        if vm.condorname == None:
+                                            vm.condorname = machine['Name']
                                         foundvm = True
                                         break
                                 if not foundvm:
