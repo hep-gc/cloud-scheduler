@@ -339,12 +339,11 @@ class ICluster:
     # Notes: (as for checkout)
     def resource_return(self, vm):
         log.info("Returning resources used by VM %s to Cluster %s" % (vm.id, self.name))
-        self.res_lock.acquire()
-        self.vm_slots += 1
-        self.storageGB += vm.storage
-        # ISSUE: No way to know what mementry a VM is running on
-        self.memory[vm.mementry] += vm.memory
-        self.res_lock.release()
+        with self.res_lock:
+            self.vm_slots += 1
+            self.storageGB += vm.storage
+            # ISSUE: No way to know what mementry a VM is running on
+            self.memory[vm.mementry] += vm.memory
 
 
 ## Implements cloud management functionality with the Nimbus service as part of
@@ -1074,14 +1073,13 @@ class EC2Cluster(ICluster):
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
-        self.vms_lock.acquire()
-        if vm.status != self.VM_STATES.get(instance.state, "Starting"):
+        with vms_lock:
+            if vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
-            vm.last_state_change = int(time.time())
-        vm.status = self.VM_STATES.get(instance.state, "Starting")
-        vm.hostname = instance.public_dns_name
-        vm.lastpoll = int(time.time())
-        self.vms_lock.release()
+                vm.last_state_change = int(time.time())
+            vm.status = self.VM_STATES.get(instance.state, "Starting")
+            vm.hostname = instance.public_dns_name
+            vm.lastpoll = int(time.time())
         return vm.status
 
 

@@ -130,6 +130,9 @@ class ResourcePool:
         # while we're shuffling things around.
         old_resources = []
         for cluster in reversed(self.resources):
+            with cluster.res_lock:
+                cluster.vm_slots = 0
+                cluster.memory = []
             old_resources.append(cluster)
             self.resources.remove(cluster)
 
@@ -141,22 +144,23 @@ class ResourcePool:
             for old_cluster in old_resources:
                 if old_cluster.name == updated_name:
 
-                    for new_cluster in new_resources:
-                        if new_cluster.name == updated_name:
+                    with old_cluster.res_lock:
+                        for new_cluster in new_resources:
+                            if new_cluster.name == updated_name:
 
-                            new_cluster.vms = old_cluster.vms
-                            for vm in reversed(new_cluster.vms):
-                                try:
-                                    new_cluster.resource_checkout(vm)
-                                except cluster_tools.NoResourcesError, e:
-                                    log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
-                                                (vm.id, new_cluster.name, e.resource))
-                                    new_cluster.vm_destroy(vm, return_resources=False)
-                                except:
-                                    log.exception("Unexpected error checking out resources. Killing %s on %s" %
-                                                  (vm.id, new_cluster.name))
-                                    new_cluster.vm_destroy(vm, return_resources=False)
-                            self.resources.append(new_cluster)
+                                new_cluster.vms = old_cluster.vms
+                                for vm in reversed(new_cluster.vms):
+                                    try:
+                                        new_cluster.resource_checkout(vm)
+                                    except cluster_tools.NoResourcesError, e:
+                                        log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
+                                                    (vm.id, new_cluster.name, e.resource))
+                                        new_cluster.vm_destroy(vm, return_resources=False)
+                                    except:
+                                        log.exception("Unexpected error checking out resources. Killing %s on %s" %
+                                                      (vm.id, new_cluster.name))
+                                        new_cluster.vm_destroy(vm, return_resources=False)
+                                self.resources.append(new_cluster)
 
         # Add new resources
         for new_cluster_name in added_names:
