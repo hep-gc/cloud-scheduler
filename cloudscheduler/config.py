@@ -26,6 +26,7 @@ cert_file = ""
 key_file = ""
 cert_file_on_vm = ""
 key_file_on_vm = ""
+cloudscheduler_ssh_key = ""
 cloud_resource_config = None
 image_attach_device = "sda"
 scratch_attach_device = "sdb"
@@ -39,6 +40,7 @@ ban_failrate_threshold = 1.0
 polling_error_threshold = 10
 condor_register_time_limit = 900
 graceful_shutdown = False
+graceful_shutdown_method = "hold"
 getclouds = False
 scheduling_metric = "slot"
 cleanup_interval = 5
@@ -67,6 +69,7 @@ def setup(path=None):
     global key_file
     global cert_file_on_vm
     global key_file_on_vm
+    global cloudscheduler_ssh_key
     global cloud_resource_config
     global image_attach_device
     global scratch_attach_device
@@ -80,6 +83,7 @@ def setup(path=None):
     global polling_error_threshold
     global condor_register_time_limit
     global graceful_shutdown
+    global graceful_shutdown_method
     global getclouds
     global scheduling_metric
     global cleanup_interval
@@ -156,6 +160,9 @@ def setup(path=None):
     if config_file.has_option("global", "key_file_on_vm"):
         key_file_on_vm = config_file.get("global", "key_file_on_vm")
 
+    if config_file.has_option("global", "cloudscheduler_ssh_key"):
+        cloudscheduler_ssh_key = config_file.get("global", "cloudscheduler_ssh_key")
+
     if config_file.has_option("global", "cloud_resource_config"):
         cloud_resource_config = config_file.get("global",
                                                 "cloud_resource_config")
@@ -225,6 +232,9 @@ def setup(path=None):
 
     if config_file.has_option("global", "graceful_shutdown"):
         graceful_shutdown = config_file.getboolean("global", "graceful_shutdown")
+
+    if config_file.has_option("global", "graceful_shutdown_method"):
+        graceful_shutdown_method = config_file.get("global", "graceful_shutdown_method")
 
     if config_file.has_option("global", "getclouds"):
         getclouds = config_file.getboolean("global", "getclouds")

@@ -163,14 +163,13 @@ class ResourcePool:
                     self.resources.append(new_cluster)
 
         # Remove resources
-        graceful_shutdown_method = False
         for removed_cluster_name in removed_names:
             for cluster in reversed(old_resources):
                 if cluster.name == removed_cluster_name:
                     log.info("Removing %s from available resources" % 
                                                           removed_cluster_name)
                     for vm in cluster.vms:
-                        if graceful_shutdown_method:
+                        if config.graceful_shutdown_method != 'off':
                             cluster.vm_destroy(vm)
                         else:
                             if vm.condorname:
@@ -844,7 +843,15 @@ class ResourcePool:
 
     def do_condor_off(self, machine_name):
         cmd = '/usr/sbin/condor_off -startd -peaceful -name %s' % (machine_name)
-        sp = subprocess.Popen(['/usr/bin/ssh','-i', '/hepuser/mhp/.ssh/pwl_id_rsa', 'clouddev', cmd], shell=False,
+        args = []
+        args.append('/usr/bin/ssh')
+        if config.cloudscheduler_ssh_key:
+            args.append('-i')
+            args.append(config.cloudscheduler_ssh_key)
+        central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
+        args.append(central_address)
+        args.append(cmd)
+        sp = subprocess.Popen(args, shell=False,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out, err) = sp.communicate(input=None)
         if sp.returncode == 0:
@@ -856,7 +863,15 @@ class ResourcePool:
 
     def do_condor_on(self, machine_name):
         cmd = '/usr/sbin/condor_on -startd -name %s' % (machine_name)
-        sp = subprocess.Popen(['/usr/bin/ssh','-i', '/hepuser/mhp/.ssh/pwl_id_rsa', 'clouddev', cmd], shell=False,
+        args = []
+        args.append('/usr/bin/ssh')
+        if config.cloudscheduler_ssh_key:
+            args.append('-i')
+            args.append(config.cloudscheduler_ssh_key)
+        central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
+        args.append(central_address)
+        args.append(cmd)
+        sp = subprocess.Popen(args, shell=False,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out, err) = sp.communicate(input=None)
         if sp.returncode == 0:

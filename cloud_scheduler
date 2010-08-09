@@ -337,8 +337,7 @@ class Scheduler(threading.Thread):
                     num_to_change[vmtype] = int(round(val * vm_count))
 
                 if config.graceful_shutdown:
-                    graceful_shutdown_method = False
-                    if graceful_shutdown_method:
+                    if config.graceful_shutdown_method == 'hold':
                         for vmtype in diff_types.keys():
                             if diff_types[vmtype] > Decimal('0.1'):
                                 self.job_pool.hold_vmtype(vmtype)
