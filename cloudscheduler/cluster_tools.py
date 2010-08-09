@@ -1073,7 +1073,8 @@ class EC2Cluster(ICluster):
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
-        with self.vms_lock:
+
+        with vms_lock:
             if vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
                 vm.last_state_change = int(time.time())
