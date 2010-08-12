@@ -24,6 +24,7 @@ if sys.version_info[:2] < (2,5):
     sys.exit(1)
 
 import os
+import re
 import time
 import string
 import getopt
@@ -353,11 +354,21 @@ class Scheduler(threading.Thread):
                             if adjusted_val > 0:
                                 criteria = {'VMType': vmtype, 'Activity': 'Busy'}
                                 busy_vms = self.resource_pool.find_in_where(machineList, criteria)
+                                if len(busy_vms) < adjusted_val:
+                                    adjusted_val = len(busy_vms)
                                 for x in range(0, adjusted_val):
-                                    self.resource_pool.do_condor_off(busy_vms[x]['Name'])
-                            elif adjust_val < 0:
-                                for x in range(0, abs(adjust_val)):
-                                    self.resource_pool.do_condor_on(retiring_vms_of_type[x]['Name'])
+                                    ret = self.resource_pool.do_condor_off(busy_vms[x]['Name'])
+                                    if ret == 0:
+                                        retired_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Name'])
+                                        retired_vm.override_status = 'Retiring'
+                            elif adjusted_val < 0:
+                                if abs(adjusted_val) > len(retiring_vms_of_type):
+                                    adjusted_val = len(retiring_vms_of_type)
+                                for x in range(0, abs(adjusted_val)):
+                                    ret = self.resource_pool.do_condor_on(retiring_vms_of_type[x]['Name'])
+                                    if ret == 0:
+                                        retired_vm = self.resource_pool.find_vm_with_name(retiring_vms_of_type[x]['Name'])
+                                        retired_vm.override_status = ''
                 else:
                     # Compare current Machine List with Previous
                     # Looking for machines that have changed jobs since last check
@@ -631,6 +642,7 @@ class Cleanup(threading.Thread):
                 if machineList:
                     # Make sure VMs have registered with Condor
                     unregisteredvms = []
+                    retiredvms = []
                     for cluster in self.resource_pool.resources:
                         for vm in cluster.vms:
                             foundvm = False
@@ -642,7 +654,10 @@ class Cleanup(threading.Thread):
                                         foundvm = True
                                         break
                                 if not foundvm:
-                                    unregisteredvms.append(vm)
+                                    if vm.override_status == 'Retiring':
+                                        retiredvms.append(vm)
+                                    else:
+                                        unregisteredvms.append(vm)
                     to_kill = []
                     for vm in unregisteredvms:
                         # now -state change will be how long VM 'running'
@@ -655,6 +670,17 @@ class Cleanup(threading.Thread):
                             for vm in cluster.vms:
                                 if vm == machine:
                                     log.debug("Shutting down VM that has not registered with Condor after %i" % (config.condor_register_time_limit))
+                                    cluster.vm_destroy(machine)
+                                    killedIt = True
+                                    break
+                            if killedIt:
+                                break
+                    for machine in retiredvms:
+                        killedIt = False
+                        for cluster in self.resource_pool.resources:
+                            for vm in cluster.vms:
+                                if vm == machine:
+                                    log.debug("Shutting down VM that has finished Retiring")
                                     cluster.vm_destroy(machine)
                                     killedIt = True
                                     break

@@ -16,9 +16,11 @@
 from __future__ import with_statement
 
 import os
+import re
 import sys
 import logging
 import threading
+import subprocess
 
 import ConfigParser
 import cluster_tools
@@ -879,3 +881,17 @@ class ResourcePool:
         else:
             log.debug("Failed to send condor_on to %s" % (machine_name))
             log.debug("Reason: %s \n Error: %s" % (out, err))
+        return sp.returncode
+
+    def find_vm_with_name(self, condor_name):
+        foundIt = False
+        vm_match = None
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.condorname == condor_name:
+                    foundIt = True
+                    vm_match = vm
+                    break
+            if foundIt:
+                break
+        return vm_match

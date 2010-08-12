@@ -101,7 +101,7 @@ class VM:
         self.keep_alive = keep_alive
         self.idle_start = None
         self.spot_id = spot_id
-        
+        self.override_status = None
 
         # Set a status variable on new creation
         self.status = "Starting"
