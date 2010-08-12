@@ -895,3 +895,12 @@ class ResourcePool:
             if foundIt:
                 break
         return vm_match
+
+    def retiring_vms_of_type(self, vmtype):
+        retiring = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.vmtype == vmtype:
+                    if vm.override_status == 'Retiring':
+                        retiring.append(vm)
+        return retiring

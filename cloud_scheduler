@@ -349,7 +349,8 @@ class Scheduler(threading.Thread):
                         # shutdown using condor_off
                         for vmtype, val in num_to_change.iteritems():
                             criteria = {'VMType': vmtype, 'Activity': 'Retiring'}
-                            retiring_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
+                            retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
+                            
                             adjusted_val = val - len(retiring_vms_of_type)
                             if adjusted_val > 0:
                                 criteria = {'VMType': vmtype, 'Activity': 'Busy'}
@@ -365,10 +366,9 @@ class Scheduler(threading.Thread):
                                 if abs(adjusted_val) > len(retiring_vms_of_type):
                                     adjusted_val = len(retiring_vms_of_type)
                                 for x in range(0, abs(adjusted_val)):
-                                    ret = self.resource_pool.do_condor_on(retiring_vms_of_type[x]['Name'])
+                                    ret = self.resource_pool.do_condor_on(retiring_vms_of_type[x].condorname)
                                     if ret == 0:
-                                        retired_vm = self.resource_pool.find_vm_with_name(retiring_vms_of_type[x]['Name'])
-                                        retired_vm.override_status = ''
+                                        retiring_vms_of_type[x].override_status = ''
                 else:
                     # Compare current Machine List with Previous
                     # Looking for machines that have changed jobs since last check
