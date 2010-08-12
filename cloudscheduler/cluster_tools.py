@@ -608,13 +608,14 @@ class NimbusCluster(ICluster):
 
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
-        if return_resources:
-            self.resource_return(vm)
         with self.vms_lock:
             try:
                 self.vms.remove(vm)
             except ValueError:
                 log.error("Attempted to remove vm from list that was already removed.")
+                return_resources = False
+        if return_resources:
+            self.resource_return(vm)
 
         # Delete EPR
         os.remove(vm_epr)
