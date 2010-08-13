@@ -116,7 +116,7 @@ class Job:
         self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
         self.instance_type = VMInstanceType
         self.maximum_price = int(VMMaximumPrice)
-        self.VMSlotForEachCore = VMMaximumPrice in ['true', "True", True]
+        self.slot_for_each_core = VMSlotForEachCore in ['true', "True", True]
 
         # Set the new job's status
         self.status = self.statuses[0]
