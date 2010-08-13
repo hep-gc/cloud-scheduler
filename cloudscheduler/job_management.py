@@ -74,8 +74,8 @@ class Job:
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default",
              VMNetwork="", VMCPUArch="x86", VMName="Default-Image",
-             VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1,
-             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False, **kwargs):
+             VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
+             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -118,7 +118,7 @@ class Job:
         self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
         self.instance_type = VMInstanceType
         self.maximum_price = int(VMMaximumPrice)
-        self.slot_for_each_core = VMSlotForEachCore in ['true', "True", True]
+        self.VMSlotForEachCore = VMMaximumPrice in ['true', "True", True]
 
         # Set the new job's status
         self.status = self.statuses[0]
