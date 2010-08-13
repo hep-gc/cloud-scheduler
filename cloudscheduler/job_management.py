@@ -73,7 +73,7 @@ class Job:
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default", 
              VMNetwork="", VMCPUArch="x86", VMName="Default-Image",
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
-             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0):
+             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -91,6 +91,9 @@ class Job:
      VMKeepAlive - (int) The Length of time to keep alive before idle shutdown
      VMInstanceType - (str) The EC2 instance type of the VM requested
      VMMaximumPrice - (str) The maximum price in cents per hour for a VM (EC2 Only)
+     VMSlotForEachCore - (boolean) Whether or not the machines you request will have
+                                   multiple slots. This is mostly an advanced feature
+                                   for when this can save you money (eg. with EC2)
 
      """
      #TODO: Set default job properties in the cloud scheduler main config file
@@ -113,6 +116,7 @@ class Job:
         self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
         self.instance_type = VMInstanceType
         self.maximum_price = int(VMMaximumPrice)
+        self.VMSlotForEachCore = VMMaximumPrice in ['true', "True", True]
 
         # Set the new job's status
         self.status = self.statuses[0]
