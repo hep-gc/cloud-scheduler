@@ -12,7 +12,7 @@ import sys
 from urlparse import urlparse
 import ConfigParser
 
-import cloudscheduler.utilities as utilities
+import utilities
 
 # Cloud Scheduler Options Module.
 
@@ -26,20 +26,27 @@ cert_file = ""
 key_file = ""
 cert_file_on_vm = ""
 key_file_on_vm = ""
+cloudscheduler_ssh_key = ""
 cloud_resource_config = None
 image_attach_device = "sda"
 scratch_attach_device = "sdb"
 info_server_port = 8111
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
+ban_tracking = False
+ban_file = "/var/run/cloudscheduler.banned"
+ban_min_track = 5
+ban_failrate_threshold = 1.0
 polling_error_threshold = 10
 condor_register_time_limit = 900
 graceful_shutdown = False
+graceful_shutdown_method = "hold"
 getclouds = False
 scheduling_metric = "slot"
 cleanup_interval = 5
 vm_poller_interval = 5
 job_poller_interval = 5
+machine_poller_interval = 5
 scheduler_interval = 5
 
 log_level = "INFO"
@@ -62,20 +69,27 @@ def setup(path=None):
     global key_file
     global cert_file_on_vm
     global key_file_on_vm
+    global cloudscheduler_ssh_key
     global cloud_resource_config
     global image_attach_device
     global scratch_attach_device
     global info_server_port
     global workspace_path
     global persistence_file
+    global ban_tracking
+    global ban_file
+    global ban_min_track
+    global ban_failrate_threshold
     global polling_error_threshold
     global condor_register_time_limit
     global graceful_shutdown
+    global graceful_shutdown_method
     global getclouds
     global scheduling_metric
     global cleanup_interval
     global vm_poller_interval
     global job_poller_interval
+    global machine_poller_interval
     global scheduler_interval
 
     global log_level
@@ -146,6 +160,9 @@ def setup(path=None):
     if config_file.has_option("global", "key_file_on_vm"):
         key_file_on_vm = config_file.get("global", "key_file_on_vm")
 
+    if config_file.has_option("global", "cloudscheduler_ssh_key"):
+        cloudscheduler_ssh_key = config_file.get("global", "cloudscheduler_ssh_key")
+
     if config_file.has_option("global", "cloud_resource_config"):
         cloud_resource_config = config_file.get("global",
                                                 "cloud_resource_config")
@@ -172,11 +189,33 @@ def setup(path=None):
     if config_file.has_option("global", "persistence_file"):
         persistence_file = config_file.get("global", "persistence_file")
 
+    if config_file.has_option("global", "ban_file"):
+        ban_file = config_file.get("global", "ban_file")
+
     if config_file.has_option("global", "polling_error_threshold"):
         try:
             polling_error_threshold = config_file.getint("global", "polling_error_threshold")
         except ValueError:
             print "Configuration file problem: polling_error_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "ban_failrate_threshold"):
+        try:
+            ban_failrate_threshold = config_file.getfloat("global", "ban_failrate_threshold")
+            if ban_failrate_threshold == 0:
+                print "Please use a float value (0, 1.0]"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: ban_failrate_threshold must be an " \
+                  "float value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "ban_min_track"):
+        try:
+            ban_min_track = config_file.getint("global", "ban_min_track")
+        except ValueError:
+            print "Configuration file problem: ban_min_track must be an " \
                   "integer value."
             sys.exit(1)
 
@@ -188,8 +227,14 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "ban_tracking"):
+        ban_tracking = config_file.getboolean("global", "ban_tracking")
+
     if config_file.has_option("global", "graceful_shutdown"):
         graceful_shutdown = config_file.getboolean("global", "graceful_shutdown")
+
+    if config_file.has_option("global", "graceful_shutdown_method"):
+        graceful_shutdown_method = config_file.get("global", "graceful_shutdown_method")
 
     if config_file.has_option("global", "getclouds"):
         getclouds = config_file.getboolean("global", "getclouds")
@@ -218,6 +263,14 @@ def setup(path=None):
             job_poller_interval = config_file.getint("global", "job_poller_interval")
         except ValueError:
             print "Configuration file problem: job_poller_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "machine_poller_interval"):
+        try:
+            machine_poller_interval = config_file.getint("global", "machine_poller_interval")
+        except ValueError:
+            print "Configuration file problem: machine_poller_interval must be an " \
                   "integer value."
             sys.exit(1)
 

@@ -3,10 +3,12 @@
 
 import os
 import sys
+import socket
 import logging
 import ConfigParser
 import subprocess
 from urlparse import urlparse
+import config
 
 def determine_path ():
     """Borrowed from wxglade.py"""
@@ -97,3 +99,78 @@ def get_cert_DN(cert_file_path):
     openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-subject', '-noout']
     return subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
     
+def match_host_with_condor_host(hostname, condor_hostname):
+    """
+    match_host_with_condor_host -- determine if hostname matches condor's hostname
+
+    These can look like:
+
+    [slotx@](xxx.xxx.xxx.xxx|host.name)
+
+    returns True if matching, and false if not.
+    """
+
+    # Strip off slotx@
+    try:
+        condor_hostname_parts = condor_hostname.split("@")
+        condor_hostname = condor_hostname_parts[1]
+    except:
+        condor_hostname = condor_hostname
+
+    if hostname == condor_hostname:
+        return True
+
+    # Check if it's an IP address
+    try:
+        # If it's an IP address, and it doesn't match to this point,
+        # it'll never match.
+        socket.inet_aton(condor_hostname)
+        return False
+    except:
+        # If it's a hostname, let's try to match the first bit of the
+        # name, otherwise, it'll never match
+        condor_hostname_parts = condor_hostname.split(".")
+        condor_hostname = condor_hostname_parts[0]
+
+        hostname_parts = hostname.split(".")
+        hostname = hostname_parts[0]
+
+        if hostname == condor_hostname:
+            return True
+
+    return False
+
+class CircleQueue():
+    def __init__(self, length):
+        self.data = [None for x in range(0, length)]
+
+    def append(self, x):
+        self.data.pop(0)
+        self.data.append(x)
+
+    def get(self):
+        return self.data
+
+    def clear(self):
+        self.data = [None for x in range(0, len(self.data))]
+
+    def min_use(self):
+        min_use = True
+        if self.data[0] == None:
+            min_use = False
+        return min_use
+
+class ErrTrackQueue(CircleQueue):
+    def __init__(self, name):
+        CircleQueue.__init__(self, config.ban_min_track)
+        self.name = name
+
+    def dist_true(self):
+        tc = 0
+        for x in self.data:
+            if x:
+                tc += 1
+        return float(tc) / float(len(self.data))
+
+    def dist_false(self):
+        return 1.0 - self.dist_true()

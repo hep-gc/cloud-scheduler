@@ -41,6 +41,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.scheduler_interval = 42
         self.vm_poller_interval = 42
         self.job_poller_interval = 42
+        self.machine_poller_interval = 42
         self.cleanup_interval = 42
 
         self.log_level = "ERROR"
@@ -70,6 +71,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'scheduler_interval', self.scheduler_interval)
         testconfig.set('global', 'vm_poller_interval', self.vm_poller_interval)
         testconfig.set('global', 'job_poller_interval', self.job_poller_interval)
+        testconfig.set('global', 'machine_poller_interval', self.machine_poller_interval)
         testconfig.set('global', 'cleanup_interval', self.cleanup_interval)
 
         testconfig.add_section('logging')
@@ -138,6 +140,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
     def test_job_poller_interval(self):
         self.assertEqual(int(self.job_poller_interval), cloudscheduler.config.job_poller_interval)
 
+    def test_machine_poller_interval(self):
+        self.assertEqual(int(self.machine_poller_interval), cloudscheduler.config.machine_poller_interval)
+
     def test_cleanup_interval(self):
         self.assertEqual(int(self.cleanup_interval), cloudscheduler.config.cleanup_interval)
 
@@ -171,6 +176,32 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def tearDown(self):
         os.remove(self.configfilename)
+
+class Utilities(unittest.TestCase):
+
+    def test_condor_host_match(self):
+        from cloudscheduler.utilities import match_host_with_condor_host
+
+        match = match_host_with_condor_host("condor.host", "condor.host")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("condor.host", "slot1@condor.host")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("192.168.1.1", "192.168.1.1")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("192.168.1.1", "slot2@192.168.1.1")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("192.168.1.2", "192.168.1.1")
+        self.assertFalse(match)
+
+        match = match_host_with_condor_host("condor.host", "condor")
+        self.assertTrue(match)
+
+        match = match_host_with_condor_host("condor.host", "slot1@condor")
+        self.assertTrue(match)
 
 class ResourcePoolSetup(unittest.TestCase):
 
@@ -343,6 +374,33 @@ Waiting for updates.
 
         bad_host = NimbusCluster._extract_hostname("")
         self.assertEqual("", bad_host)
+
+    def test_extract_state(self):
+        from cloudscheduler.cluster_tools import NimbusCluster
+        nimbus_string_non_existant = """
+Problem: This workspace is unknown to the service (likely because it was terminated).
+"""
+        nimbus_string_good = """
+
+NIC: eth0
+  - Association: private
+  - IP: 192.168.107.1
+  - Hostname: musecloud01
+  - Gateway: 192.168.1.217
+
+Schedule:
+  -        Start time: Mon Jul 19 11:51:36 PDT 2010
+  -          Duration: 100 minutes.
+  -     Shutdown time: Mon Jul 19 13:31:36 PDT 2010
+  -  Termination time: Mon Jul 19 13:41:36 PDT 2010
+
+State: Unpropagated
+"""
+        extracted_state = NimbusCluster._extract_state(nimbus_string_good)
+        self.assertEqual("Starting", extracted_state)
+
+        destroyed = NimbusCluster._extract_state(nimbus_string_non_existant)
+        self.assertEqual("Destroyed", destroyed)
 
 
 class ResourcePoolTests(unittest.TestCase):
