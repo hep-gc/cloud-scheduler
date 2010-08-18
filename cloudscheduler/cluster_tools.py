@@ -452,17 +452,11 @@ class NimbusCluster(ICluster):
         env = None;
         if job_proxy_file_path != None:
             env = {'X509_USER_PROXY':job_proxy_file_path}
+            log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (job_proxy_file_path))
         
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
         if (create_return != 0):
             log.warning("vm_create - Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
-            # Clean up tempory user proxy file if present.
-            if job_proxy_file_path != None:
-                log.debug("VM creation failed, so deleting user proxy file %s" % (job_proxy_file_path))
-                try:
-                    os.remove(job_proxy_file_path)
-                except:
-                    log.warning("Could not delete user proxy file %s" % (job_proxy_file_path))
             return create_return
 
         log.debug("(vm_create) - workspace create command executed.")
@@ -541,10 +535,9 @@ class NimbusCluster(ICluster):
         log.debug("(vm_recreate) - name: %s network: %s cpuarch: %s imageloc: %s memory: %d" \
           % (vm_name, vm_network, vm_cpuarch, vm_image, vm_memory))
 
-        # Call destroy on the given VM, but keep the user proxy if any because
-        # it is going to be re-used by the new VM.
+        # Call destroy on the given VM
         log.debug("(vm_recreate) - Destroying VM %s..." % vm_name)
-        destroy_ret = self.vm_destroy(vm, cleanup_proxy=False)
+        destroy_ret = self.vm_destroy(vm)
         if (destroy_ret != 0):
             log.warning("(vm_recreate) - Destroying VM failed. Aborting recreate.")
             return destroy_ret
@@ -588,14 +581,13 @@ class NimbusCluster(ICluster):
         return reboot_return
 
 
-    def vm_destroy(self, vm, return_resources=True, shutdown_first=True, cleanup_proxy=True):
+    def vm_destroy(self, vm, return_resources=True, shutdown_first=True):
         """
         Shutdown, destroy and return resources of a VM to it's cluster
 
         Parameters:
         vm -- vm to shutdown and destroy
         return_resources -- if set to false, do not return resources from VM to cluster
-        cleanup_proxy -- if True, then the proxy used to authentication this VM's creation will be cleaned up (deleted).
         shutdown_first -- if set to false, will first call a shutdown before destroying
         """
 
@@ -654,15 +646,6 @@ class NimbusCluster(ICluster):
         os.remove(vm_epr)
 
         log.info("Destroyed vm %s on %s" % (vm.id, vm.clusteraddr))
-
-        # Delete proxy file if needed.
-        if cleanup_proxy:
-            if vm.get_proxy_file() != None:
-                log.debug("Deleting user proxy file %s" % (vm.get_proxy_file()))
-                try:
-                    os.remove(vm.get_proxy_file())
-                except:
-                    log.warning("Could not delete user proxy file %s" % (vm.get_proxy_file()))
 
         return destroy_return
 

@@ -75,7 +75,7 @@ class Job:
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
              VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
-             x509userproxysubject=None):
+             x509userproxysubject=None, x509userproxy=None):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -97,6 +97,7 @@ class Job:
      CSMyProxyServer - (str) The hostname of the myproxy server to retreive user creds from
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
      x509userproxysubject - (str) The DN of the authenticated user
+     x509userproxy - (str) The user proxy certificate (full path)
      VMSlotForEachCore - (boolean) Whether or not the machines you request will have
                                    multiple slots. This is mostly an advanced feature
                                    for when this can save you money (eg. with EC2)
@@ -126,6 +127,7 @@ class Job:
         self.myproxy_server_port = CSMyProxyServerPort
         self.myproxy_creds_name = CSMyProxyCredsName
         self.x509userproxysubject = x509userproxysubject
+        self.x509userproxy = x509userproxy
         self.slot_for_each_core = VMSlotForEachCore in ['true', "True", True]
 
         # Set the new job's status
@@ -205,6 +207,9 @@ class Job:
     def set_myproxy_creds_name(self, v):
         self.myproxy_creds_name = v
         return
+
+    def get_x509userproxy(self):
+        return self.x509userproxy
 
     def get_x509userproxysubject(self):
         return self.x509userproxysubject
@@ -343,6 +348,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyServer")
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyServerPort")
                 _add_if_exists(xml_job, job_dictionary, "x509userproxysubject")
+                _add_if_exists(xml_job, job_dictionary, "x509userproxy")
                 
 
                 # Requirements requires special fiddling
