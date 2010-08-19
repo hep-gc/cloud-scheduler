@@ -75,7 +75,8 @@ class Job:
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default",
              VMNetwork="", VMCPUArch="x86", VMName="Default-Image",
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
-             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False):
+             VMKeepAlive=0, VMHighPriority=0,
+             VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -91,6 +92,7 @@ class Job:
      VMCPUCores - (int) The number of cpu cores the job requires
      VMStorage  - (int) The amount of storage space the job requires
      VMKeepAlive - (int) The Length of time to keep alive before idle shutdown
+     VMHighPriority - (int) Indicates a High priority job / VM (default = 0)
      VMInstanceType - (str) The EC2 instance type of the VM requested
      VMMaximumPrice - (str) The maximum price in cents per hour for a VM (EC2 Only)
      VMSlotForEachCore - (boolean) Whether or not the machines you request will have
@@ -116,6 +118,7 @@ class Job:
         self.req_cpucores = int(VMCPUCores)
         self.req_storage  = int(VMStorage)
         self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
+        self.high_priority = int(VMHighPriority)
         self.instance_type = VMInstanceType
         self.maximum_price = int(VMMaximumPrice)
         self.slot_for_each_core = VMSlotForEachCore in ['true', "True", True]
@@ -189,6 +192,7 @@ class JobPool:
     # Dictionaries contain (username, [list of jobs]) entries.
     new_jobs = {}
     sched_jobs = {}
+    high_jobs = {}
 
     ## Condor Job Status mapping
     NEW      = 0
@@ -384,6 +388,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMKeepAlive")
                 _add_if_exists(xml_job, job_dictionary, "VMInstanceType")
                 _add_if_exists(xml_job, job_dictionary, "VMMaximumPrice")
+                _add_if_exists(xml_job, job_dictionary, "VMHighPriority")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -409,7 +414,7 @@ class JobPool:
         # If no jobs recvd, remove all jobs from the system (all have finished or have been removed)
         if (query_jobs == []):
             log.debug("No jobs received from job query. Removing all jobs from the system.")
-            for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
+            for jobset in (self.new_jobs.values() + self.sched_jobs.values() + self.high_jobs.values()):
                 for job in jobset:
                     self.remove_system_job(job)
                     log.info("Job %s finished or removed. Cleared job from system." % job.id)
@@ -430,9 +435,11 @@ class JobPool:
         self.log_jobs_dict(self.new_jobs)
         log.verbose("Scheduled Jobs (sched_jobs):")
         self.log_jobs_dict(self.sched_jobs)
+        log.verbose("High Priority Jobs (high_jobs):")
+        self.log_jobs_dict(self.high_jobs)
 
         jobs_to_remove = []
-        for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
+        for jobset in (self.new_jobs.values() + self.sched_jobs.values() + self.high_jobs.values()):
             for sys_job in reversed(jobset):
 
                 # DBG: print job details in loop
@@ -451,7 +458,10 @@ class JobPool:
         jobs_to_update = self._remove_jobs_by_id(query_jobs, jobs_to_remove, self.write_lock)
         # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
         for job in query_jobs:
-            self.add_new_job(job)
+            if job.high_priority == 0:
+                self.add_new_job(job)
+            else:
+                self.add_high_job(job)
             log.verbose("Job %s added to unscheduled jobs list" % job.id)
         del query_jobs
         # Update job status of all the non-new jobs
@@ -466,6 +476,8 @@ class JobPool:
         self.log_jobs_dict(self.new_jobs)
         log.verbose("Scheduled Jobs (sched_jobs):")
         self.log_jobs_dict(self.sched_jobs)
+        log.verbose("High Priority Jobs (high_jobs):")
+        self.log_jobs_dict(self.high_jobs)
 
 
     # Add New Job
@@ -485,6 +497,13 @@ class JobPool:
         else:
             self.sched_jobs[job.user] = [job]
 
+    # Add High(Priority) Job
+    # Add a new job to the system (in the high_jobs set)
+    def add_high_job(self, job):
+        if job.user in self.high_jobs:
+            self.insort_job(self.high_jobs[job.user], job)
+        else:
+            self.high_jobs[job.user] = [job]
 
     # Adds a job to a given list of job objects
     # in order of priority. The list runs front to back, high to low
@@ -551,6 +570,15 @@ class JobPool:
                 if (self.sched_jobs[job.user] == []):
                     del self.sched_jobs[job.user]
                     log.debug("User %s has no more jobs in the Scheduled Jobs set. Removing user from queue."
+                              % job.user)
+        elif (job.user in self.high_jobs) and (self.has_job(self.high_jobs[job.user], job)):
+            with self.write_lock:
+                self.remove_job(self.high_jobs[job.user], job)
+                log.verbose("remove_system_job - Removing job %s from high_jobs."
+                            % job.id)
+                if (self.high_jobs[job.user] == []):
+                    del self.high_jobs[job.user]
+                    log.debug("User %s has no more jobs in the High Priority Jobs set. Removing user from queue."
                               % job.user)
         else:
             log.warning("remove_system_job - Job does not exist in system."
@@ -627,6 +655,13 @@ class JobPool:
                         job.job_status = int(target_job.job_status)
                         ret = True
                         break
+        elif (target_job.user in self.high_jobs) and (self.has_job(self.high_jobs[target_job.user], target_job)):
+            with self.write_lock:
+                for job in self.high_jobs[target_job.user]:
+                    if target_job.id == job.id:
+                        job.job_status = int(target_job.job_status)
+                        ret = True
+                        break
         else:
             log.warning("update_job_status - Job does not exist in system."
                       + " Doing nothing.")
@@ -655,7 +690,8 @@ class JobPool:
     # Parameters:
     #   job   - (Job object) The job to mark as scheduled
     def schedule(self, job):
-        if not ( (job.user in self.new_jobs) and (job in self.new_jobs[job.user]) ):
+        if not ( ((job.user in self.new_jobs) and (job in self.new_jobs[job.user])) 
+                 or ((job.user in self.high_jobs) and (job in self.high_jobs[job.user])) ):
             log.error("(schedule) - Error: job %s not in the system's Unscheduled jobs" % job.id)
             log.error("(schedule) - Cannot mark job as scheduled")
             return
@@ -673,7 +709,10 @@ class JobPool:
 
         self.remove_system_job(job)
         job.set_status("Unscheduled")
-        self.add_new_job(job)
+        if job.high_priority == 0:
+            self.add_new_job(job)
+        else:
+            self.add_high_job(job)
         log.debug("(unschedule) Job %s marked as Unscheduled." % job.id)
 
     # Get required VM types
@@ -683,7 +722,8 @@ class JobPool:
     #   required_vmtypes - (list of strings) A list of required VM types
     def get_required_vmtypes(self):
         required_vmtypes = []
-        for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
+        for jobset in (self.new_jobs.values() + self.sched_jobs.values() +
+                       self.high_jobs.values()):
             for job in jobset:
                 if job.req_vmtype not in required_vmtypes:
                     required_vmtypes.append(job.req_vmtype)
@@ -699,7 +739,8 @@ class JobPool:
     #   required_vmtypes - (dictionary, string key, int value) A dict of required VM types
     def get_required_vmtypes_dict(self):
         required_vmtypes = {}
-        for jobset in (self.new_jobs.values() + self.sched_jobs.values()):
+        for jobset in (self.new_jobs.values() + self.sched_jobs.values()
+                       + self.high_jobs.values()):
             for job in jobset:
                 if job.req_vmtype not in required_vmtypes:
                     required_vmtypes[job.req_vmtype] = 1
@@ -875,6 +916,17 @@ class JobPool:
             log.debug("Unscheduled jobs in %s:" % self.name)
             for user in self.new_jobs.keys():
                 for job in self.new_jobs[user]:
+                    job.log_dbg()
+
+    # log high priority Jobs (short)
+    def log_high_jobs(self):
+        if len(self.high_jobs) == 0:
+            log.debug("High Priority job list in %s is empty" % self.name)
+            return
+        else:
+            log.debug("High Priority jobs in %s:" % self.name)
+            for user in self.high_jobs.keys():
+                for job in self.high_jobs[user]:
                     job.log_dbg()
 
     def log_jobs_list(self, jobs):
