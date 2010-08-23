@@ -159,6 +159,7 @@ class ICluster:
         self.network_address = host
         self.cloud_type = cloud_type
         self.memory = memory
+        self.max_mem = tuple(memory)
         self.cpu_archs = cpu_archs
         self.network_pools = networks
         self.vm_slots = vm_slots
@@ -302,6 +303,14 @@ class ICluster:
 
         # If no entries found, return error code.
         return(-1)
+
+    def find_potential_mementry(self, memory):
+        potential_fit = False
+        for i in range(len(self.max_mem)):
+            if self.max_mem[i] >= memory:
+                potential_fit = True
+                break
+        return potential_fit
 
     def resource_checkout(self, vm):
         """

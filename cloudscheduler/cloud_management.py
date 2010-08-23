@@ -457,7 +457,7 @@ class ResourcePool:
     #    cpuarch  - the cpu architecture that the VM must run on
     # Return: True if cluster is found that fits VM requirments
     #         Otherwise, returns False
-    def resourcePF(self, network, cpuarch):
+    def resourcePF(self, network, cpuarch, memory=0):
         potential_fit = False
 
         for cluster in self.resources:
@@ -467,7 +467,9 @@ class ResourcePool:
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
                 continue
-            # Cluster meets network and cpu reqs
+            if not cluster.find_potential_mementry(memory):
+                continue
+            # Cluster meets network and cpu reqs and may have enough memory
             potential_fit = True
             break
 
