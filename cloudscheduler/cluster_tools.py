@@ -354,7 +354,7 @@ class NimbusCluster(ICluster):
     ## NimbusCluster specific instance variables
 
     # Global Nimbus command variables
-    VM_DURATION = "10080"
+    VM_DURATION = config.vm_lifetime
     VM_TARGETSTATE = "Running"
     VM_NODES = "1"
 

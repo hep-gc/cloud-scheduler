@@ -27,6 +27,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.condor_webservice_url = "http://testhost:1234"
         self.condor_host = "testhost"
         self.condor_host_on_vm = "vmtesthost"
+        self.vm_lifetime = 42
         self.cert_file = "/path/to/cert"
         self.key_file = "/path/to/key"
         self.cert_file_on_vm = "/path/to/certonvm"
@@ -57,6 +58,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.add_section('global')
         testconfig.set('global', 'condor_webservice_url', self.condor_webservice_url)
         testconfig.set('global', 'condor_host_on_vm', self.condor_host_on_vm)
+        testconfig.set('global', 'vm_lifetime', self.vm_lifetime)
         testconfig.set('global', 'cert_file', self.cert_file)
         testconfig.set('global', 'key_file', self.key_file)
         testconfig.set('global', 'cert_file_on_vm', self.cert_file_on_vm)
@@ -90,6 +92,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_condor_webservice_url(self):
         self.assertEqual(self.condor_webservice_url, cloudscheduler.config.condor_webservice_url)
+
     def test_condor_host(self):
         if self.condor_host_on_vm:
             self.assertEqual(self.condor_host_on_vm, cloudscheduler.config.condor_host)
@@ -98,8 +101,12 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_condor_host_on_vm(self):
         self.assertEqual(self.condor_host_on_vm, cloudscheduler.config.condor_host_on_vm)
+
     def test_condor_context_file(self):
         self.assertEqual(self.condor_context_file, cloudscheduler.config.condor_context_file)
+
+    def test_vm_lifetime(self):
+        self.assertEqual(self.vm_lifetime, cloudscheduler.config.vm_lifetime)
 
     def test_cert_file(self):
         self.assertEqual(self.cert_file, cloudscheduler.config.cert_file)

@@ -22,6 +22,7 @@ condor_collector_url = "http://localhost:9618"
 condor_host = "localhost"
 condor_host_on_vm = ""
 condor_context_file = ""
+vm_lifetime = 10080
 cert_file = ""
 key_file = ""
 cert_file_on_vm = ""
@@ -65,6 +66,7 @@ def setup(path=None):
     global condor_context_file
     global condor_host
     global condor_host_on_vm
+    global vm_lifetime
     global cert_file
     global key_file
     global cert_file_on_vm
@@ -147,6 +149,14 @@ def setup(path=None):
     if config_file.has_option("global", "condor_context_file"):
         condor_context_file = config_file.get("global",
                                                 "condor_context_file")
+
+    if config_file.has_option("global", "vm_lifetime"):
+        try:
+            vm_lifetime = config_file.getint("global", "vm_lifetime")
+        except ValueError:
+            print "Configuration file problem: vm_lifetime must be an " \
+                  "integer value."
+            sys.exit(1)
 
     if config_file.has_option("global", "cert_file"):
         cert_file = config_file.get("global", "cert_file")
