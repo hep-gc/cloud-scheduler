@@ -25,6 +25,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
         # set values for each option
         self.condor_webservice_url = "http://testhost:1234"
+        self.condor_retrieval_method = "local"
+        self.condor_q_command = "c_q"
+        self.condor_status_command = "c_s"
         self.condor_host = "testhost"
         self.condor_host_on_vm = "vmtesthost"
         self.vm_lifetime = 42
@@ -57,6 +60,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
         testconfig.add_section('global')
         testconfig.set('global', 'condor_webservice_url', self.condor_webservice_url)
+        testconfig.set('global', 'condor_retrieval_method', self.condor_retrieval_method)
+        testconfig.set('global', 'condor_q_command', self.condor_q_command)
+        testconfig.set('global', 'condor_status_command', self.condor_status_command)
         testconfig.set('global', 'condor_host_on_vm', self.condor_host_on_vm)
         testconfig.set('global', 'vm_lifetime', self.vm_lifetime)
         testconfig.set('global', 'cert_file', self.cert_file)
@@ -92,6 +98,15 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_condor_webservice_url(self):
         self.assertEqual(self.condor_webservice_url, cloudscheduler.config.condor_webservice_url)
+
+    def test_condor_retrieval_method(self):
+        self.assertEqual(self.condor_retrieval_method, cloudscheduler.config.condor_retrieval_method)
+
+    def test_condor_q_command(self):
+        self.assertEqual(self.condor_q_command, cloudscheduler.config.condor_q_command)
+
+    def test_condor_status_command(self):
+        self.assertEqual(self.condor_status_command, cloudscheduler.config.condor_status_command)
 
     def test_condor_host(self):
         if self.condor_host_on_vm:

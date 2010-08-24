@@ -19,6 +19,9 @@ import utilities
 # Set default values
 condor_webservice_url = "http://localhost:8080"
 condor_collector_url = "http://localhost:9618"
+condor_retrieval_method = "soap"
+condor_q_command = "condor_q -l"
+condor_status_command = "condor_status -l"
 condor_host = "localhost"
 condor_host_on_vm = ""
 condor_context_file = ""
@@ -63,6 +66,9 @@ def setup(path=None):
 
     global condor_webservice_url
     global condor_collector_url
+    global condor_retrieval_method
+    global condor_q_command
+    global condor_status_command
     global condor_context_file
     global condor_host
     global condor_host_on_vm
@@ -133,6 +139,18 @@ def setup(path=None):
         print "Configuration file problem: There is something wrong with " \
               "your config file."
         raise
+
+    if config_file.has_option("global", "condor_retrieval_method"):
+        condor_retrieval_method = config_file.get("global",
+                                                "condor_retrieval_method")
+
+    if config_file.has_option("global", "condor_q_command"):
+        condor_q_command = config_file.get("global",
+                                                "condor_q_command")
+
+    if config_file.has_option("global", "condor_status_command"):
+        condor_status_command = config_file.get("global",
+                                                "condor_status_command")
 
     if config_file.has_option("global", "condor_webservice_url"):
         condor_webservice_url = config_file.get("global",
