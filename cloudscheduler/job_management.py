@@ -69,10 +69,10 @@ class Job:
     # A list of possible statuses for internal job representation
     statuses = ("Unscheduled", "Scheduled")
 
-    def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1, 
-             JobStatus=0, ClusterId=0, ProcId=0, VMType="default", 
+    def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
+             JobStatus=0, ClusterId=0, ProcId=0, VMType="default",
              VMNetwork="", VMCPUArch="x86", VMName="Default-Image",
-             VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
+             VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1,
              VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False):
         """
      Parameters:
@@ -188,7 +188,7 @@ class JobPool:
     new_jobs = {}
     sched_jobs = {}
 
-    ## Condor Job Status mapping 
+    ## Condor Job Status mapping
     NEW      = 0
     IDLE     = 1
     RUNNING  = 2
@@ -200,14 +200,14 @@ class JobPool:
     # The condor timeout is so huge because busy schedds with lots of jobs
     # can take a REALLY long time to return the XML list of jobs
     CONDOR_TIMEOUT = 1200 # seconds (20min)
-    
+
     ## Instance Methods
 
     # Constructor
     # name       - The name of the job pool being created
     # last_query - A timestamp for the last time the scheduler was queried,
     #              or its creation time
-    def __init__(self, name):
+    def __init__(self, name, condor_query_type=""):
         global log
         log = logging.getLogger("cloudscheduler")
         log.debug("New JobPool %s created" % name)
@@ -223,8 +223,23 @@ class JobPool:
                                     location=config.condor_webservice_url,
                                     retxml=True, timeout=self.CONDOR_TIMEOUT)
 
+        if not condor_query_type:
+            condor_query_type = config.condor_retrieval_method
 
-    def job_querySOAP(self):
+        if condor_query_type.lower() == "local":
+            self.job_query = self.job_query_local
+        elif condor_query_type.lower() == "soap":
+            self.job_query = self.job_query_SOAP
+        else:
+            log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
+            self.job_query = self.job_query_SOAP
+
+    def job_query_local(self):
+        """
+        job_query_local -- query and parse condor_q for job information
+        """
+
+    def job_query_SOAP(self):
         log.debug("Querying Condor scheduler daemon (schedd)")
 
         # Get job classAds from the condor scheduler
@@ -252,6 +267,52 @@ class JobPool:
 
         # Return condor_jobs list
         return condor_jobs
+
+    @staticmethod
+    def _condor_q_to_job_list(condor_q_output):
+        """
+        _condor_q_to_job_list - Converts the output of condor_q
+                to a list of Job Objects
+
+                returns [] if there are no jobs
+        """
+
+        def _attribute_from_requirements(requirements, attribute):
+            regex = "%s\s=\?=\s\"(?P<value>.+?)\"" % attribute
+            match = re.search(regex, requirements)
+            if match:
+                return match.group("value")
+            else:
+                return ""
+
+        jobs = []
+
+        # The first three lines look like:
+        # \n\n\t-- Submitter: hostname : <ip> : hostname
+        # we can just strip these.
+        condor_q_output = re.sub('\n\n.*?Submitter:.*?\n', "", condor_q_output, re.MULTILINE)
+
+        # Each classad is seperated by '\n\n'
+        raw_job_classads = condor_q_output.split("\n\n")
+        # Empty condor pools give us an empty string in our list
+        raw_job_classads = filter(lambda x: x != "", raw_job_classads)
+
+        for raw_classad in raw_job_classads:
+            classad = {}
+            classad_lines = raw_classad.splitlines()
+            for classad_line in classad_lines:
+                classad_line = classad_line.strip()
+                (classad_key, classad_value) = classad_line.split(" = ", 1)
+                classad_value = classad_value.strip('"')
+                classad[classad_key] = classad_value
+
+            try:
+                classad["VMType"] = _attribute_from_requirements(classad["Requirements"], "VMType")
+            except:
+                log.exception("Problem extracting VMType from Requirements")
+
+            jobs.append(classad)
+        return jobs
 
     @staticmethod
     def _condor_job_xml_to_job_list(condor_xml):
@@ -337,12 +398,12 @@ class JobPool:
                     self.remove_system_job(job)
                     log.info("Job %s finished or removed. Cleared job from system." % job.id)
             return
-        
+
         # Filter out any jobs in an error status
         for job in reversed(query_jobs):
             if job.job_status >= self.ERROR:
                 self.remove_job(query_jobs, job)
-            
+
         # Update all system jobs:
         #   - remove jobs already in the system from the jobs list
         #   - remove finished jobs (job in system, not in jobs list)
@@ -593,7 +654,7 @@ class JobPool:
             log.error("(unschedule) - Error: job %s not in the system's Scheduled jobs" % job.id)
             log.error("(unschedule) - Cannot mark job as Unscheduled")
             return
-        
+
         self.remove_system_job(job)
         job.set_status("Unscheduled")
         self.add_new_job(job)
@@ -656,7 +717,7 @@ class JobPool:
             try:
                 job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, None, False, False, True)
                 if job_ret.code != "SUCCESS":
-                    failed.append(job) 
+                    failed.append(job)
             except URLError, e:
                 log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
@@ -679,7 +740,7 @@ class JobPool:
             try:
                 job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, None, False, False)
                 if job_ret.code != "SUCCESS":
-                    failed.append(job) 
+                    failed.append(job)
             except URLError, e:
                 log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
@@ -691,9 +752,9 @@ class JobPool:
                       "Condor scheduler web service (%s). Unknown reason."
                       % (config.condor_webservice_url))
                 return None
-        return failed        
-    
-    def hold_user(self, user):    
+        return failed
+
+    def hold_user(self, user):
         jobs = []
         if self.sched_jobs.has_key(user):
             for job in self.sched_jobs[user]:
@@ -704,8 +765,8 @@ class JobPool:
                 if job.job_status != self.RUNNING:
                     jobs.append(job)
         return self.hold_jobSOAP(jobs)
-        
-    
+
+
     def release_user(self, user):
         jobs = []
         if self.sched_jobs.has_key(user):
@@ -717,7 +778,7 @@ class JobPool:
                 if job.job_status == self.HELD:
                     jobs.append(job)
         return self.release_jobSOAP(jobs)
-    
+
     def hold_vmtype(self, vmtype):
         jobs = []
         for user in self.new_jobs.keys():
@@ -730,7 +791,7 @@ class JobPool:
                     jobs.append(job)
         ret = self.hold_jobSOAP(jobs)
         return ret
-    
+
     def release_vmtype(self, vmtype):
         jobs = []
         for user in self.new_jobs.keys():

@@ -139,7 +139,7 @@ class JobPoller(threading.Thread):
 
             ## Query the job pool to get new unscheduled jobs
             # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
-            condor_jobs = self.job_pool.job_querySOAP()
+            condor_jobs = self.job_pool.job_query()
             if condor_jobs != None:
                 self.job_pool.update_jobs(condor_jobs)
             else:

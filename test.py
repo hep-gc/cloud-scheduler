@@ -1070,6 +1070,200 @@ xmlns:condor="urn:condor">
 
 class JobPoolTests(unittest.TestCase):
 
+    def test_condor_local_parsing(self):
+        from cloudscheduler.job_management import JobPool
+
+        condor_q_no_jobs = """
+
+        -- Submitter: vmcgs35.phys.uvic.ca : <142.104.63.35:8080> : vmcgs35.phys.uvic.ca
+"""
+
+        condor_q_two_jobs = """
+
+        -- Submitter: canfarpool.phys.uvic.ca : <142.104.63.28:8080> : canfarpool.phys.uvic.ca
+        Out = "cal036017b.machoprocess.out"
+        VMMem = "2048"
+        VMCPUArch = "x86"
+        LastJobStatus = 0
+        VMLoc = "http://vmrepo.phys.uvic.ca/vms/canfarbase_i386_seb.img.gz"
+        BufferBlockSize = 32768
+        JobNotification = 2
+        TransferFiles = "ONEXIT"
+        JobLeaseDuration = 1200
+        ImageSize_RAW = 1
+        StreamOut = false
+        NumRestarts = 0
+        Cmd = "/home/sharon/seb-jobs/wgTest/md.sh"
+        ImageSize = 1
+        LeaveJobInQueue = false
+        PeriodicRemove = false
+        Iwd = "/home/sharon/seb-jobs/wgTest"
+        PeriodicHold = false
+        CondorPlatform = "$CondorPlatform: I386-LINUX_RHEL5 $"
+        NumCkpts = 0
+        ExitBySignal = false
+        JobStatus = 1
+        EnteredCurrentStatus = 1282577354
+        In = "/dev/null"
+        ClusterId = 245
+        RemoteUserCpu = 0.0
+        CondorVersion = "$CondorVersion: 7.5.3 Jun 25 2010 BuildID: 250654 $"
+        NumSystemHolds = 0
+        MinHosts = 1
+        WantRemoteSyscalls = false
+        JobUniverse = 5
+        Environment = ""
+        PeriodicRelease = false
+        RequestDisk = DiskUsage
+        CumulativeSuspensionTime = 0
+        VMCPUCores = "1"
+        ExecutableSize = 1
+        RootDir = "/"
+        Requirements = ( VMType =?= "canfarbase_seb" && Arch == "INTEL" && Memory >= 2048 && Cpus >= 1 ) && ( TARGET.OpSys == "LINUX" ) && ( TARGET.Disk >= DiskUsage ) && ( TARGET.HasFileTransfer )
+        ShouldTransferFiles = "YES"
+        GlobalJobId = "canfarpool.phys.uvic.ca#245.698#1282577354"
+        LocalSysCpu = 0.0
+        DiskUsage = 1
+        WhenToTransferOutput = "ON_EXIT"
+        UserLog = "/home/sharon/seb-jobs/wgTest/cal036017b.machoprocess.log"
+        RequestMemory = ceiling(ifThenElse(JobVMMemory =!= undefined,JobVMMemory,ImageSize / 1024.000000))
+        VMNetwork = "private"
+        NumCkpts_RAW = 0
+        ExecutableSize_RAW = 1
+        MaxHosts = 1
+        CoreSize = 0
+        ServerTime = 1282683010
+        WantCheckpoint = false
+        ProcId = 698
+        Err = "cal036017b.machoprocess.error"
+        CurrentHosts = 0
+        VMStorage = "10"
+        DiskUsage_RAW = 1
+        CommittedTime = 0
+        RemoteSysCpu = 0.0
+        OnExitRemove = true
+        TotalSuspensions = 0
+        AutoClusterAttrs = "JobUniverse,LastCheckpointPlatform,NumCkpts,CondorLoadAvg,DiskUsage,Requirements,NiceUser,ConcurrencyLimits"
+        RequestCpus = 1
+        LocalUserCpu = 0.0
+        VMName = "canfarbase_seb"
+        StreamErr = false
+        NiceUser = false
+        AutoClusterId = 0
+        TargetType = "Machine"
+        QDate = 1282577352
+        CompletionDate = 0
+        Rank = 0.0
+        OnExitHold = false
+        RemoteWallClockTime = 0.0
+        JobPrio = 0
+        NumJobStarts = 0
+        Args = "cal036017b"
+        WantRemoteIO = true
+        CurrentTime = time()
+        User = "sharon@canfarpool.phys.uvic.ca"
+        BufferSize = 524288
+        ExitStatus = 0
+        MyType = "Job"
+        LastSuspensionTime = 0
+        Owner = "sharon"
+        TransferIn = false
+
+        Out = "cal036017r.machoprocess.out"
+        VMMem = "2048"
+        VMCPUArch = "x86"
+        LastJobStatus = 0
+        VMLoc = "http://vmrepo.phys.uvic.ca/vms/canfarbase_i386_seb.img.gz"
+        BufferBlockSize = 32768
+        JobNotification = 2
+        TransferFiles = "ONEXIT"
+        JobLeaseDuration = 1200
+        ImageSize_RAW = 1
+        StreamOut = false
+        NumRestarts = 0
+        Cmd = "/home/sharon/seb-jobs/wgTest/md.sh"
+        ImageSize = 1
+        LeaveJobInQueue = false
+        PeriodicRemove = false
+        Iwd = "/home/sharon/seb-jobs/wgTest"
+        PeriodicHold = false
+        CondorPlatform = "$CondorPlatform: I386-LINUX_RHEL5 $"
+        NumCkpts = 0
+        ExitBySignal = false
+        JobStatus = 1
+        EnteredCurrentStatus = 1282577354
+        In = "/dev/null"
+        ClusterId = 245
+        RemoteUserCpu = 0.0
+        CondorVersion = "$CondorVersion: 7.5.3 Jun 25 2010 BuildID: 250654 $"
+        NumSystemHolds = 0
+        MinHosts = 1
+        WantRemoteSyscalls = false
+        JobUniverse = 5
+        Environment = ""
+        PeriodicRelease = false
+        RequestDisk = DiskUsage
+        CumulativeSuspensionTime = 0
+        VMCPUCores = "1"
+        ExecutableSize = 1
+        RootDir = "/"
+        Requirements = ( VMType =?= "canfarbase_seb" && Arch == "INTEL" && Memory >= 2048 && Cpus >= 1 ) && ( TARGET.OpSys == "LINUX" ) && ( TARGET.Disk >= DiskUsage ) && ( TARGET.HasFileTransfer )
+        ShouldTransferFiles = "YES"
+        GlobalJobId = "canfarpool.phys.uvic.ca#245.699#1282577354"
+        LocalSysCpu = 0.0
+        DiskUsage = 1
+        WhenToTransferOutput = "ON_EXIT"
+        UserLog = "/home/sharon/seb-jobs/wgTest/cal036017r.machoprocess.log"
+        RequestMemory = ceiling(ifThenElse(JobVMMemory =!= undefined,JobVMMemory,ImageSize / 1024.000000))
+        VMNetwork = "private"
+        NumCkpts_RAW = 0
+        ExecutableSize_RAW = 1
+        MaxHosts = 1
+        CoreSize = 0
+        ServerTime = 1282683010
+        WantCheckpoint = false
+        ProcId = 699
+        Err = "cal036017r.machoprocess.error"
+        CurrentHosts = 0
+        VMStorage = "10"
+        DiskUsage_RAW = 1
+        CommittedTime = 0
+        RemoteSysCpu = 0.0
+        OnExitRemove = true
+        TotalSuspensions = 0
+        AutoClusterAttrs = "JobUniverse,LastCheckpointPlatform,NumCkpts,CondorLoadAvg,DiskUsage,Requirements,NiceUser,ConcurrencyLimits"
+        RequestCpus = 1
+        LocalUserCpu = 0.0
+        VMName = "canfarbase_seb"
+        StreamErr = false
+        NiceUser = false
+        AutoClusterId = 0
+        TargetType = "Machine"
+        QDate = 1282577352
+        CompletionDate = 0
+        Rank = 0.0
+        OnExitHold = false
+        RemoteWallClockTime = 0.0
+        JobPrio = 0
+        NumJobStarts = 0
+        Args = "cal036017r"
+        WantRemoteIO = true
+        CurrentTime = time()
+        User = "sharon@canfarpool.phys.uvic.ca"
+        BufferSize = 524288
+        ExitStatus = 0
+        MyType = "Job"
+        LastSuspensionTime = 0
+        Owner = "sharon"
+        TransferIn = false
+"""
+        no_jobs = JobPool._condor_q_to_job_list(condor_q_no_jobs)
+        self.assertEqual([], no_jobs)
+        two_jobs = JobPool._condor_q_to_job_list(condor_q_two_jobs)
+        self.assertEqual(two_jobs[0]["GlobalJobId"], "canfarpool.phys.uvic.ca#245.698#1282577354")
+        self.assertEqual(two_jobs[1]["GlobalJobId"], "canfarpool.phys.uvic.ca#245.699#1282577354")
+        self.assertEqual(two_jobs[0]["VMType"], "canfarbase_seb")
+
     def test_condorxml_to_native_empty_list(self):
 
         from cloudscheduler.job_management import JobPool
@@ -1684,6 +1878,13 @@ xmlns:condor="urn:condor">
         self.assertEqual(parsed_job.keep_alive, test_job.keep_alive)
         self.assertEqual(parsed_job.instance_type, test_job.instance_type)
         self.assertEqual(parsed_job.maximum_price, test_job.maximum_price)
+
+    def test_set_query_type(self):
+        job_pool = cloudscheduler.job_management.JobPool("testpool", condor_query_type="local")
+        self.assertEqual(job_pool.job_query, job_pool.job_query_local)
+
+        job_pool = cloudscheduler.job_management.JobPool("testpool", condor_query_type="soap")
+        self.assertEqual(job_pool.job_query, job_pool.job_query_SOAP)
 
 class GetOrNoneTests(unittest.TestCase):
 
