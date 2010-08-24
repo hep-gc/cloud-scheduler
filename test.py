@@ -1260,9 +1260,9 @@ class JobPoolTests(unittest.TestCase):
         no_jobs = JobPool._condor_q_to_job_list(condor_q_no_jobs)
         self.assertEqual([], no_jobs)
         two_jobs = JobPool._condor_q_to_job_list(condor_q_two_jobs)
-        self.assertEqual(two_jobs[0]["GlobalJobId"], "canfarpool.phys.uvic.ca#245.698#1282577354")
-        self.assertEqual(two_jobs[1]["GlobalJobId"], "canfarpool.phys.uvic.ca#245.699#1282577354")
-        self.assertEqual(two_jobs[0]["VMType"], "canfarbase_seb")
+        self.assertEqual(two_jobs[0].id, "canfarpool.phys.uvic.ca#245.698#1282577354")
+        self.assertEqual(two_jobs[1].id, "canfarpool.phys.uvic.ca#245.699#1282577354")
+        self.assertEqual(two_jobs[0].req_vmtype, "canfarbase_seb")
 
     def test_condorxml_to_native_empty_list(self):
 

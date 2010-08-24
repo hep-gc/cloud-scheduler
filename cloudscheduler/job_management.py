@@ -27,6 +27,7 @@
 from __future__ import with_statement
 import re
 import sys
+import shlex
 import string
 import logging
 import datetime
@@ -34,6 +35,7 @@ import threading
 import subprocess
 from urllib2 import URLError
 from StringIO import StringIO
+
 try:
     from lxml import etree
 except:
@@ -73,7 +75,7 @@ class Job:
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default",
              VMNetwork="", VMCPUArch="x86", VMName="Default-Image",
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1,
-             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False):
+             VMKeepAlive=0, VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -238,6 +240,20 @@ class JobPool:
         """
         job_query_local -- query and parse condor_q for job information
         """
+        log.debug("Querying Condor scheduler daemon (schedd) with %s" % config.condor_q_command)
+        try:
+            condor_q = shlex.split(config.condor_q_command)
+            sp = subprocess.Popen(condor_q, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            return None
+
+        job_ads = self._condor_q_to_job_list(condor_out)
+        self.last_query = datetime.datetime.now()
+        return job_ads
+
 
     def job_query_SOAP(self):
         log.debug("Querying Condor scheduler daemon (schedd)")
@@ -311,7 +327,7 @@ class JobPool:
             except:
                 log.exception("Problem extracting VMType from Requirements")
 
-            jobs.append(classad)
+            jobs.append(Job(**classad))
         return jobs
 
     @staticmethod
