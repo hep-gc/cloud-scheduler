@@ -427,13 +427,379 @@ State: Unpropagated
 
 class ResourcePoolTests(unittest.TestCase):
 
+    def test_condor_status_to_machine_list(self):
+        from cloudscheduler.cloud_management import ResourcePool
+        condor_no_machines = "\n"
+        condor_one_machine = """Machine = "hermes-xen199"
+        LastHeardFrom = 1282756099
+        UpdateSequenceNumber = 1972
+        JavaVersion = "1.4.2"
+        JobId = "232.3545"
+        HasMPI = true
+        TotalClaimRunTime = 70891
+        CpuIsBusy = false
+        HasVM = false
+        FileSystemDomain = "hermes-xen199"
+        JavaVendor = "Free Software Foundation, Inc."
+        Name = "hermes-xen199"
+        ImageSize = 151932
+        MonitorSelfTime = 1282756323
+        KeyboardIdle = 517653
+        TimeToLive = 2147483647
+        LastBenchmark = 1282685523
+        TotalDisk = 7498296
+        MaxJobRetirementTime = 0
+        Unhibernate = MY.MachineLastMatchTime =!= undefined
+        CondorPlatform = "$CondorPlatform: I386-LINUX_RHEL5 $"
+        HasJICLocalStdin = true
+        UpdatesTotal = 1
+        Cpus = 1
+        IsValidCheckpointPlatform = ( ( ( TARGET.JobUniverse == 1 ) == false ) || ( ( MY.CheckpointPlatform =!= undefined ) && ( ( TARGET.LastCheckpointPlatform =?= MY.CheckpointPlatform ) || ( TARGET.NumCkpts == 0 ) ) ) )
+        MonitorSelfCPUUsage = 0.0
+        ClockDay = 3
+        IsWakeOnLanEnabled = false
+        JavaSpecificationVersion = "1.4"
+        StarterAbilityList = "HasMPI,HasVM,HasJICLocalStdin,HasJICLocalConfig,HasJava,HasJobDeferral,HasTDP,HasFileTransfer,HasPerFileEncryption,HasReconnect,HasRemoteSyscalls,HasCheckpointing"
+        TotalTimeUnclaimedIdle = 2371
+        CondorVersion = "$CondorVersion: 7.5.2 Apr 20 2010 BuildID: 232940 $"
+        JobUniverse = 5
+        HasIOProxy = true
+        TotalTimeClaimedBusy = 515136
+        TotalTimeOwnerIdle = 5
+        MonitorSelfImageSize = 10252.000000
+        HibernationSupportedStates = "S3"
+        ExecutableSize = 1
+        LastFetchWorkSpawned = 0
+        Requirements = ( START ) && ( IsValidCheckpointPlatform )
+        TotalTimeClaimedIdle = 47
+        TotalMemory = 2048
+        DaemonStartTime = 1282238869
+        EnteredCurrentActivity = 1282755482
+        MyAddress = "<172.20.97.199:40008?CCBID=142.104.63.28:9618#166957>"
+        HasJICLocalConfig = true
+        GlobalJobId = "canfarpool.phys.uvic.ca#232.3545#1280352487"
+        HasJava = true
+        EnteredCurrentState = 1282685553
+        CpuBusyTime = 0
+        CpuBusy = ( ( LoadAvg - CondorLoadAvg ) >= 0.500000 )
+        COLLECTOR_HOST_STRING = "canfarpool.phys.uvic.ca"
+        Memory = 2048
+        IsWakeAble = false
+        MyCurrentTime = 1282756454
+        MonitorSelfRegisteredSocketCount = 2
+        TotalTimeUnclaimedBenchmarking = 18
+        TotalCpus = 1
+        ClockMin = 614
+        CurrentRank = 0.0
+        AuthenticatedIdentity = "unauthenticated@unmapped"
+        NextFetchWorkDelay =  -1
+        OpSys = "LINUX"
+        State = "Claimed"
+        UpdatesHistory = "0x00000000000000000000000000000000"
+        UpdatesSequenced = 0
+        KFlops = 1808371
+        Start = true
+        RemoteUser = "sharon@canfarpool.phys.uvic.ca"
+        HasRemoteSyscalls = true
+        HasJobDeferral = true
+        HasCheckpointing = true
+        MonitorSelfResidentSetSize = 4928
+        Arch = "INTEL"
+        Mips = 5489
+        Activity = "Busy"
+        IsWakeOnLanSupported = false
+        ClientMachine = "canfarpool.phys.UVic.CA"
+        ConsoleIdle = 517653
+        HasTDP = true
+        SubnetMask = "255.255.224.0"
+        LastFetchWorkCompleted = 0
+        UpdatesLost = 0
+        StartdIpAddr = "<172.20.97.199:40008?CCBID=142.104.63.28:9618#166957>"
+        TotalJobRunTime = 972
+        WakeOnLanEnabledFlags = "NONE"
+        NiceUser = false
+        TargetType = "Job"
+        TotalLoadAvg = 0.990000
+        HasFileTransfer = true
+        HibernationLevel = 0
+        Rank = 0.0
+        HibernationState = "NONE"
+        MonitorSelfSecuritySessions = 5
+        JavaMFlops = 17.587555
+        MonitorSelfAge = 0
+        VMType = "canfarbase_seb"
+        LoadAvg = 0.990000
+        WakeOnLanSupportedFlags = "NONE"
+        CheckpointPlatform = "LINUX INTEL 2.6.x normal 0x40000000"
+        HasPerFileEncryption = true
+        JobStart = 1282755482
+        CurrentTime = time()
+        RemoteOwner = "sharon@canfarpool.phys.uvic.ca"
+        Disk = 7498296
+        VirtualMemory = 0
+        TotalVirtualMemory = 0
+        TotalSlots = 1
+        UidDomain = "hermes-xen199"
+        SlotWeight = Cpus
+        SlotID = 1
+        HasReconnect = true
+        HardwareAddress = "a2:aa:bb:83:f4:1c"
+        MyType = "Machine"
+        CanHibernate = true
+
+"""
+        condor_two_machines = """Machine = "hermes-xen188"
+LastHeardFrom = 1282756300
+UpdateSequenceNumber = 1293
+JavaVersion = "1.4.2"
+JobId = "232.3558"
+HasMPI = true
+TotalTimeMatchedIdle = 3
+TotalClaimRunTime = 149708
+CpuIsBusy = false
+HasVM = false
+FileSystemDomain = "hermes-xen188"
+JavaVendor = "Free Software Foundation, Inc."
+Name = "hermes-xen188"
+ImageSize = 9580
+MonitorSelfTime = 1282756604
+KeyboardIdle = 426626
+TimeToLive = 2147483647
+LastBenchmark = 1282606875
+TotalDisk = 7569660
+MaxJobRetirementTime = 0
+Unhibernate = MY.MachineLastMatchTime =!= undefined
+CondorPlatform = "$CondorPlatform: I386-LINUX_RHEL5 $"
+HasJICLocalStdin = true
+UpdatesTotal = 1
+Cpus = 1
+IsValidCheckpointPlatform = ( ( ( TARGET.JobUniverse == 1 ) == false ) || ( ( MY.CheckpointPlatform =!= undefined ) && ( ( TARGET.LastCheckpointPlatform =?= MY.CheckpointPlatform ) || ( TARGET.NumCkpts == 0 ) ) ) )
+MonitorSelfCPUUsage = 0.0
+ClockDay = 3
+IsWakeOnLanEnabled = false
+JavaSpecificationVersion = "1.4"
+StarterAbilityList = "HasMPI,HasVM,HasJICLocalStdin,HasJICLocalConfig,HasJava,HasJobDeferral,HasTDP,HasFileTransfer,HasPerFileEncryption,HasReconnect,HasRemoteSyscalls,HasCheckpointing"
+TotalTimeUnclaimedIdle = 381
+CondorVersion = "$CondorVersion: 7.5.2 Apr 20 2010 BuildID: 232940 $"
+JobUniverse = 5
+HasIOProxy = true
+TotalTimeClaimedBusy = 426106
+TotalTimeOwnerIdle = 5
+MonitorSelfImageSize = 10252.000000
+HibernationSupportedStates = "S3"
+ExecutableSize = 1
+LastFetchWorkSpawned = 0
+Requirements = ( START ) && ( IsValidCheckpointPlatform )
+TotalTimeClaimedIdle = 29
+TotalMemory = 2048
+DaemonStartTime = 1282330080
+EnteredCurrentActivity = 1282756625
+MyAddress = "<172.20.97.188:40035?CCBID=142.104.63.28:9618#169399>"
+HasJICLocalConfig = true
+GlobalJobId = "canfarpool.phys.uvic.ca#232.3558#1280352487"
+HasJava = true
+EnteredCurrentState = 1282606913
+CpuBusyTime = 0
+CpuBusy = ( ( LoadAvg - CondorLoadAvg ) >= 0.500000 )
+COLLECTOR_HOST_STRING = "canfarpool.phys.uvic.ca"
+Memory = 2048
+IsWakeAble = false
+MyCurrentTime = 1282756628
+MonitorSelfRegisteredSocketCount = 3
+TotalTimeUnclaimedBenchmarking = 18
+TotalCpus = 1
+ClockMin = 617
+CurrentRank = 0.0
+AuthenticatedIdentity = "unauthenticated@unmapped"
+NextFetchWorkDelay =  -1
+OpSys = "LINUX"
+State = "Claimed"
+UpdatesHistory = "0x00000000000000000000000000000000"
+UpdatesSequenced = 0
+KFlops = 1809163
+Start = true
+RemoteUser = "sharon@canfarpool.phys.uvic.ca"
+HasRemoteSyscalls = true
+HasJobDeferral = true
+HasCheckpointing = true
+MonitorSelfResidentSetSize = 4912
+Arch = "INTEL"
+Mips = 5093
+Activity = "Busy"
+IsWakeOnLanSupported = false
+ClientMachine = "canfarpool.phys.UVic.CA"
+ConsoleIdle = 426626
+HasTDP = true
+SubnetMask = "255.255.224.0"
+LastFetchWorkCompleted = 0
+UpdatesLost = 0
+StartdIpAddr = "<172.20.97.188:40035?CCBID=142.104.63.28:9618#169399>"
+TotalJobRunTime = 3
+WakeOnLanEnabledFlags = "NONE"
+NiceUser = false
+TargetType = "Job"
+TotalLoadAvg = 0.920000
+HasFileTransfer = true
+HibernationLevel = 0
+Rank = 0.0
+HibernationState = "NONE"
+MonitorSelfSecuritySessions = 4
+JavaMFlops = 17.525152
+MonitorSelfAge = 0
+VMType = "canfarbase_seb"
+LoadAvg = 0.920000
+WakeOnLanSupportedFlags = "NONE"
+CheckpointPlatform = "LINUX INTEL 2.6.x normal 0x40000000"
+HasPerFileEncryption = true
+JobStart = 1282756625
+CurrentTime = time()
+RemoteOwner = "sharon@canfarpool.phys.uvic.ca"
+Disk = 7569660
+VirtualMemory = 0
+TotalVirtualMemory = 0
+TotalSlots = 1
+UidDomain = "hermes-xen188"
+SlotWeight = Cpus
+SlotID = 1
+HasReconnect = true
+HardwareAddress = "a2:aa:bb:40:83:a3"
+MyType = "Machine"
+CanHibernate = true
+
+Machine = "hermes-xen199"
+LastHeardFrom = 1282756099
+UpdateSequenceNumber = 1972
+JavaVersion = "1.4.2"
+JobId = "232.3545"
+HasMPI = true
+TotalClaimRunTime = 70891
+CpuIsBusy = false
+HasVM = false
+FileSystemDomain = "hermes-xen199"
+JavaVendor = "Free Software Foundation, Inc."
+Name = "hermes-xen199"
+ImageSize = 151932
+MonitorSelfTime = 1282756323
+KeyboardIdle = 517653
+TimeToLive = 2147483647
+LastBenchmark = 1282685523
+TotalDisk = 7498296
+MaxJobRetirementTime = 0
+Unhibernate = MY.MachineLastMatchTime =!= undefined
+CondorPlatform = "$CondorPlatform: I386-LINUX_RHEL5 $"
+HasJICLocalStdin = true
+UpdatesTotal = 1
+Cpus = 1
+IsValidCheckpointPlatform = ( ( ( TARGET.JobUniverse == 1 ) == false ) || ( ( MY.CheckpointPlatform =!= undefined ) && ( ( TARGET.LastCheckpointPlatform =?= MY.CheckpointPlatform ) || ( TARGET.NumCkpts == 0 ) ) ) )
+MonitorSelfCPUUsage = 0.0
+ClockDay = 3
+IsWakeOnLanEnabled = false
+JavaSpecificationVersion = "1.4"
+StarterAbilityList = "HasMPI,HasVM,HasJICLocalStdin,HasJICLocalConfig,HasJava,HasJobDeferral,HasTDP,HasFileTransfer,HasPerFileEncryption,HasReconnect,HasRemoteSyscalls,HasCheckpointing"
+TotalTimeUnclaimedIdle = 2371
+CondorVersion = "$CondorVersion: 7.5.2 Apr 20 2010 BuildID: 232940 $"
+JobUniverse = 5
+HasIOProxy = true
+TotalTimeClaimedBusy = 515136
+TotalTimeOwnerIdle = 5
+MonitorSelfImageSize = 10252.000000
+HibernationSupportedStates = "S3"
+ExecutableSize = 1
+LastFetchWorkSpawned = 0
+Requirements = ( START ) && ( IsValidCheckpointPlatform )
+TotalTimeClaimedIdle = 47
+TotalMemory = 2048
+DaemonStartTime = 1282238869
+EnteredCurrentActivity = 1282755482
+MyAddress = "<172.20.97.199:40008?CCBID=142.104.63.28:9618#166957>"
+HasJICLocalConfig = true
+GlobalJobId = "canfarpool.phys.uvic.ca#232.3545#1280352487"
+HasJava = true
+EnteredCurrentState = 1282685553
+CpuBusyTime = 0
+CpuBusy = ( ( LoadAvg - CondorLoadAvg ) >= 0.500000 )
+COLLECTOR_HOST_STRING = "canfarpool.phys.uvic.ca"
+Memory = 2048
+IsWakeAble = false
+MyCurrentTime = 1282756454
+MonitorSelfRegisteredSocketCount = 2
+TotalTimeUnclaimedBenchmarking = 18
+TotalCpus = 1
+ClockMin = 614
+CurrentRank = 0.0
+AuthenticatedIdentity = "unauthenticated@unmapped"
+NextFetchWorkDelay =  -1
+OpSys = "LINUX"
+State = "Claimed"
+UpdatesHistory = "0x00000000000000000000000000000000"
+UpdatesSequenced = 0
+KFlops = 1808371
+Start = true
+RemoteUser = "sharon@canfarpool.phys.uvic.ca"
+HasRemoteSyscalls = true
+HasJobDeferral = true
+HasCheckpointing = true
+MonitorSelfResidentSetSize = 4928
+Arch = "INTEL"
+Mips = 5489
+Activity = "Busy"
+IsWakeOnLanSupported = false
+ClientMachine = "canfarpool.phys.UVic.CA"
+ConsoleIdle = 517653
+HasTDP = true
+SubnetMask = "255.255.224.0"
+LastFetchWorkCompleted = 0
+UpdatesLost = 0
+StartdIpAddr = "<172.20.97.199:40008?CCBID=142.104.63.28:9618#166957>"
+TotalJobRunTime = 972
+WakeOnLanEnabledFlags = "NONE"
+NiceUser = false
+TargetType = "Job"
+TotalLoadAvg = 0.990000
+HasFileTransfer = true
+HibernationLevel = 0
+Rank = 0.0
+HibernationState = "NONE"
+MonitorSelfSecuritySessions = 5
+JavaMFlops = 17.587555
+MonitorSelfAge = 0
+VMType = "canfarbase_seb"
+LoadAvg = 0.990000
+WakeOnLanSupportedFlags = "NONE"
+CheckpointPlatform = "LINUX INTEL 2.6.x normal 0x40000000"
+HasPerFileEncryption = true
+JobStart = 1282755482
+CurrentTime = time()
+RemoteOwner = "sharon@canfarpool.phys.uvic.ca"
+Disk = 7498296
+VirtualMemory = 0
+TotalVirtualMemory = 0
+TotalSlots = 1
+UidDomain = "hermes-xen199"
+SlotWeight = Cpus
+SlotID = 1
+HasReconnect = true
+HardwareAddress = "a2:aa:bb:83:f4:1c"
+MyType = "Machine"
+CanHibernate = true
+
+"""
+        condor2native = ResourcePool._condor_status_to_machine_list
+        no_machines = condor2native(condor_no_machines)
+        one_machine = condor2native(condor_one_machine)
+        two_machines = condor2native(condor_two_machines)
+        self.assertEqual([], no_machines)
+        self.assertEqual("hermes-xen199", one_machine[0]["Name"])
+        self.assertEqual("hermes-xen188", two_machines[0]["Name"])
+        self.assertEqual("hermes-xen199", two_machines[1]["Name"])
+
     def test_condorxml_to_native_empty_list(self):
 
         from cloudscheduler.cloud_management import ResourcePool
         condor_xml = """<?xml version="1.0" encoding="UTF-8"?>
         <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:condor="urn:condor"><SOAP-ENV:Header></SOAP-ENV:Header><SOAP-ENV:Body><condor:queryStartdAdsResponse><result></result></condor:queryStartdAdsResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>"""
 
-        xml2native = cloudscheduler.cloud_management.ResourcePool._condor_machine_xml_to_machine_list
+        xml2native = ResourcePool._condor_machine_xml_to_machine_list
         machines = xml2native(condor_xml)
         self.assertEqual([], machines)
 

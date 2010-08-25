@@ -18,23 +18,27 @@ from __future__ import with_statement
 import os
 import re
 import sys
+import json
+import shlex
+import string
 import logging
 import threading
 import subprocess
-
 import ConfigParser
-import cluster_tools
+
 from suds.client import Client
-import cloudscheduler.config as config
 from urllib2 import URLError
 from decimal import *
 from lxml import etree
 from StringIO import StringIO
+
 try:
     import cPickle as pickle
 except:
     import pickle
-import json
+
+import cluster_tools
+import cloudscheduler.config as config
 
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
@@ -63,7 +67,7 @@ class ResourcePool:
 
     # Constructor
     # name   - The name of the ResourcePool being created
-    def __init__(self, config_file, name="Resources"):
+    def __init__(self, config_file, name="Resources", condor_query_type=""):
         global log
         log = logging.getLogger("cloudscheduler")
 
@@ -80,6 +84,17 @@ class ResourcePool:
         self.ban_lock = threading.Lock()
         self.banned_job_resource = {}
         self.failures = {}
+
+        if not condor_query_type:
+            condor_query_type = config.condor_retrieval_method
+
+        if condor_query_type.lower() == "local":
+            self.resource_query = self.resource_query_local
+        elif condor_query_type.lower() == "soap":
+            self.resource_query = self.resource_query_SOAP
+        else:
+            log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
+            self.resource_query = self.resource_query_SOAP
 
         self.setup()
         if config.ban_tracking:
@@ -493,10 +508,38 @@ class ResourcePool:
             native_list.append(self.convert_classad_dict(item))
         return native_list
 
-    # SOAP Query to the condor collector
-    # Returns a list of dictionaries with information about the machines
-    # registered with condor.
-    def resource_querySOAP(self):
+    def resource_query_local(self):
+        """
+        resource_query_local -- does a Query to the condor collector
+
+        Returns a list of dictionaries with information about the machines
+        registered with condor.
+        """
+        log.debug("Querying Condor Collector with %s" % config.condor_status_command)
+
+        machine_list = []
+        try:
+            condor_status = shlex.split(config.condor_status_command)
+            sp = subprocess.Popen(condor_status, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_status, " "))
+            return None
+
+
+        self._condor_status_to_machine_list(condor_out)
+
+        return machine_list
+
+
+    def resource_query_SOAP(self):
+        """
+        resource_query_SOAP -- does a SOAP Query to the condor collector
+
+        Returns a list of dictionaries with information about the machines
+        registered with condor.
+        """
         log.debug("Querying condor startd with SOAP API")
         try:
             machines_xml = self.condor_collector_as_xml.service.queryStartdAds()
@@ -516,6 +559,38 @@ class ResourcePool:
                       % (config.condor_collector_url))
             return []
 
+
+    @staticmethod
+    def _condor_status_to_machine_list(condor_status_output):
+        """
+        _condor_status_to_machine_list - Converts the output of
+               condor_status -l to a list of dictionaries with the attributes
+               from the Condor machine ad.
+
+               returns [] is there are no machines
+        """
+
+        machines = []
+
+        # Each classad is seperated by '\n\n'
+        raw_machine_classads = condor_status_output.split("\n\n")
+        # Empty condor pools give us an empty string or stray \n in our list
+        raw_machine_classads = filter(lambda x: x != "" and x != "\n", raw_machine_classads)
+
+        for raw_classad in raw_machine_classads:
+            classad = {}
+            classad_lines = raw_classad.splitlines()
+            for classad_line in classad_lines:
+                classad_line = classad_line.strip()
+                (classad_key, classad_value) = classad_line.split(" = ", 1)
+                classad_value = classad_value.strip('"')
+                classad[classad_key] = classad_value
+
+            machines.append(classad)
+
+        return machines
+
+
     @staticmethod
     def _condor_machine_xml_to_machine_list(condor_xml):
         """
@@ -523,7 +598,7 @@ class ResourcePool:
                 to a list of dictionarties with the attributes from the Condor 
                 machine ad.
 
-                returns [] if there are no jobs
+                returns [] if there are no machines
         """
         def _item_attribute(xml, element):
             try:

@@ -175,7 +175,7 @@ class MachinePoller(threading.Thread):
         while not self.quit:
             log.debug("Polling machine scheduler")
 
-            self.resource_pool.machine_list = self.resource_pool.resource_querySOAP()
+            self.resource_pool.machine_list = self.resource_pool.resource_query()
             log.debug("Machine Poller waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
             while (not self.quit) and sleep_tics > 0:
