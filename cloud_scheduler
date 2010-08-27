@@ -270,7 +270,6 @@ class Scheduler(threading.Thread):
             if len(self.job_pool.high_jobs) == 0:
                 log.debug("Attempt to schedule user jobs")
                 for user in self.job_pool.new_jobs.keys():
-    
                     # Attempt to schedule jobs in order of their appearance in user's job list
                     # (currently sorted by Job priority)
                     for job in self.job_pool.new_jobs[user]:
