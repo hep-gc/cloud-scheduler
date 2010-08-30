@@ -52,7 +52,7 @@
 # installation.
 
 # EC2 Metadata server
-EC2_METADATA=instance-data.ec2.internal
+EC2_METADATA=169.254.169.254
 
 # Central Manager of your condor pool
 CENTRAL_MANAGER=`cat /etc/condor/central_manager`
