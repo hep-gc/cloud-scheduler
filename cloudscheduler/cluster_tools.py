@@ -910,7 +910,7 @@ class EC2Cluster(ICluster):
                  access_key_id=None, secret_access_key=None, security_group=None):
 
         # Janky minimum version test for boto
-        if float(boto.Version[:-1]) < 1.9:
+        if float(boto.Version[:3]) < 1.9:
             log.warning("Versions of boto before 1.9 don't support spot instances")
 
         # Call super class's init
