@@ -263,7 +263,7 @@ class Scheduler(threading.Thread):
                 for job in self.job_pool.high_jobs[user]:
                     if job.job_status == self.HELD:
                         continue
-                    if self.sched_resource_create_track(job):
+                    if self.sched_resource_create_track(user, job):
                         break
             ## For starters we'll only schedule user jobs when there's no
             ## High Priority jobs waiting to start
@@ -278,7 +278,7 @@ class Scheduler(threading.Thread):
                             # Do not start VMs for jobs in a Hold state
                             if job.job_status == self.HELD:
                                 continue
-                            if self.sched_resource_create_track(job):
+                            if self.sched_resource_create_track(user, job):
                                 break
                         else:
                             # This user already has their share
@@ -345,7 +345,8 @@ class Scheduler(threading.Thread):
                                     ret = self.resource_pool.do_condor_off(busy_vms[x]['Name'])
                                     if ret == 0:
                                         retired_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Name'])
-                                        retired_vm.override_status = 'Retiring'
+                                        if retired_vm != None:
+                                            retired_vm.override_status = 'Retiring'
                             elif adjusted_val < 0:
                                 if abs(adjusted_val) > len(retiring_vms_of_type):
                                     adjusted_val = len(retiring_vms_of_type)
@@ -478,7 +479,7 @@ class Scheduler(threading.Thread):
                     if found_vm:
                         break
 
-    def sched_resource_create_track(self, job):
+    def sched_resource_create_track(self, user, job):
         # Find resources that match the job's requirements
         (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \

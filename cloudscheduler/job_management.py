@@ -753,20 +753,19 @@ class JobPool:
     # Based on top jobs in user new_job queue determine
     # a 'fair' distribution of vmtypes
     def job_type_distribution(self):
-        priority_weight = 1
         type_desired = {}
         for user in self.new_jobs.keys():
             vmtype = self.new_jobs[user][0].req_vmtype
             if vmtype in type_desired.keys():
-                type_desired[vmtype] += 1 * (1 / Decimal(priority_weight))
+                type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight))
             else:
-                type_desired[vmtype] = 1 * (1 / Decimal(priority_weight))
+                type_desired[vmtype] = 1 * (1 / Decimal(config.high_priority_job_weight))
         for user in self.high_jobs.keys():
             vmtype = self.high_jobs[user][0].req_vmtype
             if vmtype in type_desired.keys():
-                type_desired[vmtype] += 1 * priority_weight
+                type_desired[vmtype] += 1 * config.high_priority_job_weight
             else:
-                type_desired[vmtype] = 1 * priority_weight
+                type_desired[vmtype] = 1 * config.high_priority_job_weight
         num_users = Decimal(len(self.new_jobs.keys()) + len(self.high_jobs.keys()))
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users

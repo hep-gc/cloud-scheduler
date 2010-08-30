@@ -47,6 +47,7 @@ graceful_shutdown = False
 graceful_shutdown_method = "hold"
 getclouds = False
 scheduling_metric = "slot"
+high_priority_job_weight = 1
 cleanup_interval = 5
 vm_poller_interval = 5
 job_poller_interval = 5
@@ -94,6 +95,7 @@ def setup(path=None):
     global graceful_shutdown_method
     global getclouds
     global scheduling_metric
+    global high_priority_job_weight
     global cleanup_interval
     global vm_poller_interval
     global job_poller_interval
@@ -269,6 +271,14 @@ def setup(path=None):
         
     if config_file.has_option("global", "scheduling_metric"):
         scheduling_metric = config_file.get("global", "scheduling_metric")
+
+    if config_file.has_option("global", "high_priority_job_weight"):
+        try:
+            high_priority_job_weight = config_file.getint("global", "high_priority_job_weight")
+        except ValueError:
+            print "Configuration file problem: high_priority_job_weight must be an " \
+                  "integer value."
+            sys.exit(1)
 
     if config_file.has_option("global", "scheduler_interval"):
         try:
