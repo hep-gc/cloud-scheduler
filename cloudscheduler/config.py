@@ -19,9 +19,13 @@ import utilities
 # Set default values
 condor_webservice_url = "http://localhost:8080"
 condor_collector_url = "http://localhost:9618"
+condor_retrieval_method = "soap"
+condor_q_command = "condor_q -l"
+condor_status_command = "condor_status -l"
 condor_host = "localhost"
 condor_host_on_vm = ""
 condor_context_file = ""
+vm_lifetime = 10080
 cert_file = ""
 key_file = ""
 cert_file_on_vm = ""
@@ -64,9 +68,13 @@ def setup(path=None):
 
     global condor_webservice_url
     global condor_collector_url
+    global condor_retrieval_method
+    global condor_q_command
+    global condor_status_command
     global condor_context_file
     global condor_host
     global condor_host_on_vm
+    global vm_lifetime
     global cert_file
     global key_file
     global cert_file_on_vm
@@ -136,6 +144,18 @@ def setup(path=None):
               "your config file."
         raise
 
+    if config_file.has_option("global", "condor_retrieval_method"):
+        condor_retrieval_method = config_file.get("global",
+                                                "condor_retrieval_method")
+
+    if config_file.has_option("global", "condor_q_command"):
+        condor_q_command = config_file.get("global",
+                                                "condor_q_command")
+
+    if config_file.has_option("global", "condor_status_command"):
+        condor_status_command = config_file.get("global",
+                                                "condor_status_command")
+
     if config_file.has_option("global", "condor_webservice_url"):
         condor_webservice_url = config_file.get("global",
                                                 "condor_webservice_url")
@@ -151,6 +171,14 @@ def setup(path=None):
     if config_file.has_option("global", "condor_context_file"):
         condor_context_file = config_file.get("global",
                                                 "condor_context_file")
+
+    if config_file.has_option("global", "vm_lifetime"):
+        try:
+            vm_lifetime = config_file.getint("global", "vm_lifetime")
+        except ValueError:
+            print "Configuration file problem: vm_lifetime must be an " \
+                  "integer value."
+            sys.exit(1)
 
     if config_file.has_option("global", "cert_file"):
         cert_file = config_file.get("global", "cert_file")

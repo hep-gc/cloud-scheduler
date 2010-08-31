@@ -195,6 +195,28 @@ On Red Hat-like systems you can enable it to run at boot with:
 
     # chkconfig cloud_scheduler on
 
+## Configuring a VM for EC2 / Eucalyptus
+
+The way Cloud Scheduler manipulates Condor to connect to the correct central
+manager is by writing files which are read by the Condor init script to
+configure itself. Nimbus supports this out of the box, but EC2 requires a 
+helper script to accomplish this. This section explains how to install it.
+
+0. Install the EC2 Context Helper script to your machine. This is a part of the
+   Cloud Scheduler release tarball, and is in the scripts/ec2contexthelper/
+   directory.
+
+1. Switch to the ec2contexthelper directory, and run setup.py
+
+    # cd scripts/ec2contexthelper/
+    # python setup.py install
+    # which contexthelper
+    /usr/bin/contexthelper
+
+2. Enable the init script.
+
+    # chkconfig context on
+
 ## License
 
 This program is free software; you can redistribute it and/or modify

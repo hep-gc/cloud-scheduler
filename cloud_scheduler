@@ -139,7 +139,7 @@ class JobPoller(threading.Thread):
 
             ## Query the job pool to get new unscheduled jobs
             # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
-            condor_jobs = self.job_pool.job_querySOAP()
+            condor_jobs = self.job_pool.job_query()
             if condor_jobs != None:
                 self.job_pool.update_jobs(condor_jobs)
             else:
@@ -175,7 +175,7 @@ class MachinePoller(threading.Thread):
         while not self.quit:
             log.debug("Polling machine scheduler")
 
-            self.resource_pool.machine_list = self.resource_pool.resource_querySOAP()
+            self.resource_pool.machine_list = self.resource_pool.resource_query()
             log.debug("Machine Poller waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
             while (not self.quit) and sleep_tics > 0:

@@ -369,7 +369,7 @@ class NimbusCluster(ICluster):
     ## NimbusCluster specific instance variables
 
     # Global Nimbus command variables
-    VM_DURATION = "10080"
+    VM_DURATION = config.vm_lifetime
     VM_TARGETSTATE = "Running"
     VM_NODES = "1"
 
@@ -937,7 +937,7 @@ class EC2Cluster(ICluster):
                  access_key_id=None, secret_access_key=None, security_group=None):
 
         # Janky minimum version test for boto
-        if float(boto.Version[:-1]) < 1.9:
+        if float(boto.Version[:3]) < 1.9:
             log.warning("Versions of boto before 1.9 don't support spot instances")
 
         # Call super class's init
@@ -1100,7 +1100,7 @@ class EC2Cluster(ICluster):
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
-        with vms_lock:
+        with self.vms_lock:
             if vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
                 vm.last_state_change = int(time.time())
