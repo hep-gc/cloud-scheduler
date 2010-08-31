@@ -500,10 +500,13 @@ class JobPool:
     # Add High(Priority) Job
     # Add a new job to the system (in the high_jobs set)
     def add_high_job(self, job):
-        if job.user in self.high_jobs:
-            self.insort_job(self.high_jobs[job.user], job)
+        if config.high_priority_job_support:
+            if job.user in self.high_jobs:
+                self.insort_job(self.high_jobs[job.user], job)
+            else:
+                self.high_jobs[job.user] = [job]
         else:
-            self.high_jobs[job.user] = [job]
+            self.add_new_job(job)
 
     # Adds a job to a given list of job objects
     # in order of priority. The list runs front to back, high to low
