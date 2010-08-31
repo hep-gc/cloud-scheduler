@@ -522,7 +522,33 @@ class Scheduler(threading.Thread):
 
             customizations.append((file_contents, file_location))
 
+        # Copy CA root certs and signing policies if needed.
+        if config.ca_root_certs:
+            for entry in config.ca_root_certs:
+                source = entry.split(':')[0]
+                if entry.find(':') != -1:
+                    destination = entry.split(':')[1]
+                else:
+                    destination = source
+                try:
+                    file_contents = open(source).read()
+                    customizations.append((file_contents, destination))
+                except:
+                    log.error('Error reading %s' : source)
 
+        if config.ca_signing_policies:
+            for entry in config.ca_signing_policies:
+                source = entry.split(':')[0]
+                if entry.find(':') != -1:
+                    destination = entry.split(':')[1]
+                else:
+                    destination = source
+                try:
+                    file_contents = open(source).read()
+                    customizations.append((file_contents, destination))
+                except:
+                    log.error('Error reading %s' : source)
+            
         for resource in good_resources:
             # Print details of the resource selected
             log.debug("Booting VM for job %s on %s:" % (job.id, resource.name))

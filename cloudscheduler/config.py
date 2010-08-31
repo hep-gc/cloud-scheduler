@@ -26,6 +26,8 @@ cert_file = ""
 key_file = ""
 cert_file_on_vm = ""
 key_file_on_vm = ""
+ca_root_certs = []
+ca_signing_policies = []
 cloudscheduler_ssh_key = ""
 cloud_resource_config = None
 image_attach_device = "sda"
@@ -69,6 +71,8 @@ def setup(path=None):
     global key_file
     global cert_file_on_vm
     global key_file_on_vm
+    global ca_root_certs
+    global ca_signing_policies
     global cloudscheduler_ssh_key
     global cloud_resource_config
     global image_attach_device
@@ -159,6 +163,12 @@ def setup(path=None):
 
     if config_file.has_option("global", "key_file_on_vm"):
         key_file_on_vm = config_file.get("global", "key_file_on_vm")
+
+    if config_file.has_option("global", "ca_root_certs"):
+        ca_root_certs = config_file.get("global", "ca_root_certs").split(',')
+
+    if config_file.has_option("global", "ca_signing_policies"):
+        ca_signing_policies = config_file.get("global", "ca_signing_policies").split(',')
 
     if config_file.has_option("global", "cloudscheduler_ssh_key"):
         cloudscheduler_ssh_key = config_file.get("global", "cloudscheduler_ssh_key")
