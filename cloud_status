@@ -50,7 +50,7 @@ def main(argv=None):
                       help="Show developer information about cloud_scheduler")
     parser.add_option("-q", "--job-queue", metavar="QUEUE",
                       action="store", dest="job_queue",
-                      type="choice", choices=['all', 'new', 'sched'],
+                      type="choice", choices=['all', 'new', 'sched', 'high'],
                       help="Get Information about the job queues")
 
     (cli_options, args) = parser.parse_args()
@@ -102,12 +102,17 @@ def main(argv=None):
                 print s.get_schedjobs()
                 print "Jobs in New Queue"
                 print s.get_newjobs()
+                print "Jobs in High Priority Queue"
+                print s.get_highjobs()
             elif cli_options.job_queue.startswith('n'):
                 print "Jobs in New Queue"
                 print s.get_newjobs()
             elif cli_options.job_queue.startswith('s'):
                 print "Jobs in Scheduled Queue"
                 print s.get_schedjobs()
+            elif cli_options.job_queue.startswith('h'):
+                print "Jobs in High Priority Queue"
+                print s.get_highjobs()
         else:
             print s.get_cloud_resources()
 

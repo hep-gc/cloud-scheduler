@@ -152,6 +152,12 @@ class InfoServer(threading.Thread,):
                     for job in job_pool.sched_jobs[user]:
                         output += job.get_job_info()
                 return output
+            def get_highjobs(self):
+                output = "%-15s %-10s %-10s %-15s %-25s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status")
+                for user in job_pool.high_jobs.keys():
+                    for job in job_pool.high_jobs[user]:
+                        output += job.get_job_info()
+                return output
             def get_job(self, jobid):
                 output = "Job not found."
                 job_match = None
