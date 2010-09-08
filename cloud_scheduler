@@ -644,7 +644,7 @@ class Cleanup(threading.Thread):
                 req_vmtypes = self.job_pool.get_required_vmtypes()
                 for cluster in self.resource_pool.resources:
                     for vm in reversed(cluster.vms):
-                        if vm.vmtype not in req_vmtypes:
+                        if vm.vmtype not in req_vmtypes and (vm.keep_alive == 0 or vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
                             destroy_ret = cluster.vm_destroy(vm)
                             if destroy_ret != 0:
                                 log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
