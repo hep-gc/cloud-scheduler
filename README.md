@@ -24,6 +24,10 @@ For more documentation on Cloud Scheduler, please refer to:
 * [boto](http://code.google.com/p/boto/)
 * [lxml](http://codespeak.net/lxml/)
 
+## Optional Prerequisites
+
+* [Guppy](http://guppy-pe.sourceforge.net/) -- Used for memory usage info.
+
 ### Special help for RHEL 5
 
 Since Cloud Scheduler requires Python 2.6, and we recognize that RHEL 5 comes
@@ -216,6 +220,46 @@ helper script to accomplish this. This section explains how to install it.
 2. Enable the init script.
 
     # chkconfig context on
+
+## Job Submission
+
+Submitting a job for use with Cloud Scheduler is very similar to submitting a
+job for use with a regular Condor Scheduler. It would be helpful to read
+through Chapter 2 of the Condor Manual for help on submitting jobs to Condor.
+
+Jobs meant to be run by VMs started by Cloud Scheduler need a few extra
+parameters to work properly. These are: (Required parameters are highlighted)
+
+* *Requirements = VMType =?= “your.vm.type”* :  The type of VM that the job must run on. This is a custom attribute of the VM advertised to the Condor central manager. It should be specified on the VM’s condor_config or condor_config.local file.
+* *VMLoc* or *VMAMI* : The URL (for Nimbus) or AMI (for EC2-like clusters) of the image required for the job to run
+* VMCPUArch : The CPU architecture that the job requires. x86 or x86_64. Defaults to x86.
+* VMCPUCores : The number of CPU cores for the VM. Defaults to 1.
+* VMStorage : The amount of scratch storage space the job requires. (Currently ignored on EC2-like Clusters)
+* VMMem : The amount of RAM that the VM requires.
+* VMNetwork : The type of networking required for your VM. Only used with Nimbus. Corresponds to Nimbus’s network pool.
+
+### A Sample Job
+
+    # Regular Condor Attributes
+    Universe   = vanilla
+    Executable = script.sh
+    Arguments  = one two three
+    Log        = script.log
+    Output     = script.out
+    Error      = script.error
+    should_transfer_files = YES
+    when_to_transfer_output = ON_EXIT
+    # 
+    # Cloud Scheduler Attributes
+    Requirements = VMType =?= "vm.for.script"
+    +VMLoc         = "http://repository.tld/your.vm.img.gz"
+    +VMAMI = "ami-dfasfds"
+    +VMCPUArch     = "x86"
+    +VMCPUCores    = "1"
+    +VMNetwork     = "private"
+    +VMMem         = "512"
+    +VMStorage     = "20"
+    Queue
 
 ## License
 
