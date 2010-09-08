@@ -534,7 +534,7 @@ class Scheduler(threading.Thread):
                     file_contents = open(source).read()
                     customizations.append((file_contents, destination))
                 except:
-                    log.error('Error reading %s' : source)
+                    log.error('Error reading %s' % (source))
 
         if config.ca_signing_policies:
             for entry in config.ca_signing_policies:
@@ -547,7 +547,7 @@ class Scheduler(threading.Thread):
                     file_contents = open(source).read()
                     customizations.append((file_contents, destination))
                 except:
-                    log.error('Error reading %s' : source)
+                    log.error('Error reading %s' % (source))
             
         for resource in good_resources:
             # Print details of the resource selected
