@@ -352,7 +352,10 @@ class ICluster:
             self.vm_slots += 1
             self.storageGB += vm.storage
             # ISSUE: No way to know what mementry a VM is running on
-            self.memory[vm.mementry] += vm.memory
+            try:
+                self.memory[vm.mementry] += vm.memory
+            except:
+                log.warning("Couldn't return memory because I don't know about that mem entry anymore...")
 
 
 ## Implements cloud management functionality with the Nimbus service as part of

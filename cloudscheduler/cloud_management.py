@@ -191,13 +191,13 @@ class ResourcePool:
                                                           removed_cluster_name)
                     for vm in cluster.vms:
                         if config.graceful_shutdown_method != 'off':
-                            cluster.vm_destroy(vm)
+                            cluster.vm_destroy(vm, return_resources=False)
                         else:
                             if vm.condorname:
                                 self.do_condor_off(vm.condorname)
                             else:
                                 # No condor name cannot perform condor_off
-                                cluster.vm_destroy(vm)
+                                cluster.vm_destroy(vm, return_resources=False)
 
                     old_resources.remove(cluster)
 
