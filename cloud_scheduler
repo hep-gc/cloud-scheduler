@@ -258,49 +258,33 @@ class Scheduler(threading.Thread):
             ## Schedule user jobs
             # TODO: This should be less explicit in its reference to JobPool class parts.
             #       Something like 'for job in self.job_pool.get_unsched_jobs()'
-            log.debug("Attempt to schedule user jobs")
-            for user in self.job_pool.new_jobs.keys():
-
-                # Attempt to schedule jobs in order of their appearance in user's job list
-                # (currently sorted by Job priority)
-                for job in self.job_pool.new_jobs[user]:
-                    # Check that type of VM for job is needed
-                    if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
-                        # Do not start VMs for jobs in a Hold state
-                        if job.job_status == self.HELD:
-                            continue
-                        # Find resources that match the job's requirements
-                        (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
-                        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
-                        job.req_ami, job.req_imageloc)
-                        
-                        good_resources = [pri_rsrc]
-                        if sec_rsrc and pri_rsrc != sec_rsrc:
-                            good_resources.append(sec_rsrc)
-
-                        # If no resource fits, continue to next job in user's list
-                        if good_resources[0] == None:
-                            log.verbose("No resource to match job: %s" % job.id)
-                            log.verbose("Leaving job unscheduled, moving to %s's next job" % user)
-                            continue
-
-                        create_ret = self.vm_creation(job, good_resources)
-                        if create_ret == 0:
-                            # Mark job as scheduled
-                            self.job_pool.schedule(job)
-                            if config.ban_tracking:
-                                self.resource_pool.track_failures(job, good_resources, True)
+            log.debug("Schedule any high priority jobs")
+            for user in self.job_pool.high_jobs.keys():
+                for job in self.job_pool.high_jobs[user]:
+                    if job.job_status == self.HELD:
+                        continue
+                    if self.sched_resource_create_track(user, job):
+                        break
+            ## For starters we'll only schedule user jobs when there's no
+            ## High Priority jobs waiting to start
+            if len(self.job_pool.high_jobs) == 0:
+                log.debug("Attempt to schedule user jobs")
+                for user in self.job_pool.new_jobs.keys():
+                    # Attempt to schedule jobs in order of their appearance in user's job list
+                    # (currently sorted by Job priority)
+                    for job in self.job_pool.new_jobs[user]:
+                        # Check that type of VM for job is needed
+                        if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
+                            # Do not start VMs for jobs in a Hold state
+                            if job.job_status == self.HELD:
+                                continue
+                            if self.sched_resource_create_track(user, job):
+                                break
                         else:
-                            if config.ban_tracking:
-                                self.resource_pool.track_failures(job, good_resources, False)
-                            continue
-                        # break out of this user's job and try next user
-                        break
-                    else:
-                        # This user already has their share
-                        break
-                # ENDFOR - for jobs in user's unscheduled job set
-            #ENDFOR - Attempt to schedule each one job per user
+                            # This user already has their share
+                            break
+                    # ENDFOR - for jobs in user's unscheduled job set
+                #ENDFOR - Attempt to schedule each one job per user
 
             ## Clear all un-needed VMs from the system
             log.debug("Clearing all un-needed VMs from the system")
@@ -361,7 +345,8 @@ class Scheduler(threading.Thread):
                                     ret = self.resource_pool.do_condor_off(busy_vms[x]['Name'])
                                     if ret == 0:
                                         retired_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Name'])
-                                        retired_vm.override_status = 'Retiring'
+                                        if retired_vm != None:
+                                            retired_vm.override_status = 'Retiring'
                             elif adjusted_val < 0:
                                 if abs(adjusted_val) > len(retiring_vms_of_type):
                                     adjusted_val = len(retiring_vms_of_type)
@@ -494,6 +479,34 @@ class Scheduler(threading.Thread):
                     if found_vm:
                         break
 
+    def sched_resource_create_track(self, user, job):
+        # Find resources that match the job's requirements
+        (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
+        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
+        job.req_ami, job.req_imageloc)
+        
+        good_resources = [pri_rsrc]
+        if sec_rsrc and pri_rsrc != sec_rsrc:
+            good_resources.append(sec_rsrc)
+
+        # If no resource fits, continue to next job in user's list
+        if good_resources[0] == None:
+            log.verbose("No resource to match job: %s" % job.id)
+            log.verbose("Leaving job unscheduled, moving to %s's next job" % user)
+            return False
+
+        create_ret = self.vm_creation(job, good_resources)
+        if create_ret == 0:
+            # Mark job as scheduled
+            self.job_pool.schedule(job)
+            if config.ban_tracking:
+                self.resource_pool.track_failures(job, good_resources, True)
+        else:
+            if config.ban_tracking:
+                self.resource_pool.track_failures(job, good_resources, False)
+            return False
+        # break out of this user's job and try next user
+        return True
 
     def vm_creation(self, job, good_resources):
         # Create an optional customization metadata file
@@ -639,6 +652,10 @@ class Cleanup(threading.Thread):
             with self.job_pool.write_lock:
                 for user in self.job_pool.new_jobs.keys():
                     for job in reversed(self.job_pool.new_jobs[user]):
+                        if job.job_status == self.RUNNING:
+                            self.job_pool.schedule(job)
+                for user in self.job_pool.high_jobs.keys():
+                    for job in reversed(self.job_pool.high_jobs[user]):
                         if job.job_status == self.RUNNING:
                             self.job_pool.schedule(job)
                 vms = self.resource_pool.get_vmtypes_count_internal()

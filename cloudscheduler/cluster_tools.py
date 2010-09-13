@@ -174,6 +174,7 @@ class ICluster:
         self.network_address = host
         self.cloud_type = cloud_type
         self.memory = memory
+        self.max_mem = tuple(memory)
         self.cpu_archs = cpu_archs
         self.network_pools = networks
         self.vm_slots = vm_slots
@@ -318,6 +319,14 @@ class ICluster:
         # If no entries found, return error code.
         return(-1)
 
+    def find_potential_mementry(self, memory):
+        potential_fit = False
+        for i in range(len(self.max_mem)):
+            if self.max_mem[i] >= memory:
+                potential_fit = True
+                break
+        return potential_fit
+
     def resource_checkout(self, vm):
         """
         Checks out resources taken by a VM in creation from the internal rep-
@@ -358,7 +367,10 @@ class ICluster:
             self.vm_slots += 1
             self.storageGB += vm.storage
             # ISSUE: No way to know what mementry a VM is running on
-            self.memory[vm.mementry] += vm.memory
+            try:
+                self.memory[vm.mementry] += vm.memory
+            except:
+                log.warning("Couldn't return memory because I don't know about that mem entry anymore...")
 
 
 ## Implements cloud management functionality with the Nimbus service as part of
@@ -1100,7 +1112,8 @@ class EC2Cluster(ICluster):
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
-        with self.vms_lock:
+
+        with vms_lock:
             if vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
                 vm.last_state_change = int(time.time())
