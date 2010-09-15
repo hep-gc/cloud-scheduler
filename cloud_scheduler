@@ -216,7 +216,6 @@ class Scheduler(threading.Thread):
         ########################################################################
         ## Full scheduler loop
         ########################################################################
-
         while not self.quit:
             log.debug("### Scheduler Cycle:")
 
@@ -926,10 +925,12 @@ def main():
 
     # Wait for keyboard input to exit the cloud scheduler
     try:
-        while True:
+        die = False
+        while not die:
             for thread in service_threads:
                 if not thread.isAlive():
-                    break
+                    log.error("%s thread died!" % thread.name)
+                    die = True
             time.sleep(1)
     except (SystemExit, KeyboardInterrupt):
         log.info("Caught a signal that someone wants me to quit!")
