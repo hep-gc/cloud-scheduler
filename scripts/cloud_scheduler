@@ -5,8 +5,12 @@
 
 export GLOBUS_LOCATION=/usr/local/nimbus/
 
-# Set this only if "cloud_scheduler" isn't in your $PATH (ends in '/')
-EXECUTABLEPATH="" 
+# Set a non-default path to the cloud_scheduler executable
+# eg. "/opt/bin/cloud_scheduler"
+EXECUTABLEPATH="cloud_scheduler" 
+
+# Non-default python (eg. if you installed python 2.6 on RHEL5)
+PYTHON="python"
 
 # You probably won't want to change these.
 SERVICE=cloud_scheduler
@@ -15,32 +19,62 @@ PIDFILE=$PIDSPATH/$SERVICE.pid
 export PATH=$PATH:$GLOBUS_LOCATION/bin/
 
 start () {
-    if [ ! -f $PIDFILE ]; then
-        echo -n $"Starting $SERVICE..."
-        if [ "$SUDO_COMMAND" ]; then
-            sudo nohup ${EXECUTABLEPATH}${SERVICE} </dev/null >/dev/null &
-            echo $! > $PIDFILE
+    if [ -f $PIDFILE ]; then
+        PID=`cat $PIDFILE`
+        ps $PID >/dev/null
+        IS_NOT_RUNNING=$?
+        if [ $IS_NOT_RUNNING ]; then
+            echo $"$SERVICE didn't shut down cleanly last time."
+            rm -f $PIDFILE
         else
-            nohup ${EXECUTABLEPATH}${SERVICE} </dev/null >/dev/null &
-            echo $! > $PIDFILE
+            PID=`cat $PIDFILE`
+            echo $"$SERVICE is already running with PID ${PID}."
+            return 1
         fi
-        echo
-        RETVAL=$?
-        touch /var/lock/subsys/$SERVICE
-    else
-        echo $"$SERVICE is already running. If this is wrong, delete $PIDFILE."
     fi
+
+    echo -n $"Starting $SERVICE..."
+    if [ "$SUDO_COMMAND" ]; then
+        sudo nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >/dev/null &
+        echo $! > $PIDFILE
+    else
+        nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >/dev/null &
+        echo $! > $PIDFILE
+    fi
+    echo
+    RETVAL=$?
+    touch /var/lock/subsys/$SERVICE
 }
 
 stop () {
     if [ -f $PIDFILE ]; then
         echo -n $"Stopping $SERVICE..."
-        kill `cat $PIDFILE`
+        /bin/kill `cat $PIDFILE`
         echo
         if [ $? -eq 0 ]; then
             rm -f $PIDFILE >/dev/null 2>&1
         fi
         rm -f /var/lock/subsys/$SERVICE
+    fi
+}
+
+forcekill () {
+    if [ -f $PIDFILE ]; then
+        echo -n $"Killing $SERVICE..."
+        /bin/kill -9 `cat $PIDFILE`
+        echo
+        if [ $? -eq 0 ]; then
+            rm -f $PIDFILE >/dev/null 2>&1
+        fi
+        rm -f /var/lock/subsys/$SERVICE
+    fi
+}
+
+reconfig () {
+    if [ -f $PIDFILE ]; then
+        echo -n $"Reconfiguring $SERVICE..."
+        /bin/kill -s SIGUSR1 `cat $PIDFILE`
+        echo
     fi
 }
 
@@ -53,9 +87,23 @@ case "$1" in
     stop)
         stop
         ;;
+    forcekill)
+        forcekill
+        ;;
+    reconfig)
+        reconfig
+        ;;
     status)
 	if [ -f $PIDFILE ]; then
-		echo "$SERVICE is running."
+        PID=`cat $PIDFILE`
+        ps $PID >/dev/null
+        IS_RUNNING=$?
+        if [ $IS_RUNNING ]; then
+            PID=`cat $PIDFILE`
+            echo $"$SERVICE is running with PID ${PID}."
+        else
+            echo $"$SERVICE has exited unexpectedly."
+        fi
 	else
 		echo "$SERVICE isn't running."
 	fi
@@ -65,7 +113,7 @@ case "$1" in
         start
         ;;
     *)
-        echo $"Usage: $0 {start|stop|restart|status}"
+        echo $"Usage: $0 {start|stop|restart|status|reconfig|forcekill}"
         exit 3
         ;;
 esac

@@ -1,0 +1,14 @@
+This directory contains the files for the cloud scheduler job
+submission client.  This job submission client is simply a wrapper
+around the condor_submit command.  The job submission client will
+first put the user's proxy to a myproxy server (by making a call to
+myproxy-init) and update the job description file with information
+about the remotely stored user credentials.  The client will then call
+the condor_submit command for the user.
+
+TODO: Add some more documentation on the usage of the client wrapper
+once it is more finalized.
+
+IMPORTANT: Note that this component is still in developement and
+should not be used for production use.
+
