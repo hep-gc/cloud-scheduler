@@ -77,7 +77,7 @@ class Job:
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
              VMKeepAlive=0, VMHighPriority=0,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None, x509userproxysubject=None, x509userproxy=None,
-             VMInstanceType="", VMMaximumPrice=0, VMSlotForEachCore=False):
+             VMInstanceType="", VMMaximumPrice=0, VMJobPerCore=False, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -101,9 +101,9 @@ class Job:
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
      x509userproxysubject - (str) The DN of the authenticated user
      x509userproxy - (str) The user proxy certificate (full path)
-     VMSlotForEachCore - (boolean) Whether or not the machines you request will have
-                                   multiple slots. This is mostly an advanced feature
-                                   for when this can save you money (eg. with EC2)
+     VMJobPerCore   - (boolean) Whether or not the machines you request will have
+                                multiple slots. This is mostly an advanced feature
+                                for when this can save you money (eg. with EC2)
 
      """
      #TODO: Set default job properties in the cloud scheduler main config file
@@ -132,7 +132,8 @@ class Job:
         self.myproxy_creds_name = CSMyProxyCredsName
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
-        self.slot_for_each_core = VMSlotForEachCore in ['true', "True", True]
+        self.job_per_core = VMJobPerCore in ['true', "True", True]
+
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -430,6 +431,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "x509userproxysubject")
                 _add_if_exists(xml_job, job_dictionary, "x509userproxy")
                 _add_if_exists(xml_job, job_dictionary, "VMHighPriority")
+                _add_if_exists(xml_job, job_dictionary, "VMJobPerCore")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -814,6 +816,25 @@ class JobPool:
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
         return type_desired
+
+    def get_jobs_of_type_for_user(self, type, user):
+        """
+        get_jobs_of_type_for_user -- get a list of jobs of a VMtype for a user
+
+        returns a list of Job objects.
+        """
+        jobs = []
+        if self.new_jobs.has_key(user):
+            jobs.extend(self.new_jobs[user])
+        if self.sched_jobs.has_key(user):
+            jobs.extend(self.sched_jobs[user])
+        if self.high_jobs.has_key(user):
+            jobs.extend(self.high_jobs[user])
+        
+        return jobs
+
+
+
 
     # Attempts to place a list of jobs into a Hold Status to prevent running
     # If a job fails to be held it is placed in a list and failed jobs are returned

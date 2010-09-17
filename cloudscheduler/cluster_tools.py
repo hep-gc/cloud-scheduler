@@ -42,47 +42,49 @@ except ImportError:
             "or get it from http://code.google.com/p/boto/")
 
 
-# A class for storing created VM information. Used to populate Cluster classes
-# 'vms' lists.
-
 class VM:
+    """
+    A class for storing created VM information. Used to populate Cluster classes
+    'vms' lists.
 
-    ## Instance Variables
 
-    # The global VM states are:
-    #    Starting - The VM is being created in the cloud
-    #    Running  - The VM is running somewhere on the cloud (fully functional)
-    #    Error    - The VM has been corrupted or is in the process of being destroyed
-    # For a full state diagram, refer to the following development wiki page:
-    # TODO: Add state dia. to wiki
-    # States are defined in each Cluster subclass, in which a VM_STATES dictionary
-    # maps specific cloud software state to these global states.
+    Instance Variables
 
-    ## Instance Methods
+    The global VM states are:
+       Starting - The VM is being created in the cloud
+       Running  - The VM is running somewhere on the cloud (fully functional)
+       Error    - The VM has been corrupted or is in the process of being destroyed
 
-    # Constructor
-    # name         - (str) The name of the vm (arbitrary)
-    # id           - (str) The id tag for the VM. Whatever is used to access the vm
-    #                by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
-    # vmtype       - (str) The condor VMType attribute for the VM
-    # hostname     - (str) The first part of hostname given to VM
-    # condorname   - (str) The name of the VM as it's registered with Condor
-    # clusteraddr  - (str) The address of the cluster hosting the VM
-    # cloudtype   - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
-    # network      - (str) The network association the VM uses
-    # cpuarch      - (str) The required CPU architecture of the VM
-    # image        - (str) The location of the image from which the VM was created
-    # memory       - (int) The memory used by the VM
-    # mementry     - (int) The index of the entry in the host cluster's memory list
-    #                from which this VM is taking memory
-    # proxy_file   - the proxy that was used to authenticate this VM's creation
-    # errorcount   - (int) Number of Polling Errors VM has had
+    States are defined in each Cluster subclass, in which a VM_STATES dictionary
+    maps specific cloud software state to these global states.
+    """
+
     def __init__(self, name="", id="", vmtype="",
             hostname="", clusteraddr="",
             cloudtype="", network="public", cpuarch="x86",
             image="", memory=0, mementry=0,
             cpucores=0, storage=0, keep_alive=0, spot_id="",
-            proxy_file=None):
+            proxy_file=None, job_per_core=False):
+        """
+        Constructor
+
+        name         - (str) The name of the vm (arbitrary)
+        id           - (str) The id tag for the VM. Whatever is used to access the vm
+                       by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
+        vmtype       - (str) The condor VMType attribute for the VM
+        hostname     - (str) The first part of hostname given to VM
+        condorname   - (str) The name of the VM as it's registered with Condor
+        clusteraddr  - (str) The address of the cluster hosting the VM
+        cloudtype    - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
+        network      - (str) The network association the VM uses
+        cpuarch      - (str) The required CPU architecture of the VM
+        image        - (str) The location of the image from which the VM was created
+        memory       - (int) The memory used by the VM
+        mementry     - (int) The index of the entry in the host cluster's memory list
+                       from which this VM is taking memory
+        proxy_file   - the proxy that was used to authenticate this VM's creation
+        errorcount   - (int) Number of Polling Errors VM has had
+        """
         self.name = name
         self.id = id
         self.vmtype = vmtype
@@ -105,6 +107,7 @@ class VM:
         self.spot_id = spot_id
         self.proxy_file = proxy_file
         self.override_status = None
+        self.job_per_core = job_per_core
 
         # Set a status variable on new creation
         self.status = "Starting"
@@ -418,10 +421,10 @@ class NimbusCluster(ICluster):
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage,)
 
-    # TODO: Explain parameters and returns
+
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
-            job_proxy_file_path=None):
+            job_proxy_file_path=None, job_per_core=False):
 
         log.debug("Nimbus cloud create command")
 
@@ -513,7 +516,7 @@ class NimbusCluster(ICluster):
             cpuarch = vm_cpuarch, image = vm_image,
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
             storage = vm_storage, keep_alive = vm_keepalive, 
-            proxy_file = job_proxy_file_path)
+            proxy_file = job_proxy_file_path, job_per_core = job_per_core)
 
         # Add the new VM object to the cluster's vms list And check out required resources
         self.vms.append(new_vm)
@@ -975,7 +978,8 @@ class EC2Cluster(ICluster):
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
-                  vm_keepalive=0, instance_type="", maximum_price=0):
+                  vm_keepalive=0, instance_type="", maximum_price=0,
+                  job_per_core=False):
 
         log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
@@ -1061,7 +1065,7 @@ class EC2Cluster(ICluster):
                     cpuarch = vm_cpuarch, image= vm_image,
                     memory = vm_mem, mementry = vm_mementry,
                     cpucores = vm_cores, storage = vm_storage, 
-                    keep_alive = vm_keepalive)
+                    keep_alive = vm_keepalive, job_per_core = job_per_core)
 
         try:
             new_vm.spot_id = spot_id

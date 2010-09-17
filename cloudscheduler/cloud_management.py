@@ -712,7 +712,18 @@ class ResourcePool:
         del types
         return results
 
-
+    def vm_slots_used(self):
+        types = {}
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if not types.has_key(vm.vmtype):
+                    types[vm.vmtype] = []
+                if vm.job_per_core:
+                    for core in range(vm.cpucores):
+                        types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+                else:
+                    types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+        return types
 
     # Take the current and previous machineLists
     # Figure out which machines have changed jobs

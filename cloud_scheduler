@@ -251,6 +251,7 @@ class Scheduler(threading.Thread):
             del desired_types
             del current_types
 
+
             ## Check failures to ban jobs on affected resources
             self.resource_pool.check_failures()
 
@@ -276,6 +277,8 @@ class Scheduler(threading.Thread):
                         if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
                             # Do not start VMs for jobs in a Hold state
                             if job.job_status == self.HELD:
+                                continue
+                            if not self.need_vm(user, job):
                                 continue
                             if self.sched_resource_create_track(user, job):
                                 break
@@ -566,6 +569,7 @@ class Scheduler(threading.Thread):
             log.debug("Booting VM for job %s on %s:" % (job.id, resource.name))
             resource.log()
 
+            #TODO: unify this
             if resource.__class__.__name__ == "NimbusCluster":
 
                 # Add the owner restriction requirement (Andre)
@@ -587,7 +591,8 @@ class Scheduler(threading.Thread):
                         'vm_storage':job.req_storage,
                         'customization':customizations,
                         'vm_keepalive':job.keep_alive,
-                        'job_proxy_file_path':job.get_x509userproxy()}
+                        'job_proxy_file_path':job.get_x509userproxy(),
+                        'job_per_core':job.job_per_core}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "EC2Cluster":
                 args = {'vm_name':job.req_image,
@@ -601,7 +606,8 @@ class Scheduler(threading.Thread):
                         'customization':customizations,
                         'vm_keepalive':job.keep_alive,
                         'instance_type':job.instance_type,
-                        'maximum_price':job.maximum_price}
+                        'maximum_price':job.maximum_price,
+                        'job_per_core':job.job_per_core}
                 create_ret = resource.vm_create(**args)
 
             # If the VM create fails, try again on another resource
@@ -617,6 +623,37 @@ class Scheduler(threading.Thread):
             log.debug("None of the resources could boot a vm for job %s. " % job.id + \
                       "Leaving %s's jobs unscheduled, moving on to next user" % job.user)
         return create_ret
+
+    def need_vm(self, user, userjob):
+        #TODO: clean this mess
+        vmtype = userjob.req_vmtype
+        cores = userjob.req_cpucores
+        if userjob.job_per_core:
+            cores = 1
+        memory = userjob.req_memory
+        storage = userjob.req_storage
+
+        jobs = self.job_pool.get_jobs_of_type_for_user(vmtype, user)
+        jobs_like_this = []
+        for job in jobs:
+            job_cores = job.req_cpucores
+            if job.job_per_core:
+                job_cores = 1
+
+            if job_cores == cores and job.req_memory == memory and job.req_storage == storage:
+                jobs_like_this.append(job)
+
+        vms_like_this = []
+        vms = []
+        vm_slots = self.resource_pool.vm_slots_used()
+        if vm_slots.has_key(vmtype):
+            vms = vm_slots[vmtype]
+        for vm in vms:
+            if vm["cores"] == cores and vm["memory"] == memory and vm["storage"] == storage:
+                vms_like_this.append(vm)
+
+        return len(jobs_like_this) > len(vms_like_this)
+
 
 
 class Cleanup(threading.Thread):
