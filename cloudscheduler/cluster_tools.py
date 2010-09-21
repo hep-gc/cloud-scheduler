@@ -1117,7 +1117,7 @@ class EC2Cluster(ICluster):
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
 
-        with vms_lock:
+        with self.vms_lock:
             if vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
                 vm.last_state_change = int(time.time())
@@ -1146,7 +1146,7 @@ class EC2Cluster(ICluster):
             if vm.id:
                 reservations = connection.get_all_instances([vm.id])
                 instance = reservations[0].instances[0]
-                instance.stop()
+                instance.terminate()
 
         except IndexError:
             log.warning("%s already seem to be gone... removing anyway." % vm.id)
