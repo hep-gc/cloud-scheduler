@@ -137,7 +137,10 @@ class VM:
         return output
 
     def get_proxy_file(self):
-        return self.proxy_file
+        if hasattr(self, "proxy_file"):
+            return self.proxy_file
+        else:
+            return None
 
     # The following method will return the environment that should
     # be used when executing subprocesses.  This is needed for setting

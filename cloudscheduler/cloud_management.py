@@ -718,11 +718,11 @@ class ResourcePool:
             for vm in cluster.vms:
                 if not types.has_key(vm.vmtype):
                     types[vm.vmtype] = []
-                if vm.job_per_core:
+                if hasattr(vm, "job_per_core") and vm.job_per_core:
                     for core in range(vm.cpucores):
                         types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
                 else:
-                    types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+                    types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
         return types
 
     # Take the current and previous machineLists
