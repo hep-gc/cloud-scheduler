@@ -228,7 +228,9 @@ class Job:
     # user proxy associated with this job.
     def get_x509userproxy_expiry_time(self):
         if (self.x509userproxy_lifetime_expiry_time == None) and (self.get_x509userproxy() != None):
+            log.debug('Fetching expiry time for %s' % (self.get_x509userproxy()))
             self.x509userproxy_lifetime_expiry_time = get_cert_expiry_time(get_x509userproxy())
+            log.debug('Expriy time for %s : %s' % (self.get_x509userproxy(), self.x509userproxy_lifetime_expiry_time))
         return self.x509userproxy_lifetime_expiry_time
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
