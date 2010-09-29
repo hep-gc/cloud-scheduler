@@ -31,6 +31,7 @@ import getopt
 import signal
 import logging
 import threading
+import traceback
 import ConfigParser
 import logging.handlers
 from optparse import OptionParser
@@ -132,27 +133,30 @@ class JobPoller(threading.Thread):
         self.quit = True
 
     def run(self):
-        log.info("Starting job polling...")
+        try:
+            log.info("Starting job polling...")
 
-        while not self.quit:
-            log.debug("Polling job scheduler")
+            while not self.quit:
+                log.debug("Polling job scheduler")
 
-            ## Query the job pool to get new unscheduled jobs
-            # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
-            condor_jobs = self.job_pool.job_query()
-            if condor_jobs != None:
-                self.job_pool.update_jobs(condor_jobs)
-            else:
-                log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
-            del condor_jobs
+                ## Query the job pool to get new unscheduled jobs
+                # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
+                condor_jobs = self.job_pool.job_query()
+                if condor_jobs != None:
+                    self.job_pool.update_jobs(condor_jobs)
+                else:
+                    log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
+                del condor_jobs
 
-            log.debug("Job Poller waiting %ds..." % self.polling_interval)
-            sleep_tics = self.polling_interval
-            while (not self.quit) and sleep_tics > 0:
-                time.sleep(1)
-                sleep_tics -= 1
+                log.debug("Job Poller waiting %ds..." % self.polling_interval)
+                sleep_tics = self.polling_interval
+                while (not self.quit) and sleep_tics > 0:
+                    time.sleep(1)
+                    sleep_tics -= 1
 
-        log.debug("Exiting job polling thread")
+            log.debug("Exiting job polling thread")
+        except:
+            log.error(traceback.format_exc())
 
 class MachinePoller(threading.Thread):
     """
@@ -975,6 +979,7 @@ def main():
 
     if should_be_running:
         log.error("Whoops. Wasn't expecting to exit. Did a thread crash?")
+       
 
     log.info("Cloud Scheduler quitting normally. (It might take a while, don't panic!)")
 
