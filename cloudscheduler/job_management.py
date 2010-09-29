@@ -30,11 +30,11 @@ import sys
 import shlex
 import string
 import logging
+import datetime
 import threading
 import subprocess
 from urllib2 import URLError
 from StringIO import StringIO
-from datetime import datetime
 try:
     from lxml import etree
 except:
@@ -131,7 +131,7 @@ class Job:
         self.myproxy_creds_name = CSMyProxyCredsName
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
-        self.x509userproxy_lifetime_expiry_time = None
+        self.x509userproxy_expiry_time = None
         self.job_per_core = VMJobPerCore in ['true', "True", True]
 
 
@@ -227,11 +227,11 @@ class Job:
     # Returns the expiry time as a datetime.datetime instance, or None if there is no
     # user proxy associated with this job.
     def get_x509userproxy_expiry_time(self):
-        if (self.x509userproxy_lifetime_expiry_time == None) and (self.get_x509userproxy() != None):
+        if (self.x509userproxy_expiry_time == None) and (self.get_x509userproxy() != None):
             log.debug('Fetching expiry time for %s' % (self.get_x509userproxy()))
-            self.x509userproxy_lifetime_expiry_time = get_cert_expiry_time(get_x509userproxy())
-            log.debug('Expriy time for %s : %s' % (self.get_x509userproxy(), self.x509userproxy_lifetime_expiry_time))
-        return self.x509userproxy_lifetime_expiry_time
+            self.x509userproxy_expiry_time = get_cert_expiry_time(self.get_x509userproxy())
+            log.debug('Expriy time for %s : %s' % (self.get_x509userproxy(), self.x509userproxy_expiry_time))
+        return self.x509userproxy_expiry_time
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
 # complete. Keeps scheduled and unscheduled jobs.
