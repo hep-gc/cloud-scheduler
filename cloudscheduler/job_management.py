@@ -701,25 +701,34 @@ class JobPool:
         ret = False
         if (target_job.user in self.new_jobs) and (self.has_job(self.new_jobs[target_job.user], target_job)):
             with self.write_lock:
-                for job in self.new_jobs[target_job.user]:
-                    if target_job.id == job.id:
-                        job.job_status = int(target_job.job_status)
-                        ret = True
-                        break
+                try:
+                    for job in self.new_jobs[target_job.user]:
+                        if target_job.id == job.id:
+                            job.job_status = int(target_job.job_status)
+                            ret = True
+                            break
+                except KeyError:
+                    log.exception("No jobs for that user")
         elif (target_job.user in self.sched_jobs) and (self.has_job(self.sched_jobs[target_job.user], target_job)):
             with self.write_lock:
-                for job in self.sched_jobs[target_job.user]:
-                    if target_job.id == job.id:
-                        job.job_status = int(target_job.job_status)
-                        ret = True
-                        break
+                try:
+                    for job in self.sched_jobs[target_job.user]:
+                        if target_job.id == job.id:
+                            job.job_status = int(target_job.job_status)
+                            ret = True
+                            break
+                except KeyError:
+                    log.exception("No jobs for that user")
         elif (target_job.user in self.high_jobs) and (self.has_job(self.high_jobs[target_job.user], target_job)):
             with self.write_lock:
-                for job in self.high_jobs[target_job.user]:
-                    if target_job.id == job.id:
-                        job.job_status = int(target_job.job_status)
-                        ret = True
-                        break
+                try:
+                    for job in self.high_jobs[target_job.user]:
+                        if target_job.id == job.id:
+                            job.job_status = int(target_job.job_status)
+                            ret = True
+                            break
+                except KeyError:
+                    log.exception("No jobs for that user")
         else:
             log.warning("update_job_status - Job does not exist in system."
                       + " Doing nothing.")
