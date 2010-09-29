@@ -30,12 +30,11 @@ import sys
 import shlex
 import string
 import logging
-import datetime
 import threading
 import subprocess
 from urllib2 import URLError
 from StringIO import StringIO
-
+from datetime import datetime
 try:
     from lxml import etree
 except:
@@ -132,6 +131,7 @@ class Job:
         self.myproxy_creds_name = CSMyProxyCredsName
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
+        self.x509userproxy_lifetime_expiry_time = None
         self.job_per_core = VMJobPerCore in ['true', "True", True]
 
 
@@ -147,8 +147,8 @@ class Job:
 
     # Log a short string representing the job
     def log(self):
-        log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyProxyServer, self.CSMyProxyServerPort))
+        log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s, User proxy: %s, Proxy expiry date: %s" \
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyProxyServer, self.CSMyProxyServerPort, self.get_x509userproxy(), self.get_x509userproxy_expiry_time()))
     def log_dbg(self):
         log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyProxyServer, self.CSMyProxyServerPort))
@@ -218,6 +218,18 @@ class Job:
 
     def get_x509userproxysubject(self):
         return self.x509userproxysubject
+
+    # Use this method to get the expiry time of the job's user proxy, if any.
+    # Note that lazy initialization is done;  the expiry time will be extracted from the
+    # user proxy the first time the method is called and then it will be cached in the
+    # instance variable.
+    #
+    # Returns the expiry time as a datetime.datetime instance, or None if there is no
+    # user proxy associated with this job.
+    def get_x509userproxy_expiry_time(self):
+        if (self.x509userproxy_lifetime_expiry_time == None) and (self.get_x509userproxy() != None):
+            self.x509userproxy_lifetime_expiry_time = get_cert_expiry_time(get_x509userproxy())
+        return self.x509userproxy_lifetime_expiry_time
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
 # complete. Keeps scheduled and unscheduled jobs.
