@@ -43,6 +43,7 @@ import cloudscheduler.__version__ as version
 import cloudscheduler.info_server as info_server
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
+import cloudscheduler.job_proxy_refresher as job_proxy_refresher
 
 #from cloudscheduler.monitoring.get_clouds import getCloudsClient
 
@@ -938,6 +939,10 @@ def main():
     # Create the Cleanup Thread
     cleaner = Cleanup(cloud_resources, job_pool)
     service_threads.append(cleaner)
+
+    # Create the JobProxyRefresher thread
+    job_proxy_refresher_thread = job_proxy_refresher.JobProxyRefresher(job_pool)
+    service_threads.append(job_proxy_refresher_thread)
 
     # Create the GetClouds Thread if wanted
     if config.getclouds:

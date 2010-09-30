@@ -48,6 +48,7 @@ except:
 
 import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
+from cloudscheduler.utilities import get_cert_expiry_time
 from decimal import *
 
 ##
@@ -290,6 +291,18 @@ class JobPool:
         else:
             log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
             self.job_query = self.job_query_SOAP
+
+    # Method to get all jobs in the JobPool
+    # Returns a list of Job instances, or [] if there are no jobs in the the JobPool.
+    def get_all_jobs(self):
+        jobs = []
+        for job_list in self.new_jobs.values():
+            jobs.extend(job_list)
+        for job_list in self.sched_jobs.values():
+            jobs.extend(job_list)
+        for job_list in self.high_jobs.values():
+            jobs.extend(job_list)
+        return jobs
 
     def job_query_local(self):
         """
