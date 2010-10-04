@@ -103,7 +103,7 @@ def get_cert_DN(cert_file_path):
 # This utility function will extract the expiry time from an x509
 # certificate.
 # It requires the openssl package to be installed.
-# Returns a datetime instance.
+# Returns a datetime instance, with UTC time.
 def get_cert_expiry_time(cert_file_path):
     log = get_cloudscheduler_logger()
     openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-enddate', '-noout']

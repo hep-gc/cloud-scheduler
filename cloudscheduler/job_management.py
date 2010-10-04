@@ -225,14 +225,26 @@ class Job:
     # user proxy the first time the method is called and then it will be cached in the
     # instance variable.
     #
-    # Returns the expiry time as a datetime.datetime instance, or None if there is no
+    # Returns the expiry time as a datetime.datetime instance (UTC), or None if there is no
     # user proxy associated with this job.
     def get_x509userproxy_expiry_time(self):
         if (self.x509userproxy_expiry_time == None) and (self.get_x509userproxy() != None):
-            log.debug('Fetching expiry time for %s' % (self.get_x509userproxy()))
             self.x509userproxy_expiry_time = get_cert_expiry_time(self.get_x509userproxy())
-            log.debug('Expriy time for %s : %s' % (self.get_x509userproxy(), self.x509userproxy_expiry_time))
         return self.x509userproxy_expiry_time
+
+    # This method will test if a job's user proxy needs to be refreshed, according
+    # the job proxy refresh threshold found in the cloud scheduler configuration.
+    #
+    # Returns True if the proxy needs to be refreshed, or False otherwise (or if
+    # the job has no user proxy associated with it).
+    def needs_proxy_renewal(self):
+        expiry_time = self.get_x509userproxy_expiry_time()
+        if expiry_time == None:
+            return False
+        td = expiry_time - datetime.datetime.utcnow()
+        td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.job_proxy_renewal_threshold))
+        return td_in_seconds < config.job_proxy_renewal_threshold
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
 # complete. Keeps scheduled and unscheduled jobs.

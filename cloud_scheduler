@@ -940,9 +940,12 @@ def main():
     cleaner = Cleanup(cloud_resources, job_pool)
     service_threads.append(cleaner)
 
-    # Create the JobProxyRefresher thread
-    job_proxy_refresher_thread = job_proxy_refresher.JobProxyRefresher(job_pool)
-    service_threads.append(job_proxy_refresher_thread)
+    # Create the JobProxyRefresher thread, if needed
+    if config.job_proxy_refresher_interval != -1:
+        job_proxy_refresher_thread = job_proxy_refresher.JobProxyRefresher(job_pool)
+        service_threads.append(job_proxy_refresher_thread)
+    else:
+        log.debug('Job proxy refresher thread not enabled.')
 
     # Create the GetClouds Thread if wanted
     if config.getclouds:
