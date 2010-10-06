@@ -935,8 +935,8 @@ class ResourcePool:
                                     break
             self.banned_job_resource = updated_ban
 
-    def do_condor_off(self, machine_name):
-        cmd = '/usr/sbin/condor_off -startd -peaceful -name %s' % (machine_name)
+    def do_condor_off(self, machine_name, machine_addr):
+        cmd = '/usr/sbin/condor_off -subsystem master -peaceful -addr "%s"' % (machine_addr)
         args = []
         args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:
@@ -955,8 +955,8 @@ class ResourcePool:
             log.debug("Reason: %s \n Error: %s" % (out, err))
         return sp.returncode
 
-    def do_condor_on(self, machine_name):
-        cmd = '/usr/sbin/condor_on -startd -name %s' % (machine_name)
+    def do_condor_on(self, machine_name, machine_addr):
+        cmd = '/usr/sbin/condor_on -subsystem master -addr "%s"' % (machine_addr)
         args = []
         args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:

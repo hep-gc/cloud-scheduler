@@ -74,6 +74,7 @@ class VM:
         vmtype       - (str) The condor VMType attribute for the VM
         hostname     - (str) The first part of hostname given to VM
         condorname   - (str) The name of the VM as it's registered with Condor
+        condoraddr   - (str) The Address of the VM as it's registered with Condor
         clusteraddr  - (str) The address of the cluster hosting the VM
         cloudtype    - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
         network      - (str) The network association the VM uses
@@ -90,6 +91,7 @@ class VM:
         self.vmtype = vmtype
         self.hostname = hostname
         self.condorname = None
+        self.condoraddr = None
         self.clusteraddr = clusteraddr
         self.cloudtype = cloudtype
         self.network = network
