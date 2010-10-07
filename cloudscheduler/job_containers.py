@@ -6,13 +6,11 @@ import cloudscheduler.config as config
 
 log = None
 
+#
+# This is an abstract base class; do not intantiate directly.
+#
 class JobContainer():
     __metclass__ = ABCMeta
-
-    # Some constants
-    ADD_NEW = 1
-    ADD_SCHED = 2
-    ADD_HIGH = 3
 
     def __init__(self):
         global log
@@ -22,12 +20,13 @@ class JobContainer():
     #
     # Job addition
     #
+
     @abstractmethod
-    def add_job(self, job, add_type):
+    def add_job(self, job):
         pass
 
     @abstractmethod
-    def add_jobs(self, jobs, add_type):
+    def add_jobs(self, jobs):
         pass
 
     #
@@ -105,13 +104,16 @@ class JobContainer():
     def to_string(self):
         pass
 
-    
+
+
+#
+# This class implements a job container based on hash tables.
+#
 class HashTableJobContainer(JobContainer):
     # class attributes
     all_jobs = None
     new_jobs = None
     sched_jobs = None
-    high_jobs = None
     jobs_by_user = None
 
     # constructor
@@ -121,30 +123,25 @@ class HashTableJobContainer(JobContainer):
         self.all_jobs = {}
         self.new_jobs = {}
         self.sched_jobs = {}
-        self.high_jobs = {}
         self.jobs_by_user = {}
         log.debug('HashTableJobContainer instance created.')
 
     # methods
-    def to_string(self):
-        return 'HashTableJobContainer [# of jobs: %d, locked: %s]' % (len(all_jobs), self.lock.locked())
+    def __str__(self):
+        return 'HashTableJobContainer [# of jobs: %d (unshed: %d sched: %d), locked: %s]' % (len(all_jobs), len(new_jobs), len(sched_jobs), self.lock.locked())
 
-    def add_job(self, job, add_type):
+    def add_job(self, job):
         with self.lock:
             all_jobs[job.id] = job
             if job.user not in jobs_by_user:
                 jobs_by_user[job.user] = {}
             jobs_by_user[job.user][job.id] = job
 
-            if(add_type == JobContainer.ADD_NEW):
+            # Update scheduled/unscheduled maps too:
+            if(job.status == "Unscheduled"):
                 self.new_jobs[job.id] = job
-            elif (add_type == JobContainer.ADD_SCHED):
+            else:
                 self.sched_jobs[job.id] = job
-            elif (add_type == JobContainer.ADD_HIGH):
-                if config.high_priority_job_support:
-                    self.high_jobs[job.id] = job
-                else:
-                    self.new_jobs[job.id] = job
 
             log.debug('job %s added to job container' % (job.id))
 
@@ -159,7 +156,6 @@ class HashTableJobContainer(JobContainer):
             self.jobs_by_user.clear()
             self.new_jobs.clear()
             self.sched_jobs.clear()
-            self.high_jobs.clear()
             log.debug('job container cleared')
 
     def remove_job(self, job):
@@ -174,8 +170,6 @@ class HashTableJobContainer(JobContainer):
                 del self.new_jobs[job.id]
             if job.id in self.sched_jobs:
                 del self.sched_jobs[job.id]
-            if job.id in self.high_jobs:
-                del self.high_jobs[job.id]
             log.debug('job %s removed from container' % job.id)
 
     def remove_jobs(self, jobs):
@@ -229,7 +223,11 @@ class HashTableJobContainer(JobContainer):
         return self.new_jobs.values()
 
     def get_high_priority_jobs(self):
-        return self.high_jobs.values()
+        jobs = []
+        for job in all_jobs.values():
+            if job.priority > 0:
+                jobs.append(job)
+        return jobs;
 
     def is_empty(self):
         return len(self.all_jobs) == 0
@@ -258,12 +256,6 @@ class HashTableJobContainer(JobContainer):
             if jobid in self.sched_jobs:
                 job = self.sched_jobs[jobid]
                 job.set_status("Unscheduled")
-                if job.high_priority == 0:
-                    self.new_jobs[jobid] = job
-                else:
-                    if config.high_priority_job_support:
-                        self.high_jobs[jobid] = job
-                    else:
-                        self.new_jobs[jobid] = job
+                self.new_jobs[jobid] = job
                 del self.sched_jobs[jobid]
                 log.debug('Job %s marked as unscheduled in the job container' % (jobid))

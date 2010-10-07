@@ -253,7 +253,7 @@ class JobPool:
         global log
         log = logging.getLogger("cloudscheduler")
         log.debug("New JobPool %s created" % name)
-        job_container = job_containers.HashTableJobContainer()
+        self.job_container = job_containers.HashTableJobContainer()
 
         self.name = name
         self.last_query = None
@@ -536,38 +536,6 @@ class JobPool:
         self.job_container.add_job(job, JobContainer.ADD_HIGH)
 
 
-    # Adds a job to a given list of job objects
-    # in order of priority. The list runs front to back, high to low
-    # priority.
-    # Note: job_list MUST be a list of Job objects
-    def insort_job(self, job_list, job):
-        ## Heuristics:
-        # Check if list is empty
-        if (job_list == []):
-            job_list.append(job)
-            return
-        # Check if job has highest priority in list
-        elif (job_list[0].priority < job.priority):
-            with self.write_lock:
-                job_list.insert(0, job)
-            return
-        # Check back of the list - equal priorites, append
-        elif (job_list[-1].priority >= job.priority):
-            job_list.append(job)
-            return
-        ## Otherwise, do a linear insert
-        # Move from back to front, as new entry is inserted AFTER entries of same priority
-        else:
-            i = len(job_list)
-            while (i != 0):
-                i = i-1
-                if (job_list[i].priority >= job.priority):
-                    with self.write_lock:
-                        job_list.insert(i+1, job)
-                    break
-            return
-
-
     # Remove System Job
     # Attempts to remove a given job from the JobPool unscheduled
     # or scheduled job dictionaries.
@@ -575,7 +543,7 @@ class JobPool:
     #   job - (Job) the job to be removed from the system
     # No return (if job does not exist in system, error message logged)
     def remove_system_job(self, job):
-        job_container.remove_job(job)
+        self.job_container.remove_job(job)
 
 
     # Update Job Status
@@ -586,7 +554,7 @@ class JobPool:
     #   True - updated
     #   False - failed
     def update_job_status(self, target_job):
-        return job_container.update_job_status(target_job.id, int(target_job.job_status))
+        return self.job_container.update_job_status(target_job.id, int(target_job.job_status))
 
     # Mark job scheduled
     # Makes all changes to a job to indicate that the job has been scheduled
@@ -630,27 +598,6 @@ class JobPool:
         log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
 
-    # Get desired vmtype distribution
-    # Based on top jobs in user new_job queue determine
-    # a 'fair' distribution of vmtypes
-    def job_type_distribution(self):
-        type_desired = {}
-        for user in self.new_jobs.keys():
-            vmtype = self.new_jobs[user][0].req_vmtype
-            if vmtype in type_desired.keys():
-                type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if self.high_jobs else 1)
-            else:
-                type_desired[vmtype] = 1 * (1 / Decimal(config.high_priority_job_weight) if self.high_jobs else 1)
-        for user in self.high_jobs.keys():
-            vmtype = self.high_jobs[user][0].req_vmtype
-            if vmtype in type_desired.keys():
-                type_desired[vmtype] += 1 * config.high_priority_job_weight
-            else:
-                type_desired[vmtype] = 1 * config.high_priority_job_weight
-        num_users = Decimal(len(self.new_jobs.keys()) + len(self.high_jobs.keys()))
-        for vmtype in type_desired.keys():
-            type_desired[vmtype] = type_desired[vmtype] / num_users
-        return type_desired
 
     def get_jobs_of_type_for_user(self, type, user):
         """

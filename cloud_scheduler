@@ -221,10 +221,9 @@ class Scheduler(threading.Thread):
 
             ## Check that jobs are valid for the clusters available
             bad_jobs = []
-            for user in self.job_pool.new_jobs.keys():
-                for job in self.job_pool.new_jobs[user]:
-                    if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
-                        bad_jobs.append(job)
+            for job in self.job_pool.job_container.get_unscheduled_jobs():
+                if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
+                    bad_jobs.append(job)
             with self.job_pool.write_lock:
                 while len(bad_jobs) > 0:
                     self.job_pool.remove_system_job(bad_jobs.pop())
