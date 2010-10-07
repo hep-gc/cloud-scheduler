@@ -49,6 +49,7 @@ except:
 
 import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
+import job_containers
 from decimal import *
 
 ##
@@ -224,7 +225,7 @@ class Job:
 class JobPool:
 
     ## Instance Variables:
-
+    job_container = None
     # Create the new_jobs (unscheduled jobs) and sched_jobs (scheduled jobs) dictionaries.
     # Dictionaries contain (username, [list of jobs]) entries.
     new_jobs = {}
@@ -254,6 +255,8 @@ class JobPool:
         global log
         log = logging.getLogger("cloudscheduler")
         log.debug("New JobPool %s created" % name)
+        job_container = job_containers.HashTableJobContainer()
+
         self.name = name
         self.last_query = None
         self.write_lock = threading.RLock()
