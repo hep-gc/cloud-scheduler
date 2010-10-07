@@ -1,8 +1,12 @@
+from abc import ABCMeta, abstractmethod
 import threading
+import logging
 
 log = None
 
-class JobContainer:
+class JobContainer():
+    __metclass__ = ABCMeta
+
     def __init__(self):
         global log
         log = logging.getLogger("cloudscheduler")
