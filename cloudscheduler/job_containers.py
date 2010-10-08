@@ -3,123 +3,181 @@ import threading
 import logging
 import cloudscheduler.config as config
 
-
+# Use this global variable for logging.
 log = None
 
 #
 # This is an abstract base class; do not intantiate directly.
 #
+# API documentation should go in here, as opposed to writing specific
+# documentation for each concrete subclasses.
+#
 class JobContainer():
     __metclass__ = ABCMeta
 
+    # Use this lock if you require to threadsafe an operation.
+    lock = None
+
     def __init__(self):
+        self.lock = threading.RLock()
         global log
         log = logging.getLogger("cloudscheduler")
         pass
 
-    #
-    # Job addition
-    #
 
+    # Add a job to the container.
+    # If the job already exist, it will be replaced.
     @abstractmethod
     def add_job(self, job):
         pass
 
+    # Add a set of jobs (in a list) to the container.
+    # If a job already exist, it will be replaced.
     @abstractmethod
     def add_jobs(self, jobs):
         pass
 
-    #
-    # Job deletion
-    #
-
+    # Remove all jobs from the container.
+    # After calling this method, the container is completely empty.
     @abstractmethod
     def clear(self):
         pass
 
+    # Remove a single job form the container.
+    # If the job does not exist in the container, then nothing is done.
     @abstractmethod
     def remove_job(self, job):
         pass
 
+    # Remove a set of jobs (in a list) from the container.
+    # If a job does not exist in the container, then it is ignored.
     @abstractmethod
     def remove_jobs(self, jobs):
         pass
 
+    # Remove a job (by job id) from the container.
+    # If the job does not exist in the container, then nothing is done.
     @abstractmethod
     def remove_job_by_id(self, jobid):
         pass
 
+    # Remove a set of jobs (by job ids, in a list) from the container.
+    # If a job does not exist in the container, then it is ignored.
     @abstractmethod
     def remove_jobs_by_id(self, jobids):
         pass
 
+    # Remove all jobs in the container that does not appear in a given set
+    # of jobs (in a list).
     @abstractmethod
     def remove_all_not_in(self, jobs_to_keep):
         pass
 
+    # Updates the status of a job (job.job_status attribute) in the container.
+    # Returns True if the job was found in the container, False otherwise.
     @abstractmethod
     def update_job_status(self, jobid, status):
         pass
 
+    # Mark a job as being scheduled.
+    # This will update the job's status attribute to "Scheduled".
+    # Returns True if the job exist in the container and was previously unscheduled, returns False otherwise.
     @abstractmethod
     def schedule_job(self, job):
         pass
 
+    # Mark a job as being unscheduled.
+    # This will update the job's status attribute to "Unscheduled".
+    # Returns True if the job exist in the container and was previously scheduled, returns False otherwise.
     @abstractmethod
     def unschedule_job(self, job):
         pass
 
-    #
-    # Getters
-    #
+
+
+
+    # Returns a list of users that the container holds jobs for, or [] if the container is empty.
     @abstractmethod
     def get_users(self):
         pass
 
+    # Returns a list of all jobs in the container, in no particular order, or [] if the container is empty.
     @abstractmethod
     def get_all_jobs(self):
         pass
 
+    # Get a job by job id.
+    # Return the job with the given job id, or None if the job does not exist in the container.
     @abstractmethod
     def get_job_by_id(self, jobid):
         pass
 
+    # Get a list of all jobs for a user.
+    # Returns list of jobs for the user, or an empty list if the container has no jobs for the given user.
+    # If prioritized is True, then the returned list of jobs will be sorted by job.priority, high to low.
     @abstractmethod
     def get_jobs_for_user(self, user, prioritized=False):
         pass
 
+    # Get a list of all scheduled jobs in the container, or [] if there are no scheduled jobs.
     @abstractmethod
     def get_scheduled_jobs(self):
         pass
 
+    # Get a list of all scheduled jobs per user.
+    # Returns dictionary where the items are:
+    # (user, [list of scheduled jobs])
+    # If a user does not have any scheduled jobs, then there will be no entry for that user.
+    # If prioritized is True, then the returned lists of jobs will be sorted by job.priority, high to low.
     @abstractmethod
     def get_scheduled_jobs_by_users(self, prioritized=False):
         pass
 
+    # Get a list of all unscheduled jobs in the container, or [] if there are no unscheduled jobs.
     @abstractmethod
     def get_unscheduled_jobs(self):
         pass
 
+    # Get a list of all unscheduled jobs per user.
+    # Returns dictionary where the items are:
+    # (user, [list of unscheduled jobs])
+    # If a user does not have any unscheduled jobs, then there will be no entry for that user.
+    # If prioritized is True, then the returned lists of jobs will be sorted by job.priority, high to low.
     @abstractmethod
     def get_unscheduled_jobs_by_users(self, prioritized=False):
         pass
 
+    # Get a list of all high priority jobs in the container, or [] if there are no high priority jobs.
+    # A job is said to have high priority if job.high_priority != 0
     @abstractmethod
     def get_high_priority_jobs(self):
         pass
 
+    # Get a list of all high priority jobs per user.
+    # Returns dictionary where the items are:
+    # (user, [list of high priority jobs])
+    # If a user does not have any high priority jobs, then there will be no entry for that user.
+    # If prioritized is True, then the returned lists of jobs will be sorted by job.priority, high to low.
     @abstractmethod
     def get_high_priority_jobs_by_users(self, prioritized=False):
         pass
 
-
+    # Returns True if the container has no jobs, returns False otherwise.
     @abstractmethod
     def is_empty(self):
         pass
 
+    # Returns a string containing human-readable information about this container.
     @abstractmethod
     def __str__(self):
         pass
+
+
+
+
+
+
+
 
 
 
@@ -136,7 +194,6 @@ class HashTableJobContainer(JobContainer):
     # constructor
     def __init__(self):
         JobContainer.__init__(self)
-        self.lock = threading.RLock()
         self.all_jobs = {}
         self.new_jobs = {}
         self.sched_jobs = {}
@@ -313,6 +370,9 @@ class HashTableJobContainer(JobContainer):
                 self.sched_jobs[jobid] = job
                 del self.new_jobs[jobid]
                 log.debug('Job %s marked as scheduled in the job container' % (jobid))
+                return True
+            else:
+                return False
                 
 
     def unschedule_job(self, jobid):
@@ -323,3 +383,6 @@ class HashTableJobContainer(JobContainer):
                 self.new_jobs[jobid] = job
                 del self.sched_jobs[jobid]
                 log.debug('Job %s marked as unscheduled in the job container' % (jobid))
+                return True
+            else:
+                return False
