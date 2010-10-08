@@ -310,14 +310,14 @@ class HashTableJobContainer(JobContainer):
                 return_value[job.user].append(job)
             # Now lets sort if needed.
             if prioritized:
-                for job_list : return_value.values():
+                for job_list in return_value.values():
                     job_list.sort(key=job.get_priority, reverse=True)
             return return_value
 
-   def get_unscheduled_jobs(self):
+    def get_unscheduled_jobs(self):
         return self.new_jobs.values()
 
-   def get_unscheduled_jobs_by_users(self, prioritized=False):
+    def get_unscheduled_jobs_by_users(self, prioritized=False):
         with self.lock:
             return_value = {}
             for job in self.new_jobs.values():
@@ -326,7 +326,7 @@ class HashTableJobContainer(JobContainer):
                 return_value[job.user].append(job)
             # Now lets sort if needed.
             if prioritized:
-                for job_list : return_value.values():
+                for job_list in return_value.values():
                     job_list.sort(key=job.get_priority, reverse=True)
             return return_value
 
@@ -337,7 +337,7 @@ class HashTableJobContainer(JobContainer):
                 jobs.append(job)
         return jobs;
 
-   def get_high_priority_jobs_by_users(self, prioritized=False):
+    def get_high_priority_jobs_by_users(self, prioritized=False):
         with self.lock:
             return_value = {}
             for job in self.get_high_priority_jobs():
@@ -346,7 +346,7 @@ class HashTableJobContainer(JobContainer):
                 return_value[job.user].append(job)
             # Now lets sort if needed.
             if prioritized:
-                for job_list : return_value.values():
+                for job_list in return_value.values():
                     job_list.sort(key=job.get_priority, reverse=True)
             return return_value
 
