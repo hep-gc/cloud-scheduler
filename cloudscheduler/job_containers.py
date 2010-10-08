@@ -25,6 +25,12 @@ class JobContainer():
         pass
 
 
+    # Tests if the container has a specific job, by id.
+    # Returns True if the container has the given job, returns False otherwise.
+    @abstractmethod
+    def has_job(self, jobid):
+        pass
+   
     # Add a job to the container.
     # If the job already exist, it will be replaced.
     @abstractmethod
@@ -204,12 +210,15 @@ class HashTableJobContainer(JobContainer):
     def __str__(self):
         return 'HashTableJobContainer [# of jobs: %d (unshed: %d sched: %d), locked: %s]' % (len(all_jobs), len(new_jobs), len(sched_jobs), self.lock.locked())
 
+    def has_job(self, jobid):
+        return self.get_job_by_id(jobid) != None
+
     def add_job(self, job):
         with self.lock:
-            all_jobs[job.id] = job
-            if job.user not in jobs_by_user:
-                jobs_by_user[job.user] = {}
-            jobs_by_user[job.user][job.id] = job
+            self.all_jobs[job.id] = job
+            if job.user not in self.jobs_by_user:
+                self.jobs_by_user[job.user] = {}
+            self.jobs_by_user[job.user][job.id] = job
 
             # Update scheduled/unscheduled maps too:
             if(job.status == "Unscheduled"):
@@ -238,7 +247,7 @@ class HashTableJobContainer(JobContainer):
                 del self.all_jobs[job.id]
             if job.user in self.jobs_by_user and (job.id in self.jobs_by_user[job.user]):
                 del self.jobs_by_user[job.user][job.id]
-                if len(self.jobs_by_user[job.user] == 0):
+                if len(self.jobs_by_user[job.user]) == 0:
                     del self.jobs_by_user[job.user]
             if job.id in self.new_jobs:
                 del self.new_jobs[job.id]
@@ -293,7 +302,7 @@ class HashTableJobContainer(JobContainer):
             if prioritized:
                 jobs = self.jobs_by_user[user]
                 # Sort jobs in order of priority. The list runs front to back, high to low priority.
-                jobs.sort(key=job.get_priority, reverse=True)
+                jobs.sort(key=lambda job: job.get_priority(), reverse=True)
                 return jobs
             else:
                 return self.jobs_by_user[user]
@@ -311,7 +320,7 @@ class HashTableJobContainer(JobContainer):
             # Now lets sort if needed.
             if prioritized:
                 for job_list in return_value.values():
-                    job_list.sort(key=job.get_priority, reverse=True)
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
             return return_value
 
     def get_unscheduled_jobs(self):
@@ -321,13 +330,13 @@ class HashTableJobContainer(JobContainer):
         with self.lock:
             return_value = {}
             for job in self.new_jobs.values():
-                if job.user not in jobs:
+                if job.user not in return_value:
                     return_value[job.user] = []
                 return_value[job.user].append(job)
             # Now lets sort if needed.
             if prioritized:
                 for job_list in return_value.values():
-                    job_list.sort(key=job.get_priority, reverse=True)
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
             return return_value
 
     def get_high_priority_jobs(self):
@@ -347,7 +356,7 @@ class HashTableJobContainer(JobContainer):
             # Now lets sort if needed.
             if prioritized:
                 for job_list in return_value.values():
-                    job_list.sort(key=job.get_priority, reverse=True)
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
             return return_value
 
     def is_empty(self):

@@ -149,10 +149,10 @@ class Job:
     # Log a short string representing the job
     def log(self):
         log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyProxyServer, self.CSMyProxyServerPort))
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def log_dbg(self):
         log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.CSMyProxyCredsName, self.CSMyProxyServer, self.CSMyProxyServerPort))
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def get_job_info(self):
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
         return "%-15s %-10s %-10s %-15s %-25s\n" % (self.id[-15:], self.user[-10:], self.req_vmtype[-10:], CONDOR_STATUS[self.job_status], self.status[-25:])
@@ -489,6 +489,7 @@ class JobPool:
         # knows about it) and we simply need to update it.
         # In that case, we also remove it from the query_jobs, so that
         # only new jobs will remain in query_jobs after this step.
+        jobs_to_update = []
         for job in query_jobs:
             if self.job_container.has_job(job.id):
                 jobs_to_update.append(job)
@@ -524,16 +525,16 @@ class JobPool:
     # Add a new job to the system (in the new_jobs set)
     # Added in order (of priority)
     def add_new_job(self, job):
-        self.job_container.add_job(job, JobContainer.ADD_NEW)
+        self.job_container.add_job(job)
 
     # Add a job to the scheduled jobs set in the system
     def add_sched_job(self, job):
-        self.job_container.add_job(job, JobContainer.ADD_SCHED)
+        self.job_container.add_job(job)
 
     # Add High(Priority) Job
     # Add a new job to the system (in the high_jobs set)
     def add_high_job(self, job):
-        self.job_container.add_job(job, JobContainer.ADD_HIGH)
+        self.job_container.add_job(job)
 
 
     # Remove System Job
@@ -604,8 +605,8 @@ class JobPool:
     # a 'fair' distribution of vmtypes
     def job_type_distribution(self):
         type_desired = {}
-        new_jobs_by_users = self.job_pool.job_container.get_scheduled_jobs_by_users(prioritized = True)
-        high_priority_jobs_by_users = self.job_pool.job_container.get_high_priority_jobs_by_users(prioritized = True)
+        new_jobs_by_users = self.job_container.get_scheduled_jobs_by_users(prioritized = True)
+        high_priority_jobs_by_users = self.job_container.get_high_priority_jobs_by_users(prioritized = True)
 
         for user in new_jobs_by_users.keys():
             vmtype = new_jobs_by_users[user][0].req_vmtype
@@ -613,7 +614,7 @@ class JobPool:
                 type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if self.high_jobs else 1)
             else:
                 type_desired[vmtype] = 1 * (1 / Decimal(config.high_priority_job_weight) if self.high_jobs else 1)
-        for user in high_priority_jobs_by_users.keys()
+        for user in high_priority_jobs_by_users.keys():
             vmtype = high_priority_jobs_by_users[user][0].req_vmtype
             if vmtype in type_desired.keys():
                 type_desired[vmtype] += 1 * config.high_priority_job_weight
