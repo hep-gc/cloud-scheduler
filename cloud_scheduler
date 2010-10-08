@@ -224,9 +224,7 @@ class Scheduler(threading.Thread):
             for job in self.job_pool.job_container.get_unscheduled_jobs():
                 if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                     bad_jobs.append(job)
-            with self.job_pool.write_lock:
-                while len(bad_jobs) > 0:
-                    self.job_pool.remove_system_job(bad_jobs.pop())
+            self.job_pool.job_container.remove_jobs(bad_jobs)
 
             ## Figure out distribution of VMs requested and available
             current_types = {}
@@ -258,20 +256,23 @@ class Scheduler(threading.Thread):
             # TODO: This should be less explicit in its reference to JobPool class parts.
             #       Something like 'for job in self.job_pool.get_unsched_jobs()'
             log.debug("Schedule any high priority jobs")
-            for user in self.job_pool.high_jobs.keys():
-                for job in self.job_pool.high_jobs[user]:
+            high_priority_jobs_by_users = self.job_pool.job_container.get_high_priority_jobs_by_users(prioritized = True)
+            for user in high_priority_jobs_by_users.keys():
+                for job in high_priority_jobs_by_users[user]:
+
                     if job.job_status == self.HELD:
                         continue
                     if self.sched_resource_create_track(user, job):
                         break
             ## For starters we'll only schedule user jobs when there's no
             ## High Priority jobs waiting to start
-            if len(self.job_pool.high_jobs) == 0:
+            if len(high_priority_jobs_by_users) == 0:
                 log.debug("Attempt to schedule user jobs")
-                for user in self.job_pool.new_jobs.keys():
+                unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
+                for user in unscheduled_jobs_by_users.keys():
                     # Attempt to schedule jobs in order of their appearance in user's job list
                     # (currently sorted by Job priority)
-                    for job in self.job_pool.new_jobs[user]:
+                    for job in unscheduled_jobs_by_users[user]:
                         # Check that type of VM for job is needed
                         if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
                             # Do not start VMs for jobs in a Hold state
@@ -684,27 +685,21 @@ class Cleanup(threading.Thread):
             log.debug("Syncing job queues")
 
             # Check through new jobs for running jobs and move to sched
-            with self.job_pool.write_lock:
-                for user in self.job_pool.new_jobs.keys():
-                    for job in reversed(self.job_pool.new_jobs[user]):
+            with self.job_pool.job_container.lock:
+                for job in self.job_pool.job_container.get_all_jobs():
                         if job.job_status == self.RUNNING:
                             self.job_pool.schedule(job)
-                for user in self.job_pool.high_jobs.keys():
-                    for job in reversed(self.job_pool.high_jobs[user]):
-                        if job.job_status == self.RUNNING:
-                            self.job_pool.schedule(job)
+                    
                 vms = self.resource_pool.get_vmtypes_count_internal()
                 job_req_count = {}
-                for user in self.job_pool.sched_jobs.keys():
-                    for job in self.job_pool.sched_jobs[user]:
-                        if job.req_vmtype in job_req_count:
-                            job_req_count[job.req_vmtype] += 1
-                        else:
-                            job_req_count[job.req_vmtype] = 1
-                for user in self.job_pool.sched_jobs.keys():
-                    for job in reversed(self.job_pool.sched_jobs[user]):
-                        if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
-                            self.job_pool.unschedule(job)
+                for job in self.job_pool.job_container.get_scheduled_jobs():
+                    if job.req_vmtype in job_req_count:
+                        job_req_count[job.req_vmtype] += 1
+                    else:
+                        job_req_count[job.req_vmtype] = 1
+                for job in self.job_pool.job_container.get_scheduled_jobs():
+                    if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
+                        self.job_pool.unschedule(job)
                     
 
             # Remove unneeded VMs.

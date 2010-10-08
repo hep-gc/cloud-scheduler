@@ -73,6 +73,10 @@ class JobContainer():
     # Getters
     #
     @abstractmethod
+    def get_users(self):
+        pass
+
+    @abstractmethod
     def get_all_jobs(self):
         pass
 
@@ -81,7 +85,7 @@ class JobContainer():
         pass
 
     @abstractmethod
-    def get_jobs_for_user(self, user):
+    def get_jobs_for_user(self, user, prioritized=False):
         pass
 
     @abstractmethod
@@ -89,7 +93,15 @@ class JobContainer():
         pass
 
     @abstractmethod
+    def get_scheduled_jobs_by_users(self, prioritized=False):
+        pass
+
+    @abstractmethod
     def get_unscheduled_jobs(self):
+        pass
+
+    @abstractmethod
+    def get_unscheduled_jobs_by_users(self, prioritized=False):
         pass
 
     @abstractmethod
@@ -97,11 +109,16 @@ class JobContainer():
         pass
 
     @abstractmethod
+    def get_high_priority_jobs_by_users(self, prioritized=False):
+        pass
+
+
+    @abstractmethod
     def is_empty(self):
         pass
 
-    abstractmethod
-    def to_string(self):
+    @abstractmethod
+    def __str__(self):
         pass
 
 
@@ -198,6 +215,8 @@ class HashTableJobContainer(JobContainer):
                 if job.id not in jobs_to_keep_dict:
                     self.remove_job(job)
             
+    def get_users(self):
+        return self.jobs_by_user.keys()
 
     def get_all_jobs(self):
         return self.all_jobs.values()
@@ -209,18 +228,50 @@ class HashTableJobContainer(JobContainer):
             else:
                 return None
 
-    def get_jobs_for_user(self, user):
+    def get_jobs_for_user(self, user, prioritized=False):
         with self.lock:
-            if user in self.jobs_by_user:
-                return self.jobs_by_user[user]
+            if user not in self.jobs_by_user:
+                return []
+
+            if prioritized:
+                jobs = self.jobs_by_user[user]
+                # Sort jobs in order of priority. The list runs front to back, high to low priority.
+                jobs.sort(key=job.get_priority, reverse=True)
+                return jobs
             else:
-                return None
+                return self.jobs_by_user[user]
 
     def get_scheduled_jobs(self):
         return self.sched_jobs.values()
 
-    def get_unscheduled_jobs(self):
+    def get_scheduled_jobs_by_users(self, prioritized=False):
+        with self.lock:
+            return_value = {}
+            for job in self.sched_jobs.values():
+                if job.user not in jobs:
+                    return_value[job.user] = []
+                return_value[job.user].append(job)
+            # Now lets sort if needed.
+            if prioritized:
+                for job_list : return_value.values():
+                    job_list.sort(key=job.get_priority, reverse=True)
+            return return_value
+
+   def get_unscheduled_jobs(self):
         return self.new_jobs.values()
+
+   def get_unscheduled_jobs_by_users(self, prioritized=False):
+        with self.lock:
+            return_value = {}
+            for job in self.new_jobs.values():
+                if job.user not in jobs:
+                    return_value[job.user] = []
+                return_value[job.user].append(job)
+            # Now lets sort if needed.
+            if prioritized:
+                for job_list : return_value.values():
+                    job_list.sort(key=job.get_priority, reverse=True)
+            return return_value
 
     def get_high_priority_jobs(self):
         jobs = []
@@ -228,6 +279,19 @@ class HashTableJobContainer(JobContainer):
             if job.priority > 0:
                 jobs.append(job)
         return jobs;
+
+   def get_high_priority_jobs_by_users(self, prioritized=False):
+        with self.lock:
+            return_value = {}
+            for job in self.get_high_priority_jobs():
+                if job.user not in jobs:
+                    return_value[job.user] = []
+                return_value[job.user].append(job)
+            # Now lets sort if needed.
+            if prioritized:
+                for job_list : return_value.values():
+                    job_list.sort(key=job.get_priority, reverse=True)
+            return return_value
 
     def is_empty(self):
         return len(self.all_jobs) == 0
