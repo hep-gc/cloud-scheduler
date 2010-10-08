@@ -332,7 +332,7 @@ class HashTableJobContainer(JobContainer):
 
     def get_high_priority_jobs(self):
         jobs = []
-        for job in all_jobs.values():
+        for job in self.all_jobs.values():
             if job.priority > 0:
                 jobs.append(job)
         return jobs;
