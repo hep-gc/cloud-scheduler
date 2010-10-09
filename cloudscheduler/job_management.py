@@ -473,13 +473,13 @@ class JobPool:
         #   - remove finished jobs (job in system, not in jobs list)
 
         # DBG: print both jobs dicts before updating system.
-        log.verbose("System jobs prior to system update:")
-        log.verbose("Unscheduled Jobs (new_jobs):")
-        self.log_unsched_jobs()
-        log.verbose("Scheduled Jobs (sched_jobs):")
-        self.log_sched_jobs()
-        log.verbose("High Priority Jobs (high_jobs):")
-        self.log_high_jobs()
+        #log.verbose("System jobs prior to system update:")
+        #log.verbose("Unscheduled Jobs (new_jobs):")
+        #self.log_unsched_jobs()
+        #log.verbose("Scheduled Jobs (sched_jobs):")
+        #self.log_sched_jobs()
+        #log.verbose("High Priority Jobs (high_jobs):")
+        #self.log_high_jobs()
 
         print "D"
         # Lets remove all jobs in the container that do not appear in the
@@ -522,13 +522,13 @@ class JobPool:
 
         print "H"
         # DBG: print both jobs dicts before updating system.
-        log.verbose("System jobs after system update:")
-        log.verbose("Unscheduled Jobs (new_jobs):")
-        self.log_unsched_jobs()
-        log.verbose("Scheduled Jobs (sched_jobs):")
-        self.log_sched_jobs()
-        log.verbose("High Priority Jobs (high_jobs):")
-        self.log_high_jobs()
+        #log.verbose("System jobs after system update:")
+        #log.verbose("Unscheduled Jobs (new_jobs):")
+        #self.log_unsched_jobs()
+        #log.verbose("Scheduled Jobs (sched_jobs):")
+        #self.log_sched_jobs()
+        #log.verbose("High Priority Jobs (high_jobs):")
+        #self.log_high_jobs()
 
         print "I"
     # Add New Job
