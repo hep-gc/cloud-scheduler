@@ -208,7 +208,7 @@ class HashTableJobContainer(JobContainer):
 
     # methods
     def __str__(self):
-        return 'HashTableJobContainer [# of jobs: %d (unshed: %d sched: %d), locked: %s]' % (len(all_jobs), len(new_jobs), len(sched_jobs), self.lock.locked())
+        return 'HashTableJobContainer [# of jobs: %d (unshed: %d sched: %d)]' % (len(self.all_jobs), len(self.new_jobs), len(self.sched_jobs))
 
     def has_job(self, jobid):
         return self.get_job_by_id(jobid) != None
@@ -226,7 +226,7 @@ class HashTableJobContainer(JobContainer):
             else:
                 self.sched_jobs[job.id] = job
 
-            log.debug('job %s added to job container' % (job.id))
+            #log.debug('job %s added to job container' % (job.id))
 
     def add_jobs(self, jobs, add_type):
         with self.lock:
@@ -253,7 +253,7 @@ class HashTableJobContainer(JobContainer):
                 del self.new_jobs[job.id]
             if job.id in self.sched_jobs:
                 del self.sched_jobs[job.id]
-            log.debug('job %s removed from container' % job.id)
+            #log.debug('job %s removed from container' % job.id)
 
     def remove_jobs(self, jobs):
         with self.lock:
@@ -378,7 +378,7 @@ class HashTableJobContainer(JobContainer):
                 job.set_status("Scheduled")
                 self.sched_jobs[jobid] = job
                 del self.new_jobs[jobid]
-                log.debug('Job %s marked as scheduled in the job container' % (jobid))
+                #log.debug('Job %s marked as scheduled in the job container' % (jobid))
                 return True
             else:
                 return False
@@ -391,7 +391,7 @@ class HashTableJobContainer(JobContainer):
                 job.set_status("Unscheduled")
                 self.new_jobs[jobid] = job
                 del self.sched_jobs[jobid]
-                log.debug('Job %s marked as unscheduled in the job container' % (jobid))
+                #log.debug('Job %s marked as unscheduled in the job container' % (jobid))
                 return True
             else:
                 return False
