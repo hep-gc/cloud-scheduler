@@ -288,11 +288,10 @@ class HashTableJobContainer(JobContainer):
         return self.all_jobs.values()
 
     def get_job_by_id(self, jobid):
-        with self.lock:
-            if jobid in self.all_jobs:
-                return self.all_jobs[jobid]
-            else:
-                return None
+        try:
+            return self.all_jobs[jobid]
+        except KeyError:
+            return None
 
     def get_jobs_for_user(self, user, prioritized=False):
         with self.lock:

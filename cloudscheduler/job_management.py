@@ -455,17 +455,19 @@ class JobPool:
     # Parameters:
     #   jobs - (list of Job objects) The jobs received from a condor query
     def update_jobs(self, query_jobs):
+        print "A"
         # If no jobs recvd, remove all jobs from the system (all have finished or have been removed)
         if (query_jobs == []):
             log.debug("No jobs received from job query. Removing all jobs from the system.")
             self.job_container.clear()
             return
-
+        print "B"
         # Filter out any jobs in an error status (from the given job list)
         for job in query_jobs:
             if job.job_status >= self.ERROR:
                 query_jobs.remove(job)
 
+        print "C"
         # Update all system jobs:
         #   - remove jobs already in the system from the jobs list
         #   - remove finished jobs (job in system, not in jobs list)
@@ -479,10 +481,12 @@ class JobPool:
         log.verbose("High Priority Jobs (high_jobs):")
         self.log_high_jobs()
 
+        print "D"
         # Lets remove all jobs in the container that do not appear in the
         # given condor job list.
         self.job_container.remove_all_not_in(query_jobs)
 
+        print "E"
         # Now lets loop through the remaining jobs given by condor and
         # check if each job is in the job container.
         # If yes, then it means the job is not new (the container already
@@ -490,12 +494,15 @@ class JobPool:
         # In that case, we also remove it from the query_jobs, so that
         # only new jobs will remain in query_jobs after this step.
         jobs_to_update = []
+        new_jobs = []
         for job in query_jobs:
             if self.job_container.has_job(job.id):
                 jobs_to_update.append(job)
-                query_jobs.remove(job)
+            else:
+                new_jobs.append(job)
+        query_jobs = new_jobs
 
-
+        print "F"
         # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
         for job in query_jobs:
             if job.high_priority == 0:
@@ -505,12 +512,15 @@ class JobPool:
             log.verbose("Job %s added to unscheduled jobs list" % job.id)
         del query_jobs
 
+        print "G"
+
         # Update job status of all the non-new jobs
         log.debug("Updating Job Status")
         for job in jobs_to_update:
             self.update_job_status(job)
         del jobs_to_update
 
+        print "H"
         # DBG: print both jobs dicts before updating system.
         log.verbose("System jobs after system update:")
         log.verbose("Unscheduled Jobs (new_jobs):")
@@ -520,7 +530,7 @@ class JobPool:
         log.verbose("High Priority Jobs (high_jobs):")
         self.log_high_jobs()
 
-
+        print "I"
     # Add New Job
     # Add a new job to the system (in the new_jobs set)
     # Added in order (of priority)
