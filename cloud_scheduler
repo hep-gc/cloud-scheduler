@@ -141,7 +141,11 @@ class JobPoller(threading.Thread):
             # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
             condor_jobs = self.job_pool.job_query()
             if condor_jobs != None:
+                print "calling job_pool.update_jobs..."
+                starttime = time.clock()
                 self.job_pool.update_jobs(condor_jobs)
+                elapsed = time.clock() - starttime
+                print "job_pool.update_jobs returned: %s (%s)" % (self.job_pool.job_container, elapsed)
             else:
                 log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
             del condor_jobs
@@ -267,8 +271,8 @@ class Scheduler(threading.Thread):
             ## For starters we'll only schedule user jobs when there's no
             ## High Priority jobs waiting to start
             if len(high_priority_jobs_by_users) == 0:
-                log.debug("Attempt to schedule user jobs")
                 unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
+                log.debug("Attempt to schedule user jobs: %s" % (unscheduled_jobs_by_users))
                 for user in unscheduled_jobs_by_users.keys():
                     # Attempt to schedule jobs in order of their appearance in user's job list
                     # (currently sorted by Job priority)
