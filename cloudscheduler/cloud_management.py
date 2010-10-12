@@ -948,12 +948,15 @@ class ResourcePool:
         sp = subprocess.Popen(args, shell=False,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out, err) = sp.communicate(input=None)
-        if sp.returncode == 0:
+        ret = -1
+        if out.startswith("Sent"):
+            ret = 0
+        if sp.returncode == 0 and ret == 0:
             log.debug("Successfuly sent condor_off to %s" % (machine_name))
         else:
             log.debug("Failed to send condor_off to %s" % (machine_name))
             log.debug("Reason: %s \n Error: %s" % (out, err))
-        return sp.returncode
+        return (sp.returncode, ret)
 
     def do_condor_on(self, machine_name, machine_addr):
         cmd = '/usr/sbin/condor_on -subsystem master -addr "%s"' % (machine_addr)
