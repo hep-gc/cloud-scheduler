@@ -299,12 +299,12 @@ class HashTableJobContainer(JobContainer):
                 return []
 
             if prioritized:
-                jobs = self.jobs_by_user[user]
+                jobs = self.jobs_by_user[user].values()
                 # Sort jobs in order of priority. The list runs front to back, high to low priority.
                 jobs.sort(key=lambda job: job.get_priority(), reverse=True)
                 return jobs
             else:
-                return self.jobs_by_user[user]
+                return self.jobs_by_user[user].values()
 
     def get_scheduled_jobs(self):
         return self.sched_jobs.values()
