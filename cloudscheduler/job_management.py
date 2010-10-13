@@ -613,9 +613,9 @@ class JobPool:
         for user in new_jobs_by_users.keys():
             vmtype = new_jobs_by_users[user][0].req_vmtype
             if vmtype in type_desired.keys():
-                type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if config.high_priority_job_support else 1)
+                type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
             else:
-                type_desired[vmtype] = 1 * (1 / Decimal(config.high_priority_job_weight) if config.high_priority_job_support else 1)
+                type_desired[vmtype] = 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
         for user in high_priority_jobs_by_users.keys():
             vmtype = high_priority_jobs_by_users[user][0].req_vmtype
             if vmtype in type_desired.keys():
