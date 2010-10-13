@@ -349,7 +349,7 @@ class HashTableJobContainer(JobContainer):
         with self.lock:
             return_value = {}
             for job in self.get_high_priority_jobs():
-                if job.user not in jobs:
+                if job.user not in return_value:
                     return_value[job.user] = []
                 return_value[job.user].append(job)
             # Now lets sort if needed.
