@@ -341,9 +341,9 @@ class HashTableJobContainer(JobContainer):
     def get_high_priority_jobs(self):
         jobs = []
         for job in self.all_jobs.values():
-            if job.priority > 0:
+            if job.high_priority:
                 jobs.append(job)
-        return jobs;
+        return jobs
 
     def get_high_priority_jobs_by_users(self, prioritized=False):
         with self.lock:
