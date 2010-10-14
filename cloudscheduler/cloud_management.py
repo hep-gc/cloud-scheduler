@@ -530,7 +530,7 @@ class ResourcePool:
             return None
 
 
-        self._condor_status_to_machine_list(condor_out)
+        machine_list = self._condor_status_to_machine_list(condor_out)
 
         return machine_list
 
