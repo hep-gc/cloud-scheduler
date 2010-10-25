@@ -205,7 +205,7 @@ class VMJSONEncoder(json.JSONEncoder):
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
                 'cloudtype': vm.cloudtype, 'network': vm.network, 
-                'cpuarch': vm.cpuarch, 'imagelocation': vm.imagelocation,
+                'cpuarch': vm.cpuarch, 'image': vm.image,
                 'memory': vm.memory, 'mementry': vm.mementry, 
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status}
