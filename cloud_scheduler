@@ -141,11 +141,11 @@ class JobPoller(threading.Thread):
             # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
             condor_jobs = self.job_pool.job_query()
             if condor_jobs != None:
-                print "calling job_pool.update_jobs..."
-                starttime = time.clock()
+                #print "calling job_pool.update_jobs..."
+                #starttime = time.clock()
                 self.job_pool.update_jobs(condor_jobs)
-                elapsed = time.clock() - starttime
-                print "job_pool.update_jobs returned: %s (%s)" % (self.job_pool.job_container, elapsed)
+                #elapsed = time.clock() - starttime
+                #print "job_pool.update_jobs returned: %s (%s)" % (self.job_pool.job_container, elapsed)
             else:
                 log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
             del condor_jobs
