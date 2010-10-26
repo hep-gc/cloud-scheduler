@@ -579,7 +579,7 @@ class JobPool:
     def get_required_vmtypes(self):
         required_vmtypes = []
         for job in self.job_container.get_all_jobs():
-            if job.req_vmtype not in required_vmtypes:
+            if job.req_vmtype not in required_vmtypes and job.job_status != HELD:
                 required_vmtypes.append(job.req_vmtype)
 
         log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
@@ -594,9 +594,9 @@ class JobPool:
     def get_required_vmtypes_dict(self):
         required_vmtypes = {}
         for job in self.job_container.get_all_jobs():
-            if job.req_vmtype not in required_vmtypes:
+            if job.req_vmtype not in required_vmtypes and job.job_status != HELD:
                 required_vmtypes[job.req_vmtype] = 1
-            else:
+            elif job.job_status != HELD:
                 required_vmtypes[job.req_vmtype] = required_vmtypes[job.req_vmtype] + 1
         log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
