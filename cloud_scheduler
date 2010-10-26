@@ -272,7 +272,7 @@ class Scheduler(threading.Thread):
             ## High Priority jobs waiting to start
             if len(high_priority_jobs_by_users) == 0:
                 unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
-                log.debug("Attempt to schedule user jobs: %s" % (unscheduled_jobs_by_users))
+                log.verbose("Attempt to schedule user jobs: %s" % (unscheduled_jobs_by_users))
                 for user in unscheduled_jobs_by_users.keys():
                     # Attempt to schedule jobs in order of their appearance in user's job list
                     # (currently sorted by Job priority)
