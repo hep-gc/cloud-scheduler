@@ -609,20 +609,34 @@ class JobPool:
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_high_priority_jobs_by_users(prioritized = True)
-
+        held_user_adjust = 0
         for user in new_jobs_by_users.keys():
-            vmtype = new_jobs_by_users[user][0].req_vmtype
+            vmtype = None
+            for job in new_jobs_by_users[user]:
+                if job.job_status != self.HELD:
+                    vmtype = job.req_vmtype
+                    break
+            if vmtype == None:
+                held_user_adjust += 1 #This user is completely held
+                break
             if vmtype in type_desired.keys():
                 type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
             else:
                 type_desired[vmtype] = 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
         for user in high_priority_jobs_by_users.keys():
-            vmtype = high_priority_jobs_by_users[user][0].req_vmtype
+            vmtype = None
+            for job in high_priority_jobs_by_users[user]:
+                if job.job_status != self.HELD:
+                    vmtype = job.vmtype
+                    break
+            if vmtype == None:
+                held_user_adjust += 1 # this user is completely held
+                break
             if vmtype in type_desired.keys():
                 type_desired[vmtype] += 1 * config.high_priority_job_weight
             else:
                 type_desired[vmtype] = 1 * config.high_priority_job_weight
-        num_users = Decimal(len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
+        num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
         return type_desired
