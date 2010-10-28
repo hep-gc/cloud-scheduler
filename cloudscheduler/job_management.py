@@ -597,7 +597,7 @@ class JobPool:
             if job.req_vmtype not in required_vmtypes and job.job_status != self.HELD:
                 required_vmtypes[job.req_vmtype] = 1
             elif job.job_status != self.HELD:
-                required_vmtypes[job.req_vmtype] = required_vmtypes[job.req_vmtype] + 1
+                required_vmtypes[job.req_vmtype] += 1
         log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
 
