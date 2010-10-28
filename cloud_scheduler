@@ -304,9 +304,9 @@ class Scheduler(threading.Thread):
             if machineList:
 
                 # Remove excess VMs when available VM type exceedes required by jobs.
+                required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
                 if self.job_pool.last_query:
                     available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
-                    required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
                     log.debug("Removing excess VMs from the system.")
                     to_remove = {}
                     for vmtype, count in available_vmtypes_dict.iteritems():
@@ -317,7 +317,7 @@ class Scheduler(threading.Thread):
                         else:
                             to_remove[vmtype] = count
                     del available_vmtypes_dict
-                    del required_vmtypes_dict
+
                     # Go over the types and find idle machines to remove
                     self.remove_idle_machines(machineList, to_remove)
 
@@ -326,6 +326,24 @@ class Scheduler(threading.Thread):
                 vm_count = self.resource_pool.vm_count()
                 for vmtype, val in diff_types.iteritems():
                     num_to_change[vmtype] = int(round(val * vm_count))
+                excess_diff = 0
+                positive_types = []
+                for vmtype, val in num_to_change.iteritems():
+                    if val < 0 and abs(val) > required_vmtypes_dict[vmtype]:
+                        excess_diff += abs(val) - required_vmtypes_dict[vmtype]
+                        num_to_change[vmtype] = -required_vmtypes_dict[vmtype]
+                    elif val > 0:
+                        positive_types.append(vmtype)
+                del required_vmtypes_dict
+                if excess_diff > 0 and len(positive_types) > 0:
+                    reduce_per_type = int(excess_diff / len(positive_types))
+                    if reduce_per_type == 0 and len(positive_types) > 1:
+                        reduce_per_type = 1
+                        postive_types.pop()
+                    for vmtype in positive_types:
+                        num_to_change[vmtype] -= reduce_per_type
+                        if num_to_change[vmtype] < 0:
+                            num_to_change[vmtype] = 0
 
                 if config.graceful_shutdown:
                     if config.graceful_shutdown_method == 'hold':
@@ -337,10 +355,10 @@ class Scheduler(threading.Thread):
                         self.remove_idle_machines(machineList, num_to_change)
                     else:
                         # shutdown using condor_off
+                        vmtypes_jobcount = self.job_pool.get_required_vmtypes_dict()
                         for vmtype, val in num_to_change.iteritems():
                             criteria = {'VMType': vmtype, 'Activity': 'Retiring'}
                             retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
-                            
                             adjusted_val = val - len(retiring_vms_of_type)
                             if adjusted_val > 0:
                                 criteria = {'VMType': vmtype, 'Activity': 'Busy'}
