@@ -168,6 +168,12 @@ class JobContainer():
     def get_high_priority_jobs_by_users(self, prioritized=False):
         pass
 
+    # Finds up to N jobs matching the requirements of the given job.
+    # If N == 0, then all matching jobs are returned.
+    @abstractmethod
+    def find_unscheduled_jobs_with_matching_reqs(self, user, job, N=0):
+        pass
+
     # Returns True if the container has no jobs, returns False otherwise.
     @abstractmethod
     def is_empty(self):
@@ -327,7 +333,6 @@ class HashTableJobContainer(JobContainer):
 
     def get_unscheduled_jobs_by_users(self, prioritized=False):
         with self.lock:
-            log.verbose("(IN) get_unscheduled_jobs_by_users")
  
             return_value = {}
             for job in self.new_jobs.values():
@@ -338,7 +343,6 @@ class HashTableJobContainer(JobContainer):
             if prioritized:
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
-            log.verbose("(OUT) get_unscheduled_jobs_by_users")
             return return_value
 
     def get_high_priority_jobs(self):
@@ -350,7 +354,6 @@ class HashTableJobContainer(JobContainer):
 
     def get_high_priority_jobs_by_users(self, prioritized=False):
         with self.lock:
-            log.verbose("(IN) get_high_priority_jobs_by_users")
             return_value = {}
             for job in self.get_high_priority_jobs():
                 if job.user not in return_value:
@@ -360,7 +363,6 @@ class HashTableJobContainer(JobContainer):
             if prioritized:
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
-            log.verbose("(OUT) get_high_priority_jobs_by_users")
  
             return return_value
 
@@ -400,3 +402,25 @@ class HashTableJobContainer(JobContainer):
                 return True
             else:
                 return False
+
+    def find_unscheduled_jobs_with_matching_reqs(self, user, job, N=0):
+        with self.lock:
+            counter = 0
+            unscheduled_jobs_for_user = []
+            try:
+                unscheduled_jobs_for_user = self.get_unscheduled_jobs_by_users()[user]
+            except KeyError:
+                # User has no unscheduled jobs.
+                # Simply return an empty list right away.
+                return []
+
+            matching_jobs = []
+            for j in unscheduled_jobs_for_user:
+                if j.has_same_reqs(job):
+                    matching_jobs.append(j)
+                    counter += 1
+                    if counter > 0 and counter == N:
+                        break
+
+            return matching_jobs
+
