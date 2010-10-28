@@ -280,11 +280,14 @@ class Scheduler(threading.Thread):
                         # Check that type of VM for job is needed
                         if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
                             # Do not start VMs for jobs in a Hold state
-                            if job.job_status == self.HELD:
+                            if job.job_status == self.HELD or job.status == job.statuses[1]:
                                 continue
-                            if not self.need_vm(user, job):
-                                continue
+                            #if not self.need_vm(user, job):
+                                #continue
                             if self.sched_resource_create_track(user, job):
+                                if job.job_per_core:
+                                    for job in self.job_pool.find_unscheduled_jobs_with_matching_reqs(user, job, (job.req_cpucores - 1)):
+                                        job.status = job.statuses[1]
                                 break
                         else:
                             # This user already has their share
