@@ -223,7 +223,7 @@ class Job:
     # A method that will compare a job's requirements listed below with another job to see if they
     # all match.
     def has_same_reqs(self, job):
-        return self.vmtype == job.vmtype and self.req_cpucores == job.cpu_cores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network
+        return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network
 
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
