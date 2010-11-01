@@ -286,7 +286,7 @@ class Scheduler(threading.Thread):
                                 #continue
                             if self.sched_resource_create_track(user, job):
                                 if job.job_per_core:
-                                    for job in self.job_pool.find_unscheduled_jobs_with_matching_reqs(user, job, (job.req_cpucores - 1)):
+                                    for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, job, (job.req_cpucores - 1)):
                                         job.status = job.statuses[1]
                                 break
                         else:
