@@ -258,8 +258,9 @@ class JobPoolJSONEncoder(json.JSONEncoder):
             sched_queue.append(JobJSONEncoder().encode(job))
         new_decodes = []
         for job in new_queue:
-            new_decodes.append(json.load(job))
+            print job
+            new_decodes.append(job)
         sched_decodes = []
         for job in sched_queue:
-            sched_decodes.append(json.load(job))
+            sched_decodes.append(job)
         return {'new_jobs': new_decodes, 'sched_jobs': sched_decodes}
