@@ -288,6 +288,7 @@ class Scheduler(threading.Thread):
                                 if job.job_per_core:
                                     for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, \
                                     job, (job.req_cpucores - 1)):
+
                                         job.status = job.statuses[1]
                                 break
                         else:
