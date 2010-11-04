@@ -76,7 +76,7 @@ class Job:
              JobStatus=0, ClusterId=0, ProcId=0, VMType="default",
              VMNetwork="", VMCPUArch="x86", VMName="Default-Image",
              VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
-             VMKeepAlive=0, VMHighPriority=0,
+             VMKeepAlive=1, VMHighPriority=0,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None, x509userproxysubject=None, x509userproxy=None,
              VMInstanceType="", VMMaximumPrice=0, VMJobPerCore=False, **kwargs):
         """
