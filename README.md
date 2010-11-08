@@ -1,4 +1,4 @@
-# Cloud Scheduler 0.9 README
+# Cloud Scheduler 0.10 README
 
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
