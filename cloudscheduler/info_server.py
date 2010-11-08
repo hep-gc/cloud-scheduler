@@ -142,38 +142,28 @@ class InfoServer(threading.Thread,):
                            "information" 
             def get_newjobs(self):
                 output = "%-15s %-10s %-10s %-15s %-25s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status")
-                for user in job_pool.new_jobs.keys():
-                    for job in job_pool.new_jobs[user]:
-                        output += job.get_job_info()
+                for job in job_pool.job_container.get_unscheduled_jobs():
+                    output += job.get_job_info()
                 return output
             def get_schedjobs(self):
                 output = "%-15s %-10s %-10s %-15s %-25s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status")
-                for user in job_pool.sched_jobs.keys():
-                    for job in job_pool.sched_jobs[user]:
-                        output += job.get_job_info()
+                for job in job_pool.job_container.get_scheduled_jobs():
+                    output += job.get_job_info()
                 return output
             def get_highjobs(self):
                 output = "%-15s %-10s %-10s %-15s %-25s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status")
-                for user in job_pool.high_jobs.keys():
-                    for job in job_pool.high_jobs[user]:
-                        output += job.get_job_info()
+                for job in job_pool.job_container.get_high_priority_jobs():
+                    output += job.get_job_info()
                 return output
             def get_job(self, jobid):
                 output = "Job not found."
-                job_match = None
-                for job in job_pool.new_jobs.values() + job_pool.sched_jobs.values():
-                    if job.id == jobid:
-                        job_match = job
-                        break
-                output = job_match.get_job_info_pretty()
+                job = job_pool.job_container.get_job_by_id(jobid)
+                if job != null:
+                    output = job_match.get_job_info_pretty()
                 return output
             def get_json_job(self, jobid):
                 output = '{}'
-                job_match = None
-                for job in job_pool.new_jobs.values() + job_pool.sched_jobs.values():
-                    if job.id == jobid:
-                        job_match = job
-                        break
+                job_match = job_pool.job_container.get_job_by_id(jobid)
                 return JobJSONEncoder().encode(job)
             def get_json_jobpool(self):
                 return JobPoolJSONEncoder().encode(job_pool)
@@ -205,7 +195,7 @@ class VMJSONEncoder(json.JSONEncoder):
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
                 'cloudtype': vm.cloudtype, 'network': vm.network, 
-                'cpuarch': vm.cpuarch, 'imagelocation': vm.imagelocation,
+                'cpuarch': vm.cpuarch, 'image': vm.image,
                 'memory': vm.memory, 'mementry': vm.mementry, 
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status}
@@ -261,17 +251,16 @@ class JobPoolJSONEncoder(json.JSONEncoder):
             log.error("Cannot use JobPoolJSONEncoder on non JobPool Object")
             return
         new_queue = []
-        for user in job_pool.new_jobs.keys():
-            for job in job_pool.new_jobs[user]:
-                new_queue.append(JobJSONEncoder().encode(job))
+        for job in job_pool.job_container.get_unscheduled_jobs():
+            new_queue.append(JobJSONEncoder().encode(job))
         sched_queue = []
-        for user in job_pool.sched_jobs.keys():
-            for job in job_pool.sched_jobs[user]:
-                sched_queue.append(JobJSONEncoder().encode(job))
+        for job in job_pool.job_container.get_scheduled_jobs():
+            sched_queue.append(JobJSONEncoder().encode(job))
         new_decodes = []
         for job in new_queue:
-            new_decodes.append(json.load(job))
+            print job
+            new_decodes.append(job)
         sched_decodes = []
         for job in sched_queue:
-            sched_decodes.append(json.load(job))
+            sched_decodes.append(job)
         return {'new_jobs': new_decodes, 'sched_jobs': sched_decodes}

@@ -530,7 +530,7 @@ class ResourcePool:
             return None
 
 
-        self._condor_status_to_machine_list(condor_out)
+        machine_list = self._condor_status_to_machine_list(condor_out)
 
         return machine_list
 
@@ -718,11 +718,11 @@ class ResourcePool:
             for vm in cluster.vms:
                 if not types.has_key(vm.vmtype):
                     types[vm.vmtype] = []
-                if vm.job_per_core:
+                if hasattr(vm, "job_per_core") and vm.job_per_core:
                     for core in range(vm.cpucores):
                         types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
                 else:
-                    types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+                    types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
         return types
 
     # Take the current and previous machineLists
@@ -935,8 +935,8 @@ class ResourcePool:
                                     break
             self.banned_job_resource = updated_ban
 
-    def do_condor_off(self, machine_name):
-        cmd = '/usr/sbin/condor_off -startd -peaceful -name %s' % (machine_name)
+    def do_condor_off(self, machine_name, machine_addr):
+        cmd = '/usr/sbin/condor_off -subsystem master -peaceful -addr "%s"' % (machine_addr)
         args = []
         args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:
@@ -948,15 +948,18 @@ class ResourcePool:
         sp = subprocess.Popen(args, shell=False,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out, err) = sp.communicate(input=None)
-        if sp.returncode == 0:
+        ret = -1
+        if out.startswith("Sent"):
+            ret = 0
+        if sp.returncode == 0 and ret == 0:
             log.debug("Successfuly sent condor_off to %s" % (machine_name))
         else:
             log.debug("Failed to send condor_off to %s" % (machine_name))
             log.debug("Reason: %s \n Error: %s" % (out, err))
-        return sp.returncode
+        return (sp.returncode, ret)
 
-    def do_condor_on(self, machine_name):
-        cmd = '/usr/sbin/condor_on -startd -name %s' % (machine_name)
+    def do_condor_on(self, machine_name, machine_addr):
+        cmd = '/usr/sbin/condor_on -subsystem master -addr "%s"' % (machine_addr)
         args = []
         args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:

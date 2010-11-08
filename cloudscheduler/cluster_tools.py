@@ -74,6 +74,7 @@ class VM:
         vmtype       - (str) The condor VMType attribute for the VM
         hostname     - (str) The first part of hostname given to VM
         condorname   - (str) The name of the VM as it's registered with Condor
+        condoraddr   - (str) The Address of the VM as it's registered with Condor
         clusteraddr  - (str) The address of the cluster hosting the VM
         cloudtype    - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
         network      - (str) The network association the VM uses
@@ -90,6 +91,7 @@ class VM:
         self.vmtype = vmtype
         self.hostname = hostname
         self.condorname = None
+        self.condoraddr = None
         self.clusteraddr = clusteraddr
         self.cloudtype = cloudtype
         self.network = network
@@ -125,6 +127,8 @@ class VM:
 
     def get_vm_info(self):
         output = "%-11s %-23s %-10s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.status[-8:], self.clusteraddr[-23:])
+        if self.override_status != None:
+            output = "%-11s %-23s %-10s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.override_status[-8:], self.clusteraddr[-23:])
         return output
 
     @staticmethod
@@ -137,7 +141,10 @@ class VM:
         return output
 
     def get_proxy_file(self):
-        return self.proxy_file
+        if hasattr(self, "proxy_file"):
+            return self.proxy_file
+        else:
+            return None
 
     # The following method will return the environment that should
     # be used when executing subprocesses.  This is needed for setting
@@ -1117,7 +1124,7 @@ class EC2Cluster(ICluster):
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
 
-        with vms_lock:
+        with self.vms_lock:
             if vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
                 vm.last_state_change = int(time.time())
@@ -1146,7 +1153,7 @@ class EC2Cluster(ICluster):
             if vm.id:
                 reservations = connection.get_all_instances([vm.id])
                 instance = reservations[0].instances[0]
-                instance.stop()
+                instance.terminate()
 
         except IndexError:
             log.warning("%s already seem to be gone... removing anyway." % vm.id)

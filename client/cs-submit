@@ -53,7 +53,7 @@ log.debug('Credentials id: %s' % (creds_id,))
 #
 # Create the myproxy-init command to run
 #
-myproxy_init_cmd = '. $GLOBUS_LOCATION/etc/globus-user-env.sh && $GLOBUS_LOCATION/bin/myproxy-init -s %s -p %d -x -Z %s -l %s -n' % (options.myproxy_server, options.myproxy_server_port, options.cloud_scheduler_DN, creds_id)
+myproxy_init_cmd = '. $GLOBUS_LOCATION/etc/globus-user-env.sh && $GLOBUS_LOCATION/bin/myproxy-init -s %s -p %d -l %s -S' % (options.myproxy_server, options.myproxy_server_port, creds_id)
 log.debug('myproxy-init command: [%s]' % (myproxy_init_cmd,))
 
 
