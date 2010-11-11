@@ -360,7 +360,18 @@ class Scheduler(threading.Thread):
                         self.remove_idle_machines(machineList, num_to_change)
                     else:
                         # shutdown using condor_off
-                        vmtypes_jobcount = self.job_pool.get_required_vmtypes_dict()
+                        vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_type()
+                        
+                        fitting_clusters = []
+                        for vmtype, val in num_to_change.iteritems():
+                            if val < 0:
+                                if vmtype in vmtypes_jobs.keys():
+                                    fitting_clusters.extend(self.resource_pool.get_potential_fitting_resources( \
+                                    vmtypes_jobs[vmtype][0].req_network, \
+                                    vmtypes_jobs[vmtype][0].req_cpuarch, vmtypes_jobs[vmtype][0].req_memory, \
+                                    vmtypes_jobs[vmtype][0].req_storage))
+                        fitting_set = set(fitting_clusters)
+
                         for vmtype, val in num_to_change.iteritems():
                             criteria = {'VMType': vmtype, 'Activity': 'Retiring'}
                             retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
@@ -368,6 +379,16 @@ class Scheduler(threading.Thread):
                             if adjusted_val > 0:
                                 criteria = {'VMType': vmtype, 'Activity': 'Busy'}
                                 busy_vms = self.resource_pool.find_in_where(machineList, criteria)
+                                for busy_vm in reversed(busy_vms):
+                                    vm_in_cluster = None
+                                    vm = self.resource_pool.find_vm_with_name(busy_vm['Name'])
+                                    for cluster in self.resource_pool.resources:
+                                        if vm in cluster.vms:
+                                            vm_in_cluster = cluster
+                                            break
+                                    if vm_in_cluster != None and vm_in_cluster not in fitting_set:
+                                        busy_vms.remove(busy_vm)
+                                print len(busy_vms)
                                 if len(busy_vms) < adjusted_val:
                                     adjusted_val = len(busy_vms)
                                 for x in range(0, adjusted_val):
@@ -782,7 +803,7 @@ class Cleanup(threading.Thread):
                         for cluster in self.resource_pool.resources:
                             for vm in cluster.vms:
                                 if vm == machine:
-                                    log.debug("Shutting down VM that has not registered with Condor after %i" % (config.condor_register_time_limit))
+                                    log.debug("Shutting down VM: %s that has not registered with Condor after %i sec" % (vm.id, config.condor_register_time_limit))
                                     cluster.vm_destroy(machine)
                                     killedIt = True
                                     break
@@ -793,7 +814,7 @@ class Cleanup(threading.Thread):
                         for cluster in self.resource_pool.resources:
                             for vm in cluster.vms:
                                 if vm == machine:
-                                    log.debug("Shutting down VM that has finished Retiring")
+                                    log.debug("Shutting down VM: %s that has finished Retiring" % (vm.id))
                                     cluster.vm_destroy(machine)
                                     killedIt = True
                                     break
