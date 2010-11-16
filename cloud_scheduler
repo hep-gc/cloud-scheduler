@@ -366,7 +366,7 @@ class Scheduler(threading.Thread):
                 else:
                     # shutdown after the previous job has finished executing
                     # interupts the new running job and will be rescheduled by condor
-                    self.balance_hard_shutdown(self, machineList, prevMachineList)
+                    self.balance_hard_shutdown(machineList, prevMachineList)
 
 
                 prevMachineList = machineList
@@ -449,7 +449,7 @@ class Scheduler(threading.Thread):
                 self.job_pool.release_vmtype(vmtype)
         self.remove_idle_machines(machineList, num_to_change)
 
-    def graceful_shutdown_condor_off(num_to_change, machineList):
+    def graceful_shutdown_condor_off(self, num_to_change, machineList):
         vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_type()
         
         fitting_clusters = []
@@ -478,7 +478,6 @@ class Scheduler(threading.Thread):
                             break
                     if vm_in_cluster != None and vm_in_cluster not in fitting_set:
                         busy_vms.remove(busy_vm)
-                print len(busy_vms)
                 if len(busy_vms) < adjusted_val:
                     adjusted_val = len(busy_vms)
                 for x in range(0, adjusted_val):
