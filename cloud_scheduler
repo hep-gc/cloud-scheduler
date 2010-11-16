@@ -751,22 +751,7 @@ class Cleanup(threading.Thread):
             log.debug("Syncing job queues")
 
             # Check through new jobs for running jobs and move to sched
-            with self.job_pool.job_container.lock:
-                for job in self.job_pool.job_container.get_all_jobs():
-                        if job.job_status == self.RUNNING:
-                            self.job_pool.schedule(job)
-                    
-                vms = self.resource_pool.get_vmtypes_count_internal()
-                job_req_count = {}
-                for job in self.job_pool.job_container.get_scheduled_jobs():
-                    if job.req_vmtype in job_req_count:
-                        job_req_count[job.req_vmtype] += 1
-                    else:
-                        job_req_count[job.req_vmtype] = 1
-                for job in self.job_pool.job_container.get_scheduled_jobs():
-                    if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
-                        self.job_pool.unschedule(job)
-                    
+            self.clean_scheduled_unscheduled()
 
             # Remove unneeded VMs.
             # Make sure we only do this if we have ever gotten a list of jobs
@@ -774,71 +759,19 @@ class Cleanup(threading.Thread):
             # we would shut down all the VMs for those jobs. Sometimes querying
             # a slow schedd can take quite a few minutes
             if self.job_pool.last_query:
-                req_vmtypes = self.job_pool.get_required_vmtypes()
-                for cluster in self.resource_pool.resources:
-                    for vm in reversed(cluster.vms):
-                        if vm.vmtype not in req_vmtypes and (vm.keep_alive == 0 or vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
-                            destroy_ret = cluster.vm_destroy(vm)
-                            if destroy_ret != 0:
-                                log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
-
-
-                #TODO: Clean this up, and refactor into multiple functions
-
                 ## Clear all un-needed VMs from the system
                 log.debug("Clearing all un-needed VMs from the system")
+                self.clean_unneeded_vms()
 
                 machineList = self.resource_pool.machine_list
                 if machineList:
                     # Make sure VMs have registered with Condor
-                    unregisteredvms = []
-                    retiredvms = []
-                    for cluster in self.resource_pool.resources:
-                        for vm in cluster.vms:
-                            foundvm = False
-                            if vm.status == 'Running':
-                                for machine in machineList:
-                                    if utilities.match_host_with_condor_host(vm.hostname, machine['Name']):
-                                        if vm.condorname == None:
-                                            vm.condorname = machine['Name']
-                                        if vm.condoraddr == None:
-                                            vm.condoraddr = machine['MyAddress']
-                                        foundvm = True
-                                        break
-                                if not foundvm:
-                                    if vm.override_status == 'Retiring':
-                                        retiredvms.append(vm)
-                                    else:
-                                        unregisteredvms.append(vm)
-                    to_kill = []
-                    for vm in unregisteredvms:
-                        # now -state change will be how long VM 'running'
-                        running_time = int(time.time()) - vm.last_state_change
-                        if running_time > config.condor_register_time_limit:
-                            to_kill.append(vm)
-                    for machine in to_kill:
-                        killedIt = False
-                        for cluster in self.resource_pool.resources:
-                            for vm in cluster.vms:
-                                if vm == machine:
-                                    log.debug("Shutting down VM: %s that has not registered with Condor after %i sec" % (vm.id, config.condor_register_time_limit))
-                                    cluster.vm_destroy(machine)
-                                    killedIt = True
-                                    break
-                            if killedIt:
-                                break
-                    for machine in retiredvms:
-                        killedIt = False
-                        for cluster in self.resource_pool.resources:
-                            for vm in cluster.vms:
-                                if vm == machine:
-                                    log.debug("Shutting down VM: %s that has finished Retiring" % (vm.id))
-                                    cluster.vm_destroy(machine)
-                                    killedIt = True
-                                    break
-                            if killedIt:
-                                break
-
+                    # Check if any retiring VMs have Retired
+                    unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(machineList)
+                    # Shutdown the unregistered VMs over the limit
+                    self.clean_kill_unregistered_vms(unregisteredvms)
+                    # Shutdown the Retired VMs
+                    self.clean_retired_vms(retiredvms)
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
@@ -848,7 +781,85 @@ class Cleanup(threading.Thread):
 
         log.debug("Exiting cleanup thread")
 
+    def clean_unneeded_vms(self):
+        req_vmtypes = self.job_pool.get_required_vmtypes()
+        for cluster in self.resource_pool.resources:
+            for vm in reversed(cluster.vms):
+                if vm.vmtype not in req_vmtypes and (vm.keep_alive == 0 or vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
+                    destroy_ret = cluster.vm_destroy(vm)
+                    if destroy_ret != 0:
+                        log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
 
+    def clean_scheduled_unscheduled(self):
+        with self.job_pool.job_container.lock:
+            for job in self.job_pool.job_container.get_all_jobs():
+                    if job.job_status == self.RUNNING:
+                        self.job_pool.schedule(job)
+                
+            vms = self.resource_pool.get_vmtypes_count_internal()
+            job_req_count = {}
+            for job in self.job_pool.job_container.get_scheduled_jobs():
+                if job.req_vmtype in job_req_count:
+                    job_req_count[job.req_vmtype] += 1
+                else:
+                    job_req_count[job.req_vmtype] = 1
+            for job in self.job_pool.job_container.get_scheduled_jobs():
+                if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
+                    self.job_pool.unschedule(job)
+
+    def clean_check_diff_vms_machines(self, machineList):
+        unregisteredvms = []
+        retiredvms = []
+        for cluster in self.resource_pool.resources:
+            for vm in cluster.vms:
+                foundvm = False
+                if vm.status == 'Running':
+                    for machine in machineList:
+                        if utilities.match_host_with_condor_host(vm.hostname, machine['Name']):
+                            if vm.condorname == None:
+                                vm.condorname = machine['Name']
+                            if vm.condoraddr == None:
+                                vm.condoraddr = machine['MyAddress']
+                            foundvm = True
+                            break
+                    if not foundvm:
+                        if vm.override_status == 'Retiring':
+                            retiredvms.append(vm)
+                        else:
+                            unregisteredvms.append(vm)
+        return unregisteredvms, retiredvms
+
+    def clean_kill_unregistered_vms(self, unregisteredvms):
+        to_kill = []
+        for vm in unregisteredvms:
+            # now -state change will be how long VM 'running'
+            running_time = int(time.time()) - vm.last_state_change
+            if running_time > config.condor_register_time_limit:
+                to_kill.append(vm)
+        for machine in to_kill:
+            killedIt = False
+            for cluster in self.resource_pool.resources:
+                for vm in cluster.vms:
+                    if vm == machine:
+                        log.debug("Shutting down VM: %s that has not registered with Condor after %i sec" % (vm.id, config.condor_register_time_limit))
+                        cluster.vm_destroy(machine)
+                        killedIt = True
+                        break
+                if killedIt:
+                    break
+
+    def clean_retired_vms(self, retiredvms):
+        for machine in retiredvms:
+            killedIt = False
+            for cluster in self.resource_pool.resources:
+                for vm in cluster.vms:
+                    if vm == machine:
+                        log.debug("Shutting down VM: %s that has finished Retiring" % (vm.id))
+                        cluster.vm_destroy(machine)
+                        killedIt = True
+                        break
+                if killedIt:
+                    break
 
 class GetClouds(threading.Thread):
     """
