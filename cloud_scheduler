@@ -761,16 +761,16 @@ class Cleanup(threading.Thread):
                 ## Clear all un-needed VMs from the system
                 log.debug("Clearing all un-needed VMs from the system")
                 self.clean_unneeded_vms()
-
+                #print 'cleanup thread'
                 machineList = self.resource_pool.machine_list
-                if machineList:
-                    # Make sure VMs have registered with Condor
-                    # Check if any retiring VMs have Retired
-                    unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(machineList)
-                    # Shutdown the unregistered VMs over the limit
-                    self.clean_kill_unregistered_vms(unregisteredvms)
-                    # Shutdown the Retired VMs
-                    self.clean_retired_vms(retiredvms)
+                #if machineList:
+                # Make sure VMs have registered with Condor
+                # Check if any retiring VMs have Retired
+                unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(machineList)
+                # Shutdown the unregistered VMs over the limit
+                self.clean_kill_unregistered_vms(unregisteredvms)
+                # Shutdown the Retired VMs
+                self.clean_retired_vms(retiredvms)
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
@@ -809,6 +809,7 @@ class Cleanup(threading.Thread):
     def clean_check_diff_vms_machines(self, machineList):
         unregisteredvms = []
         retiredvms = []
+
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 foundvm = False
@@ -833,6 +834,7 @@ class Cleanup(threading.Thread):
         for vm in unregisteredvms:
             # now -state change will be how long VM 'running'
             running_time = int(time.time()) - vm.last_state_change
+
             if running_time > config.condor_register_time_limit:
                 to_kill.append(vm)
         for machine in to_kill:
