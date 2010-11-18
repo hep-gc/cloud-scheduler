@@ -366,7 +366,7 @@ class Scheduler(threading.Thread):
                 else:
                     # shutdown after the previous job has finished executing
                     # interupts the new running job and will be rescheduled by condor
-                    self.balance_hard_shutdown(machineList, prevMachineList)
+                    self.balance_hard_shutdown(machineList, prevMachineList, num_to_change)
 
 
                 prevMachineList = machineList
@@ -409,7 +409,7 @@ class Scheduler(threading.Thread):
             for vm in remaining_vms:
                 log.error("VM: %s, ID: %s" % (vm.name, vm.id))
 
-    def balance_hard_shutdown(self, machineList, prevMachineList):
+    def balance_hard_shutdown(self, machineList, prevMachineList, num_to_change):
         # Compare current Machine List with Previous
         # Looking for machines that have changed jobs since last check
         # and are of a type that has an higher than wanted distribution
