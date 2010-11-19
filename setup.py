@@ -17,9 +17,15 @@ if okay_files:
 
 setup(name = "Cloud Scheduler",
     version = version.version,
-    description = "Cloud Scheduler is a cloud-enabled Condor backend. It boots VMs to suit the jobs you submit to your Condor pool",
-    author = "Duncan Penfold-Brown, Chris Usher, Patrick Armstrong, Ian Gable at University of Victoria",
-    author_email = "dpb@uvic.ca",
+    license="'GPL3' or 'Apache 2'",
+    install_requires=[
+       "Suds>=0.3.9",
+       "boto>=1.9",
+       "lxml>=2.2.6",
+        ],
+    description = "A cloud-enabled distributed resource manager",
+    author = "Duncan Penfold-Brown, Chris Usher, Patrick Armstrong, Ian Gable, Michael Patterson, Andre Charbonneau",
+    author_email = "patricka@uvic.ca",
     url = "http://github.com/hep-gc/cloud-scheduler",
     packages = ['cloudscheduler'],
     package_data = {'cloudscheduler' : ["wsdl/*"] },
