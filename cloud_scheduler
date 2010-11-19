@@ -179,6 +179,7 @@ class MachinePoller(threading.Thread):
         while not self.quit:
             log.debug("Polling machine scheduler")
 
+            self.resource_pool.prev_machine_list = self.resource_pool.machine_list
             self.resource_pool.machine_list = self.resource_pool.resource_query()
             log.debug("Machine Poller waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
@@ -210,13 +211,19 @@ class Scheduler(threading.Thread):
         self.quit          = False
         self.scheduling_interval = config.scheduler_interval
 
+        if config.scheduling_algorithm.lower() == "fairshare":
+            self.scheduling_method = self.scheduler_fair_share
+        else:
+            log.debug("Cannot use %s scheduling, switching to fairshare" % config.scheduling_algorithm)
+            self.scheduling_method = self.scheduler_fair_share
+
     def stop(self):
         log.debug("Waiting for scheduling loop to end")
         self.quit = True
 
     def run(self):
         log.info("Starting job scheduling...")
-        prevMachineList = []
+
         ########################################################################
         ## Full scheduler loop
         ########################################################################
@@ -230,148 +237,7 @@ class Scheduler(threading.Thread):
                     bad_jobs.append(job)
             self.job_pool.job_container.remove_jobs(bad_jobs)
 
-            ## Figure out distribution of VMs requested and available
-            current_types = {}
-            if config.scheduling_metric == "slot":
-                current_types = self.resource_pool.vmtype_distribution()
-            if config.scheduling_metric == "memory":
-                current_types = self.resource_pool.vmtype_mem_distribution()
-
-            desired_types = self.job_pool.job_type_distribution()
-
-            # Negative difference means will need to create that type
-            diff_types = {}
-            for type in current_types.keys():
-                if type in desired_types.keys():
-                    diff_types[type] = current_types[type] - desired_types[type]
-                else:
-                    diff_types[type] = 0
-            for type in desired_types.keys():
-                if type not in current_types.keys():
-                    diff_types[type] = -desired_types[type]
-            del desired_types
-            del current_types
-
-
-            ## Check failures to ban jobs on affected resources
-            self.resource_pool.check_failures()
-
-            ## Schedule user jobs
-            # TODO: This should be less explicit in its reference to JobPool class parts.
-            #       Something like 'for job in self.job_pool.get_unsched_jobs()'
-            log.debug("Schedule any high priority jobs")
-            high_priority_jobs_by_users = self.job_pool.job_container.get_high_priority_jobs_by_users(prioritized = True)
-            for user in high_priority_jobs_by_users.keys():
-                for job in high_priority_jobs_by_users[user]:
-
-                    if job.job_status == self.HELD:
-                        continue
-                    if self.sched_resource_create_track(user, job):
-                        break
-            ## For starters we'll only schedule user jobs when there's no
-            ## High Priority jobs waiting to start
-            if len(high_priority_jobs_by_users) == 0:
-                unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
-                log.verbose("Attempt to schedule user jobs: %s" % (unscheduled_jobs_by_users))
-                for user in unscheduled_jobs_by_users.keys():
-                    # Attempt to schedule jobs in order of their appearance in user's job list
-                    # (currently sorted by Job priority)
-                    for job in unscheduled_jobs_by_users[user]:
-                        # Check that type of VM for job is needed
-                        if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
-                            # Do not start VMs for jobs in a Hold state
-                            if job.job_status == self.HELD or job.status == job.statuses[1]:
-                                continue
-                            #if not self.need_vm(user, job):
-                                #continue
-                            if self.sched_resource_create_track(user, job):
-                                if job.job_per_core:
-                                    for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, \
-                                    job, (job.req_cpucores - 1)):
-
-                                        job.status = job.statuses[1]
-                                break
-                        else:
-                            # This user already has their share
-                            break
-                    # ENDFOR - for jobs in user's unscheduled job set
-                #ENDFOR - Attempt to schedule each one job per user
-
-            ## Clear all un-needed VMs from the system
-            log.debug("Clearing all un-needed VMs from the system")
-
-            # Count the number of jobs that require a certain VM type,
-            # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
-            log.debug("Gathering required VM types.")
-            required_vmtypes = self.job_pool.get_required_vmtypes()
-
-            machineList = self.resource_pool.machine_list
-            if machineList:
-
-                # Remove excess VMs when available VM type exceedes required by jobs.
-                required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
-                if self.job_pool.last_query:
-                    available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
-                    log.debug("Removing excess VMs from the system.")
-                    to_remove = {}
-                    for vmtype, count in available_vmtypes_dict.iteritems():
-                        if vmtype in required_vmtypes_dict.keys():
-                            if count > required_vmtypes_dict[vmtype]:
-                                to_remove[vmtype] = count - required_vmtypes_dict[vmtype]
-                        # This type no longer needed, remove all remaining
-                        else:
-                            to_remove[vmtype] = count
-                    del available_vmtypes_dict
-
-                    # Go over the types and find idle machines to remove
-                    self.remove_idle_machines(machineList, to_remove)
-
-                # Balancing Resources
-                # Figure how many VMs to add or remove of each type
-                num_to_change = {}
-                vm_count = self.resource_pool.vm_count()
-                for vmtype, val in diff_types.iteritems():
-                    num_to_change[vmtype] = int(round(val * vm_count))
-                excess_diff = 0
-                positive_types = []
-                # check if there are fewer jobs in queue than trying to adjust VM count by
-                # this makes up the excess amount
-                for vmtype, val in num_to_change.iteritems():
-                    if val < 0 and abs(val) > required_vmtypes_dict[vmtype]:
-                        excess_diff += abs(val) - required_vmtypes_dict[vmtype]
-                        num_to_change[vmtype] = -required_vmtypes_dict[vmtype]
-                    elif val > 0:
-                        positive_types.append(vmtype)
-                del required_vmtypes_dict
-                # redistribute the excess back to the remaining types
-                if excess_diff > 0 and len(positive_types) > 0:
-                    reduce_per_type = int(excess_diff / len(positive_types))
-                    if reduce_per_type == 0 and len(positive_types) > 1:
-                        reduce_per_type = 1
-                        postive_types.pop()
-                    for vmtype in positive_types:
-                        num_to_change[vmtype] -= reduce_per_type
-                        if num_to_change[vmtype] < 0:
-                            num_to_change[vmtype] = 0
-
-                if config.graceful_shutdown:
-                    if config.graceful_shutdown_method == 'hold':
-                        # balance using condor_hold and condor_release - may be bugged with recent
-                        # changes to how held jobs are accounted for
-                        self.graceful_shutdown_condor_hold(diff_types, machineList, num_to_change)
-                    else:
-                        # shutdown using condor_off
-                        self.graceful_shutdown_condor_off(num_to_change, machineList)
-
-                else:
-                    # shutdown after the previous job has finished executing
-                    # interupts the new running job and will be rescheduled by condor
-                    self.balance_hard_shutdown(machineList, prevMachineList, num_to_change)
-
-
-                prevMachineList = machineList
-            else:
-                log.debug("No Machines returned by Condor Collector Query")
+            self.scheduler_fair_share()
 
             self.resource_pool.save_persistence()
 
@@ -408,6 +274,148 @@ class Scheduler(threading.Thread):
             log.error("The following VMs could not be destroyed properly:")
             for vm in remaining_vms:
                 log.error("VM: %s, ID: %s" % (vm.name, vm.id))
+
+    def scheduler_fair_share(self):
+        ## Figure out distribution of VMs requested and available
+        current_types = {}
+        if config.scheduling_metric == "slot":
+            current_types = self.resource_pool.vmtype_distribution()
+        if config.scheduling_metric == "memory":
+            current_types = self.resource_pool.vmtype_mem_distribution()
+
+        desired_types = self.job_pool.job_type_distribution()
+
+        # Negative difference means will need to create that type
+        diff_types = {}
+        for type in current_types.keys():
+            if type in desired_types.keys():
+                diff_types[type] = current_types[type] - desired_types[type]
+            else:
+                diff_types[type] = 0
+        for type in desired_types.keys():
+            if type not in current_types.keys():
+                diff_types[type] = -desired_types[type]
+        del desired_types
+        del current_types
+
+
+        ## Check failures to ban jobs on affected resources
+        self.resource_pool.check_failures()
+
+        ## Schedule user jobs
+        # TODO: This should be less explicit in its reference to JobPool class parts.
+        #       Something like 'for job in self.job_pool.get_unsched_jobs()'
+        log.debug("Schedule any high priority jobs")
+        high_priority_jobs_by_users = self.job_pool.job_container.get_high_priority_jobs_by_users(prioritized = True)
+        for user in high_priority_jobs_by_users.keys():
+            for job in high_priority_jobs_by_users[user]:
+
+                if job.job_status == self.HELD:
+                    continue
+                if self.sched_resource_create_track(user, job):
+                    break
+        ## For starters we'll only schedule user jobs when there's no
+        ## High Priority jobs waiting to start
+        if len(high_priority_jobs_by_users) == 0:
+            unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
+            log.verbose("Attempt to schedule user jobs: %s" % (unscheduled_jobs_by_users))
+            for user in unscheduled_jobs_by_users.keys():
+                # Attempt to schedule jobs in order of their appearance in user's job list
+                # (currently sorted by Job priority)
+                for job in unscheduled_jobs_by_users[user]:
+                    # Check that type of VM for job is needed
+                    if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
+                        # Do not start VMs for jobs in a Hold state
+                        if job.job_status == self.HELD or job.status == job.statuses[1]:
+                            continue
+                        #if not self.need_vm(user, job):
+                            #continue
+                        if self.sched_resource_create_track(user, job):
+                            if job.job_per_core:
+                                for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, \
+                                job, (job.req_cpucores - 1)):
+
+                                    job.status = job.statuses[1]
+                            break
+                    else:
+                        # This user already has their share
+                        break
+                # ENDFOR - for jobs in user's unscheduled job set
+            #ENDFOR - Attempt to schedule each one job per user
+
+        ## Clear all un-needed VMs from the system
+        log.debug("Clearing all un-needed VMs from the system")
+
+        # Count the number of jobs that require a certain VM type,
+        # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
+        log.debug("Gathering required VM types.")
+        required_vmtypes = self.job_pool.get_required_vmtypes()
+
+        machineList = self.resource_pool.machine_list
+        if machineList:
+
+            # Remove excess VMs when available VM type exceedes required by jobs.
+            required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
+            if self.job_pool.last_query:
+                available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
+                log.debug("Removing excess VMs from the system.")
+                to_remove = {}
+                for vmtype, count in available_vmtypes_dict.iteritems():
+                    if vmtype in required_vmtypes_dict.keys():
+                        if count > required_vmtypes_dict[vmtype]:
+                            to_remove[vmtype] = count - required_vmtypes_dict[vmtype]
+                    # This type no longer needed, remove all remaining
+                    else:
+                        to_remove[vmtype] = count
+                del available_vmtypes_dict
+
+                # Go over the types and find idle machines to remove
+                self.remove_idle_machines(machineList, to_remove)
+
+            # Balancing Resources
+            # Figure how many VMs to add or remove of each type
+            num_to_change = {}
+            vm_count = self.resource_pool.vm_count()
+            for vmtype, val in diff_types.iteritems():
+                num_to_change[vmtype] = int(round(val * vm_count))
+            excess_diff = 0
+            positive_types = []
+            # check if there are fewer jobs in queue than trying to adjust VM count by
+            # this makes up the excess amount
+            for vmtype, val in num_to_change.iteritems():
+                if val < 0 and abs(val) > required_vmtypes_dict[vmtype]:
+                    excess_diff += abs(val) - required_vmtypes_dict[vmtype]
+                    num_to_change[vmtype] = -required_vmtypes_dict[vmtype]
+                elif val > 0:
+                    positive_types.append(vmtype)
+            del required_vmtypes_dict
+            # redistribute the excess back to the remaining types
+            if excess_diff > 0 and len(positive_types) > 0:
+                reduce_per_type = int(excess_diff / len(positive_types))
+                if reduce_per_type == 0 and len(positive_types) > 1:
+                    reduce_per_type = 1
+                    postive_types.pop()
+                for vmtype in positive_types:
+                    num_to_change[vmtype] -= reduce_per_type
+                    if num_to_change[vmtype] < 0:
+                        num_to_change[vmtype] = 0
+
+            if config.graceful_shutdown:
+                if config.graceful_shutdown_method == 'hold':
+                    # balance using condor_hold and condor_release - may be bugged with recent
+                    # changes to how held jobs are accounted for
+                    self.graceful_shutdown_condor_hold(diff_types, machineList, num_to_change)
+                else:
+                    # shutdown using condor_off
+                    self.graceful_shutdown_condor_off(num_to_change, machineList)
+
+            else:
+                # shutdown after the previous job has finished executing
+                # interupts the new running job and will be rescheduled by condor
+                self.balance_hard_shutdown(machineList, self.resource_pool.prev_machine_list, num_to_change)
+
+        else:
+            log.debug("No Machines returned by Condor Collector Query")
 
     def balance_hard_shutdown(self, machineList, prevMachineList, num_to_change):
         # Compare current Machine List with Previous
