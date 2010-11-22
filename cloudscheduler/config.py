@@ -58,6 +58,18 @@ job_poller_interval = 5
 machine_poller_interval = 5
 scheduler_interval = 5
 
+default_VMType= "default"
+default_VMNetwork= ""
+default_VMCPUArch= "x86"
+default_VMName= "Default-Image"
+default_VMLoc= ""
+default_VMAMI= ""
+default_VMMem= 512
+default_VMCPUCores= 1
+default_VMStorage= 1
+default_VMInstanceType= ""
+default_VMMaximumPrice= 0
+
 log_level = "INFO"
 log_location = None
 log_stdout = False
@@ -109,6 +121,18 @@ def setup(path=None):
     global job_poller_interval
     global machine_poller_interval
     global scheduler_interval
+
+    global default_VMType
+    global default_VMNetwork
+    global default_VMCPUArch
+    global default_VMName
+    global default_VMLoc
+    global default_VMAMI
+    global default_VMMem
+    global default_VMCPUCores
+    global default_VMStorage
+    global default_VMInstanceType
+    global default_VMMaximumPrice
 
     global log_level
     global log_location
@@ -359,6 +383,60 @@ def setup(path=None):
 
     if config_file.has_option("logging", "log_format"):
         log_format = config_file.get("logging", "log_format")
+
+    # Default Job options
+    if config_file.has_option("job", "default_VMType"):
+        default_VMType = config_file.get("job", "default_VMType")
+
+    if config_file.has_option("job", "default_VMNetwork"):
+        default_VMNetwork = config_file.get("job", "default_VMNetwork")
+
+    if config_file.has_option("job", "default_VMCPUArch"):
+        default_VMCPUArch = config_file.get("job", "default_VMCPUArch")
+
+    if config_file.has_option("job", "default_VMName"):
+        default_VMName = config_file.get("job", "default_VMName")
+
+    if config_file.has_option("job", "default_VMLoc"):
+        default_VMLoc = config_file.get("job", "default_VMLoc")
+
+    if config_file.has_option("job", "default_VMAMI"):
+        default_VMAMI = config_file.get("job", "default_VMAMI")
+
+    if config_file.has_option("job", "default_VMMem"):
+        try:
+            default_VMMem = config_file.getint("job", "default_VMMem")
+        except ValueError:
+            print "Configuration file problem: default_VMMem must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("job", "default_VMCPUCores"):
+        try:
+            default_VMCPUCores = config_file.getint("job", "default_VMCPUCores")
+        except ValueError:
+            print "Configuration file problem: default_VMCPUCores must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("job", "default_VMStorage"):
+        try:
+            default_VMStorage = config_file.getint("job", "default_VMStorage")
+        except ValueError:
+            print "Configuration file problem: default_VMStorage must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("job", "default_VMInstanceType"):
+        default_VMInstanceType = config_file.get("job", "default_VMInstanceType")
+
+    if config_file.has_option("job", "default_VMMaximumPrice"):
+        try:
+            default_VMMaximumPrice = config_file.getint("job", "default_VMMaximumPrice")
+        except ValueError:
+            print "Configuration file problem: default_VMMaximumPrice must be an " \
+                  "integer value."
+            sys.exit(1)
 
     # Derived options
     if condor_host_on_vm:

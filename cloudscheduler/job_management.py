@@ -73,12 +73,16 @@ class Job:
     statuses = ("Unscheduled", "Scheduled")
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
-             JobStatus=0, ClusterId=0, ProcId=0, VMType="default",
-             VMNetwork="", VMCPUArch="x86", VMName="Default-Image",
-             VMLoc="", VMAMI="", VMMem=512, VMCPUCores=1, VMStorage=1, 
+             JobStatus=0, ClusterId=0, ProcId=0, VMType=config.default_VMType,
+             VMNetwork=config.default_VMNetwork, VMCPUArch=config.default_VMCPUArch, 
+             VMName=config.default_VMName, VMLoc=config.default_VMLoc, 
+             VMAMI=config.default_VMAMI, VMMem=config.default_VMMem, 
+             VMCPUCores=config.default_VMCPUCores, VMStorage=config.default_VMStorage, 
              VMKeepAlive=1, VMHighPriority=0,
-             CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None, x509userproxysubject=None, x509userproxy=None,
-             VMInstanceType="", VMMaximumPrice=0, VMJobPerCore=False, **kwargs):
+             CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
+             x509userproxysubject=None, x509userproxy=None,
+             VMInstanceType=config.default_VMInstanceType, 
+             VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
