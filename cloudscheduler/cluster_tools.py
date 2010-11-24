@@ -999,6 +999,11 @@ class EC2Cluster(ICluster):
         else:
             user_data = ""
 
+        if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
+            log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)
+            addressing_type = "public"
+        else:
+            addressing_type = vm_networkassoc
 
         try:
             connection = self._get_connection()
@@ -1021,6 +1026,7 @@ class EC2Cluster(ICluster):
                 if maximum_price is 0: # don't request a spot instance
                     try:
                         reservation = image.run(1,1,
+                                                addressing_type=addressing_type,
                                                 user_data=user_data,
                                                 security_groups=self.security_groups,
                                                 instance_type=instance_type)
@@ -1037,6 +1043,7 @@ class EC2Cluster(ICluster):
                                                   price_in_dollars,
                                                   image.id,
                                                   user_data=user_data,
+                                                  addressing_type=addressing_type,
                                                   security_groups=self.security_groups,
                                                   instance_type=instance_type)
                         spot_id = str(reservation[0].id)
