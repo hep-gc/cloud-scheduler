@@ -310,7 +310,7 @@ class Scheduler(threading.Thread):
         for user in high_priority_jobs_by_users.keys():
             for job in high_priority_jobs_by_users[user]:
 
-                if job.job_status == self.HELD:
+                if job.job_status == self.HELD or job.job_status == self.COMPLETE:
                     continue
                 if self.sched_resource_create_track(user, job):
                     break
