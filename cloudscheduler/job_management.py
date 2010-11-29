@@ -589,7 +589,8 @@ class JobPool:
     def get_required_vmtypes(self):
         required_vmtypes = []
         for job in self.job_container.get_all_jobs():
-            if job.req_vmtype not in required_vmtypes and job.job_status != self.HELD:
+            if job.req_vmtype not in required_vmtypes and job.job_status != self.HELD \
+            and job.job_status != self.COMPLETE:
                 required_vmtypes.append(job.req_vmtype)
 
         log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
@@ -604,9 +605,10 @@ class JobPool:
     def get_required_vmtypes_dict(self):
         required_vmtypes = {}
         for job in self.job_container.get_all_jobs():
-            if job.req_vmtype not in required_vmtypes and job.job_status != self.HELD:
+            if job.req_vmtype not in required_vmtypes and job.job_status != self.HELD \
+               and job.job_status != self.COMPLETE:
                 required_vmtypes[job.req_vmtype] = 1
-            elif job.job_status != self.HELD:
+            elif job.job_status != self.HELD and job.job_status != self.COMPLETE:
                 required_vmtypes[job.req_vmtype] += 1
         log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
@@ -623,7 +625,7 @@ class JobPool:
         for user in new_jobs_by_users.keys():
             vmtype = None
             for job in new_jobs_by_users[user]:
-                if job.job_status != self.HELD:
+                if job.job_status != self.HELD and job.job_status != self.COMPLETE:
                     vmtype = job.req_vmtype
                     break
             if vmtype == None:
@@ -636,7 +638,7 @@ class JobPool:
         for user in high_priority_jobs_by_users.keys():
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
-                if job.job_status != self.HELD:
+                if job.job_status != self.HELD and job.job_status != self.COMPLETE:
                     vmtype = job.vmtype
                     break
             if vmtype == None:
