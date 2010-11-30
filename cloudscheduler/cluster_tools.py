@@ -1062,8 +1062,8 @@ class EC2Cluster(ICluster):
                 log.error("Couldn't find image %s on %s" % (vm_image, self.name))
                 return self.ERROR
 
-        except boto.exception.EC2ResponseError, e:
-            log.error("Couldn't boot VM because: %s" % e.error_message)
+        except:
+            log.exception("Problem creating EC2 instance on on %s" % self.name)
             return self.ERROR
 
         vm_mementry = self.find_mementry(vm_mem)
