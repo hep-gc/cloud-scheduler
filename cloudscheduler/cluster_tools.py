@@ -74,6 +74,7 @@ class VM:
         vmtype       - (str) The condor VMType attribute for the VM
         hostname     - (str) The first part of hostname given to VM
         condorname   - (str) The name of the VM as it's registered with Condor
+        condoraddr   - (str) The Address of the VM as it's registered with Condor
         clusteraddr  - (str) The address of the cluster hosting the VM
         cloudtype    - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
         network      - (str) The network association the VM uses
@@ -90,6 +91,7 @@ class VM:
         self.vmtype = vmtype
         self.hostname = hostname
         self.condorname = None
+        self.condoraddr = None
         self.clusteraddr = clusteraddr
         self.cloudtype = cloudtype
         self.network = network
@@ -125,6 +127,8 @@ class VM:
 
     def get_vm_info(self):
         output = "%-11s %-23s %-10s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.status[-8:], self.clusteraddr[-23:])
+        if self.override_status != None:
+            output = "%-11s %-23s %-10s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.override_status[-8:], self.clusteraddr[-23:])
         return output
 
     @staticmethod
@@ -186,6 +190,7 @@ class ICluster:
         self.vm_slots = vm_slots
         self.cpu_cores = cpu_cores
         self.storageGB = storage
+        self.max_storageGB = (storage)
         self.vms = [] # List of running VMs
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
@@ -621,11 +626,11 @@ class NimbusCluster(ICluster):
             shutdown_return = self.vm_exec_silent(shutdown_cmd, env=vm.get_env())
             if (shutdown_return != 0):
                 log.debug("(vm_destroy) - VM shutdown request failed, moving directly to destroy.")
+            else:
+                log.debug("(vm_destroy) - workspace shutdown command executed successfully.")
                 # Sleep for a few seconds to allow for proper shutdown
                 log.debug("Waiting %ss for VM to shut down..." % self.VM_SHUTDOWN)
                 time.sleep(self.VM_SHUTDOWN)
-            else:
-                log.debug("(vm_destroy) - workspace shutdown command executed successfully.")
 
 
         # Create the workspace command with destroy option as a list (priv.)
@@ -994,6 +999,11 @@ class EC2Cluster(ICluster):
         else:
             user_data = ""
 
+        if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
+            log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)
+            addressing_type = "public"
+        else:
+            addressing_type = vm_networkassoc
 
         try:
             connection = self._get_connection()
@@ -1016,6 +1026,7 @@ class EC2Cluster(ICluster):
                 if maximum_price is 0: # don't request a spot instance
                     try:
                         reservation = image.run(1,1,
+                                                addressing_type=addressing_type,
                                                 user_data=user_data,
                                                 security_groups=self.security_groups,
                                                 instance_type=instance_type)
@@ -1032,6 +1043,7 @@ class EC2Cluster(ICluster):
                                                   price_in_dollars,
                                                   image.id,
                                                   user_data=user_data,
+                                                  addressing_type=addressing_type,
                                                   security_groups=self.security_groups,
                                                   instance_type=instance_type)
                         spot_id = str(reservation[0].id)
@@ -1050,8 +1062,8 @@ class EC2Cluster(ICluster):
                 log.error("Couldn't find image %s on %s" % (vm_image, self.name))
                 return self.ERROR
 
-        except boto.exception.EC2ResponseError, e:
-            log.error("Couldn't boot VM because: %s" % e.error_message)
+        except:
+            log.exception("Problem creating EC2 instance on on %s" % self.name)
             return self.ERROR
 
         vm_mementry = self.find_mementry(vm_mem)

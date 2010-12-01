@@ -457,7 +457,7 @@ class ResourcePool:
     #    cpuarch  - the cpu architecture that the VM must run on
     # Return: True if cluster is found that fits VM requirments
     #         Otherwise, returns False
-    def resourcePF(self, network, cpuarch, memory=0):
+    def resourcePF(self, network, cpuarch, memory=0, disk=0):
         potential_fit = False
 
         for cluster in self.resources:
@@ -476,6 +476,20 @@ class ResourcePool:
         # If no clusters are found (no clusters can host the required VM)
         return potential_fit
 
+    def get_potential_fitting_resources(self, network, cpuarch, memory, disk):
+        fitting = []
+        for cluster in self.resources:
+            if not (cpuarch in cluster.cpu_archs):
+                continue
+            # If required network is NOT in cluster's network associations
+            if network and not (network in cluster.network_pools):
+                continue
+            if not cluster.find_potential_mementry(memory):
+                continue
+            if disk > cluster.max_storageGB:
+                continue
+            fitting.append(cluster)
+        return fitting
 
     # Return cluster that matches cluster_name
     def get_cluster(self, cluster_name):
@@ -530,7 +544,7 @@ class ResourcePool:
             return None
 
 
-        self._condor_status_to_machine_list(condor_out)
+        machine_list = self._condor_status_to_machine_list(condor_out)
 
         return machine_list
 
@@ -935,8 +949,8 @@ class ResourcePool:
                                     break
             self.banned_job_resource = updated_ban
 
-    def do_condor_off(self, machine_name):
-        cmd = '/usr/sbin/condor_off -startd -peaceful -name %s' % (machine_name)
+    def do_condor_off(self, machine_name, machine_addr):
+        cmd = '/usr/sbin/condor_off -subsystem master -peaceful -addr "%s"' % (machine_addr)
         args = []
         args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:
@@ -948,15 +962,18 @@ class ResourcePool:
         sp = subprocess.Popen(args, shell=False,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out, err) = sp.communicate(input=None)
-        if sp.returncode == 0:
+        ret = -1
+        if out.startswith("Sent"):
+            ret = 0
+        if sp.returncode == 0 and ret == 0:
             log.debug("Successfuly sent condor_off to %s" % (machine_name))
         else:
             log.debug("Failed to send condor_off to %s" % (machine_name))
             log.debug("Reason: %s \n Error: %s" % (out, err))
-        return sp.returncode
+        return (sp.returncode, ret)
 
-    def do_condor_on(self, machine_name):
-        cmd = '/usr/sbin/condor_on -startd -name %s' % (machine_name)
+    def do_condor_on(self, machine_name, machine_addr):
+        cmd = '/usr/sbin/condor_on -subsystem master -addr "%s"' % (machine_addr)
         args = []
         args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:
