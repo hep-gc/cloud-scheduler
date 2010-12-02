@@ -1005,6 +1005,19 @@ class ResourcePool:
                 break
         return vm_match
 
+    def find_cluster_with_vm(self, condor_name):
+        foundIt = False
+        cluster_match = None
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.condorname == condor_name:
+                    foundIt = True
+                    cluster_match = cluster
+                    break
+            if foundIt:
+                break
+        return cluster_match
+
     def retiring_vms_of_type(self, vmtype):
         retiring = []
         for cluster in self.resources:

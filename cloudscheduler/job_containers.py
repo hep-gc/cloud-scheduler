@@ -79,10 +79,11 @@ class JobContainer():
     def remove_all_not_in(self, jobs_to_keep):
         pass
 
-    # Updates the status of a job (job.job_status attribute) in the container.
+    # Updates the status and remote host of a job (job.job_status attribute) 
+    # in the container.
     # Returns True if the job was found in the container, False otherwise.
     @abstractmethod
-    def update_job_status(self, jobid, status):
+    def update_job_status(self, jobid, status, remote):
         pass
 
     # Mark a job as being scheduled.
@@ -392,11 +393,12 @@ class HashTableJobContainer(JobContainer):
     def is_empty(self):
         return len(self.all_jobs) == 0
 
-    def update_job_status(self, jobid, status):
+    def update_job_status(self, jobid, status, remote):
         with self.lock:
             job = self.get_job_by_id(jobid)
         if job != None:
             job.job_status = status
+            job.remote_host = remote
             return True
         else:
             return False

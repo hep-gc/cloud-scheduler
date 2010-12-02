@@ -78,7 +78,7 @@ class Job:
              VMName=config.default_VMName, VMLoc=config.default_VMLoc, 
              VMAMI=config.default_VMAMI, VMMem=config.default_VMMem, 
              VMCPUCores=config.default_VMCPUCores, VMStorage=config.default_VMStorage, 
-             VMKeepAlive=1, VMHighPriority=0,
+             VMKeepAlive=1, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              VMInstanceType=config.default_VMInstanceType, 
@@ -138,6 +138,8 @@ class Job:
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
         self.job_per_core = VMJobPerCore in ['true', "True", True]
+        self.remote_host = RemoteHost
+        self.running_cloud = None
 
 
         # Set the new job's status
@@ -443,6 +445,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "x509userproxy")
                 _add_if_exists(xml_job, job_dictionary, "VMHighPriority")
                 _add_if_exists(xml_job, job_dictionary, "VMJobPerCore")
+                _add_if_exists(xml_job, job_dictionary, "RemoteHost")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -567,7 +570,7 @@ class JobPool:
     #   True - updated
     #   False - failed
     def update_job_status(self, target_job):
-        return self.job_container.update_job_status(target_job.id, int(target_job.job_status))
+        return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host)
 
     # Mark job scheduled
     # Makes all changes to a job to indicate that the job has been scheduled

@@ -759,6 +759,8 @@ class Cleanup(threading.Thread):
 
             # Check through new jobs for running jobs and move to sched
             self.clean_scheduled_unscheduled()
+            # Check the scheduled Jobs to see which running jobs are on what cloud
+            self.clean_match_jobs_clouds()
 
             # Remove unneeded VMs.
             # Make sure we only do this if we have ever gotten a list of jobs
@@ -869,6 +871,15 @@ class Cleanup(threading.Thread):
                         break
                 if killedIt:
                     break
+
+    def clean_match_jobs_clouds(self):
+        scheduled_jobs = self.job_pool.get_scheduled_jobs()
+        for job in scheduled_jobs:
+            if job.job_status == self.RUNNING and job.running_cloud == None \
+               and job.remote_host:
+                cluster = self.resource_pool.find_cluster_with_vm(job.remote_host)
+                if cluster:
+                    job.running_cloud = cluster
 
 class GetClouds(threading.Thread):
     """
