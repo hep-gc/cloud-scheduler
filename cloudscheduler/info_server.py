@@ -243,7 +243,8 @@ class JobJSONEncoder(json.JSONEncoder):
                 'req_image': job.req_image, 'req_imageloc': job.req_imageloc,
                 'req_ami': job.req_ami, 'req_memory': job.req_memory,
                 'req_cpucores': job.req_cpucores, 'req_storage': job.req_storage,
-                'keep_alive': job.keep_alive, 'status': job.status}
+                'keep_alive': job.keep_alive, 'status': job.status,
+                'remote_host': job.remote_host, 'running_cloud': job.running_cloud}
 
 class JobPoolJSONEncoder(json.JSONEncoder):
     def default(self, job_pool):
