@@ -873,13 +873,13 @@ class Cleanup(threading.Thread):
                     break
 
     def clean_match_jobs_clouds(self):
-        scheduled_jobs = self.job_pool.get_scheduled_jobs()
+        scheduled_jobs = self.job_pool.job_container.get_scheduled_jobs()
         for job in scheduled_jobs:
-            if job.job_status == self.RUNNING and job.running_cloud == None \
+            if job.job_status == self.RUNNING and job.running_cloud == "" \
                and job.remote_host:
-                cluster = self.resource_pool.find_cluster_with_vm(job.remote_host)
-                if cluster:
-                    job.running_cloud = cluster
+                cluster_match = self.resource_pool.find_cluster_with_vm(job.remote_host)
+                if cluster_match:
+                    job.running_cloud = cluster_match.name
 
 class GetClouds(threading.Thread):
     """
