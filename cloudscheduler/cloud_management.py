@@ -95,6 +95,15 @@ class ResourcePool:
         else:
             log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
             self.resource_query = self.resource_query_SOAP
+            
+        if config.scheduling_metric == "slot":
+            self.vmtype_distribution = self.vmtype_distribution
+        elif config.scheduling_metric == "memory":
+            self.vmtype_distribution = self.vmtype_mem_distribution
+        elif config.vmtype_distribution == "memory_cpu":
+            self.vmtype_distribution = self.vmtype_mem_cpu_distribution
+        elif config.vmtype_distribution == "memory_cpu_storage":
+            self.vmtype_distribution = self.vmtype_mem_cpu_storage_distribution
 
         self.setup()
         if config.ban_tracking:
@@ -727,7 +736,7 @@ class ResourcePool:
         return types
 
     # VM Type Memory & CPU & Storage Distribution
-    def vmtype_mem_cpu_distribution(self):
+    def vmtype_mem_cpu_storage_distribution(self):
         usage = self.vmtype_resource_usage()
         types = {}
         mem_total = 0

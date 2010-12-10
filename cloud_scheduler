@@ -279,10 +279,8 @@ class Scheduler(threading.Thread):
     def scheduler_fair_share(self):
         ## Figure out distribution of VMs requested and available
         current_types = {}
-        if config.scheduling_metric == "slot":
-            current_types = self.resource_pool.vmtype_distribution()
-        if config.scheduling_metric == "memory":
-            current_types = self.resource_pool.vmtype_mem_distribution()
+
+        current_types = self.resource_pool.vmtype_distribution()
 
         desired_types = self.job_pool.job_type_distribution()
 
