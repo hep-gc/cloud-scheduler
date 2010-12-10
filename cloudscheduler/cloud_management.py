@@ -743,14 +743,20 @@ class ResourcePool:
         cpu_total = 0
         storage_total = 0
         for vmtype in usage:
-            types[vmtype] = usage[vmtype][0] * usage[vmtype][1] * usage[vmtype][2]
+            if usage[vmytpe][2] != 0:
+                types[vmtype] = usage[vmtype][0] * usage[vmtype][1] * usage[vmtype][2]
+            else:
+                types[vmtype] = usage[vmtype][0] * usage[vmtype][1]
             mem_total += usage[vmtype][0]
             cpu_total += usage[vmtype][1]
             storage_total += usage[vmtype][2]
         del usage
         if mem_total == 0:
             return {}
-        mem_cpu__storage_total = 1 / (Decimal(mem_total) * Decimal(cpu_total) * Decimal(storage_total))
+        if storage_total != 0:
+            mem_cpu__storage_total = 1 / (Decimal(mem_total) * Decimal(cpu_total) * Decimal(storage_total))
+        else:
+            mem_cpu__storage_total = 1 / (Decimal(mem_total) * Decimal(cpu_total))
         for vmtype in types.keys():
             types[vmtype] *= mem_cpu_storage_total
         return types
