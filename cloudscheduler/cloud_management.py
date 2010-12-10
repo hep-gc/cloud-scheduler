@@ -708,6 +708,44 @@ class ResourcePool:
             types[vmtype] *= mem_total
         return types
 
+    # VM Type Memory & CPU Distribution
+    def vmtype_mem_cpu_distribution(self):
+        usage = self.vmtype_resource_usage()
+        types = {}
+        mem_total = 0
+        cpu_total = 0
+        for vmtype in usage:
+            types[vmtype] = usage[vmtype][0] * usage[vmtype][1]
+            mem_total += usage[vmtype][0]
+            cpu_total += usage[vmtype][1]
+        del usage
+        if mem_total == 0:
+            return {}
+        mem_cpu_total = 1 / (Decimal(mem_total) * Decimal(cpu_total))
+        for vmtype in types.keys():
+            types[vmtype] *= mem_cpu_total
+        return types
+
+    # VM Type Memory & CPU & Storage Distribution
+    def vmtype_mem_cpu_distribution(self):
+        usage = self.vmtype_resource_usage()
+        types = {}
+        mem_total = 0
+        cpu_total = 0
+        storage_total = 0
+        for vmtype in usage:
+            types[vmtype] = usage[vmtype][0] * usage[vmtype][1] * usage[vmtype][2]
+            mem_total += usage[vmtype][0]
+            cpu_total += usage[vmtype][1]
+            storage_total += usage[vmtype][2]
+        del usage
+        if mem_total == 0:
+            return {}
+        mem_cpu__storage_total = 1 / (Decimal(mem_total) * Decimal(cpu_total) * Decimal(storage_total))
+        for vmtype in types.keys():
+            types[vmtype] *= mem_cpu_storage_total
+        return types
+
     # VM Type resource usage
     # Counts up how much/many of each resource (RAM, Cores, Storage)
     # are being used by each type of VM
