@@ -703,6 +703,12 @@ class NimbusCluster(ICluster):
                 self.vm_destroy(vm, shutdown_first=False)
                 vm.status = new_status
 
+            elif new_status == "NoProxy":
+                log.error("Problem polling VM %s. You don't have a valid proxy." % vm.id)
+
+            elif new_status == "ExpiredProxy":
+                log.error("Problem polling VM %s. Your proxy expired." % vm.id)
+
             elif vm.status != new_status:
                 vm.last_state_change = int(time.time())
                 vm.status = new_status
@@ -887,6 +893,16 @@ class NimbusCluster(ICluster):
         non_existant = re.search("This workspace is unknown to the service", output)
         if non_existant:
             return "Destroyed"
+
+        # Check if you have no proxy
+        no_proxy = re.search("Defective credential detected.*not found", output)
+        if no_proxy:
+            return "NoProxy"
+
+        # Check if your proxy is expired
+        expired_proxy = re.search("Expired credentials detected", output)
+        if expired_proxy:
+            return "ExpiredProxy"
 
         return "Error"
 

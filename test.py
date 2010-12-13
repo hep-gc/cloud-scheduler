@@ -418,12 +418,29 @@ Schedule:
 
 State: Unpropagated
 """
+        nimbus_no_proxy = """
+
+Problem: Problem querying resource properties: ; nested exception is: 
+    GSSException: Defective credential detected [Caused by: Proxy file (/tmp/x509up_u501) not found.]
+"""
+
+        nimbus_expired_proxy = """
+
+Problem: Problem querying resource properties: ; nested exception is: 
+    GSSException: Expired credentials detected
+"""
+
         extracted_state = NimbusCluster._extract_state(nimbus_string_good)
         self.assertEqual("Starting", extracted_state)
 
         destroyed = NimbusCluster._extract_state(nimbus_string_non_existant)
         self.assertEqual("Destroyed", destroyed)
 
+        no_proxy = NimbusCluster._extract_state(nimbus_no_proxy)
+        self.assertEqual("NoProxy", no_proxy)
+
+        expired_proxy = NimbusCluster._extract_state(nimbus_expired_proxy)
+        self.assertEqual("ExpiredProxy", expired_proxy)
 
 class ResourcePoolTests(unittest.TestCase):
 
