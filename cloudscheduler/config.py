@@ -57,6 +57,8 @@ vm_poller_interval = 5
 job_poller_interval = 5
 machine_poller_interval = 5
 scheduler_interval = 5
+job_proxy_refresher_interval = -1 # The current default is not to refresh the proxies. (until code is thouroughly tested -- Andre C.)
+job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 
 default_VMType= "default"
 default_VMNetwork= ""
@@ -121,6 +123,8 @@ def setup(path=None):
     global job_poller_interval
     global machine_poller_interval
     global scheduler_interval
+    global job_proxy_refresher_interval
+    global job_proxy_renewal_threshold
 
     global default_VMType
     global default_VMNetwork
@@ -361,6 +365,22 @@ def setup(path=None):
             cleanup_interval = config_file.getint("global", "cleanup_interval")
         except ValueError:
             print "Configuration file problem: cleanup_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "job_proxy_refresher_interval"):
+        try:
+            job_proxy_refresher_interval = config_file.getint("global", "job_proxy_refresher_interval")
+        except ValueError:
+            print "Configuration file problem: job_proxy_refresher_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "job_proxy_renewal_threshold"):
+        try:
+            job_proxy_renewal_threshold = config_file.getint("global", "job_proxy_renewal_threshold")
+        except ValueError:
+            print "Configuration file problem: job_proxy_renewal_threshold must be an " \
                   "integer value."
             sys.exit(1)
 

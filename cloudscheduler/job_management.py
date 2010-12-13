@@ -35,7 +35,6 @@ import threading
 import subprocess
 from urllib2 import URLError
 from StringIO import StringIO
-
 try:
     from lxml import etree
 except:
@@ -49,6 +48,7 @@ except:
 
 import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
+from cloudscheduler.utilities import get_cert_expiry_time
 import job_containers
 from decimal import *
 
@@ -137,6 +137,7 @@ class Job:
         self.myproxy_creds_name = CSMyProxyCredsName
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
+        self.x509userproxy_expiry_time = None
         self.job_per_core = VMJobPerCore in ['true', "True", True]
         self.remote_host = RemoteHost
         self.running_cloud = ""
@@ -226,6 +227,32 @@ class Job:
     def get_x509userproxysubject(self):
         return self.x509userproxysubject
 
+    # Use this method to get the expiry time of the job's user proxy, if any.
+    # Note that lazy initialization is done;  the expiry time will be extracted from the
+    # user proxy the first time the method is called and then it will be cached in the
+    # instance variable.
+    #
+    # Returns the expiry time as a datetime.datetime instance (UTC), or None if there is no
+    # user proxy associated with this job.
+    def get_x509userproxy_expiry_time(self):
+        if (self.x509userproxy_expiry_time == None) and (self.get_x509userproxy() != None):
+            self.x509userproxy_expiry_time = get_cert_expiry_time(self.get_x509userproxy())
+        return self.x509userproxy_expiry_time
+
+    # This method will test if a job's user proxy needs to be refreshed, according
+    # the job proxy refresh threshold found in the cloud scheduler configuration.
+    #
+    # Returns True if the proxy needs to be refreshed, or False otherwise (or if
+    # the job has no user proxy associated with it).
+    def needs_proxy_renewal(self):
+        expiry_time = self.get_x509userproxy_expiry_time()
+        if expiry_time == None:
+            return False
+        td = expiry_time - datetime.datetime.utcnow()
+        td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.job_proxy_renewal_threshold))
+        return td_in_seconds < config.job_proxy_renewal_threshold
+
     # A method that will compare a job's requirements listed below with another job to see if they
     # all match.
     def has_same_reqs(self, job):
@@ -289,6 +316,18 @@ class JobPool:
         else:
             log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
             self.job_query = self.job_query_SOAP
+
+    # Method to get all jobs in the JobPool
+    # Returns a list of Job instances, or [] if there are no jobs in the the JobPool.
+    def get_all_jobs(self):
+        jobs = []
+        for job_list in self.new_jobs.values():
+            jobs.extend(job_list)
+        for job_list in self.sched_jobs.values():
+            jobs.extend(job_list)
+        for job_list in self.high_jobs.values():
+            jobs.extend(job_list)
+        return jobs
 
     def job_query_local(self):
         """

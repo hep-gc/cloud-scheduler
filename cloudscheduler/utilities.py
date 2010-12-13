@@ -8,6 +8,7 @@ import logging
 import ConfigParser
 import subprocess
 from urlparse import urlparse
+from datetime import datetime
 import config
 
 def determine_path ():
@@ -93,11 +94,22 @@ def myproxy_init(myproxy_server, myproxy_server_port, myproxy_creds_name):
 
 # This utility function will extract the subject DN from an x509
 # certificate.
-# It requires the openssl package to the installed.
+# It requires the openssl package to be installed.
 def get_cert_DN(cert_file_path):
     log = get_cloudscheduler_logger()
     openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-subject', '-noout']
     return subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
+    
+# This utility function will extract the expiry time from an x509
+# certificate.
+# It requires the openssl package to be installed.
+# Returns a datetime instance, with UTC time.
+def get_cert_expiry_time(cert_file_path):
+    log = get_cloudscheduler_logger()
+    openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-enddate', '-noout']
+    datetime_string = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip().split('=')[1]
+    expiry_time = datetime.strptime(datetime_string, '%b %d %H:%M:%S %Y %Z')
+    return expiry_time
     
 def match_host_with_condor_host(hostname, condor_hostname):
     """

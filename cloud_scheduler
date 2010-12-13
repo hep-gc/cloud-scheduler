@@ -31,6 +31,7 @@ import getopt
 import signal
 import logging
 import threading
+import traceback
 import ConfigParser
 import logging.handlers
 from optparse import OptionParser
@@ -42,6 +43,7 @@ import cloudscheduler.__version__ as version
 import cloudscheduler.info_server as info_server
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
+import cloudscheduler.job_proxy_refresher as job_proxy_refresher
 
 #from cloudscheduler.monitoring.get_clouds import getCloudsClient
 
@@ -132,31 +134,30 @@ class JobPoller(threading.Thread):
         self.quit = True
 
     def run(self):
-        log.info("Starting job polling...")
+        try:
+            log.info("Starting job polling...")
 
-        while not self.quit:
-            log.debug("Polling job scheduler")
+            while not self.quit:
+                log.debug("Polling job scheduler")
 
-            ## Query the job pool to get new unscheduled jobs
-            # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
-            condor_jobs = self.job_pool.job_query()
-            if condor_jobs != None:
-                #print "calling job_pool.update_jobs..."
-                #starttime = time.clock()
-                self.job_pool.update_jobs(condor_jobs)
-                #elapsed = time.clock() - starttime
-                #print "job_pool.update_jobs returned: %s (%s)" % (self.job_pool.job_container, elapsed)
-            else:
-                log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
-            del condor_jobs
+                ## Query the job pool to get new unscheduled jobs
+                # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
+                condor_jobs = self.job_pool.job_query()
+                if condor_jobs != None:
+                    self.job_pool.update_jobs(condor_jobs)
+                else:
+                    log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
+                del condor_jobs
 
-            log.debug("Job Poller waiting %ds..." % self.polling_interval)
-            sleep_tics = self.polling_interval
-            while (not self.quit) and sleep_tics > 0:
-                time.sleep(1)
-                sleep_tics -= 1
+                log.debug("Job Poller waiting %ds..." % self.polling_interval)
+                sleep_tics = self.polling_interval
+                while (not self.quit) and sleep_tics > 0:
+                    time.sleep(1)
+                    sleep_tics -= 1
 
-        log.debug("Exiting job polling thread")
+            log.debug("Exiting job polling thread")
+        except:
+            log.error(traceback.format_exc())
 
 class MachinePoller(threading.Thread):
     """
@@ -1028,6 +1029,13 @@ def main():
     cleaner = Cleanup(cloud_resources, job_pool)
     service_threads.append(cleaner)
 
+    # Create the JobProxyRefresher thread, if needed
+    if config.job_proxy_refresher_interval != -1:
+        job_proxy_refresher_thread = job_proxy_refresher.JobProxyRefresher(job_pool)
+        service_threads.append(job_proxy_refresher_thread)
+    else:
+        log.debug('Job proxy refresher thread not enabled.')
+
     # Create the GetClouds Thread if wanted
     if config.getclouds:
         getclouds = GetClouds(cloud_resources)
@@ -1068,6 +1076,7 @@ def main():
 
     if should_be_running:
         log.error("Whoops. Wasn't expecting to exit. Did a thread crash?")
+       
 
     log.info("Cloud Scheduler quitting normally. (It might take a while, don't panic!)")
 
