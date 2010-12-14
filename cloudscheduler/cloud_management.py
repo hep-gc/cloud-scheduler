@@ -721,16 +721,15 @@ class ResourcePool:
     def vmtype_mem_cpu_distribution(self):
         usage = self.vmtype_resource_usage()
         types = {}
-        mem_total = 0
-        cpu_total = 0
+        mem_cpu_total = 0
         for vmtype in usage:
-            types[vmtype] = usage[vmtype][0] * usage[vmtype][1]
-            mem_total += usage[vmtype][0]
-            cpu_total += usage[vmtype][1]
+            mem_cpu_area = usage[vmtype][0] * usage[vmtype][1]
+            types[vmtype] = mem_cpu_area
+            mem_cpu_total += mem_cpu_area
         del usage
         if mem_total == 0:
             return {}
-        mem_cpu_total = 1 / (Decimal(mem_total) * Decimal(cpu_total))
+        mem_cpu_total = 1 / Decimal(mem_cpu_total)
         for vmtype in types.keys():
             types[vmtype] *= mem_cpu_total
         return types
@@ -739,24 +738,23 @@ class ResourcePool:
     def vmtype_mem_cpu_storage_distribution(self):
         usage = self.vmtype_resource_usage()
         types = {}
-        mem_total = 0
-        cpu_total = 0
-        storage_total = 0
+        vol_total = 0
+        weight_all = config.cpu_distribution_weight * config.memory_distribution_weight * config.storage_distribtuion_weight
+        weight_cm = config.cpu_distribution_weight * config.memory_distribution_weight
         for vmtype in usage:
+            vol = 0
             if usage[vmytpe][2] != 0:
-                types[vmtype] = usage[vmtype][0] * usage[vmtype][1] * usage[vmtype][2]
+                vol = usage[vmtype][0] * usage[vmtype][1] * usage[vmtype][2] * weight_all
+                types[vmtype] = vol
             else:
-                types[vmtype] = usage[vmtype][0] * usage[vmtype][1]
-            mem_total += usage[vmtype][0]
-            cpu_total += usage[vmtype][1]
-            storage_total += usage[vmtype][2]
+                vol = usage[vmtype][0] * usage[vmtype][1] * weight_cm
+                types[vmtype] = vol
+            vol_total += vol
         del usage
-        if mem_total == 0:
+        if vol_total == 0:
             return {}
-        if storage_total != 0:
-            mem_cpu__storage_total = 1 / (Decimal(mem_total) * Decimal(cpu_total) * Decimal(storage_total))
-        else:
-            mem_cpu__storage_total = 1 / (Decimal(mem_total) * Decimal(cpu_total))
+        if vol_total != 0:
+            mem_cpu_storage_total = 1 / Decimal(vol_total)
         for vmtype in types.keys():
             types[vmtype] *= mem_cpu_storage_total
         return types

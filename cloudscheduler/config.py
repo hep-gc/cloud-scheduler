@@ -52,6 +52,9 @@ scheduling_metric = "slot"
 scheduling_algorithm = "fairshare"
 high_priority_job_support = False
 high_priority_job_weight = 1
+cpu_distribution_weight = 1.0
+memory_distribution_weight = 1.0
+storage_distribution_weight = 1.0
 cleanup_interval = 5
 vm_poller_interval = 5
 job_poller_interval = 5
@@ -118,6 +121,9 @@ def setup(path=None):
     global scheduling_algorithm
     global high_priority_job_support
     global high_priority_job_weight
+    global cpu_distribution_weight
+    global memory_distribution_weight
+    global storage_distribution_weight
     global cleanup_interval
     global vm_poller_interval
     global job_poller_interval
@@ -313,7 +319,40 @@ def setup(path=None):
         
     if config_file.has_option("global", "scheduling_metric"):
         scheduling_metric = config_file.get("global", "scheduling_metric")
-        
+
+    if config_file.has_option("global", "memory_distribution_weight"):
+        try:
+            memory_distribution_weight = config_file.getfloat("global", "memory_distribution_weight")
+            if ban_failrate_threshold <= 0:
+                print "Please use a float value (0, x]"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: memory_distribution_weight must be an " \
+                  "float value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "cpu_distribution_weight"):
+        try:
+            cpu_distribution_weight = config_file.getfloat("global", "cpu_distribution_weight")
+            if ban_failrate_threshold <= 0:
+                print "Please use a float value (0, x]"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: cpu_distribution_weight must be an " \
+                  "float value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "storage_distribution_weight"):
+        try:
+            storage_distribution_weight = config_file.getfloat("global", "storage_distribution_weight")
+            if ban_failrate_threshold <= 0:
+                print "Please use a float value (0, x]"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: storage_distribution_weight must be an " \
+                  "float value."
+            sys.exit(1)
+
     if config_file.has_option("global", "scheduling_algorithm"):
         scheduling_algorithm = config_file.get("global", "scheduling_algorithm")
 
