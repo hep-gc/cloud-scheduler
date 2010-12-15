@@ -133,16 +133,15 @@ and you must use the customized condor init script scripts/condor/worker/condor
 The Nimbus Cloud Client is the standard client used to connect to Nimbus
 clouds. Cloud Scheduler uses this client to communicate with Nimbus.
 
-Until Nimbus Cloud Client 015 is released, you need to install a patched
-version of Cloud Client. We assume you want to install Cloud Client to /opt.
+We assume you want to install Cloud Client to /opt.
 
-    $ wget http://cloud.github.com/downloads/oldpatricka/nimbus/nimbus-cloud-client-015.tar.gz
-    $ tar xzf nimbus-cloud-client-015.tar.gz
+    $ wget http://www.nimbusproject.org/downloads/nimbus-cloud-client-017.tar.gz
+    $ tar xzf nimbus-cloud-client-017.tar.gz
 
 Normally, the workspace reference client, workspace.sh, isn't executable. The
 way Cloud Scheduler uses it makes this neccessary. 
 
-    $ chmod +x nimbus-cloud-client-015/lib/workspace.sh
+    $ chmod +x nimbus-cloud-client-017/lib/workspace.sh
 
 You'll need to point your Cloud Scheduler install to this client. Set the
 workspace_path option to point there.
@@ -150,7 +149,7 @@ workspace_path option to point there.
 Be sure that you have a valid x509 proxy available before starting Cloud
 Scheduler. You can create one with:
 
-    $ nimbus-cloud-client-015/bin/grid-proxy-init.sh
+    $ nimbus-cloud-client-017/bin/grid-proxy-init.sh
 
 ## Configuration
 
