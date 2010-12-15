@@ -1,7 +1,14 @@
 # setup.py - standard distutils setup file for Cloud Scheduler
 import os.path
 import sys
-from distutils.core import setup
+try:
+    from setuptools import setup
+except:
+    try:
+        from distutils.core import setup
+    except:
+        print "Couldn't use either setuputils or distutils. Install one of those. :)"
+        sys.exit(1)
 import cloudscheduler.__version__ as version
 
 config_files_dir = "/etc/cloudscheduler/"
@@ -15,7 +22,7 @@ for config_file in config_files:
 if okay_files:
     data_files = [(config_files_dir, okay_files)]
 
-setup(name = "Cloud Scheduler",
+setup(name = "cloud-scheduler",
     version = version.version,
     license="'GPL3' or 'Apache 2'",
     install_requires=[

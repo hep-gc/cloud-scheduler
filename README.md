@@ -30,8 +30,8 @@ For more documentation on Cloud Scheduler, please refer to:
 
 ### Special help for RHEL 5
 
-Since Cloud Scheduler requires Python 2.6, and we recognize that RHEL 5 comes
-with and requires Python 2.4, here's a quick guide to getting Python 2.6 
+Since Cloud Scheduler requires Python 2.6+, and we recognize that RHEL 5 comes
+with and requires Python 2.4, here's a quick guide to getting Python 2.7 
 installed on those systems:
 
 Install the tools we need to build Python and its modules:
@@ -40,32 +40,32 @@ Install the tools we need to build Python and its modules:
       bzip2-devel sqlite-devel db4-devel openssl-devel tk-devel \
       bluez-libs-devel libxslt libxslt-devel libxml2-devel libxml2
 
-Download and compile Python 2.6:
+Download and compile Python 2.7.1:
 
-    $ VERSION=2.6.5
+    $ VERSION=2.7.1
     $ mkdir /tmp/src 
     $ cd /tmp/src/
     $ wget http://python.org/ftp/python/$VERSION/Python-$VERSION.tar.bz2
     $ tar xjf Python-$VERSION.tar.bz2
     $ rm Python-$VERSION.tar.bz2
     $ cd Python-$VERSION 
-    $ ./configure --prefix=/opt
+    $ ./configure
     $ make
-    $ sudo make install
+    $ sudo make altinstall
 
 Now we need to install Python setuputils:
 
     $ cd /tmp/src
-    $ wget http://pypi.python.org/packages/2.6/s/setuptools/setuptools-0.6c11-py2.6.egg#md5=bfa92100bd772d5a213eedd356d64086
-    $ sudo PATH=/opt/bin:$PATH sh setuptools-0.6c11-py2.6.egg
+    $ wget http://pypi.python.org/packages/2.7/s/setuptools/setuptools-0.6c11-py2.7.egg
+    $ sudo sh setuptools-0.6c11-py2.7.egg
 
 Now install pip to install the rest of our dependencies:
 
-    $ sudo /opt/bin/easy_install pip
+    $ sudo easy_install-2.7 pip
 
 And the rest of our dependencies:
  
-    $ sudo /opt/bin/pip install simplejson suds boto lxml virtualenv
+    $ sudo pip-2.7 install cloud-scheduler
 
 Now clean everything up:
 
@@ -85,12 +85,12 @@ Install pip:
 
     # easy_install pip
 
-And all your packages:
+And Cloud Scheduler and its dependencies:
 
-    # pip install simplejson suds boto lxml
+    # pip install cloud-scheduler
 
-## Install
-To install cloud scheduler, as root, run:
+## Install without pip
+To install without using pip, run:
 
     # python setup.py install
 
@@ -198,6 +198,10 @@ Start it with:
 On Red Hat-like systems you can enable it to run at boot with:
 
     # chkconfig cloud_scheduler on
+
+NOTE: If you've used a non-default Python, you may need to set the PYTHON variable
+in the init script. If you've installed in a non-default location, you may need to 
+set your EXECUTABLEPATH variable.
 
 ## Configuring a VM for EC2 / Eucalyptus
 
