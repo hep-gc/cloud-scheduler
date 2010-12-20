@@ -36,24 +36,32 @@ class JobProxyRefresher(threading.Thread):
             log.info("Starting JobProxyRefresher thread...")
 
             while not self.quit:
-                jobs = self.job_pool.get_all_jobs()
+                jobs = self.job_pool.job_container.get_all_jobs()
                 log.debug("Refreshing job user proxies. [%d proxies to process]" % (len(jobs)))
                 for job in jobs:
                     log.debug("Proxy for job %s expires on: %s" % (job.id, job.get_x509userproxy_expiry_time()))
                     if job.needs_proxy_renewal():
                         if job.get_myproxy_creds_name() != None:
-                            log.debug("Renewing proxy %s" % (job.get_x509userproxy()))
-                            if self.renew_proxy(job):
+                            log.debug("Renewing proxy %s via MyProxy server" % (job.get_x509userproxy()))
+                            if self.renew_proxy_via_myproxy(job):
                                 # Yay, proxy renewal worked! :-)
                                 log.debug("Proxy for job %s renewed." % (job.id))
                             else:
                                 log.error("Error renewing proxy for job %s" % (job.id))
+                        elif job.get_cds_creds_url() != None:
+                            log.debug("Renewing proxy %s via CDS" % (job.get_x509userproxy()))
+                            if self.renew_proxy_via_CDS(job):
+                                # Yay, proxy renewal worked! :-)
+                                log.debug("Proxy for job %s renewed." % (job.id))
+                            else:
+                                log.error("Error renewing proxy for job %s" % (job.id))
+                            
                         else:
                             # If we get here, this means that the proxy should be renewed, but there
-                            # is not MyProxy info for that job's proxy.  Not an error; just that the
+                            # is no MyProxy or CDS info for that job's proxy.  Not an error; just that the
                             # owner of the job didn't give any MyProxy information to renew the
                             # credentials.
-                            log.debug("Not renewing proxy job %s because missing MyProxy info." % (job.id))
+                            log.debug("Not renewing proxy job %s because missing MyProxy or CDS info." % (job.id))
                     else:
                         log.debug("No need to renew proxy for job %s" % (job.id))
 
@@ -72,7 +80,7 @@ class JobProxyRefresher(threading.Thread):
     # This method will call the MyProxy commands to renew the credential for a given job.
     # 
     # Returns True on sucess, False otherwise.
-    def renew_proxy(self, job):
+    def renew_proxy_via_myproxy(self, job):
         job_proxy_file_path = job.get_x509userproxy()
         if job_proxy_file_path == None:
             log.error("Attemp to renew proxy for job with no proxy.  Aborting proxy renew operation.")
@@ -122,6 +130,51 @@ class JobProxyRefresher(threading.Thread):
         log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
         if myproxy_logon_process.returncode != 0:
             log.error("Error renewing proxy from MyProxy server.")
+            return False
+        log.debug('Copying %s to %s ...' % (new_proxy_file_path, job_proxy_file_path))
+        shutil.copyfile(new_proxy_file_path, job_proxy_file_path)
+        log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
+        os.remove(new_proxy_file_path)
+        
+        return True
+
+
+
+
+
+    # This method will attempt to renew the job's proxy via CDS.
+    # 
+    # Returns True on sucess, False otherwise.
+    def renew_proxy_via_CDS(self, job):
+        job_proxy_file_path = job.get_x509userproxy()
+        if job_proxy_file_path == None:
+            log.error("Attemp to renew proxy for job with no proxy.  Aborting proxy renew operation.")
+            return False
+
+        if job.get_cds_creds_url() == None:
+            log.error("Missing CDS credential url for job %s" % (job.id))
+            return False
+
+        # Note: Here we put the refreshed proxy in a seperate file.  We do this to protect the ownership and permisions on the
+        # original user's proxy in case the condor_submit was run on the same machine as the cloud scheduler.  If we do not do
+        # this, then the cloud scheduler will overwrite the user's proxy with the renewed proxy, but will be owned by root; so
+        # user will not be able to create proxies anymore because he/she won't have permission to overwrite the proxy file
+        # created by the cloud scheduler.
+        # Once the renewed proxy is in the temporary file, we then copy it over the original job's proxy, without changing its
+        # permissions.
+        #
+        # This is a bit of a hack; there must me a better way to handle this problem.
+        (new_proxy_file, new_proxy_file_path) = tempfile.mkstemp(suffix='.csRenewedProxy')
+        os.close(new_proxy_file)
+
+        proxy_fetch_cmd = '. $GLOBUS_LOCATION/etc/globus-user-env.sh && /usr/bin/curl --cert %s --key %s --output %s %s' % (config.cds_ssl_auth_cert, config.cds_ssl_auth_key, new_proxy_file_path, job.get_cds_creds_url())
+        log.debug('CDS creds renewal command: [%s]' % (proxy_fetch_cmd))
+        log.debug('Invoking command to refresh proxy %s via CDS...' % (job_proxy_file_path))
+        p = subprocess.Popen(proxy_fetch_cmd, shell=True)
+        p.wait()
+        log.debug('CDS creds renewal command returned %d' % (p.returncode))
+        if p != 0:
+            log.error("Error renewing proxy from CDS.")
             return False
         log.debug('Copying %s to %s ...' % (new_proxy_file_path, job_proxy_file_path))
         shutil.copyfile(new_proxy_file_path, job_proxy_file_path)

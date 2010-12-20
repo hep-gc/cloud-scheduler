@@ -60,6 +60,11 @@ scheduler_interval = 5
 job_proxy_refresher_interval = -1 # The current default is not to refresh the proxies. (until code is thouroughly tested -- Andre C.)
 job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 
+# The following 2 variable are used by the cloud scheduler to authenticate to CDS when renewing proxies.
+# By default, the host grid cert will be used.
+cds_ssl_auth_cert = "/etc/grid-security/hostcert.pem"
+cds_ssl_auth_key = "/etc/grid-security/hostkey.pem"
+
 default_VMType= "default"
 default_VMNetwork= ""
 default_VMCPUArch= "x86"
@@ -125,6 +130,8 @@ def setup(path=None):
     global scheduler_interval
     global job_proxy_refresher_interval
     global job_proxy_renewal_threshold
+    global cds_ssl_auth_cert
+    global cds_ssl_auth_key
 
     global default_VMType
     global default_VMNetwork
@@ -383,6 +390,12 @@ def setup(path=None):
             print "Configuration file problem: job_proxy_renewal_threshold must be an " \
                   "integer value."
             sys.exit(1)
+
+    if config_file.has_option("global", "cds_ssl_auth_cert"):
+        cds_ssl_auth_cert = config_file.get("global", "cds_ssl_auth_cert")
+
+    if config_file.has_option("global", "cds_ssl_auth_key"):
+        cds_ssl_auth_key = config_file.get("global", "cds_ssl_auth_key")
 
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")

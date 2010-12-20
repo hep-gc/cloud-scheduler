@@ -81,6 +81,7 @@ class Job:
              VMKeepAlive=1, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
+             CDSCredsURL=None,
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False, **kwargs):
         """
@@ -106,6 +107,7 @@ class Job:
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
      x509userproxysubject - (str) The DN of the authenticated user
      x509userproxy - (str) The user proxy certificate (full path)
+     CDSCredsURL - (str) The full URL of the user's credential stored in a Credential Delegation Service
      VMJobPerCore   - (boolean) Whether or not the machines you request will have
                                 multiple slots. This is mostly an advanced feature
                                 for when this can save you money (eg. with EC2)
@@ -138,6 +140,7 @@ class Job:
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
         self.x509userproxy_expiry_time = None
+        self.cds_creds_url = CDSCredsURL
         self.job_per_core = VMJobPerCore in ['true', "True", True]
         self.remote_host = RemoteHost
         self.running_cloud = ""
@@ -226,6 +229,9 @@ class Job:
 
     def get_x509userproxysubject(self):
         return self.x509userproxysubject
+
+    def get_cds_creds_url(self):
+        return self.cds_creds_url
 
     # Use this method to get the expiry time of the job's user proxy, if any.
     # Note that lazy initialization is done;  the expiry time will be extracted from the
@@ -482,6 +488,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyServerPort")
                 _add_if_exists(xml_job, job_dictionary, "x509userproxysubject")
                 _add_if_exists(xml_job, job_dictionary, "x509userproxy")
+                _add_if_exists(xml_job, job_dictionary, "CDSCredsURL")
                 _add_if_exists(xml_job, job_dictionary, "VMHighPriority")
                 _add_if_exists(xml_job, job_dictionary, "VMJobPerCore")
                 _add_if_exists(xml_job, job_dictionary, "RemoteHost")
