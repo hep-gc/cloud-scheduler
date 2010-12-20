@@ -36,7 +36,7 @@ class JobProxyRefresher(threading.Thread):
             log.info("Starting JobProxyRefresher thread...")
 
             while not self.quit:
-                jobs = self.job_pool.get_all_jobs()
+                jobs = self.job_pool.job_container.get_all_jobs()
                 log.debug("Refreshing job user proxies. [%d proxies to process]" % (len(jobs)))
                 for job in jobs:
                     log.debug("Proxy for job %s expires on: %s" % (job.id, job.get_x509userproxy_expiry_time()))
