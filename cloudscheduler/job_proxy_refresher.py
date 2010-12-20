@@ -175,7 +175,20 @@ class JobProxyRefresher(threading.Thread):
         log.debug('CDS creds renewal command returned %d' % (p.returncode))
         if p != 0:
             log.error("Error renewing proxy from CDS.")
+            log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
+            os.remove(new_proxy_file_path)
             return False
+
+        # IMPORTANT:
+        # Now we MUST verify that the fetched proxy is owned by the job owner (has the same DN).
+        # If it does not match, then we simply reject it and delete the temporary file.
+        if utilities.get_cert_DN(new_proxy_file_path) != utilities.get_cert_DN(job_proxy_file_path):
+            log.warn("DN of proxy fetched from CDS does not match DN of job owner.  Proxy renewal operation aborted.")
+            log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
+            os.remove(new_proxy_file_path)
+            return False
+
+        # DN matches, so we can proceed.
         log.debug('Copying %s to %s ...' % (new_proxy_file_path, job_proxy_file_path))
         shutil.copyfile(new_proxy_file_path, job_proxy_file_path)
         log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
