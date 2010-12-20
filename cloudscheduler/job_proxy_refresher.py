@@ -130,11 +130,16 @@ class JobProxyRefresher(threading.Thread):
         log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
         if myproxy_logon_process.returncode != 0:
             log.error("Error renewing proxy from MyProxy server.")
+            log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
+            os.remove(new_proxy_file_path)
             return False
         log.debug('Copying %s to %s ...' % (new_proxy_file_path, job_proxy_file_path))
         shutil.copyfile(new_proxy_file_path, job_proxy_file_path)
         log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
         os.remove(new_proxy_file_path)
+
+        # Don't forget to reset the proxy expiry time cache.
+        job.reset_x509userproxy_expiry_time()
         
         return True
 

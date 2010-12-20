@@ -715,9 +715,7 @@ class NimbusCluster(ICluster):
 
             # If there was some other error we're not aware of (temporary network problem, etc...)
             elif (poll_return != 0):
-                log.warning("(vm_poll) - Failed polling VM %s (ID: %s): %s %s" % (vm.name, vm.id, poll_out, poll_err))
-                log.debug("(vm_poll) - Setting VM status to \'Error\'")
-                vm.status = "Error"
+                log.warning("There was a problem polling VM %s: %s %s" % (vm.id, poll_out, poll_err))
 
         # Tidy up and return
         os.remove(vm_epr)
