@@ -187,12 +187,13 @@ class JobProxyRefresher(threading.Thread):
             log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
             os.remove(new_proxy_file_path)
             return False
-
-        # DN matches, so we can proceed.
-        log.debug('Copying %s to %s ...' % (new_proxy_file_path, job_proxy_file_path))
-        shutil.copyfile(new_proxy_file_path, job_proxy_file_path)
-        log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
-        os.remove(new_proxy_file_path)
+        else:
+            log.debug("DN check on proxy fetched from CDS successful.")
+            # DN matches, so we can proceed.
+            log.debug('Copying %s to %s ...' % (new_proxy_file_path, job_proxy_file_path))
+            shutil.copyfile(new_proxy_file_path, job_proxy_file_path)
+            log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
+            os.remove(new_proxy_file_path)
         
         return True
 
