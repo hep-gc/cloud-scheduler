@@ -199,6 +199,9 @@ class JobProxyRefresher(threading.Thread):
             shutil.copyfile(new_proxy_file_path, job_proxy_file_path)
             log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
             os.remove(new_proxy_file_path)
+
+            # Don't forget to reset the proxy expiry time cache.
+            job.reset_x509userproxy_expiry_time()
         
         return True
 
