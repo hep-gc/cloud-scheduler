@@ -250,7 +250,7 @@ class Job:
     # See get_x509userproxy_expiry_time for more info about how the proxy expiry time is
     # cached in memory.
     def reset_x509userproxy_expiry_time(self):
-        self.x509userproxy_expiry_time == None
+        self.x509userproxy_expiry_time = None
 
     # This method will test if a job's user proxy needs to be refreshed, according
     # the job proxy refresh threshold found in the cloud scheduler configuration.
