@@ -96,14 +96,17 @@ class ResourcePool:
             log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
             self.resource_query = self.resource_query_SOAP
             
-        if config.scheduling_metric == "slot":
-            self.vmtype_distribution = self.vmtype_distribution
-        elif config.scheduling_metric == "memory":
+        if config.scheduling_metric.lower() == "slot":
+            self.vmtype_distribution = self.vmtype_slot_distribution
+        elif config.scheduling_metric.lower() == "memory":
             self.vmtype_distribution = self.vmtype_mem_distribution
-        elif config.vmtype_distribution == "memory_cpu":
+        elif config.scheduling_metric.lower() == "memory_cpu":
             self.vmtype_distribution = self.vmtype_mem_cpu_distribution
-        elif config.vmtype_distribution == "memory_cpu_storage":
+        elif config.scheduling_metric.lower() == "memory_cpu_storage":
             self.vmtype_distribution = self.vmtype_mem_cpu_storage_distribution
+        else:
+            log.error("Can't use '%s' distribution method, not valid" % config.scheduling_metric)
+            self.vmtype_distribution = self.vmtype_slot_distribution
 
         self.setup()
         if config.ban_tracking:
@@ -691,7 +694,7 @@ class ResourcePool:
         return count
 
     # VM Type Distribution
-    def vmtype_distribution(self):
+    def vmtype_slot_distribution(self):
         types = self.get_vmtypes_count_internal()
         count = Decimal(self.vm_count())
         if count == 0:
@@ -727,7 +730,7 @@ class ResourcePool:
             types[vmtype] = mem_cpu_area
             mem_cpu_total += mem_cpu_area
         del usage
-        if mem_total == 0:
+        if mem_cpu_total == 0:
             return {}
         mem_cpu_total = 1 / Decimal(mem_cpu_total)
         for vmtype in types.keys():
@@ -739,22 +742,22 @@ class ResourcePool:
         usage = self.vmtype_resource_usage()
         types = {}
         vol_total = 0
-        weight_all = config.cpu_distribution_weight * config.memory_distribution_weight * config.storage_distribtuion_weight
+        weight_all = config.cpu_distribution_weight * config.memory_distribution_weight * config.storage_distribution_weight
         weight_cm = config.cpu_distribution_weight * config.memory_distribution_weight
         for vmtype in usage:
             vol = 0
-            if usage[vmytpe][2] != 0:
+            if usage[vmtype][2] != 0:
                 vol = usage[vmtype][0] * usage[vmtype][1] * usage[vmtype][2] * weight_all
-                types[vmtype] = vol
+                types[vmtype] = Decimal(str(vol))
             else:
                 vol = usage[vmtype][0] * usage[vmtype][1] * weight_cm
-                types[vmtype] = vol
+                types[vmtype] = Decimal(str(vol))
             vol_total += vol
         del usage
         if vol_total == 0:
             return {}
         if vol_total != 0:
-            mem_cpu_storage_total = 1 / Decimal(vol_total)
+            mem_cpu_storage_total = 1 / Decimal(str(vol_total))
         for vmtype in types.keys():
             types[vmtype] *= mem_cpu_storage_total
         return types

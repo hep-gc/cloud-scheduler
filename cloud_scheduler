@@ -296,6 +296,7 @@ class Scheduler(threading.Thread):
                 diff_types[type] = -desired_types[type]
         del desired_types
         del current_types
+        print diff_types
 
 
         ## Check failures to ban jobs on affected resources
