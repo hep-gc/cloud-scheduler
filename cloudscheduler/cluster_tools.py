@@ -452,8 +452,16 @@ class NimbusCluster(ICluster):
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
                 self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
 
-        if customization:
-            vm_optional = nimbus_xml.ws_optional_factory(customization)
+        job_proxy = None
+        if job_proxy_file_path:
+            try:
+                with open(job_proxy_file_path) as proxy:
+                    job_proxy = proxy.read()
+            except:
+                log.exception("Couldn't read proxy file %s, continuing without it.")
+
+        if customization or job_proxy:
+            vm_optional = nimbus_xml.ws_optional_factory(custom_tasks=customization, credential=job_proxy)
         else:
             vm_optional = None
 

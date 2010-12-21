@@ -310,7 +310,8 @@ class NimbusXMLTests(unittest.TestCase):
         self.custom_filename = "/tmp/filename"
         self.custom_string = "stringtoput"
         self.custom_tasks = [(self.custom_string, self.custom_filename)]
-        self.optional_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite></OptionalParameters>" % (self.custom_string, self.custom_filename)
+        self.credential = "fakecredential"
+        self.optional_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite><credentialToCopy>%s</credentialToCopy></OptionalParameters>" % (self.custom_string, self.custom_filename, self.credential)
         self.workspace_id = 42
         self.bad_workspace_id = "whatev"
         self.nimbus_hostname = "your.nimbus.tld"
@@ -327,7 +328,7 @@ class NimbusXMLTests(unittest.TestCase):
         self.assertEqual(txml, None)
 
     def test_for_good_optional_parameters(self):
-        txml = cloudscheduler.nimbus_xml.ws_optional_factory(self.custom_tasks)
+        txml = cloudscheduler.nimbus_xml.ws_optional_factory(custom_tasks=self.custom_tasks, credential=self.credential)
         
         xml_file = open(txml, "r")
         generated_xml = xml_file.read()
