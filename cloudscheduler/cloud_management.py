@@ -336,13 +336,17 @@ class ResourcePool:
     # Parameters: (as for get_resource methods)
     # Return: a list of Cluster objects representing clusters that meet given
     #         requirements for network, cpu, memory, and storage
-    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc):
+    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[]):
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return list of fitting resources")
             return []
 
         fitting_clusters = []
-        for cluster in self.resources:
+        if len(targets) > 0:
+            clusters = self.filter_resources_by_names(targets)
+        else:
+            clusters = self.resources
+        for cluster in clusters:
             if cluster.__class__.__name__ == "NimbusCluster":
                 # If not valid image file to download
                 if imageloc == "":
@@ -419,10 +423,10 @@ class ResourcePool:
     #         Normal return, (Primary_Cluster, Secondary_Cluster)
     #         If no secondary cluster is found, (Cluster, None) is returned.
     #         If no fitting clusters are found, (None, None) is returned.
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc):
+    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[]):
 
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc)
+        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
@@ -488,9 +492,14 @@ class ResourcePool:
         # If no clusters are found (no clusters can host the required VM)
         return potential_fit
 
-    def get_potential_fitting_resources(self, network, cpuarch, memory, disk):
+    def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[]):
         fitting = []
-        for cluster in self.resources:
+        clusters = []
+        if len(targets) == 0:
+            clusters = self.resources
+        else:
+            clusters = targets
+        for cluster in clusters:
             if not (cpuarch in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
@@ -502,6 +511,17 @@ class ResourcePool:
                 continue
             fitting.append(cluster)
         return fitting
+
+    # Return list of clusters that match names 
+    def filter_resources_by_names(self, names):
+        clusters = []
+        for name in names:
+            cluster = self.get_cluster(name)
+            if cluster != None:
+                clusters.append(cluster)
+            else:
+                log.debug("No Cluster with name %s in system" % name)
+        return clusters
 
     # Return cluster that matches cluster_name
     def get_cluster(self, cluster_name):

@@ -465,7 +465,7 @@ class Scheduler(threading.Thread):
                     fitting_clusters.extend(self.resource_pool.get_potential_fitting_resources( \
                     vmtypes_jobs[vmtype][0].req_network, \
                     vmtypes_jobs[vmtype][0].req_cpuarch, vmtypes_jobs[vmtype][0].req_memory, \
-                    vmtypes_jobs[vmtype][0].req_storage))
+                    vmtypes_jobs[vmtype][0].req_storage, vmtypes_jobs[vmtype][0].target_clouds))
         fitting_set = set(fitting_clusters)
 
         for vmtype, val in num_to_change.iteritems():
@@ -556,7 +556,7 @@ class Scheduler(threading.Thread):
         # Find resources that match the job's requirements
         (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
-        job.req_ami, job.req_imageloc)
+        job.req_ami, job.req_imageloc, job.target_clouds)
         
         good_resources = [pri_rsrc]
         if sec_rsrc and pri_rsrc != sec_rsrc:

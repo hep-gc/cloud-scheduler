@@ -82,7 +82,8 @@ class Job:
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              VMInstanceType=config.default_VMInstanceType, 
-             VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False, **kwargs):
+             VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
+             TargetClouds="", **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -142,12 +143,20 @@ class Job:
         self.remote_host = RemoteHost
         self.running_cloud = ""
 
-
         # Set the new job's status
         self.status = self.statuses[0]
 
         global log
         log = logging.getLogger("cloudscheduler")
+
+        try:
+            if len(TargetClouds) != 0:
+                self.target_clouds = re.sub(r'\s', '', TargetClouds).split(',')
+            else:
+                self.target_clouds = []
+        except:
+            self.target_clouds = []
+            log.error("Failed to parse TargetClouds - use a comma separated list")
 
         log.verbose("New Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
@@ -492,6 +501,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMHighPriority")
                 _add_if_exists(xml_job, job_dictionary, "VMJobPerCore")
                 _add_if_exists(xml_job, job_dictionary, "RemoteHost")
+                _add_if_exists(xml_job, job_dictionary, "TargetClouds")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
