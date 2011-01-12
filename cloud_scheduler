@@ -109,7 +109,7 @@ class VMPoller(threading.Thread):
                 elif vm.errorcount > 0:
                     vm.errorcount = 0
                 if vm.errorcount >= config.polling_error_threshold:
-                    log.info("VM %s in error state. Destroying..." % vm.name)
+                    log.info("VM %s on %s in error state. Destroying..." % (vm.id, vm.clusteraddr))
 
                     # Destroy the VM
                     destroy_ret = cluster.vm_destroy(vm)
