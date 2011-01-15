@@ -76,7 +76,7 @@ class Job:
              JobStatus=0, ClusterId=0, ProcId=0, VMType=config.default_VMType,
              VMNetwork=config.default_VMNetwork, VMCPUArch=config.default_VMCPUArch, 
              VMName=config.default_VMName, VMLoc=config.default_VMLoc, 
-             VMAMI=config.default_VMAMI, VMMem=config.default_VMMem, 
+             VMAMI={"default": config.default_VMAMI}, VMMem=config.default_VMMem, 
              VMCPUCores=config.default_VMCPUCores, VMStorage=config.default_VMStorage, 
              VMKeepAlive=1, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
@@ -436,6 +436,18 @@ class JobPool:
             except:
                 log.exception("Problem extracting VMType from Requirements")
 
+            # VMAMI requires special fiddling
+            try:
+                ami_list = classad["VMAMI"]
+                try:
+                    ami_dict = _ami_to_dict(ami_list)
+                    classad['VMAMI'] = ami_dict
+                except ValueError:
+                    log.exception("Problem extracting AMI from VMAMI attribute '%s'" % ami)
+            except:
+                # No ami to extract
+                pass
+
             jobs.append(Job(**classad))
         return jobs
 
@@ -486,7 +498,6 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMCPUArch")
                 _add_if_exists(xml_job, job_dictionary, "VMName")
                 _add_if_exists(xml_job, job_dictionary, "VMLoc")
-                _add_if_exists(xml_job, job_dictionary, "VMAMI")
                 _add_if_exists(xml_job, job_dictionary, "VMMem")
                 _add_if_exists(xml_job, job_dictionary, "VMCPUCores")
                 _add_if_exists(xml_job, job_dictionary, "VMStorage")
@@ -510,13 +521,22 @@ class JobPool:
                     if vmtype:
                         job_dictionary['VMType'] = vmtype
 
+                # VMAMI requires special fiddling
+                ami = _job_attribute(xml_job, "VMAMI")
+                if ami:
+                    try:
+                        ami_dict = _ami_to_dict(ami)
+                        job_dictionary['VMAMI'] = ami_dict
+                    except:
+                        log.exception("Problem extracting AMI from VMAMI attribute '%s'" % ami)
+
                 jobs.append(Job(**job_dictionary))
 
                 elem.clear()
         return jobs
 
 
-
+ 
     # Updates the system jobs:
     #   - Removes finished or deleted jobs from the system
     #   - Ignores jobs already in the system and still in Condor
@@ -857,6 +877,41 @@ class JobPool:
             log.verbose("(none)")
         for job in jobs:
             log.verbose("\tJob: %s, %10s, %4d, %10s" % (job.id, job.user, job.priority, job.req_vmtype))
+
+
+
+# utility parsing methods
+
+def _ami_to_dict(ami_list):
+    """
+    _ami_to_dict -- parse a string like: host:ami, ..., host:ami into a
+    dictionary of the form:
+    {
+        host: ami
+        host: ami
+    }
+
+    if the string is in the form "ami" then parse to format
+    {
+        default: ami
+    }
+
+    raises ValueError if list can't be parsed
+    """
+
+    ami_dict = {}
+    for host_ami in ami_list.split(","):
+        host_ami = host_ami.split(":")
+        if len(host_ami) == 1:
+            ami_dict["default"] = host_ami[0].strip()
+        elif len(host_ami) == 2:
+            ami_dict[host_ami[0].strip()] = host_ami[1].strip()
+        else:
+            raise ValueError("Can't split '%s' into suitable host ami pair" % host_ami)
+
+    return ami_dict
+
+
 
 
 # A class to contain a subset of all jobs obtained from the scheduler, to be

@@ -2236,7 +2236,7 @@ xmlns:condor="urn:condor">
                           'ClusterId': 85,
                           'ProcId': 0,
                           'VMType': 'canfarbase',
-                          'VMAMI': 'ami-fdee0094',
+                          'VMAMI': {'default': 'ami-fdee0094'},
                           'VMLoc': 'http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.img.gz',
                           'VMStorage': 10,
                           'VMMaximumPrice': 15,
@@ -2262,6 +2262,19 @@ xmlns:condor="urn:condor">
         self.assertEqual(parsed_job.keep_alive, test_job.keep_alive)
         self.assertEqual(parsed_job.instance_type, test_job.instance_type)
         self.assertEqual(parsed_job.maximum_price, test_job.maximum_price)
+
+    def test_amilist_to_dict(self):
+        east_host = "us-east-1.ec2.amazonaws.com"
+        east_ami = "ami-east"
+        euca_host = "euca.example.com"
+        euca_ami = "emi-example"
+
+        amilist = "%s:%s, %s:%s" % (east_host, east_ami, euca_host, euca_ami)
+        parsed_dict = cloudscheduler.job_management._ami_to_dict(amilist)
+
+        self.assertEqual(east_ami, parsed_dict[east_host])
+
+
 
     def test_set_query_type(self):
         job_pool = cloudscheduler.job_management.JobPool("testpool", condor_query_type="local")

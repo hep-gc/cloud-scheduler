@@ -937,6 +937,8 @@ class EC2Cluster(ICluster):
 
         if self.cloud_type == "AmazonEC2":
             try:
+                region = boto.ec2.regioninfo.RegionInfo(name=self.name,
+                                                 endpoint=self.network_address)
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
@@ -1013,6 +1015,16 @@ class EC2Cluster(ICluster):
 
         log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
+        try:
+            vm_ami = vm_image[self.network_address]
+        except:
+            log.debug("No AMI for %s, trying default" % self.network_address)
+            try:
+                vm_ami = vm_image["default"]
+            except:
+                log.exception("Can't find a suitable AMI")
+                return
+
         if not instance_type:
             instance_type = self.DEFAULT_INSTANCE_TYPE
 
@@ -1031,7 +1043,7 @@ class EC2Cluster(ICluster):
             connection = self._get_connection()
             image = None
             if not "Eucalyptus" == self.cloud_type:
-                image = connection.get_image(vm_image)
+                image = connection.get_image(vm_ami)
 
             else: #HACK: for some reason Eucalyptus won't respond properly to
                   #      get_image("whateverimg"). Use a linear search until
@@ -1040,7 +1052,7 @@ class EC2Cluster(ICluster):
                   # https://bugs.launchpad.net/eucalyptus/+bug/495670
                 images = connection.get_all_images()
                 for potential_match in images:
-                    if potential_match.id == vm_image:
+                    if potential_match.id == vm_ami:
                         image = potential_match
                         break
 
@@ -1129,9 +1141,12 @@ class EC2Cluster(ICluster):
             if vm.spot_id:
                 try:
                     spot_reservation = connection.get_all_spot_instance_requests(vm.spot_id)[0]
-                    vm.id = str(spot_reservation.instanceId)
+                    if spot_reservation.instance_id == None:
+                        log.debug("Spot reservation %s doesn't have a VM id yet." % vm.spot_id)
+                        return vm.status
+                    vm.id = str(spot_reservation.instance_id)
                 except AttributeError:
-                    log.debug("Spot reservation %s doesn't have a VM id yet." % vm.spot_id)
+                    log.exception("Problem getting spot VM info. Do you have boto 2.0+?")
                     return vm.status
                 except:
                     log.exception("Problem getting information for spot vm %s" % vm.spot_id)
