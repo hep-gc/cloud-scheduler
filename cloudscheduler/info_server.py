@@ -180,6 +180,7 @@ class InfoServer(threading.Thread,):
                 self.server.handle_request()
                 if self.done:
                     log.debug("Killing info server...")
+                    self.server.socket.close()
                     break
             except socket.timeout:
                 log.warning("info server's socket timed out. Don't panic!")
