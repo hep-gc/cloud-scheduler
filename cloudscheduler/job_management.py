@@ -410,6 +410,17 @@ class JobPool:
             else:
                 return ""
 
+        def _attribute_from_list(classad, attribute):
+            try:
+                attr_list = classad[attribute]
+                try:
+                    attr_dict = _attr_list_to_dict(attr_list)
+                    classad[attribute] = attr_dict
+                except ValueError:
+                    log.exception("Problem extracting %s attribute '%s'" % (attribute, attr_list))
+            except:
+                pass
+
         jobs = []
 
         # The first three lines look like:
@@ -437,16 +448,8 @@ class JobPool:
                 log.exception("Problem extracting VMType from Requirements")
 
             # VMAMI requires special fiddling
-            try:
-                ami_list = classad["VMAMI"]
-                try:
-                    ami_dict = _ami_to_dict(ami_list)
-                    classad['VMAMI'] = ami_dict
-                except ValueError:
-                    log.exception("Problem extracting AMI from VMAMI attribute '%s'" % ami)
-            except:
-                # No ami to extract
-                pass
+            _attribute_from_list(classad, "VMAMI")
+            _attribute_from_list(classad, "VMInstanceType")
 
             jobs.append(Job(**classad))
         return jobs
@@ -469,6 +472,15 @@ class JobPool:
             job_value = string.strip(_job_attribute(xml, attribute))
             if job_value:
                 dictionary[attribute] = job_value
+
+        def _add_dict_if_exists(xml, dictionary, attribute):
+            attr_list = _job_attribute(xml_job, attribute)
+            if attr_list:
+                try:
+                    attr_dict = _attr_list_to_dict(attr_list)
+                    dictionary[attribute] = attr_dict
+                except:
+                    log.exception("Problem extracting %s attribute '%s'" % (attribute, attr_list))
 
         def _attribute_from_requirements(requirements, attribute):
             regex = "%s\s=\?=\s\"(?P<value>.+?)\"" % attribute
@@ -502,7 +514,6 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMCPUCores")
                 _add_if_exists(xml_job, job_dictionary, "VMStorage")
                 _add_if_exists(xml_job, job_dictionary, "VMKeepAlive")
-                _add_if_exists(xml_job, job_dictionary, "VMInstanceType")
                 _add_if_exists(xml_job, job_dictionary, "VMMaximumPrice")
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyCredsName")
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyServer")
@@ -522,13 +533,8 @@ class JobPool:
                         job_dictionary['VMType'] = vmtype
 
                 # VMAMI requires special fiddling
-                ami = _job_attribute(xml_job, "VMAMI")
-                if ami:
-                    try:
-                        ami_dict = _ami_to_dict(ami)
-                        job_dictionary['VMAMI'] = ami_dict
-                    except:
-                        log.exception("Problem extracting AMI from VMAMI attribute '%s'" % ami)
+                _add_dict_if_exists(xml_job, job_dictionary, "VMAMI")
+                _add_dict_if_exists(xml_job, job_dictionary, "VMInstanceType")
 
                 jobs.append(Job(**job_dictionary))
 
@@ -882,9 +888,9 @@ class JobPool:
 
 # utility parsing methods
 
-def _ami_to_dict(ami_list):
+def _attr_list_to_dict(attr_list):
     """
-    _ami_to_dict -- parse a string like: host:ami, ..., host:ami into a
+    _attr_list_to_dict -- parse a string like: host:ami, ..., host:ami into a
     dictionary of the form:
     {
         host: ami
@@ -899,17 +905,17 @@ def _ami_to_dict(ami_list):
     raises ValueError if list can't be parsed
     """
 
-    ami_dict = {}
-    for host_ami in ami_list.split(","):
-        host_ami = host_ami.split(":")
-        if len(host_ami) == 1:
-            ami_dict["default"] = host_ami[0].strip()
-        elif len(host_ami) == 2:
-            ami_dict[host_ami[0].strip()] = host_ami[1].strip()
+    attr_dict = {}
+    for host_attr in attr_list.split(","):
+        host_attr = host_attr.split(":")
+        if len(host_attr) == 1:
+            attr_dict["default"] = host_attr[0].strip()
+        elif len(host_attr) == 2:
+            attr_dict[host_attr[0].strip()] = host_attr[1].strip()
         else:
-            raise ValueError("Can't split '%s' into suitable host ami pair" % host_ami)
+            raise ValueError("Can't split '%s' into suitable host attribute pair" % host_attr)
 
-    return ami_dict
+    return attr_dict
 
 
 

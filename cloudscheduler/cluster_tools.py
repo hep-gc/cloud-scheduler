@@ -983,10 +983,6 @@ class EC2Cluster(ICluster):
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None):
 
-        # Janky minimum version test for boto
-        if float(boto.Version[:3]) < 1.9:
-            log.warning("Versions of boto before 1.9 don't support spot instances")
-
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, cpu_archs=cpu_archs, networks=networks,
@@ -1025,8 +1021,15 @@ class EC2Cluster(ICluster):
                 log.exception("Can't find a suitable AMI")
                 return
 
-        if not instance_type:
-            instance_type = self.DEFAULT_INSTANCE_TYPE
+        try:
+            i_type = instance_type[self.network_address]
+        except:
+            log.debug("No instance type for %s, trying default" % self.network_address)
+            try:
+                i_type = instance_type["default"]
+            except:
+                i_type = self.DEFAULT_INSTANCE_TYPE
+        instance_type = i_type
 
         if customization:
             user_data = nimbus_xml.ws_optional(customization)

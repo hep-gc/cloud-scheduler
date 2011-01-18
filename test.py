@@ -2255,7 +2255,6 @@ xmlns:condor="urn:condor">
         self.assertEqual(parsed_job.req_cpuarch, test_job.req_cpuarch)
         self.assertEqual(parsed_job.req_image, test_job.req_image)
         self.assertEqual(parsed_job.req_imageloc, test_job.req_imageloc)
-        self.assertEqual(parsed_job.req_ami, test_job.req_ami)
         self.assertEqual(parsed_job.req_memory, test_job.req_memory)
         self.assertEqual(parsed_job.req_cpucores, test_job.req_cpucores)
         self.assertEqual(parsed_job.req_storage, test_job.req_storage)
@@ -2263,14 +2262,14 @@ xmlns:condor="urn:condor">
         self.assertEqual(parsed_job.instance_type, test_job.instance_type)
         self.assertEqual(parsed_job.maximum_price, test_job.maximum_price)
 
-    def test_amilist_to_dict(self):
+    def test_condor_attr_list_to_dict(self):
         east_host = "us-east-1.ec2.amazonaws.com"
         east_ami = "ami-east"
         euca_host = "euca.example.com"
         euca_ami = "emi-example"
 
         amilist = "%s:%s, %s:%s" % (east_host, east_ami, euca_host, euca_ami)
-        parsed_dict = cloudscheduler.job_management._ami_to_dict(amilist)
+        parsed_dict = cloudscheduler.job_management._attr_list_to_dict(amilist)
 
         self.assertEqual(east_ami, parsed_dict[east_host])
 
