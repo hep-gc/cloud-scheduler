@@ -279,11 +279,8 @@ class Scheduler(threading.Thread):
     def scheduler_fair_share(self):
         ## Figure out distribution of VMs requested and available
         current_types = {}
-
         current_types = self.resource_pool.vmtype_distribution()
-
         desired_types = self.job_pool.job_type_distribution()
-
         # Negative difference means will need to create that type
         diff_types = {}
         for type in current_types.keys():
@@ -556,9 +553,10 @@ class Cleanup(threading.Thread):
             # a slow schedd can take quite a few minutes
             if self.job_pool.last_query:
                 ## Clear all un-needed VMs from the system
+                log.debug("Attempting to balance VMs")
+                self.clean_balance_vms()
                 log.debug("Clearing all un-needed VMs from the system")
-                #self.clean_unneeded_vms()
-
+                self.clean_unneeded_vms()
                 machineList = self.resource_pool.machine_list
                 #if machineList:
                 # Make sure VMs have registered with Condor
@@ -577,7 +575,7 @@ class Cleanup(threading.Thread):
 
         log.debug("Exiting cleanup thread")
 
-    def clean_rebalance_vmss(self):
+    def clean_balance_vms(self):
 
         # Count the number of jobs that require a certain VM type,
         # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
@@ -607,6 +605,21 @@ class Cleanup(threading.Thread):
 
             # Balancing Resources
             # Figure how many VMs to add or remove of each type
+            current_types = {}
+            current_types = self.resource_pool.vmtype_distribution()
+            desired_types = self.job_pool.job_type_distribution()
+            # Negative difference means will need to create that type
+            diff_types = {}
+            for type in current_types.keys():
+                if type in desired_types.keys():
+                    diff_types[type] = current_types[type] - desired_types[type]
+                else:
+                    diff_types[type] = 0
+            for type in desired_types.keys():
+                if type not in current_types.keys():
+                    diff_types[type] = -desired_types[type]
+            del desired_types
+            del current_types
             num_to_change = {}
             vm_count = self.resource_pool.vm_count()
             for vmtype, val in diff_types.iteritems():
