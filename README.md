@@ -151,36 +151,39 @@ Scheduler. You can create one with:
 
 ## Configuration
 
-There are two Cloud Scheduler configuration files.
+### cloud_scheduler.conf
 
-### The general cloud scheduler configuration file
+The Cloud Scheduler configuration file allows you to configure most of its 
+functionality, and you'll need to open it up to get a usable installation.
+All of its options are described inline in the example configuration file
+cloud_scheduler.conf, which is included with Cloud Scheduler. 
 
-The general (or central) cloud scheduler configuration file contains fields for
-defining cloud scheduler program functionality, including Condor job pool con-
-figuration information, logging information, and default cloud resource config-
-uration options. 
+By default, the Cloud Scheduler setup script installs its configuration files
+to /etc/cloudscheduler/, but you can manually select a different configuration
+by running cloud_scheduler with the -f option. If you're running as a non-root
+user, Cloud Scheduler will also check for config files in ~/.cloud_scheduler/
 
-The cloud scheduler config file can be manually specified on the command line 
-when the cloud scheduler is run via the -f option, or can be stored in the
-following locations:
+Cloud Scheduler checks for config files in the following order, and will use the first one it finds:
+
+    [config specified with the -f option]
     ~/.cloudscheduler/cloud_scheduler.conf
     /etc/cloudscheduler/cloud_scheduler.conf
 
-Note: the cloud scheduler will attempt first to get the general configuration
-file from the command-line, then from the ~/... directory, and finally from the
-/etc/... directory.
+### cloud_resources.conf
 
-### The cloud resource configuration file
+The cloud resource configuration file, cloud_resources.conf, is where you
+define which clouds Cloud Scheduler should use for starting VMs. You'll specify
+how many VMs you want to boot on each cloud, and what it's capabilities are.
+The best way to get familiar with this file is to open up the sample
+cloud_resources.conf file, where all of its configuration options, and a sample
+configuration are included.
 
-The cloud resource configuration file contains information on the cloud-enabled
-clusters that the cloud scheduler will use as resources. Clusters in this con-
-figuration file will be used by the cloud scheduler to create and manage VMs.
-See the cloud_resources.conf file for an explanation of cluster configuration parameters.
+Like cloud_scheduler.conf, the Cloud Scheduler setup script installs this file
+in /etc/cloudscheduler/, but you can manually select a different configuration
+by running cloud_scheduler with the -c option. You can also specify the
+location of this file with the cloud_resource_config option in the
+cloud_scheduler.conf file.
 
-The cloud resource config file can be specified on the command-line with the
--c option. If the cloud resource config file is not specified on the command
-line, it will be taken from the location given in the cloud_resource_config
-field of the cloud_scheduler.conf file.
 
 ## Init Script
 There is a cloud scheduler init script at scripts/cloud_scheduler. To install
