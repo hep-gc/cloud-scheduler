@@ -6,8 +6,7 @@ Cloud Scheduler: Automatically boot VMs for your HTC jobs
 Cloud Scheduler manages virtual machines on clouds configured with Nimbus,
 Eucalyptus, or Amazon EC2 to create an environment for HTC batch job execution.
 Users submit their jobs to a Condor job queue, and Cloud Scheduler boots VMs to
-suit those jobs, creating a malleable environment for efficient job execution
-and resource utilization.
+suit those jobs. 
 
 For more documentation on Cloud Scheduler, please refer to:
 
@@ -25,6 +24,11 @@ For more documentation on Cloud Scheduler, please refer to:
 ## Optional Prerequisites
 
 * [Guppy](http://guppy-pe.sourceforge.net/) -- Used for memory usage info.
+
+### Quick Start for People Who Think They Know What They're Doing
+
+    # pip install cloud-scheduler
+
 
 ### Special help for RHEL 5
 
@@ -121,10 +125,18 @@ Make sure you can run condor_status and condor_q, and make sure your
 ALLOW_WRITE will permit the VMs you will start to add themselves to your Condor
 Pool.
 
-Condor must also be installed on your VM images that will run your jobs. There
-is a sample configuration for your Condor installation in scripts/condor/worker/
-condor_config, condor_config.local and central_manager must be in /etc/condor/
-and you must use the customized condor init script scripts/condor/worker/condor
+## Preparing VM Images
+
+The VM images you would like to run jobs with need to be prepared to join your
+Condor pool. Cloud Scheduler will do most of the heavy lifting for you, but at
+the very least, you need to install Condor, and configure it as a worker that
+will join your Condor pool. The easiest way to do this is use the example
+configuration (at least as inspiration) from scripts/condor/worker/ . You'll
+want to put these in your /etc/condor directory. You will probably also want to
+use our custom Condor init script. This does things like set up an appropriate
+environment for when Condor is started with private networking only, when
+started on EC2, and also will automatically point your node to your Condor
+Pool.
 
 ## Installing Nimbus Cloud Client
 
