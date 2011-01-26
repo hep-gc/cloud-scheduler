@@ -52,6 +52,9 @@ def main(argv=None):
                       action="store", dest="job_queue",
                       type="choice", choices=['all', 'new', 'sched', 'high'],
                       help="Get Information about the job queues")
+    parser.add_option("-i", "--ip-address", default=False, action="store_true",
+                      dest="ips",
+                      help="output ip information for munin monitoring")
 
     (cli_options, args) = parser.parse_args()
 
@@ -113,6 +116,8 @@ def main(argv=None):
             elif cli_options.job_queue.startswith('h'):
                 print "Jobs in High Priority Queue"
                 print s.get_highjobs()
+        elif cli_options.ips:
+            print s.get_ips_munin()
         else:
             print s.get_cloud_resources()
 

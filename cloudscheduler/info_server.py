@@ -167,7 +167,15 @@ class InfoServer(threading.Thread,):
                 return JobJSONEncoder().encode(job)
             def get_json_jobpool(self):
                 return JobPoolJSONEncoder().encode(job_pool)
-
+            def get_ips_munin(self):
+                output = ""
+                for cluster in cloud_resources.resources:
+                    for vm in cluster.vms:
+                        if vm.ipaddress.startswith("192.168") or vm.ipaddress.startswith("172.") or vm.ipaddress.startswith("10."):
+                            continue
+                        else:
+                            output += "[%s]\n\taddress %s\n" % (vm.hostname, vm.ipaddress)
+                return output
 
         self.server.register_instance(externalFunctions())
 

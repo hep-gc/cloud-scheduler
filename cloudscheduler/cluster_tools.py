@@ -60,7 +60,7 @@ class VM:
     """
 
     def __init__(self, name="", id="", vmtype="",
-            hostname="", clusteraddr="",
+            hostname="", ipaddress="", clusteraddr="",
             cloudtype="", network="public", cpuarch="x86",
             image="", memory=0, mementry=0,
             cpucores=0, storage=0, keep_alive=0, spot_id="",
@@ -73,6 +73,7 @@ class VM:
                        by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
         vmtype       - (str) The condor VMType attribute for the VM
         hostname     - (str) The first part of hostname given to VM
+        ipaddress    - (str) The IP Address of the VM
         condorname   - (str) The name of the VM as it's registered with Condor
         condoraddr   - (str) The Address of the VM as it's registered with Condor
         clusteraddr  - (str) The address of the cluster hosting the VM
@@ -90,6 +91,7 @@ class VM:
         self.id = id
         self.vmtype = vmtype
         self.hostname = hostname
+        self.ipaddress = ipaddress
         self.condorname = None
         self.condoraddr = None
         self.clusteraddr = clusteraddr
@@ -516,6 +518,10 @@ class NimbusCluster(ICluster):
             os.rename(vm_epr, "%s.%s" % (vm_epr, vm_id))
         except:
             log.error("vm_create - couldn't find workspace id for new VM")
+        try:
+            vm_ip = re.search("IP address: (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", create_out).group(1)
+        except:
+            log.error("vm_create - couldn't find the ip address for new VM")
 
         # Get the first part of the hostname given to the VM
         vm_hostname = self._extract_hostname(create_out)
@@ -527,7 +533,8 @@ class NimbusCluster(ICluster):
 
         # Create a VM object to represent the newly created VM
         new_vm = VM(name = vm_name, id = vm_id, vmtype = vm_type,
-            hostname = vm_hostname, clusteraddr = self.network_address,
+            hostname = vm_hostname, ipaddress = vm_ip, 
+            clusteraddr = self.network_address,
             cloudtype = self.cloud_type,network = vm_networkassoc,
             cpuarch = vm_cpuarch, image = vm_image,
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
