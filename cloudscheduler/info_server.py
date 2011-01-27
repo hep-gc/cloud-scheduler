@@ -22,6 +22,7 @@ import time
 import socket
 import sys
 import platform
+import re
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
@@ -171,7 +172,7 @@ class InfoServer(threading.Thread,):
                 output = ""
                 for cluster in cloud_resources.resources:
                     for vm in cluster.vms:
-                        if vm.ipaddress.startswith("192.168") or vm.ipaddress.startswith("172.") or vm.ipaddress.startswith("10."):
+                        if re.search("(10|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.", vm.ipaddress):
                             continue
                         else:
                             output += "[%s]\n\taddress %s\n" % (vm.hostname, vm.ipaddress)
