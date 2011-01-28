@@ -84,6 +84,8 @@ class ResourcePool:
         self.ban_lock = threading.Lock()
         self.banned_job_resource = {}
         self.failures = {}
+        self.setup_lock = threading.Lock()
+        self.setup_queued = False
 
         if not condor_query_type:
             condor_query_type = config.condor_retrieval_method
@@ -118,6 +120,11 @@ class ResourcePool:
     def setup(self):
 
         log.info("Loading cloud resource configuration file %s" % self.config_file)
+
+        if not self.setup_lock.acquire(False):
+            log.warning("Reconfig already in progress, queuing the request")
+            self.setup_queued = True
+            return
 
         new_resources = []
 
@@ -212,6 +219,11 @@ class ResourcePool:
                                 cluster.vm_destroy(vm, return_resources=False)
 
                     old_resources.remove(cluster)
+
+        self.setup_lock.release()
+        if self.setup_queued:
+            self.setup_queued = False
+            self.setup()
 
 
     @staticmethod

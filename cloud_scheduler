@@ -671,21 +671,24 @@ class Cleanup(threading.Thread):
                         log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
 
     def clean_scheduled_unscheduled(self):
-        with self.job_pool.job_container.lock:
-            for job in self.job_pool.job_container.get_all_jobs():
-                    if job.job_status == self.RUNNING:
-                        self.job_pool.schedule(job)
-                
-            vms = self.resource_pool.get_vmtypes_count_internal()
-            job_req_count = {}
-            for job in self.job_pool.job_container.get_scheduled_jobs():
-                if job.req_vmtype in job_req_count:
-                    job_req_count[job.req_vmtype] += 1
-                else:
-                    job_req_count[job.req_vmtype] = 1
-            for job in self.job_pool.job_container.get_scheduled_jobs():
-                if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
-                    self.job_pool.unschedule(job)
+        # We need the setup lock to ensure that we don't set jobs to
+        # unscheduled during a reconfig.
+        with self.resource_pool.setup_lock:
+            with self.job_pool.job_container.lock:
+                for job in self.job_pool.job_container.get_all_jobs():
+                        if job.job_status == self.RUNNING:
+                            self.job_pool.schedule(job)
+                    
+                vms = self.resource_pool.get_vmtypes_count_internal()
+                job_req_count = {}
+                for job in self.job_pool.job_container.get_scheduled_jobs():
+                    if job.req_vmtype in job_req_count:
+                        job_req_count[job.req_vmtype] += 1
+                    else:
+                        job_req_count[job.req_vmtype] = 1
+                for job in self.job_pool.job_container.get_scheduled_jobs():
+                    if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
+                        self.job_pool.unschedule(job)
 
     def clean_check_diff_vms_machines(self, machineList):
         unregisteredvms = []
