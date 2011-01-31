@@ -693,6 +693,7 @@ class Cleanup(threading.Thread):
                 for job in self.job_pool.job_container.get_scheduled_jobs():
                     if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
                         self.job_pool.unschedule(job)
+                        job_req_count[job.req_vmtype] -= 1
 
     def clean_check_diff_vms_machines(self, machineList, retired=False):
         unregisteredvms = []
