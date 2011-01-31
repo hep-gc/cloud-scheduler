@@ -566,6 +566,10 @@ class Cleanup(threading.Thread):
                 self.clean_kill_unregistered_vms(unregisteredvms)
                 # Shutdown the Retired VMs
                 self.clean_retired_vms(retiredvms)
+                # Deal with retired resources from a reconfigure
+                unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(machineList, True)
+                self.clean_kill_unregistered_vms(unregisteredvms, True)
+                self.clean_retired_vms(retiredvms, True)
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
@@ -690,11 +694,15 @@ class Cleanup(threading.Thread):
                     if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
                         self.job_pool.unschedule(job)
 
-    def clean_check_diff_vms_machines(self, machineList):
+    def clean_check_diff_vms_machines(self, machineList, retired=False):
         unregisteredvms = []
         retiredvms = []
-
-        for cluster in self.resource_pool.resources:
+        resources = []
+        if not retired:
+            resources = self.resource_pool.resources
+        else:
+            resources = self.resource_pool.retired_resources
+        for cluster in resources:
             for vm in cluster.vms:
                 foundvm = False
                 if vm.status == 'Running':
@@ -713,7 +721,7 @@ class Cleanup(threading.Thread):
                             unregisteredvms.append(vm)
         return unregisteredvms, retiredvms
 
-    def clean_kill_unregistered_vms(self, unregisteredvms):
+    def clean_kill_unregistered_vms(self, unregisteredvms, retired = False):
         to_kill = []
         for vm in unregisteredvms:
             # now -state change will be how long VM 'running'
@@ -721,26 +729,36 @@ class Cleanup(threading.Thread):
 
             if running_time > config.condor_register_time_limit:
                 to_kill.append(vm)
+        resources = []
+        if not retired:
+            resources = self.resource_pool.resources
+        else:
+            resources = self.resource_pool.retired_resources
         for machine in to_kill:
             killedIt = False
-            for cluster in self.resource_pool.resources:
+            for cluster in resources:
                 for vm in cluster.vms:
                     if vm == machine:
                         log.debug("Shutting down VM: %s that has not registered with Condor after %i sec" % (vm.id, config.condor_register_time_limit))
-                        cluster.vm_destroy(machine)
+                        cluster.vm_destroy(machine, return_resources=(not retired))
                         killedIt = True
                         break
                 if killedIt:
                     break
 
-    def clean_retired_vms(self, retiredvms):
+    def clean_retired_vms(self, retiredvms, retired = False):
         for machine in retiredvms:
             killedIt = False
-            for cluster in self.resource_pool.resources:
+            resources = []
+            if not retired:
+                resources = self.resource_pool.resources
+            else:
+                resources = self.resource_pool.retired_resources
+            for cluster in resources:
                 for vm in cluster.vms:
                     if vm == machine:
                         log.debug("Shutting down VM: %s that has finished Retiring" % (vm.id))
-                        cluster.vm_destroy(machine)
+                        cluster.vm_destroy(machine, return_resources=(not retired))
                         killedIt = True
                         break
                 if killedIt:
@@ -863,6 +881,10 @@ class Cleanup(threading.Thread):
         for vmtype, val in num_to_change.iteritems():
             criteria = {'VMType': vmtype, 'Activity': 'Retiring'}
             retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
+            for vm in reversed(retiring_vms_of_type):
+                if vm.force_retire:
+                    print "force is true - ignore this one"
+                    retiring_vms_of_type.remove(vm)
             adjusted_val = val - len(retiring_vms_of_type)
             if adjusted_val > 0:
                 criteria = {'VMType': vmtype, 'Activity': 'Busy'}
@@ -888,6 +910,10 @@ class Cleanup(threading.Thread):
                 if abs(adjusted_val) > len(retiring_vms_of_type):
                     adjusted_val = len(retiring_vms_of_type)
                 for x in range(0, abs(adjusted_val)):
+                    print "Turning machine back on flag is %s" % retiring_vms_of_type[x].force_retire
+                    if retiring_vms_of_type[x].force_retire:
+                        continue
+                    
                     ret = self.resource_pool.do_condor_on(retiring_vms_of_type[x].condorname, retiring_vms_of_type[x].condoraddr)
                     if ret == 0:
                         retiring_vms_of_type[x].override_status = None

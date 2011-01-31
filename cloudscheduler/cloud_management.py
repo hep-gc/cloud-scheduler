@@ -61,6 +61,7 @@ class ResourcePool:
     ## Instance variables
     resources = []
     machine_list = []
+    retired_resources = []
     config_file = ""
 
     ## Instance methods
@@ -208,12 +209,14 @@ class ResourcePool:
                 if cluster.name == removed_cluster_name:
                     log.info("Removing %s from available resources" % 
                                                           removed_cluster_name)
+                    self.retired_resources.append(cluster)
                     for vm in cluster.vms:
                         if config.graceful_shutdown_method != 'off':
                             cluster.vm_destroy(vm, return_resources=False)
                         else:
                             if vm.condorname:
-                                self.do_condor_off(vm.condorname)
+                                vm.force_retire = True
+                                self.do_condor_off(vm.condorname, vm.condoraddr)
                             else:
                                 # No condor name cannot perform condor_off
                                 cluster.vm_destroy(vm, return_resources=False)
@@ -1036,7 +1039,8 @@ class ResourcePool:
             self.banned_job_resource = updated_ban
 
     def do_condor_off(self, machine_name, machine_addr):
-        cmd = '/usr/sbin/condor_off -subsystem master -peaceful -addr "%s"' % (machine_addr)
+        #-subsystem master
+        cmd = '/usr/sbin/condor_off -peaceful -addr "%s" -subsystem master' % (machine_addr)
         args = []
         args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:

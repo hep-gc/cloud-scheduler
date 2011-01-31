@@ -86,6 +86,7 @@ class VM:
                        from which this VM is taking memory
         proxy_file   - the proxy that was used to authenticate this VM's creation
         errorcount   - (int) Number of Polling Errors VM has had
+        force_retire - (bool) Flag to prevent a retiring VM from being turned back on
         """
         self.name = name
         self.id = id
@@ -112,6 +113,7 @@ class VM:
         self.proxy_file = proxy_file
         self.override_status = None
         self.job_per_core = job_per_core
+        self.force_retire = False
 
         # Set a status variable on new creation
         self.status = "Starting"
