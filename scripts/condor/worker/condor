@@ -356,7 +356,7 @@ setup_on_ec2() {
 
 	# Eucalyptus can give us just a private IP
 	public_ip=`curl -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
-	test $public_ip != "0.0.0.0"
+	test $public_ip != "0.0.0.0" > /dev/null 2>&1
 	HAS_PUBLIC_IP=$?
 
 	curl -s http://$EC2_METADATA/ >/dev/null 2>&1
