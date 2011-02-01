@@ -27,7 +27,7 @@ setup(name = "cloud-scheduler",
     license="'GPL3' or 'Apache 2'",
     install_requires=[
        "Suds>=0.3.9",
-       "boto>=2.0",
+       "boto>=2.0b3",
        "lxml>=2.2.6",
         ],
     description = "A cloud-enabled distributed resource manager",
