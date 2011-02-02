@@ -55,10 +55,10 @@
 EC2_METADATA=169.254.169.254
 
 # Central Manager of your condor pool
-CENTRAL_MANAGER=`cat /etc/condor/central_manager`
+CENTRAL_MANAGER=`cat /etc/condor/central_manager 2>/dev/null`
 
 # START requirement for resource
-START_REQUIREMENT=`cat /etc/condor/start_req_config`
+START_REQUIREMENT=`cat /etc/condor/start_req_config 2>/dev/null`
 
 # Path to your primary condor configuration file.
 CONDOR_CONFIG=/etc/condor/condor_config
@@ -321,6 +321,13 @@ replace_or_append() {
 
 set_central_manager() {
 	condor_host=$1
+
+	if [ "xxx" = "xxx${condor_host}" ]; then
+
+		echo "CENTRAL_MANAGER is undefined. Check /etc/condor/central_manager" >&1
+		exit 1
+	fi
+
 	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
 	replace_or_append "CONDOR_HOST" "CONDOR_HOST=$condor_host" $local_file
 }
