@@ -107,6 +107,8 @@ class VM:
         self.errorcount = 0
         self.lastpoll = None
         self.last_state_change = None
+        self.initialize_time = int(time.time())
+        self.startup_time = None
         self.keep_alive = keep_alive
         self.idle_start = None
         self.spot_id = spot_id

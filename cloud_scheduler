@@ -108,6 +108,9 @@ class VMPoller(threading.Thread):
                     vm.errorcount += 1
                 elif vm.errorcount > 0:
                     vm.errorcount = 0
+                if ret_state == "Running":
+                    if vm.startup_time == None:
+                        vm.startup_time = vm.last_state_change - vm.initialize_time
                 if vm.errorcount >= config.polling_error_threshold:
                     log.info("VM %s on %s in error state. Destroying..." % (vm.id, vm.clusteraddr))
 

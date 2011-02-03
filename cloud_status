@@ -55,6 +55,8 @@ def main(argv=None):
     parser.add_option("-i", "--ip-address", default=False, action="store_true",
                       dest="ips",
                       help="output ip information for munin monitoring")
+    parser.add_option("-b", "--boot-time", dest="boot_time",
+                      action="store_true", default=False, help="Display boot times")
 
     (cli_options, args) = parser.parse_args()
 
@@ -118,6 +120,8 @@ def main(argv=None):
                 print s.get_highjobs()
         elif cli_options.ips:
             print s.get_ips_munin()
+        elif cli_options.boot_time:
+            print s.get_vm_startup_time()
         else:
             print s.get_cloud_resources()
 

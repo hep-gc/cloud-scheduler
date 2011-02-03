@@ -177,6 +177,18 @@ class InfoServer(threading.Thread,):
                         else:
                             output += "[%s]\n\taddress %s\n" % (vm.hostname, vm.ipaddress)
                 return output
+            def get_vm_startup_time(self):
+                output = ""
+                for cluster in cloud_resources.resources:
+                    output += "Cluster: %s " % cluster.name
+                    total_time = 0
+                    for vm in cluster.vms:
+                        pass
+                        output += "%d, " % (vm.startup_time if vm.startup_time != None else 0)
+                        total_time += (vm.startup_time if vm.startup_time != None else 0)
+                    if len(cluster.vms) > 0:
+                        output += " Avg: %d " % (int(total_time) / len(cluster.vms))
+                return output
 
         self.server.register_instance(externalFunctions())
 
