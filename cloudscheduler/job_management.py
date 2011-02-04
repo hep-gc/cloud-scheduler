@@ -355,8 +355,14 @@ class JobPool:
             sp = subprocess.Popen(condor_q, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (condor_out, condor_err) = sp.communicate(input=None)
+            returncode = sp.returncode
         except:
             log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            return None
+
+        if returncode != 0:
+            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
+                              (returncode, string.join(condor_q, " "), condor_err))
             return None
 
         job_ads = self._condor_q_to_job_list(condor_out)
