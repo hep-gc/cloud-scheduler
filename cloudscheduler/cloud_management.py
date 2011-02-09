@@ -1040,7 +1040,7 @@ class ResourcePool:
 
     def do_condor_off(self, machine_name, machine_addr):
         #-subsystem master
-        cmd = '/usr/sbin/condor_off -peaceful -addr "%s" -subsystem master' % (machine_addr)
+        cmd = '/usr/sbin/condor_off -peaceful -name "%s" -subsystem startd' % (machine_name)
         args = []
         args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:
@@ -1063,7 +1063,7 @@ class ResourcePool:
         return (sp.returncode, ret)
 
     def do_condor_on(self, machine_name, machine_addr):
-        cmd = '/usr/sbin/condor_on -subsystem master -addr "%s"' % (machine_addr)
+        cmd = '/usr/sbin/condor_on -subsystem startd -name "%s"' % (machine_name)
         args = []
         args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:
@@ -1107,6 +1107,19 @@ class ResourcePool:
             if foundIt:
                 break
         return cluster_match
+
+    def find_vm_with_addr(self, condor_addr):
+        foundIt = False
+        vm_match = None
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.condoraddr == condor_addr:
+                    foundIt = True
+                    vm_match = vm
+                    break
+            if foundIt:
+                break
+        return vm_match
 
     def retiring_vms_of_type(self, vmtype):
         retiring = []

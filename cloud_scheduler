@@ -910,17 +910,26 @@ class Cleanup(threading.Thread):
                         retired_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Name'])
                         if retired_vm != None:
                             retired_vm.override_status = 'Retiring'
+                    else:
+                        # Unable to use condor_off on this machine for some reason - name is bad
+                        bad_name_vm = self.resource_pool.find_vm_with_addr(busy_vms[x]['MyAddress'])
+                        log.debug("Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
+                        cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
+                        destroy_ret = cluster.vm_destroy(bad_name_vm)
+                        if destroy_ret != 0:
+                            log.error("Failed to destroy vm %s" % bad_name_vm.id)
             elif adjusted_val < 0:
                 if abs(adjusted_val) > len(retiring_vms_of_type):
                     adjusted_val = len(retiring_vms_of_type)
                 for x in range(0, abs(adjusted_val)):
-                    print "Turning machine back on flag is %s" % retiring_vms_of_type[x].force_retire
                     if retiring_vms_of_type[x].force_retire:
                         continue
-                    
+
                     ret = self.resource_pool.do_condor_on(retiring_vms_of_type[x].condorname, retiring_vms_of_type[x].condoraddr)
                     if ret == 0:
                         retiring_vms_of_type[x].override_status = None
+                    else:
+                        log.debug("Unable to turn condor on on machine %s" % retiring_vms_of_type[x].condorname)
 
 class GetClouds(threading.Thread):
     """
