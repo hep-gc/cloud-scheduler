@@ -234,13 +234,6 @@ class Scheduler(threading.Thread):
         while not self.quit:
             log.debug("### Scheduler Cycle:")
 
-            ## Check that jobs are valid for the clusters available
-            bad_jobs = []
-            for job in self.job_pool.job_container.get_unscheduled_jobs():
-                if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
-                    bad_jobs.append(job)
-            self.job_pool.job_container.remove_jobs(bad_jobs)
-
             self.scheduling_method()
 
             self.resource_pool.save_persistence()
@@ -555,6 +548,8 @@ class Cleanup(threading.Thread):
             # we would shut down all the VMs for those jobs. Sometimes querying
             # a slow schedd can take quite a few minutes
             if self.job_pool.last_query:
+                ## Check that jobs are valid for the clusters available
+                self.clean_invalid_jobs()
                 ## Clear all un-needed VMs from the system
                 log.debug("Attempting to balance VMs")
                 self.clean_balance_vms()
@@ -581,6 +576,13 @@ class Cleanup(threading.Thread):
                 sleep_tics -= 1
 
         log.debug("Exiting cleanup thread")
+
+    def clean_invalid_jobs(self):
+        bad_jobs = []
+        for job in self.job_pool.job_container.get_unscheduled_jobs():
+            if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
+                bad_jobs.append(job)
+                self.job_pool.job_container.remove_jobs(bad_jobs)
 
     def clean_balance_vms(self):
 
