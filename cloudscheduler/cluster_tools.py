@@ -440,6 +440,14 @@ class NimbusCluster(ICluster):
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
             job_proxy_file_path=None, job_per_core=False):
 
+        def _remove_files(files):
+            for file in files:
+                try:
+                    log.debug("Deleting %s" % file)
+                    os.remove(file)
+                except:
+                    log.debug("Couldn't delete %s" % file)
+
         log.debug("Nimbus cloud create command")
 
         if vm_networkassoc == "":
@@ -479,11 +487,13 @@ class NimbusCluster(ICluster):
         (epr_handle, vm_epr) = tempfile.mkstemp(suffix=".vm_epr")
         os.close(epr_handle)
 
+        nimbus_files = [vm_epr, vm_metadata, vm_deploymentrequest, vm_optional]
+
         # Create the workspace command as a list (private method)
         ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest, optional_file=vm_optional)
         
 
-        log.debug("vm_create - Command: " + string.join(ws_cmd, " "))
+        log.debug("Command: " + string.join(ws_cmd, " "))
 
         # Execute the workspace create command: returns immediately.
         env = None;
@@ -493,16 +503,14 @@ class NimbusCluster(ICluster):
         
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
         if (create_return != 0):
-            log.warning("vm_create - Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
+            log.warning("Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
+            _remove_files(nimbus_files)
             return create_return
 
-        log.debug("(vm_create) - workspace create command executed.")
+        log.debug("Nimbus create command executed.")
 
-        log.debug("vm_create - Deleting temporary Nimbus Metadata files")
-        os.remove(vm_metadata)
-        os.remove(vm_deploymentrequest)
-        if vm_optional:
-            os.remove(vm_optional)
+        log.debug("Deleting temporary Nimbus Metadata files")
+        _remove_files(nimbus_files)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
@@ -511,21 +519,19 @@ class NimbusCluster(ICluster):
             # At this point, there should always be a valid mementry, as the ResourcePool
             # get_resource methods have selected this cluster based on having an open
             # memory entry that fits VM requirements.
-            log.error("(vm_create) - Cluster memory list has no sufficient memory " +\
+            log.error("Cluster memory list has no sufficient memory " +\
               "entries (Not supposed to happen). Returning error.")
-        log.debug("(vm_create) - vm_create - Memory entry found in given cluster: %d" % vm_mementry)
+        log.debug("Memory entry found in given cluster: %d" % vm_mementry)
 
         # Get the id of the VM from the output of workspace.sh
         try:
             vm_id = re.search("Workspace created: id (\d*)", create_out).group(1)
-            # Renaming VM epr file for user-friendly reference.
-            os.rename(vm_epr, "%s.%s" % (vm_epr, vm_id))
         except:
-            log.error("vm_create - couldn't find workspace id for new VM")
+            log.error("Couldn't find workspace id for new VM")
         try:
             vm_ip = re.search("IP address: (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", create_out).group(1)
         except:
-            log.error("vm_create - couldn't find the ip address for new VM")
+            log.error("Couldn't find the ip address for new VM")
 
         # Get the first part of the hostname given to the VM
         vm_hostname = self._extract_hostname(create_out)
