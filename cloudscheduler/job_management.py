@@ -564,7 +564,7 @@ class JobPool:
 
         # Filter out any jobs in an error status (from the given job list)
         for job in query_jobs:
-            if job.job_status >= self.ERROR:
+            if job.job_status >= self.ERROR or job.job_status == self.REMOVED or job.job_status == self.COMPLETE:
                 query_jobs.remove(job)
 
         # Update all system jobs:
@@ -730,7 +730,7 @@ class JobPool:
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
                 if job.job_status != self.HELD and job.job_status != self.COMPLETE:
-                    vmtype = job.vmtype
+                    vmtype = job.req_vmtype
                     break
             if vmtype == None:
                 held_user_adjust -= 1 # this user is completely held

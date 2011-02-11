@@ -301,7 +301,7 @@ class Scheduler(threading.Thread):
         for user in high_priority_jobs_by_users.keys():
             for job in high_priority_jobs_by_users[user]:
 
-                if job.job_status == self.HELD or job.job_status == self.COMPLETE:
+                if job.job_status == self.HELD or job.job_status == self.COMPLETE or job.job_status == self.ERROR or job.job_status == self.REMOVED:
                     continue
                 if self.sched_resource_create_track(user, job):
                     break
@@ -317,7 +317,7 @@ class Scheduler(threading.Thread):
                     # Check that type of VM for job is needed
                     if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
                         # Do not start VMs for jobs in a Hold state
-                        if job.job_status == self.HELD or job.status == job.statuses[1]:
+                        if job.job_status == self.HELD or job.status == job.statuses[1] or job.job_status == self.COMPLETE or job.job_status == self.ERROR or job.job_status == self.REMOVED:
                             continue
                         #if not self.need_vm(user, job):
                             #continue
