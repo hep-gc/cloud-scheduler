@@ -283,13 +283,13 @@ class Scheduler(threading.Thread):
             if type in desired_types.keys():
                 diff_types[type] = current_types[type] - desired_types[type]
             else:
-                diff_types[type] = 0
+                diff_types[type] = 1 # changed from 0 to handle users with multiple job types
         for type in desired_types.keys():
             if type not in current_types.keys():
                 diff_types[type] = -desired_types[type]
+
         del desired_types
         del current_types
-
         ## Check failures to ban jobs on affected resources
         self.resource_pool.check_failures()
 
@@ -623,10 +623,11 @@ class Cleanup(threading.Thread):
                 if type in desired_types.keys():
                     diff_types[type] = current_types[type] - desired_types[type]
                 else:
-                    diff_types[type] = 0
+                    diff_types[type] = 1 #changed from 0 to handle users with multiple job types
             for type in desired_types.keys():
                 if type not in current_types.keys():
                     diff_types[type] = -desired_types[type]
+
             del desired_types
             del current_types
             num_to_change = {}
@@ -889,7 +890,6 @@ class Cleanup(threading.Thread):
             retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
             for vm in reversed(retiring_vms_of_type):
                 if vm.force_retire:
-                    print "force is true - ignore this one"
                     retiring_vms_of_type.remove(vm)
             adjusted_val = val - len(retiring_vms_of_type)
             if adjusted_val > 0:
