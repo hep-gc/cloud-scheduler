@@ -474,7 +474,7 @@ class Scheduler(threading.Thread):
         # If VM creation fails for user-job on all resources move to next user
         if create_ret != 0:
             log.debug("None of the resources could boot a vm for job %s. " % job.id + \
-                      "Leaving %s's jobs unscheduled, moving on to next user" % job.user)
+                      "Leaving %s's job unscheduled, moving on to next job" % job.user)
         return create_ret
 
     def need_vm(self, user, userjob):
