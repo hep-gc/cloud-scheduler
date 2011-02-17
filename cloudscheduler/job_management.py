@@ -171,10 +171,10 @@ class Job:
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def get_job_info(self):
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
-        return "%-15s %-10s %-10s %-15s %-15s %-15s\n" % (self.id[-15:], self.user[-10:], self.req_vmtype[-10:], CONDOR_STATUS[self.job_status], self.status[-25:], self.running_cloud[-15:])
+        return "%-20s %-15s %-15s %-10s %-12s %-15s\n" % (self.id[-20:], self.user[:15], self.req_vmtype[:15], CONDOR_STATUS[self.job_status], self.status[:12], self.running_cloud[:15])
     @staticmethod
-    def get_job_info_header(self):
-        return "%-15s %-10s %-10s %-15s %-15s %-15\n" % ("Global ID", "User", "VM Type", "Job Status", "Status", "Cloud")
+    def get_job_info_header():
+        return "%-20s %-15s %-15s %-10s %-12s %-15s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status", "Cloud")
     def get_job_info_pretty(self):
         output = self.get_job_info_header()
         output += self.get_job_info()

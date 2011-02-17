@@ -142,18 +142,21 @@ class InfoServer(threading.Thread,):
                     return "You need to have Guppy installed to get developer " \
                            "information" 
             def get_newjobs(self):
-                output = "%-15s %-10s %-10s %-15s %-15s %-15s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status", "Cloud")
-                for job in job_pool.job_container.get_unscheduled_jobs():
+                jobs = job_pool.job_container.get_unscheduled_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
                     output += job.get_job_info()
                 return output
             def get_schedjobs(self):
-                output = "%-15s %-10s %-10s %-15s %-15s %-15s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status", "Cloud")
-                for job in job_pool.job_container.get_scheduled_jobs():
+                jobs = job_pool.job_container.get_scheduled_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
                     output += job.get_job_info()
                 return output
             def get_highjobs(self):
-                output = "%-15s %-10s %-10s %-15s %-15s %-15s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status", "Cloud")
-                for job in job_pool.job_container.get_high_priority_jobs():
+                jobs = job_pool.job_container.get_high_priority_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
                     output += job.get_job_info()
                 return output
             def get_job(self, jobid):

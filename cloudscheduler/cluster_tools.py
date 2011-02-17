@@ -132,14 +132,14 @@ class VM:
         log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
 
     def get_vm_info(self):
-        output = "%-11s %-23s %-10s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.status[-8:], self.clusteraddr[-23:])
+        output = "%-11s %-23s %-20s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.status[-8:], self.clusteraddr[-23:])
         if self.override_status != None:
-            output = "%-11s %-23s %-10s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.override_status[-8:], self.clusteraddr[-23:])
+            output = "%-11s %-23s %-20s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.override_status[-8:], self.clusteraddr[-23:])
         return output
 
     @staticmethod
     def get_vm_info_header():
-        return "%-11s %-23s %-10s %-8s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "STATUS", "CLUSTER")
+        return "%-11s %-23s %-20s %-8s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "STATUS", "CLUSTER")
 
     def get_vm_info_pretty(self):
         output = get_vm_info_header()
