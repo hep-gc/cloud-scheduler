@@ -22,6 +22,8 @@ condor_collector_url = "http://localhost:9618"
 condor_retrieval_method = "soap"
 condor_q_command = "condor_q -l"
 condor_status_command = "condor_status -l"
+condor_off_command = "/usr/sbin/condor_off"
+condor_on_command = "/usr/sbin/condor_on"
 condor_host = "localhost"
 condor_host_on_vm = ""
 condor_context_file = ""
@@ -91,6 +93,8 @@ def setup(path=None):
     global condor_retrieval_method
     global condor_q_command
     global condor_status_command
+    global condor_off_command
+    global condor_on_command
     global condor_context_file
     global condor_host
     global condor_host_on_vm
@@ -191,6 +195,14 @@ def setup(path=None):
     if config_file.has_option("global", "condor_q_command"):
         condor_q_command = config_file.get("global",
                                                 "condor_q_command")
+
+    if config_file.has_option("global", "condor_off_command"):
+        condor_off_command = config_file.get("global",
+                                                "condor_off_command")
+
+    if config_file.has_option("global", "condor_on_command"):
+        condor_on_command = config_file.get("global",
+                                                "condor_on_command")
 
     if config_file.has_option("global", "condor_status_command"):
         condor_status_command = config_file.get("global",

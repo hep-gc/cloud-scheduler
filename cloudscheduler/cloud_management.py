@@ -1039,15 +1039,14 @@ class ResourcePool:
             self.banned_job_resource = updated_ban
 
     def do_condor_off(self, machine_name, machine_addr):
-        #-subsystem master
-        cmd = '/usr/sbin/condor_off -peaceful -name "%s" -subsystem startd' % (machine_name)
+        cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
         args = []
-        args.append('/usr/bin/ssh')
         if config.cloudscheduler_ssh_key:
+            args.append('/usr/bin/ssh')
             args.append('-i')
             args.append(config.cloudscheduler_ssh_key)
-        central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
-        args.append(central_address)
+            central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
+            args.append(central_address)
         args.append(cmd)
         sp = subprocess.Popen(args, shell=False,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -1063,14 +1062,15 @@ class ResourcePool:
         return (sp.returncode, ret)
 
     def do_condor_on(self, machine_name, machine_addr):
-        cmd = '/usr/sbin/condor_on -subsystem startd -name "%s"' % (machine_name)
+        cmd = '%s -subsystem startd -name "%s"' % (config.condor_on_command, machine_name)
         args = []
-        args.append('/usr/bin/ssh')
+        
         if config.cloudscheduler_ssh_key:
+            args.append('/usr/bin/ssh')
             args.append('-i')
             args.append(config.cloudscheduler_ssh_key)
-        central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
-        args.append(central_address)
+            central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
+            args.append(central_address)
         args.append(cmd)
         sp = subprocess.Popen(args, shell=False,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
