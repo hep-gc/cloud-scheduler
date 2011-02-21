@@ -192,7 +192,7 @@ class ErrTrackQueue(CircleQueue):
 # Timeout feature for subprocess.Popen - polls the process for timeout seconds waiting for it to complete
 # If the process has exited return False (process did not timeout)
 # Else if the process times out attempt to terminate the process or kill if terminate fails and return True (process timed out)
-def check_popen_timeout(process, timeout=10):
+def check_popen_timeout(process, timeout=60):
     log = get_cloudscheduler_logger()
     ret = True
     while timeout > 0:
