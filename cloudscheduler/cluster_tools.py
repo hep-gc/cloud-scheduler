@@ -762,7 +762,8 @@ class NimbusCluster(ICluster):
         # and return return value.
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False, env=env)
-            (out, err) = sp.communicate(input=None)
+            if not utilities.check_popen_timeout(sp):
+                (out, err) = sp.communicate(input=None)
             return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
@@ -782,7 +783,8 @@ class NimbusCluster(ICluster):
     def vm_execdump(self, cmd, out, env=None):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out, env=env)
-            (out, err) = sp.communicate(input=None)
+            if not utilities.check_popen_timeout(sp):
+                (out, err) = sp.communicate(input=None)
             return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
@@ -807,8 +809,8 @@ class NimbusCluster(ICluster):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-            #ret = sp.wait()
-            (out, err) = sp.communicate(input=None)
+            if not utilities.check_popen_timeout(sp):
+                (out, err) = sp.communicate(input=None)
             return (sp.returncode, out, err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
@@ -830,7 +832,8 @@ class NimbusCluster(ICluster):
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-            (out, err) = sp.communicate(input=None)
+            if not utilities.check_popen_timeout(sp):
+                (out, err) = sp.communicate(input=None)
             return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))

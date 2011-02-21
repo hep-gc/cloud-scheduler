@@ -7,6 +7,8 @@ import socket
 import logging
 import ConfigParser
 import subprocess
+import time
+import errno
 from urlparse import urlparse
 from datetime import datetime
 import config
@@ -186,3 +188,31 @@ class ErrTrackQueue(CircleQueue):
 
     def dist_false(self):
         return 1.0 - self.dist_true()
+
+# Timeout feature for subprocess.Popen - polls the process for timeout seconds waiting for it to complete
+# If the process has exited return False (process did not timeout)
+# Else if the process times out attempt to terminate the process or kill if terminate fails and return True (process timed out)
+def check_popen_timeout(process, timeout=10):
+    log = get_cloudscheduler_logger()
+    ret = True
+    while timeout > 0:
+        if process.poll() == 0:
+            ret = False
+        time.sleep(1)
+        timeout -= 1
+    if timeout == 0:
+        log.debug("subprocess timed out - attempting to terminate")
+        try:
+            process.terminate()
+        except OSError, e:
+            if e.errno != errno.ESRCH:
+                raise
+        time.sleep(2) # give OS a chance to terminate
+        if process.poll() == None: # Did not terminate
+            log.debug("terminate() failed using kill()")
+            try:
+                process.kill()
+            except OSError, e:
+                if e.errno != errno.ESRCH:
+                    raise
+    return ret
