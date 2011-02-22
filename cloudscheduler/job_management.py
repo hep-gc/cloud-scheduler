@@ -744,6 +744,52 @@ class JobPool:
             type_desired[vmtype] = type_desired[vmtype] / num_users
         return type_desired
 
+    def job_type_distribution_multi_vmtype(self):
+        type_desired = {}
+        new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
+        high_priority_jobs_by_users = self.job_container.get_high_priority_jobs_by_users(prioritized = True)
+        held_user_adjust = 0
+        user_types = {}
+        high_user_types = {}
+        # Want to check all jobs of the highest priority in their list
+        for user in new_jobs_by_users.keys():
+            vmtypes = set()
+            highest_priority = new_jobs_by_users[user][0].priority
+            for job in new_jobs_by_users[user]:
+                if job.job_status <= self.RUNNING and job.priority == highest_priority:
+                    vmtypes.add(job.req_vmtype)
+            if len(vmtypes) == 0: # user is held / complete
+                held_user_adjust -= 1
+            else:
+                user_types[user] = vmtypes
+        for user in high_priority_jobs_by_users.keys():
+            vmtypes = set()
+            highest_priority = high_priority_jobs_by_users[user][0].priority
+            for job in high_priority_jobs_by_users[user]:
+                if job.job_status <= self.RUNNING and job.priority == highest_priority:
+                    vmtypes.add(job.req_vmtype)
+            if len(vmtypes) == 0: # user is held / complete
+                held_user_adjust -= 1
+            else:
+                high_user_types[user] = vmtypes
+        # Types for users gathered - figure out distributions
+        for user in user_types.keys():
+            for vmtype in user_types[user]:
+                if vmtype in type_desired.keys():
+                    type_desired[vmtype] += 1.0 / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+                else:
+                    type_desired[vmtype] = 1.0 / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+        for user in high_user_types.keys():
+            for vmtype in high_user_types[user]:
+                if vmtype in type_desired.keys():
+                    type_desired[vmtype] += 1.0 / len(high_user_types[user]) * config.high_priority_job_weight
+                else:
+                    type_desired[vmtype] = 1.0 / len(high_user_types[user]) * config.high_priority_job_weight
+        num_users = held_user_adjust + len(set(user_types.keys() + high_user_types.keys()))
+        num_users = 1.0 / num_users
+        for vmtype in type_desired.keys():
+            type_desired[vmtype] *= num_users
+        return type_desired
 
     def get_jobs_of_type_for_user(self, type, user):
         """
