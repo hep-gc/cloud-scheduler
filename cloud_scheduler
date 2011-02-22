@@ -315,7 +315,7 @@ class Scheduler(threading.Thread):
                 # (currently sorted by Job priority)
                 for job in unscheduled_jobs_by_users[user]:
                     # Check that type of VM for job is needed
-                    if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
+                    if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_alloction(diff_types, job):
                         # Do not start VMs for jobs in a Hold state
                         if job.status == job.statuses[1] or job.job_status > self.RUNNING:
                             continue
@@ -331,6 +331,33 @@ class Scheduler(threading.Thread):
                         break
                 # ENDFOR - for jobs in user's unscheduled job set
             #ENDFOR - Attempt to schedule each one job per user
+
+    def sched_allow_over_allocation(self, diff_types, job):
+        allow = False
+        if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] > 0:
+            over_allocate = True
+            # Job may be candidate to over allocate if all underallocated jobs have no available resources
+            unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
+            for user in unscheduled_jobs_by_user.keys():
+                userjob = unscheduled_jobs_by_user[user][0]
+                # Check for an underallocated job that has resources
+                if userjob.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0:
+                    (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(userjob.req_network, \
+                        userjob.req_cpuarch, userjob.req_memory, userjob.req_cpucores, userjob.req_storage, \
+                        userjob.req_ami, userjob.req_imageloc, userjob.target_clouds)
+
+                    good_resources = [pri_rsrc]
+                    if sec_rsrc and pri_rsrc != sec_rsrc:
+                        good_resources.append(sec_rsrc)
+                    # See if there's a valid resource for job to boot on
+                    if good_resources[0] != None:
+                        # Still resources available
+                        over_allocate = False
+                        break
+            # Checked all the users with under allocated jobs
+            if over_allocate:
+                allow = True
+        return allow
 
     def sched_resource_create_track(self, user, job):
         # Find resources that match the job's requirements
