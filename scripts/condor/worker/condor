@@ -69,6 +69,10 @@ CONDOR_CONFIG_VAL=/usr/bin/condor_config_val
 # Path to condor_config.local.modifications
 CONDOR_CONFIG_LOCAL_MODIFS=/etc/condor/condor_config.local.modifications
 
+# Path to image metadata file. If its not set, or file doesn't exist
+# VMType won't automatically be set
+IMAGE_METADATA=/.image.metadata
+
 # A file used to track the running instance. Needs to be writable
 # and deletable.  If left blank, defaults to $RUN/master.pid,
 # where $RUN is the RUN directory in your CONDOR_CONFIG, will be
@@ -357,6 +361,23 @@ setup_ccb() {
 	fi
 }
 
+# usage: setup_vmtype metadata
+setup_vmtype() {
+	IMAGE_META_FILE=$1
+
+	if [ -f $IMAGE_META_FILE ]; then
+
+		# Parse VMType out of repoman metadata file
+		VMTYPE=`cat $IMAGE_META_FILE | awk -F: '/^name:/ { print $2 }' | sed  's/[ \t]* //'`
+
+		if [ "xxx" != "xxx${VMTYPE}" ]; then
+
+			local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+			replace_or_append "VMType" "VMType= \"$VMTYPE\"" $local_file
+		fi
+        fi
+}
+
 setup_on_ec2() {
 
 	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
@@ -422,6 +443,7 @@ start() {
 	setup_on_ec2
 	setup_ccb
 	set_central_manager $CENTRAL_MANAGER
+        setup_vmtype $IMAGE_METADATA
 	update_condor_local_config
 	verify_execute
 	init_condor_master
