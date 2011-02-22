@@ -222,20 +222,18 @@ manager is by writing files which are read by the Condor init script to
 configure itself. Nimbus supports this out of the box, but EC2 requires a 
 helper script to accomplish this. This section explains how to install it.
 
-0. Install the EC2 Context Helper script to your machine. This is a part of the
-   Cloud Scheduler release tarball, and is in the scripts/ec2contexthelper/
-   directory.
+Install the EC2 Context Helper script to your machine. This is a part of the
+Cloud Scheduler release tarball, and is in the scripts/ec2contexthelper/
+directory.
 
-1. Switch to the ec2contexthelper directory, and run setup.py
 
+    # /etc/init.d/cloud_scheduler start
     # cd scripts/ec2contexthelper/
     # python setup.py install
     # which contexthelper
-    /usr/bin/contexthelper
-
-2. Enable the init script.
-
+    # /usr/bin/contexthelper
     # chkconfig context on
+
 
 ## Job Submission
 
