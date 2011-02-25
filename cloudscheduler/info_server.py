@@ -192,6 +192,23 @@ class InfoServer(threading.Thread,):
                     if len(cluster.vms) > 0:
                         output += " Avg: %d " % (int(total_time) / len(cluster.vms))
                 return output
+            def get_diff_types(self):
+                current_types = cloud_resources.vmtype_distribution()
+                desired_types = job_pool.job_type_distribution()
+                # Negative difference means will need to create that type
+                diff_types = {}
+                for type in current_types.keys():
+                    if type in desired_types.keys():
+                        diff_types[type] = current_types[type] - desired_types[type]
+                    else:
+                        diff_types[type] = 1 # changed from 0 to handle users with multiple job types
+                for type in desired_types.keys():
+                    if type not in current_types.keys():
+                        diff_types[type] = -desired_types[type]
+                output = "Diff Types dictionary\n"
+                for key, value in diff_types.iteritems():
+                    output += "type: %s, dist: %f\n" % (key, value)
+                return output
 
         self.server.register_instance(externalFunctions())
 
