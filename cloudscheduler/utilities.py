@@ -198,6 +198,7 @@ def check_popen_timeout(process, timeout=60):
     while timeout > 0:
         if process.poll() == 0:
             ret = False
+            break
         time.sleep(1)
         timeout -= 1
     if timeout == 0:
