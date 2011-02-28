@@ -208,6 +208,12 @@ class InfoServer(threading.Thread,):
                 output = "Diff Types dictionary\n"
                 for key, value in diff_types.iteritems():
                     output += "type: %s, dist: %f\n" % (key, value)
+                output += "Current Types (vms)\n"
+                for key, value in current_types.iteritems():
+                    output += "type: %s, dist: %f\n" % (key, value)
+                output += "Desired Types (jobs)\n"
+                for key, value in desired_types.iteritems():
+                    output += "type: %s, dist: %f\n" % (key, value)
                 return output
 
         self.server.register_instance(externalFunctions())
