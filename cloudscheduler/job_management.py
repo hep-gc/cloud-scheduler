@@ -332,6 +332,11 @@ class JobPool:
         else:
             log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
             self.job_query = self.job_query_SOAP
+            
+        if config.job_distribution_type.lower() == "normal":
+            self.job_type_distribution = self.job_type_distribution_normal
+        elif config.job_distribution_type.lower() == "split":
+            self.job_type_distribution = self.job_type_distribution_multi_vmtype
 
     # Method to get all jobs in the JobPool
     # Returns a list of Job instances, or [] if there are no jobs in the the JobPool.
@@ -708,7 +713,7 @@ class JobPool:
     # Get desired vmtype distribution
     # Based on top jobs in user new_job queue determine
     # a 'fair' distribution of vmtypes
-    def job_type_distribution(self):
+    def job_type_distribution_normal(self):
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_high_priority_jobs_by_users(prioritized = True)
@@ -776,17 +781,18 @@ class JobPool:
         for user in user_types.keys():
             for vmtype in user_types[user]:
                 if vmtype in type_desired.keys():
-                    type_desired[vmtype] += 1.0 / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
                 else:
-                    type_desired[vmtype] = 1.0 / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
         for user in high_user_types.keys():
             for vmtype in high_user_types[user]:
                 if vmtype in type_desired.keys():
-                    type_desired[vmtype] += 1.0 / len(high_user_types[user]) * config.high_priority_job_weight
+                    type_desired[vmtype] += Decimal('1.0') / len(high_user_types[user]) * config.high_priority_job_weight
                 else:
-                    type_desired[vmtype] = 1.0 / len(high_user_types[user]) * config.high_priority_job_weight
+                    type_desired[vmtype] = Decimal('1.0') / len(high_user_types[user]) * config.high_priority_job_weight
         num_users = held_user_adjust + len(set(user_types.keys() + high_user_types.keys()))
-        num_users = 1.0 / num_users
+        if num_users != 0:
+            num_users = Decimal('1.0') / num_users
         for vmtype in type_desired.keys():
             type_desired[vmtype] *= num_users
         return type_desired

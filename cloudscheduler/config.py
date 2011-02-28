@@ -52,6 +52,7 @@ graceful_shutdown_method = "hold"
 getclouds = False
 scheduling_metric = "slot"
 scheduling_algorithm = "fairshare"
+job_distribution_type = "normal"
 high_priority_job_support = False
 high_priority_job_weight = 1
 cpu_distribution_weight = 1.0
@@ -123,6 +124,7 @@ def setup(path=None):
     global getclouds
     global scheduling_metric
     global scheduling_algorithm
+    global job_distribution_type
     global high_priority_job_support
     global high_priority_job_weight
     global cpu_distribution_weight
@@ -331,6 +333,9 @@ def setup(path=None):
         
     if config_file.has_option("global", "scheduling_metric"):
         scheduling_metric = config_file.get("global", "scheduling_metric")
+
+    if config_file.has_option("global", "job_distribution_type"):
+        job_distribution_type = config_file.get("global", "job_distribution_type")
 
     if config_file.has_option("global", "memory_distribution_weight"):
         try:
