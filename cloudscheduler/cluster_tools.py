@@ -671,7 +671,7 @@ class NimbusCluster(ICluster):
         # error state (wait, and the polling thread will attempt a destroy later)
         if (destroy_return != 0):
 
-            if "Destroyed" == self._extract_state(destroy_out):
+            if "Destroyed" == self._extract_state(destroy_error):
                 log.debug("VM %s seems to have already been destroyed." % vm.id)
             else:
                 log.warning("(vm_destroy) - VM %s was not correctly destroyed: %s %s" % (vm.id, destroy_out, destroy_error))
