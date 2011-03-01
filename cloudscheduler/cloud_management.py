@@ -1048,18 +1048,27 @@ class ResourcePool:
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
             args.append(central_address)
         args.append(cmd)
-        sp = subprocess.Popen(args, shell=False,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (out, err) = sp.communicate(input=None)
-        ret = -1
-        if out.startswith("Sent"):
-            ret = 0
-        if sp.returncode == 0 and ret == 0:
-            log.debug("Successfuly sent condor_off to %s" % (machine_name))
-        else:
-            log.debug("Failed to send condor_off to %s" % (machine_name))
-            log.debug("Reason: %s \n Error: %s" % (out, err))
-        return (sp.returncode, ret)
+        try:
+            sp = subprocess.Popen(args, shell=False,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if not utilities.check_popen_timeout(sp):
+                (out, err) = sp.communicate(input=None)
+            ret = -1
+            if out.startswith("Sent"):
+                ret = 0
+            if sp.returncode == 0 and ret == 0:
+                log.debug("Successfuly sent condor_off to %s" % (machine_name))
+            else:
+                log.debug("Failed to send condor_off to %s" % (machine_name))
+                log.debug("Reason: %s \n Error: %s" % (out, err))
+            return (sp.returncode, ret)
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            return (-1, "", "")
+        except:
+            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
+            return (-1, "", "")
+
 
     def do_condor_on(self, machine_name, machine_addr):
         cmd = '%s -subsystem startd -name "%s"' % (config.condor_on_command, machine_name)
@@ -1072,15 +1081,23 @@ class ResourcePool:
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
             args.append(central_address)
         args.append(cmd)
-        sp = subprocess.Popen(args, shell=False,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (out, err) = sp.communicate(input=None)
-        if sp.returncode == 0:
-            log.debug("Successfuly sent condor_on to %s" % (machine_name))
-        else:
-            log.debug("Failed to send condor_on to %s" % (machine_name))
-            log.debug("Reason: %s \n Error: %s" % (out, err))
-        return sp.returncode
+        try:
+            sp = subprocess.Popen(args, shell=False,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if not utilities.check_popen_timeout(sp):
+                (out, err) = sp.communicate(input=None)
+            if sp.returncode == 0:
+                log.debug("Successfuly sent condor_on to %s" % (machine_name))
+            else:
+                log.debug("Failed to send condor_on to %s" % (machine_name))
+                log.debug("Reason: %s \n Error: %s" % (out, err))
+            return sp.returncode
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            return (-1, "", "")
+        except:
+            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
+            return (-1, "", "")
 
     def find_vm_with_name(self, condor_name):
         foundIt = False
