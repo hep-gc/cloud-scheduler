@@ -675,7 +675,7 @@ class Cleanup(threading.Thread):
             # check if there are fewer jobs in queue than trying to adjust VM count by
             # this makes up the excess amount
             for vmtype, val in num_to_change.iteritems():
-                if val < 0 and abs(val) > required_vmtypes_dict[vmtype]:
+                if vmtype in required_vmtypes_dict.keys() and val < 0 and abs(val) > required_vmtypes_dict[vmtype]:
                     excess_diff += abs(val) - required_vmtypes_dict[vmtype]
                     num_to_change[vmtype] = -required_vmtypes_dict[vmtype]
                 elif val > 0:
