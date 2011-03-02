@@ -1042,12 +1042,19 @@ class ResourcePool:
         cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
         args = []
         if config.cloudscheduler_ssh_key:
-            args.append('/usr/bin/ssh')
+            args.append(config.ssh_path)
             args.append('-i')
             args.append(config.cloudscheduler_ssh_key)
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
             args.append(central_address)
-        args.append(cmd)
+            args.append(cmd)
+        else:
+            args.append(config.condor_off_command)
+            args.append('-peaceful')
+            args.append('-name')
+            args.append(machine_name)
+            args.append('-subsystem')
+            args.append('startd')
         try:
             sp = subprocess.Popen(args, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -1064,10 +1071,10 @@ class ResourcePool:
             return (sp.returncode, ret)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
-            return (-1, "", "")
+            return (-1, "")
         except:
             log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
-            return (-1, "", "")
+            return (-1, "")
 
 
     def do_condor_on(self, machine_name, machine_addr):
@@ -1075,12 +1082,18 @@ class ResourcePool:
         args = []
         
         if config.cloudscheduler_ssh_key:
-            args.append('/usr/bin/ssh')
+            args.append(config.shh_path)
             args.append('-i')
             args.append(config.cloudscheduler_ssh_key)
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
             args.append(central_address)
-        args.append(cmd)
+            args.append(cmd)
+        else:
+            args.append(config.condor_on_command)
+            args.append('-subsystem')
+            args.append('startd')
+            args.append('-name')
+            args.append(machine_name)
         try:
             sp = subprocess.Popen(args, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -1094,10 +1107,10 @@ class ResourcePool:
             return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
-            return (-1, "", "")
+            return (-1, "")
         except:
             log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
-            return (-1, "", "")
+            return (-1, "")
 
     def find_vm_with_name(self, condor_name):
         foundIt = False
