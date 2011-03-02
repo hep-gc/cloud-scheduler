@@ -43,6 +43,7 @@ import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
 from cloudscheduler.utilities import ErrTrackQueue
+import cloudscheduler.utilities as utilities
 
 ##
 ## GLOBALS
@@ -1070,10 +1071,11 @@ class ResourcePool:
                 log.debug("Reason: %s \n Error: %s" % (out, err))
             return (sp.returncode, ret)
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
             return (-1, "")
         except:
-            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
+            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            print args
             return (-1, "")
 
 
@@ -1106,10 +1108,10 @@ class ResourcePool:
                 log.debug("Reason: %s \n Error: %s" % (out, err))
             return sp.returncode
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
             return (-1, "")
         except:
-            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
+            log.exception("Problem running %s, unexpected error" % string.join(args, " "))
             return (-1, "")
 
     def find_vm_with_name(self, condor_name):
