@@ -1,0 +1,28 @@
+Customizing the local condor configuration on the VM
+----------------------------------------------------
+
+The customization of the local condor config file on the VM is done
+via the Nimbus Workspace Customization mechanism.  The variable that
+needs to be customized needs to be written to the following file on
+the VM:
+
+   /etc/condor/condor_config.local.modifications
+
+The format to use is the following:
+
+    <variable_name>=<value>
+    <variable_name>=<value>
+    ...
+
+For example, suppose we want to set the START attribute to only accept
+jobs from a specific user, then the above file would contain:
+
+    START=(RemoteUser == "userfoo@baz.edu")
+
+When the /etc/init.d/condor init script is called to start the condor
+deamons, it will firt check if the above file exist.  If it does, then
+it will parse it line by line and update the local condor config file
+accordingly.  If the variable is already present in the condor config
+file, it's value will simply be overwritten.  If the variable is not
+present, then it will be appended to the end of the config file.
+

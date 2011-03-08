@@ -5,3 +5,6 @@ VMType = "your.vm.type"
 
 ##  What machine is your central manager?
 CONDOR_HOST=your.central.manager
+
+## START requirement
+START = TRUE

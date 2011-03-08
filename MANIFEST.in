@@ -1,0 +1,3 @@
+include *.conf COPYING LICENSE README.*
+recursive-include scripts *
+recursive-include cloudscheduler/wsdl/ *.wsdl

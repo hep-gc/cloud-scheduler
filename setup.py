@@ -1,7 +1,14 @@
 # setup.py - standard distutils setup file for Cloud Scheduler
 import os.path
 import sys
-from distutils.core import setup
+try:
+    from setuptools import setup
+except:
+    try:
+        from distutils.core import setup
+    except:
+        print "Couldn't use either setuputils or distutils. Install one of those. :)"
+        sys.exit(1)
 import cloudscheduler.__version__ as version
 
 config_files_dir = "/etc/cloudscheduler/"
@@ -15,11 +22,17 @@ for config_file in config_files:
 if okay_files:
     data_files = [(config_files_dir, okay_files)]
 
-setup(name = "Cloud Scheduler",
+setup(name = "cloud-scheduler",
     version = version.version,
-    description = "Cloud Scheduler is a cloud-enabled Condor backend. It boots VMs to suit the jobs you submit to your Condor pool",
-    author = "Duncan Penfold-Brown, Chris Usher, Patrick Armstrong, Ian Gable at University of Victoria",
-    author_email = "dpb@uvic.ca",
+    license="'GPL3' or 'Apache 2'",
+    install_requires=[
+       "Suds>=0.3.9",
+       "boto>=2.0b3",
+       "lxml>=2.2.6",
+        ],
+    description = "A cloud-enabled distributed resource manager",
+    author = "Duncan Penfold-Brown, Chris Usher, Patrick Armstrong, Ian Gable, Michael Patterson, Andre Charbonneau",
+    author_email = "patricka@uvic.ca",
     url = "http://github.com/hep-gc/cloud-scheduler",
     packages = ['cloudscheduler'],
     package_data = {'cloudscheduler' : ["wsdl/*"] },
