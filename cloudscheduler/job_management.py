@@ -84,7 +84,7 @@ class Job:
              Iwd=None,
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", **kwargs):
+             TargetClouds="", RemoteWallClockTime=0, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -145,6 +145,8 @@ class Job:
         self.job_per_core = VMJobPerCore in ['true', "True", True]
         self.remote_host = RemoteHost
         self.running_cloud = ""
+        self.running_vm = None
+        self.wallclocktime = RemoteWallClockTime
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -522,6 +524,7 @@ class JobPool:
                 job_dictionary['JobStatus'] = _job_attribute(xml_job, "JobStatus")
                 job_dictionary['ClusterId'] = _job_attribute(xml_job, "ClusterId")
                 job_dictionary['ProcId'] = _job_attribute(xml_job, "ProcId")
+                job_dictionary['RemoteWallClockTime'] = _job_attribute(xml_job, "RemoteWallClockTime")
 
                 # Optional parameters
                 _add_if_exists(xml_job, job_dictionary, "VMNetwork")
@@ -594,7 +597,9 @@ class JobPool:
 
         # Lets remove all jobs in the container that do not appear in the
         # given condor job list.
-        self.job_container.remove_all_not_in(query_jobs)
+        # Keep a list of the removed jobs
+        removed = self.job_container.remove_all_not_in(query_jobs)
+        self.track_run_time(removed)
 
         # Now lets loop through the remaining jobs given by condor and
         # check if each job is in the job container.
@@ -670,7 +675,7 @@ class JobPool:
     #   True - updated
     #   False - failed
     def update_job_status(self, target_job):
-        return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host)
+        return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host, target_job.wallclocktime)
 
     # Mark job scheduled
     # Makes all changes to a job to indicate that the job has been scheduled
@@ -892,6 +897,10 @@ class JobPool:
                 jobs.append(job)
         ret = self.release_jobSOAP(jobs)
         return ret
+
+    def track_run_time(self, removed):
+        for job in removed:
+            pass
 
     ##
     ## JobPool Private methods (Support methods)

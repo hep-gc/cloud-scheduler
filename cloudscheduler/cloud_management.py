@@ -1130,6 +1130,7 @@ class ResourcePool:
     def find_cluster_with_vm(self, condor_name):
         foundIt = False
         cluster_match = None
+        vm_match = None
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.condorname == condor_name:
@@ -1138,7 +1139,7 @@ class ResourcePool:
                     break
             if foundIt:
                 break
-        return cluster_match
+        return (cluster_match, vm_match)
 
     def find_vm_with_addr(self, condor_addr):
         foundIt = False
