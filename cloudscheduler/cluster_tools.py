@@ -116,6 +116,7 @@ class VM:
         self.override_status = None
         self.job_per_core = job_per_core
         self.force_retire = False
+        self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
 
         # Set a status variable on new creation
         self.status = "Starting"

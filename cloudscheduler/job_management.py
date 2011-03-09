@@ -900,7 +900,11 @@ class JobPool:
 
     def track_run_time(self, removed):
         for job in removed:
-            pass
+            # If job has completed and been removed it's last state should
+            # have been running
+            if job.status == self.RUNNING:
+                if job.wallclocktime > 0:
+                    job.running_vm.job_run_times.append(job.wallclocktime)
 
     ##
     ## JobPool Private methods (Support methods)

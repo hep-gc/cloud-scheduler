@@ -202,7 +202,7 @@ class JobRunTrackQueue(CircleQueue):
         self.name = name
         self.avg = 0.0
         
-    def avg_time(self):
+    def average(self):
         total = 0
         for x in self.data:
             if x:
