@@ -84,7 +84,7 @@ class Job:
              Iwd=None,
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", RemoteWallClockTime=0, **kwargs):
+             TargetClouds="", ServerTime=0, JobStartDate=0, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -146,7 +146,8 @@ class Job:
         self.remote_host = RemoteHost
         self.running_cloud = ""
         self.running_vm = None
-        self.wallclocktime = RemoteWallClockTime
+        self.servertime = ServerTime
+        self.jobstarttime = JobStartDate
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -524,7 +525,7 @@ class JobPool:
                 job_dictionary['JobStatus'] = _job_attribute(xml_job, "JobStatus")
                 job_dictionary['ClusterId'] = _job_attribute(xml_job, "ClusterId")
                 job_dictionary['ProcId'] = _job_attribute(xml_job, "ProcId")
-                job_dictionary['RemoteWallClockTime'] = _job_attribute(xml_job, "RemoteWallClockTime")
+                job_dictionary['ServerTime'] = _job_attribute(xml_job, "ServerTime")
 
                 # Optional parameters
                 _add_if_exists(xml_job, job_dictionary, "VMNetwork")
@@ -545,6 +546,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMJobPerCore")
                 _add_if_exists(xml_job, job_dictionary, "RemoteHost")
                 _add_if_exists(xml_job, job_dictionary, "TargetClouds")
+                _add_if_exists(xml_job, job_dictionary, "JobStartDate")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -675,7 +677,7 @@ class JobPool:
     #   True - updated
     #   False - failed
     def update_job_status(self, target_job):
-        return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host, target_job.wallclocktime)
+        return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host, target_job.servertime, target_job.jobstarttime)
 
     # Mark job scheduled
     # Makes all changes to a job to indicate that the job has been scheduled
@@ -902,9 +904,10 @@ class JobPool:
         for job in removed:
             # If job has completed and been removed it's last state should
             # have been running
-            if job.status == self.RUNNING:
-                if job.wallclocktime > 0:
-                    job.running_vm.job_run_times.append(job.wallclocktime)
+            if job.job_status == self.RUNNING:
+                if job.jobstarttime > 0:
+                    if job.running_vm != None:
+                        job.running_vm.job_run_times.append(job.servertime - job.jobstarttime)
 
     ##
     ## JobPool Private methods (Support methods)

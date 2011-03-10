@@ -191,7 +191,7 @@ class ErrTrackQueue(CircleQueue):
         for x in self.data:
             if x:
                 tc += 1
-        return float(tc) / float(len(self.data))
+        return (float(tc) / float(len(self.data))) if len(self.data) > 0 else 0
 
     def dist_false(self):
         return 1.0 - self.dist_true()
@@ -200,14 +200,15 @@ class JobRunTrackQueue(CircleQueue):
     def __init__(self, name):
         CircleQueue.__init__(self, 10)
         self.name = name
-        self.avg = 0.0
+        self.avg = 0
         
     def average(self):
         total = 0
         for x in self.data:
             if x:
                 total += x
-        self.avg = total / self.length()
+        if self.length() > 0:
+            self.avg = total / self.length()
         return self.avg
 
 # Timeout feature for subprocess.Popen - polls the process for timeout seconds waiting for it to complete
