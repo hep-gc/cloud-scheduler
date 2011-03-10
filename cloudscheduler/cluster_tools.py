@@ -472,7 +472,7 @@ class NimbusCluster(ICluster):
                 with open(job_proxy_file_path) as proxy:
                     job_proxy = proxy.read()
             except:
-                log.exception("Couldn't read proxy file %s, continuing without it.")
+                log.exception("Couldn't read proxy file %s, continuing without it." % job_proxy_file_path)
 
         if customization or job_proxy:
             vm_optional = nimbus_xml.ws_optional_factory(custom_tasks=customization, credential=job_proxy)
