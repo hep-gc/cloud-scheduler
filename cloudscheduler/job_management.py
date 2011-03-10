@@ -240,7 +240,12 @@ class Job:
         proxy = ""
         if self.spool_dir:
             proxy += self.spool_dir + "/"
-        proxy += self.x509userproxy
+
+        if self.x509userproxy == None:
+            proxy = None
+        else:
+            proxy += self.x509userproxy
+
         return proxy
 
     def get_x509userproxysubject(self):

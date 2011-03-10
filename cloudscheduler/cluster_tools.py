@@ -772,7 +772,7 @@ class NimbusCluster(ICluster):
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return -1
         except:
-            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
+            log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
             return -1
 
     # A command execution with stdout and stderr output destination specified as a filehandle.
