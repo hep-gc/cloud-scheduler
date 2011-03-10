@@ -81,6 +81,7 @@ class Job:
              VMKeepAlive=1, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
+             Iwd=None,
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
              TargetClouds="", **kwargs):
@@ -107,6 +108,7 @@ class Job:
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
      x509userproxysubject - (str) The DN of the authenticated user
      x509userproxy - (str) The user proxy certificate (full path)
+     Iwd - (str) The initial working directory (spool directory) of the job. Used in spooled jobs
      VMJobPerCore   - (boolean) Whether or not the machines you request will have
                                 multiple slots. This is mostly an advanced feature
                                 for when this can save you money (eg. with EC2)
@@ -138,6 +140,7 @@ class Job:
         self.myproxy_creds_name = CSMyProxyCredsName
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
+        self.spool_dir = Iwd
         self.x509userproxy_expiry_time = None
         self.job_per_core = VMJobPerCore in ['true', "True", True]
         self.remote_host = RemoteHost
@@ -231,7 +234,11 @@ class Job:
         return
 
     def get_x509userproxy(self):
-        return self.x509userproxy
+        proxy = ""
+        if self.spool_dir:
+            proxy += self.spool_dir + "/"
+        proxy += self.x509userproxy
+        return proxy
 
     def get_x509userproxysubject(self):
         return self.x509userproxysubject
