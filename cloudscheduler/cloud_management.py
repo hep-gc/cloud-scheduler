@@ -1136,6 +1136,7 @@ class ResourcePool:
                 if vm.condorname == condor_name:
                     foundIt = True
                     cluster_match = cluster
+                    vm_match = vm
                     break
             if foundIt:
                 break
