@@ -514,7 +514,7 @@ class ResourcePool:
         if len(targets) == 0:
             clusters = self.resources
         else:
-            clusters = targets
+            clusters = self.filter_resources_by_names(targets)
         for cluster in clusters:
             if not (cpuarch in cluster.cpu_archs):
                 continue
