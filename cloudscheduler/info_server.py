@@ -216,7 +216,7 @@ class InfoServer(threading.Thread,):
                     output += "type: %s, dist: %f\n" % (key, value)
                 return output
             def get_vm_job_run_times(self):
-                output = "Run Times of Jobs on VMs"
+                output = "Run Times of Jobs on VMs\n"
                 for cluster in cloud_resources.resources:
                     for vm in cluster.vms:
                         output += "%s : avg %f\n" % (vm.hostname, vm.job_run_times.average())
