@@ -514,7 +514,7 @@ class ResourcePool:
         if len(targets) == 0:
             clusters = self.resources
         else:
-            clusters = targets
+            clusters = self.filter_resources_by_names(targets)
         for cluster in clusters:
             if not (cpuarch in cluster.cpu_archs):
                 continue
@@ -1130,15 +1130,17 @@ class ResourcePool:
     def find_cluster_with_vm(self, condor_name):
         foundIt = False
         cluster_match = None
+        vm_match = None
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.condorname == condor_name:
                     foundIt = True
                     cluster_match = cluster
+                    vm_match = vm
                     break
             if foundIt:
                 break
-        return cluster_match
+        return (cluster_match, vm_match)
 
     def find_vm_with_addr(self, condor_addr):
         foundIt = False

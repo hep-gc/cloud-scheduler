@@ -812,9 +812,10 @@ class Cleanup(threading.Thread):
         for job in scheduled_jobs:
             if job.job_status == self.RUNNING and job.running_cloud == "" \
                and job.remote_host:
-                cluster_match = self.resource_pool.find_cluster_with_vm(job.remote_host)
+                (cluster_match, vm_match) = self.resource_pool.find_cluster_with_vm(job.remote_host)
                 if cluster_match:
                     job.running_cloud = cluster_match.name
+                    job.running_vm = vm_match
 
     def remove_idle_machines(self, machineList, to_remove):
         for vmtype, count in to_remove.iteritems():

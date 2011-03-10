@@ -116,6 +116,7 @@ class VM:
         self.override_status = None
         self.job_per_core = job_per_core
         self.force_retire = False
+        self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
 
         # Set a status variable on new creation
         self.status = "Starting"
@@ -472,7 +473,7 @@ class NimbusCluster(ICluster):
                 with open(job_proxy_file_path) as proxy:
                     job_proxy = proxy.read()
             except:
-                log.exception("Couldn't read proxy file %s, continuing without it.")
+                log.exception("Couldn't read proxy file %s, continuing without it." % job_proxy_file_path)
 
         if customization or job_proxy:
             vm_optional = nimbus_xml.ws_optional_factory(custom_tasks=customization, credential=job_proxy)
@@ -674,10 +675,10 @@ class NimbusCluster(ICluster):
             if "Destroyed" == self._extract_state(destroy_error):
                 log.debug("VM %s seems to have already been destroyed." % vm.id)
             else:
-                log.warning("(vm_destroy) - VM %s was not correctly destroyed: %s %s" % (vm.id, destroy_out, destroy_error))
+                log.warning("VM %s was not correctly destroyed: %s %s" % (vm.id, destroy_out, destroy_error))
                 vm.status = "Error"
-                if vm.errorcount < config.polling_error_threshold:
-                    return destroy_return
+                os.remove(vm_epr)
+                return destroy_return
 
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
@@ -713,7 +714,7 @@ class NimbusCluster(ICluster):
 
         # Create workspace poll command
         ws_cmd = self.vmpoll_factory(vm_epr)
-        log.verbose("(vm_poll) - Running Nimbus poll command:\n%s" % string.join(ws_cmd, " "))
+        log.verbose("Polling Nimbus with:\n%s" % string.join(ws_cmd, " "))
 
         # Execute the workspace poll (wait, retrieve return code, stdout, and stderr)
         (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd, env=vm.get_env())
@@ -729,9 +730,11 @@ class NimbusCluster(ICluster):
                 vm.status = new_status
 
             elif new_status == "NoProxy":
+                vm.override_status = new_status
                 log.error("Problem polling VM %s. You don't have a valid proxy." % vm.id)
 
             elif new_status == "ExpiredProxy":
+                vm.override_status = new_status
                 log.error("Problem polling VM %s. Your proxy expired." % vm.id)
 
             elif vm.status != new_status:

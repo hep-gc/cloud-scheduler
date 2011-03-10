@@ -81,9 +81,10 @@ class Job:
              VMKeepAlive=1, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
+             Iwd=None,
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", **kwargs):
+             TargetClouds="", ServerTime=0, JobStartDate=0, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -107,6 +108,7 @@ class Job:
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
      x509userproxysubject - (str) The DN of the authenticated user
      x509userproxy - (str) The user proxy certificate (full path)
+     Iwd - (str) The initial working directory (spool directory) of the job. Used in spooled jobs
      VMJobPerCore   - (boolean) Whether or not the machines you request will have
                                 multiple slots. This is mostly an advanced feature
                                 for when this can save you money (eg. with EC2)
@@ -138,10 +140,14 @@ class Job:
         self.myproxy_creds_name = CSMyProxyCredsName
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
+        self.spool_dir = Iwd
         self.x509userproxy_expiry_time = None
         self.job_per_core = VMJobPerCore in ['true', "True", True]
         self.remote_host = RemoteHost
         self.running_cloud = ""
+        self.running_vm = None
+        self.servertime = ServerTime
+        self.jobstarttime = JobStartDate
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -231,7 +237,11 @@ class Job:
         return
 
     def get_x509userproxy(self):
-        return self.x509userproxy
+        proxy = ""
+        if self.spool_dir:
+            proxy += self.spool_dir + "/"
+        proxy += self.x509userproxy
+        return proxy
 
     def get_x509userproxysubject(self):
         return self.x509userproxysubject
@@ -515,6 +525,7 @@ class JobPool:
                 job_dictionary['JobStatus'] = _job_attribute(xml_job, "JobStatus")
                 job_dictionary['ClusterId'] = _job_attribute(xml_job, "ClusterId")
                 job_dictionary['ProcId'] = _job_attribute(xml_job, "ProcId")
+                job_dictionary['ServerTime'] = _job_attribute(xml_job, "ServerTime")
 
                 # Optional parameters
                 _add_if_exists(xml_job, job_dictionary, "VMNetwork")
@@ -535,6 +546,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMJobPerCore")
                 _add_if_exists(xml_job, job_dictionary, "RemoteHost")
                 _add_if_exists(xml_job, job_dictionary, "TargetClouds")
+                _add_if_exists(xml_job, job_dictionary, "JobStartDate")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -587,7 +599,9 @@ class JobPool:
 
         # Lets remove all jobs in the container that do not appear in the
         # given condor job list.
-        self.job_container.remove_all_not_in(query_jobs)
+        # Keep a list of the removed jobs
+        removed = self.job_container.remove_all_not_in(query_jobs)
+        self.track_run_time(removed)
 
         # Now lets loop through the remaining jobs given by condor and
         # check if each job is in the job container.
@@ -663,7 +677,7 @@ class JobPool:
     #   True - updated
     #   False - failed
     def update_job_status(self, target_job):
-        return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host)
+        return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host, target_job.servertime, target_job.jobstarttime)
 
     # Mark job scheduled
     # Makes all changes to a job to indicate that the job has been scheduled
@@ -885,6 +899,15 @@ class JobPool:
                 jobs.append(job)
         ret = self.release_jobSOAP(jobs)
         return ret
+
+    def track_run_time(self, removed):
+        for job in removed:
+            # If job has completed and been removed it's last state should
+            # have been running
+            if job.job_status == self.RUNNING:
+                if job.jobstarttime > 0:
+                    if job.running_vm != None:
+                        job.running_vm.job_run_times.append(job.servertime - job.jobstarttime)
 
     ##
     ## JobPool Private methods (Support methods)
