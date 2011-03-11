@@ -970,6 +970,8 @@ class Cleanup(threading.Thread):
                             destroy_ret = cluster.vm_destroy(bad_name_vm)
                             if destroy_ret != 0:
                                 log.error("Failed to destroy vm %s" % bad_name_vm.id)
+                        else:
+                            log.error("Lookup of % failed, does this vm still exist within CS?")
             elif adjusted_val < 0:
                 if abs(adjusted_val) > len(retiring_vms_of_type):
                     adjusted_val = len(retiring_vms_of_type)
