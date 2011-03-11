@@ -952,11 +952,12 @@ class Cleanup(threading.Thread):
                     else:
                         # Unable to use condor_off on this machine for some reason - name is bad
                         bad_name_vm = self.resource_pool.find_vm_with_addr(busy_vms[x]['MyAddress'])
-                        log.debug("Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
-                        cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
-                        destroy_ret = cluster.vm_destroy(bad_name_vm)
-                        if destroy_ret != 0:
-                            log.error("Failed to destroy vm %s" % bad_name_vm.id)
+                        if bad_name_vm != None:
+                            log.debug("Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
+                            cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
+                            destroy_ret = cluster.vm_destroy(bad_name_vm)
+                            if destroy_ret != 0:
+                                log.error("Failed to destroy vm %s" % bad_name_vm.id)
             elif adjusted_val < 0:
                 if abs(adjusted_val) > len(retiring_vms_of_type):
                     adjusted_val = len(retiring_vms_of_type)
