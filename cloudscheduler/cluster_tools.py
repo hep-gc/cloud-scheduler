@@ -763,6 +763,8 @@ class NimbusCluster(ICluster):
     def vm_execute(self, cmd, env=None):
         # Execute a workspace command with the passed cmd list. Wait for return,
         # and return return value.
+	out = ""
+	err = ""
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False, env=env)
             if not utilities.check_popen_timeout(sp):
@@ -784,6 +786,8 @@ class NimbusCluster(ICluster):
     # Returns:
     #    ret   - The return value of the executed command
     def vm_execdump(self, cmd, out, env=None):
+	out = ""
+	err = ""
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out, env=env)
             if not utilities.check_popen_timeout(sp):
@@ -793,7 +797,7 @@ class NimbusCluster(ICluster):
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
             return -1
         except:
-            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
+            log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
             return -1
 
 
@@ -809,6 +813,8 @@ class NimbusCluster(ICluster):
     #    err   - The STDERR of the executed command
     # The return of this function is a 3-tuple
     def vm_execwait(self, cmd, env=None):
+	out = ""
+	err = ""
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
@@ -819,7 +825,7 @@ class NimbusCluster(ICluster):
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return (-1, "", "")
         except:
-            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
+            log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
             return (-1, "", "")
 
     def vm_exec_silent(self, cmd, env=None):
@@ -832,6 +838,8 @@ class NimbusCluster(ICluster):
 
         """
 
+	out = ""
+	err = ""
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
@@ -842,7 +850,7 @@ class NimbusCluster(ICluster):
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
             return -1
         except:
-            log.error("Problem running %s, unexpected error" % string.join(cmd, " "))
+            log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
             return -1
 
     # The following _factory methods take the given parameters and return a list
