@@ -926,7 +926,6 @@ class NimbusCluster(ICluster):
         returns: the return value of the command that was run
 
         """
-
         out = ""
         err = ""
         try:
