@@ -145,7 +145,6 @@ def setup(path=None):
     global vm_proxy_refresher_interval
     global vm_proxy_renewal_threshold
     global override_vmtype
-
     global default_VMType
     global default_VMNetwork
     global default_VMCPUArch
