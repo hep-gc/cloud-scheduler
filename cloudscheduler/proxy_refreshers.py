@@ -43,7 +43,7 @@ class JobProxyRefresher(threading.Thread):
                     if job.needs_proxy_renewal():
                         if job.get_myproxy_creds_name() != None:
                             log.debug("Renewing proxy %s" % (job.get_x509userproxy()))
-                            if ProxyRefresher().renew_proxy(job.get_x509userproxy(), job.get_myproxy_creds_name(), job.get_myproxy_server(), job.get_myproxy_server_port()):
+                            if MyProxyProxyRefresher().renew_proxy(job.get_x509userproxy(), job.get_myproxy_creds_name(), job.get_myproxy_server(), job.get_myproxy_server_port()):
                                 # Yay, proxy renewal worked! :-)
                                 log.debug("Proxy for job %s renewed." % (job.id))
                                 # Don't forget to reset the proxy expiry time cache.
@@ -99,7 +99,7 @@ class VMProxyRefresher(threading.Thread):
                     if vm.needs_proxy_renewal():
                         if vm.get_myproxy_creds_name() != None:
                             log.debug("Renewing proxy %s" % (vm.get_proxy_file()))
-                            if ProxyRefresher().renew_proxy(vm.get_proxy_file(), vm.get_myproxy_creds_name(), vm.get_myproxy_server(), vm.get_myproxy_server_port()):
+                            if MyProxyProxyRefresher().renew_proxy(vm.get_proxy_file(), vm.get_myproxy_creds_name(), vm.get_myproxy_server(), vm.get_myproxy_server_port()):
                                 # Yay, proxy renewal worked! :-)
                                 log.debug("Proxy for VM %s renewed." % (vm.id))
                                 # Don't forget to reset the proxy expiry time cache.
@@ -132,7 +132,10 @@ class VMProxyRefresher(threading.Thread):
 
 
 
-class ProxyRefresher():
+class MyProxyProxyRefresher():
+    """
+    Utility class used to refresh a proxy using a MyProxy server.
+    """
 
     # This method will call the MyProxy commands to renew the credential for a given job.
     # 
