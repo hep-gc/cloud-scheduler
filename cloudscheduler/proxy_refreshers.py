@@ -126,6 +126,7 @@ class VMProxyRefresher(threading.Thread):
             log.error("Error in VMProxyRefresher thread.")
             log.error(traceback.format_exc())
 
+
 class MyProxyProxyRefresher():
     """
     Utility class used to refresh a proxy using a MyProxy server.
