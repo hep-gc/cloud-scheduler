@@ -535,6 +535,7 @@ class NimbusCluster(ICluster):
             (tmp_proxy_file, tmp_proxy_file_path) = tempfile.mkstemp(suffix='.pem')
             os.close(tmp_proxy_file)
 
+
             try:
                 shutil.copy2(job_proxy_file_path, tmp_proxy_file_path)
                 log.debug('VM proxy copy created: %s --> %s' % (job_proxy_file_path, tmp_proxy_file_path))
