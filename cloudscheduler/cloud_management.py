@@ -1163,3 +1163,10 @@ class ResourcePool:
                     if vm.override_status == 'Retiring':
                         retiring.append(vm)
         return retiring
+
+    def get_all_vms(self):
+        all_vms = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                all_vms.append(vm)
+        return all_vms

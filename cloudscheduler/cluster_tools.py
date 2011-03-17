@@ -64,7 +64,7 @@ class VM:
             cloudtype="", network="public", cpuarch="x86",
             image="", memory=0, mementry=0,
             cpucores=0, storage=0, keep_alive=0, spot_id="",
-            proxy_file=None, job_per_core=False):
+            proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
         """
         Constructor
 
@@ -85,6 +85,9 @@ class VM:
         mementry     - (int) The index of the entry in the host cluster's memory list
                        from which this VM is taking memory
         proxy_file   - the proxy that was used to authenticate this VM's creation
+        myproxy_creds_name - (str) The name of the credentials to retreive from the myproxy server
+        myproxy_server - (str) The hostname of the myproxy server to retreive user creds from
+        myproxy_server_port - (str) The port of the myproxy server to retreive user creds from
         errorcount   - (int) Number of Polling Errors VM has had
         force_retire - (bool) Flag to prevent a retiring VM from being turned back on
         """
@@ -113,10 +116,14 @@ class VM:
         self.idle_start = None
         self.spot_id = spot_id
         self.proxy_file = proxy_file
+        self.myproxy_creds_name = myproxy_creds_name
+        self.myproxy_server = myproxy_server
+        self.myproxy_server_port = myproxy_server_port
         self.override_status = None
         self.job_per_core = job_per_core
         self.force_retire = False
         self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
+        self.x509userproxy_expiry_time = None
 
         # Set a status variable on new creation
         self.status = "Starting"
@@ -152,6 +159,58 @@ class VM:
             return self.proxy_file
         else:
             return None
+
+    def get_myproxy_creds_name(self):
+        if hasattr(self, "myproxy_creds_name"):
+            return self.myproxy_creds_name
+        else:
+            return None
+
+    def get_myproxy_server(self):
+        if hasattr(self, "myproxy_server"):
+            return self.myproxy_server
+        else:
+            return None
+
+    def get_myproxy_server_port(self):
+        if hasattr(self, "myproxy_server_port"):
+            return self.myproxy_server_port
+        else:
+            return None
+
+
+    # Use this method to get the expiry time of the VM's user proxy, if any.
+    # Note that lazy initialization is done;  the expiry time will be extracted from the
+    # user proxy the first time the method is called and then it will be cached in the
+    # instance variable.
+    #
+    # Returns the expiry time as a datetime.datetime instance (UTC), or None if there is no
+    # user proxy associated with this VM.
+    def get_x509userproxy_expiry_time(self):
+        if (self.x509userproxy_expiry_time == None) and (self.get_proxy_file() != None):
+            self.x509userproxy_expiry_time = get_cert_expiry_time(self.get_proxy_file())
+        return self.x509userproxy_expiry_time
+
+    # Use this method to trigger an update of the proxy expiry time next time it is checked.
+    # For example, this must be called right after the proxy has been renewed.
+    # See get_x509userproxy_expiry_time for more info about how the proxy expiry time is
+    # cached in memory.
+    def reset_x509userproxy_expiry_time(self):
+        self.x509userproxy_expiry_time = None
+
+    # This method will test if a VM's user proxy needs to be refreshed, according
+    # the VM proxy refresh threshold found in the cloud scheduler configuration.
+    #
+    # Returns True if the proxy needs to be refreshed, or False otherwise (or if
+    # the VM has no user proxy associated with it).
+    def needs_proxy_renewal(self):
+        expiry_time = self.get_x509userproxy_expiry_time()
+        if expiry_time == None:
+            return False
+        td = expiry_time - datetime.datetime.utcnow()
+        td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.job_proxy_renewal_threshold))
+        return td_in_seconds < config.vm_proxy_renewal_threshold
 
     # The following method will return the environment that should
     # be used when executing subprocesses.  This is needed for setting
@@ -439,7 +498,7 @@ class NimbusCluster(ICluster):
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
-            job_proxy_file_path=None, job_per_core=False):
+            job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
 
         def _remove_files(files):
             for file in files:
@@ -469,6 +528,15 @@ class NimbusCluster(ICluster):
 
         job_proxy = None
         if job_proxy_file_path:
+            # Let's create a copy of the given proxy that will be used by the VM.
+            # This is done so that the VM has its own proxy, independant of a Condor
+            # job.
+            (tmp_proxy_file, tmp_proxy_file_path) = tempfile.mkstemp(suffix='.pem')
+            os.close(tmp_proxy_file)
+            shutil.copy2(job_proxy_file_path, tmp_proxy_file_path)
+            log.debug('VM proxy caopy created: %s --> %s' % (job_proxy_file_path, tmp_proxy_file_path))
+            job_proxy_file_path = tmp_proxy_file_path
+
             try:
                 with open(job_proxy_file_path) as proxy:
                     job_proxy = proxy.read()
@@ -550,7 +618,9 @@ class NimbusCluster(ICluster):
             cpuarch = vm_cpuarch, image = vm_image,
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
             storage = vm_storage, keep_alive = vm_keepalive, 
-            proxy_file = job_proxy_file_path, job_per_core = job_per_core)
+            proxy_file = job_proxy_file_path, 
+            myproxy_creds_name = myproxy_creds_name, myproxy_server = myproxy_server, 
+            myproxy_server_port = myproxy_server_port, job_per_core = job_per_core)
 
         # Add the new VM object to the cluster's vms list And check out required resources
         self.vms.append(new_vm)
@@ -579,6 +649,9 @@ class NimbusCluster(ICluster):
         vm_cores   = vm.cpucores
         vm_storage = vm.storage
         vm_proxy_file = vm.get_proxy_file()
+        vm_myproxy_creds_name = vm.get_myproxy_creds_name()
+        vm_myproxy_server = vm.get_myproxy_server()
+        vm_myproxy_server_port = vm.get_myproxy_server_port()
 
         # Print VM parameters
         log.debug("(vm_recreate) - name: %s network: %s cpuarch: %s imageloc: %s memory: %d" \
@@ -594,7 +667,7 @@ class NimbusCluster(ICluster):
         # Call create with the given VM's parameters
         log.debug("(vm_recreate) - Recreating VM %s..." % vm_name)
         create_ret = self.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, \
-          vm_image, vm_memory, vm_cores, vm_storage, job_proxy_file_path=vm_proxy_file)
+          vm_image, vm_memory, vm_cores, vm_storage, job_proxy_file_path=vm_proxy_file, myproxy_creds_name = vm_myproxy_creds_name, myproxy_server = vm_myproxy_server, myproxy_server_port = vm_myproxy_server_port)
         if (create_ret != 0):
             log.warning("(vm_recreate) - Recreating VM %s failed. Aborting recreate.")
             return create_ret
@@ -681,6 +754,9 @@ class NimbusCluster(ICluster):
                 return destroy_return
 
 
+        # Delete VM proxy
+        os.remove(vm.get_proxy_file())
+
         # Return checked out resources And remove VM from the Cluster's 'vms' list
         with self.vms_lock:
             try:
@@ -693,6 +769,7 @@ class NimbusCluster(ICluster):
 
         # Delete EPR
         os.remove(vm_epr)
+
 
         log.info("Destroyed vm %s on %s" % (vm.id, vm.clusteraddr))
 
