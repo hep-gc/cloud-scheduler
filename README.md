@@ -280,7 +280,7 @@ parameters to work properly. These are: (Required parameters are highlighted)
 For a more secure, but more complicated setup allowing your users to use their
 own proxy certificates, there is a guide on the heprc wiki:
 
-https://wiki.heprc.uvic.ca/twiki/bin/view/Restricted/CsGsiSupport
+https://wiki.heprc.uvic.ca/twiki/bin/view/Main/CsGsiSupport
 
 ## License
 
