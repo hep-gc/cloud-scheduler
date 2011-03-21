@@ -552,6 +552,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "RemoteHost")
                 _add_if_exists(xml_job, job_dictionary, "TargetClouds")
                 _add_if_exists(xml_job, job_dictionary, "JobStartDate")
+                _add_if_exists(xml_job, job_dictionary, "Iwd")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
