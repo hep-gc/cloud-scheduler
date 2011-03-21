@@ -925,7 +925,6 @@ class NimbusCluster(ICluster):
         parameter: cmd -- a list of a command and arguments
 
         returns: the return value of the command that was run
-
         """
         out = ""
         err = ""
