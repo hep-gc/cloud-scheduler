@@ -218,7 +218,7 @@ def check_popen_timeout(process, timeout=180):
     log = get_cloudscheduler_logger()
     ret = True
     while timeout > 0:
-        if process.poll() == 0:
+        if process.poll() != None:
             ret = False
             break
         time.sleep(1)
