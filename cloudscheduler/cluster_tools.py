@@ -845,12 +845,14 @@ class NimbusCluster(ICluster):
     def vm_execute(self, cmd, env=None):
         # Execute a workspace command with the passed cmd list. Wait for return,
         # and return return value.
-	out = ""
-	err = ""
+        out = ""
+        err = ""
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False, env=env)
             if not utilities.check_popen_timeout(sp):
                 (out, err) = sp.communicate(input=None)
+            else:
+                log.warning("Process timed out!")
             return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
@@ -868,12 +870,14 @@ class NimbusCluster(ICluster):
     # Returns:
     #    ret   - The return value of the executed command
     def vm_execdump(self, cmd, out, env=None):
-	out = ""
-	err = ""
+        out = ""
+        err = ""
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out, env=env)
             if not utilities.check_popen_timeout(sp):
                 (out, err) = sp.communicate(input=None)
+            else:
+                log.warning("Process timed out!")
             return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
@@ -895,13 +899,15 @@ class NimbusCluster(ICluster):
     #    err   - The STDERR of the executed command
     # The return of this function is a 3-tuple
     def vm_execwait(self, cmd, env=None):
-	out = ""
-	err = ""
+        out = ""
+        err = ""
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
             if not utilities.check_popen_timeout(sp):
                 (out, err) = sp.communicate(input=None)
+            else:
+                log.warning("Process timed out!")
             return (sp.returncode, out, err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
@@ -920,13 +926,15 @@ class NimbusCluster(ICluster):
 
         """
 
-	out = ""
-	err = ""
+        out = ""
+        err = ""
         try:
             sp = Popen(cmd, executable=config.workspace_path, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
             if not utilities.check_popen_timeout(sp):
                 (out, err) = sp.communicate(input=None)
+            else:
+                log.warning("Process timed out!")
             return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
