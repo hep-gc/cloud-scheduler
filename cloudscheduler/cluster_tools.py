@@ -759,7 +759,6 @@ class NimbusCluster(ICluster):
                 os.remove(vm_epr)
                 return destroy_return
 
-
         # Delete VM proxy
         if (vm.get_proxy_file()) :
             log.verbose("Cleaning up proxy for VM %s (%s)" % (vm.id, vm.get_proxy_file()))
