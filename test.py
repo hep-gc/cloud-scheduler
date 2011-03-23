@@ -47,6 +47,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.job_poller_interval = 42
         self.machine_poller_interval = 42
         self.cleanup_interval = 42
+        self.override_vmtype = "true"
 
         self.log_level = "ERROR"
         self.log_location = "/tmp/test.log"
@@ -81,6 +82,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'job_poller_interval', self.job_poller_interval)
         testconfig.set('global', 'machine_poller_interval', self.machine_poller_interval)
         testconfig.set('global', 'cleanup_interval', self.cleanup_interval)
+        testconfig.set('global', 'override_vmtype', self.override_vmtype)
 
         testconfig.add_section('logging')
         testconfig.set('logging', 'log_level', self.log_level)
@@ -167,6 +169,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_cleanup_interval(self):
         self.assertEqual(int(self.cleanup_interval), cloudscheduler.config.cleanup_interval)
+
+    def test_override_vmtype(self):
+        self.assertEqual(bool(self.override_vmtype), cloudscheduler.config.override_vmtype)
 
     def test_log_level(self):
         self.assertEqual(self.log_level, cloudscheduler.config.log_level)
