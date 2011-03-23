@@ -548,3 +548,4 @@ def setup(path=None):
         condor_host = condor_host_on_vm
     else:
         condor_host = utilities.get_hostname_from_url(condor_webservice_url)
+
