@@ -406,6 +406,12 @@ class Scheduler(threading.Thread):
         if config.condor_host != "localhost" and config.condor_context_file:
             customizations.append((config.condor_host, config.condor_context_file))
 
+        # local modifications are changes made to the VM's condor_config.local modifications file
+        local_modifications = ""
+
+        if config.override_vmtype:
+            local_modifications += "VMType = %s\n" % job.req_vmtype
+
         if config.cert_file:
             file_contents = open(config.cert_file).read()
 
@@ -452,6 +458,18 @@ class Scheduler(threading.Thread):
                     customizations.append((file_contents, destination))
                 except:
                     log.error('Error reading %s' % (source))
+
+        # Add the owner restriction requirement
+        # This is to prevent a VM started by a user being recycled to run jobs from another user.
+        # The user's DN is extracted from the x509userproxysubject variable in the job classad.
+        # This variable is set by condor (either the client or server), and cannot be overwritten by
+        # the user.
+        if job.get_x509userproxysubject() != None:
+            start_requirement = 'START=(x509userproxysubject == "%s")\n' % (job.get_x509userproxysubject())
+            log.debug("Adding START requirement to match user's DN:\n%s" % start_requirement)
+            local_modifications += start_requirement
+
+        customizations.append((local_modifications, '/etc/condor/condor_config.local.modifications'))
             
         for resource in good_resources:
             # Print details of the resource selected
@@ -461,15 +479,6 @@ class Scheduler(threading.Thread):
             #TODO: unify this
             if resource.__class__.__name__ == "NimbusCluster":
 
-                # Add the owner restriction requirement (Andre)
-                # This is to prevent a VM started by a user being recycled to run jobs from another user.
-                # The user's DN is extracted from the x509userproxysubject variable in the job classad.
-                # This variable is set by condor (either the client or server), and cannot be overwritten by
-                # the user.
-                if job.get_x509userproxysubject() != None:
-                    start_requirement = 'START=(x509userproxysubject == "%s")\n' % (job.get_x509userproxysubject())
-                    log.debug("Adding START requirement to match user's DN:\n%s" % (start_requirement))
-                    customizations.append(('START=(x509userproxysubject == "%s")\n' % (job.get_x509userproxysubject()), '/etc/condor/condor_config.local.modifications'))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_networkassoc':job.req_network,
