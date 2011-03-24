@@ -759,8 +759,9 @@ class NimbusCluster(ICluster):
 
 
         # Delete VM proxy
-        log.verbose("Cleaning up proxy for VM %s (%s)" % (vm.id, vm.get_proxy_file()))
-        os.remove(vm.get_proxy_file())
+        if (vm.get_proxy_file()) :
+            log.verbose("Cleaning up proxy for VM %s (%s)" % (vm.id, vm.get_proxy_file()))
+            os.remove(vm.get_proxy_file())
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
         with self.vms_lock:
