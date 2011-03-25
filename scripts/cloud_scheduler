@@ -14,6 +14,7 @@ PYTHON=""
 
 # You probably won't want to change these.
 SERVICE=cloud_scheduler
+CRASHLOG=/tmp/${SERVICE}.crash.log
 PIDSPATH=/var/run
 PIDFILE=$PIDSPATH/$SERVICE.pid
 export PATH=$PATH:$GLOBUS_LOCATION/bin/
@@ -40,10 +41,10 @@ start () {
 
     echo -n $"Starting $SERVICE:"
     if [ "$SUDO_COMMAND" ]; then
-        sudo nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >/dev/null &
+        sudo nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >${CRASHLOG} 2>&1 &
         echo $! > $PIDFILE
     else
-        nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >/dev/null &
+        nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >${CRASHLOG} 2>&1 &
         echo $! > $PIDFILE
     fi
     RETVAL=$?
