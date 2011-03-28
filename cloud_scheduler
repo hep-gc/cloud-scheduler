@@ -698,7 +698,7 @@ class Cleanup(threading.Thread):
                 reduce_per_type = int(excess_diff / len(positive_types))
                 if reduce_per_type == 0 and len(positive_types) > 1:
                     reduce_per_type = 1
-                    postive_types.pop()
+                    positive_types.pop()
                 for vmtype in positive_types:
                     num_to_change[vmtype] -= reduce_per_type
                     if num_to_change[vmtype] < 0:
