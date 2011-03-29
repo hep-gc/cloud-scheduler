@@ -485,9 +485,9 @@ class NimbusCluster(ICluster):
          "Cancelled"      : "Error",
     }
 
-    def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
-                 memory=[], cpu_archs=[], networks=[], vm_slots=0,
-                 cpu_cores=0, storage=0,
+    def __init__(self, name="Dummy Cluster", host="localhost", port=8443,
+                 cloud_type="Dummy", memory=[], cpu_archs=[], networks=[],
+                 vm_slots=0, cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None):
 
         # Call super class's init
@@ -495,6 +495,8 @@ class NimbusCluster(ICluster):
                          memory=memory, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage,)
+        # typical cluster setup uses the get_or_none - if init called with port=None default not used
+        self.port = port if port != None else 8443
 
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
@@ -954,7 +956,7 @@ class NimbusCluster(ICluster):
            "--file", epr_file,
            "--metadata", metadata_file,
            "--request", request_file,
-           "-s", "https://" + self.network_address + ":8443/wsrf/services/WorkspaceFactoryService",
+           "-s", "https://" + self.network_address + ":" + self.port + "/wsrf/services/WorkspaceFactoryService",
            "--nosubscriptions",              # Causes the command to start workspace and return immediately
           ]
         if optional_file:
