@@ -239,7 +239,7 @@ class ResourcePool:
         if cloud_type == "Nimbus":
             return cluster_tools.NimbusCluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
-                    port = int(get_or_none(config, cluster, "port")),
+                    port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, get_or_none(config, cluster, "memory").split(",")),
                     cpu_archs = get_or_none(config, cluster, "cpu_archs").split(","),

@@ -485,7 +485,7 @@ class NimbusCluster(ICluster):
          "Cancelled"      : "Error",
     }
 
-    def __init__(self, name="Dummy Cluster", host="localhost", port=8443,
+    def __init__(self, name="Dummy Cluster", host="localhost", port="8443",
                  cloud_type="Dummy", memory=[], cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None):
@@ -496,7 +496,7 @@ class NimbusCluster(ICluster):
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage,)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
-        self.port = port if port != None else 8443
+        self.port = port if port != None else "8443"
 
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
