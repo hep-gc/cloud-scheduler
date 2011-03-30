@@ -233,17 +233,15 @@ class NoResourcesError(Exception):
     def __init__(self, resource):
         self.resource = resource
 
-## The ICluster interface provides the basic structure for cluster information,
-## and provides the framework (interface) for cloud management functionality.
-## Each of its subclasses should should correspond to a specific implementation
-## for cloud management functionality. That is, each subclass should implement
-## the functions in the ICluster interface according to a specific software.
 
 class ICluster:
+    """
+    The ICluster interface is the framework for implementing support for
+    a specific IaaS cloud implementation. In general, you'll need to
+    override __init__ (be sure to call super's init), vm_create, vm_poll,
+    and vm_destroy
+    """
 
-    ## Instance methods
-
-    # Constructor
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0):
@@ -351,7 +349,6 @@ class ICluster:
     #       cloud software. EG:
     #       - Nimbus vm_ids are epr files
     #       - OpenNebula (and Eucalyptus?) vm_ids are names/numbers
-    # TODO: Explain all params
 
     def vm_create(self, **args):
         log.debug('This method should be defined by all subclasses of Cluster\n')
