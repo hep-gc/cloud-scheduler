@@ -440,12 +440,11 @@ class ICluster:
                 log.warning("Couldn't return memory because I don't know about that mem entry anymore...")
 
 
-## Implements cloud management functionality with the Nimbus service as part of
-## the Globus Toolkit.
-
 class NimbusCluster(ICluster):
-
-    ## NimbusCluster specific instance variables
+    """
+    Implements cloud management functionality with the Nimbus service as part of
+    the Globus Toolkit.
+    """
 
     # Global Nimbus command variables
     VM_DURATION = config.vm_lifetime
@@ -498,7 +497,7 @@ class NimbusCluster(ICluster):
                     log.debug("Deleting %s" % file)
                     os.remove(file)
                 except:
-                    log.debug("Couldn't delete %s" % file)
+                    log.exception("Couldn't delete %s" % file)
 
         log.debug("Nimbus cloud create command")
 
