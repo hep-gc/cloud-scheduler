@@ -896,15 +896,15 @@ class Cleanup(threading.Thread):
                 if vm.status == "Starting":
                     vm_starting.append(vm)
         to_shutdown = []
+        fitting_set = self.filter_fitting_resources(num_to_change)
 
-        for vm in vm_starting:
+        for vm in vm_starting + vm_matches:
             if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-                to_shutdown.append(vm)
-                num_to_change[vm.vmtype] -= 1
-        for vm in vm_matches:
-            if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-                to_shutdown.append(vm)
-                num_to_change[vm.vmtype] -= 1
+                #need to check that going to shutdown on appropriate resources
+                vm_in_cluster = self.resource_pool.get_cluster_with_vm(vm)
+                if vm_in_cluster and vm_in_cluster in fitting_set:
+                    to_shutdown.append(vm)
+                    num_to_change[vm.vmtype] -= 1
         for vm in to_shutdown:
             log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
             cluster = self.resource_pool.get_cluster_with_vm(vm)
@@ -921,7 +921,7 @@ class Cleanup(threading.Thread):
                 self.job_pool.release_vmtype(vmtype)
         self.remove_idle_machines(machineList, num_to_change)
 
-    def graceful_shutdown_condor_off(self, machineList, num_to_change):
+    def filter_fitting_resources(self, num_to_change):
         vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_type()
         
         fitting_clusters = []
@@ -932,7 +932,10 @@ class Cleanup(threading.Thread):
                     vmtypes_jobs[vmtype][0].req_network, \
                     vmtypes_jobs[vmtype][0].req_cpuarch, vmtypes_jobs[vmtype][0].req_memory, \
                     vmtypes_jobs[vmtype][0].req_storage, vmtypes_jobs[vmtype][0].target_clouds))
-        fitting_set = set(fitting_clusters)
+        return set(fitting_clusters)
+
+    def graceful_shutdown_condor_off(self, machineList, num_to_change):
+        fitting_set = self.filter_fitting_resources(num_to_change)
 
         for vmtype, val in num_to_change.iteritems():
             criteria = {'VMType': vmtype, 'Activity': 'Retiring'}
@@ -947,10 +950,7 @@ class Cleanup(threading.Thread):
                 for busy_vm in reversed(busy_vms):
                     vm_in_cluster = None
                     vm = self.resource_pool.find_vm_with_name(busy_vm['Name'])
-                    for cluster in self.resource_pool.resources:
-                        if vm in cluster.vms:
-                            vm_in_cluster = cluster
-                            break
+                    vm_in_cluster = self.resource_pool.get_cluster_with_vm(vm)
                     if vm_in_cluster != None and vm_in_cluster not in fitting_set:
                         busy_vms.remove(busy_vm)
                 if len(busy_vms) < adjusted_val:
