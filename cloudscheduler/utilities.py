@@ -100,18 +100,29 @@ def myproxy_init(myproxy_server, myproxy_server_port, myproxy_creds_name):
 def get_cert_DN(cert_file_path):
     log = get_cloudscheduler_logger()
     openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-subject', '-noout']
-    return subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
+    try:
+        dn = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
+        return dn
+    except:
+        log.exception("Problem getting cert DN")
+        return None
     
 # This utility function will extract the expiry time from an x509
 # certificate.
 # It requires the openssl package to be installed.
 # Returns a datetime instance, with UTC time.
+# Returns None on error
 def get_cert_expiry_time(cert_file_path):
     log = get_cloudscheduler_logger()
     openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-enddate', '-noout']
-    datetime_string = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip().split('=')[1]
-    expiry_time = datetime.strptime(datetime_string, '%b %d %H:%M:%S %Y %Z')
-    return expiry_time
+    try:
+        stdout_stderr = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()
+        datetime_string = stdout_stderr[0].strip().split('=')[1]
+        expiry_time = datetime.strptime(datetime_string, '%b %d %H:%M:%S %Y %Z')
+        return expiry_time
+    except:
+        log.exception("Problem getting certificate time")
+        return None
     
 def match_host_with_condor_host(hostname, condor_hostname):
     """
