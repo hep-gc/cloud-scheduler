@@ -517,27 +517,13 @@ class NimbusCluster(ICluster):
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
                 self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
 
-        job_proxy = None
-        if job_proxy_file_path:
-            # Let's create a copy of the given proxy that will be used by the VM.
-            # This is done so that the VM has its own proxy, independant of a Condor
-            # job.
-            (tmp_proxy_file, tmp_proxy_file_path) = tempfile.mkstemp(suffix='.pem')
-            os.close(tmp_proxy_file)
-
-
-            try:
-                shutil.copy2(job_proxy_file_path, tmp_proxy_file_path)
-                log.debug('VM proxy copy created: %s --> %s' % (job_proxy_file_path, tmp_proxy_file_path))
-                job_proxy_file_path = tmp_proxy_file_path
-            except:
-                log.exception("Couldn't copy proxy to cache. Continuing without cached proxy")
-
-            try:
-                with open(job_proxy_file_path) as proxy:
-                    job_proxy = proxy.read()
-            except:
-                log.exception("Couldn't read proxy file %s, continuing without it." % job_proxy_file_path)
+        try:
+            with open(job_proxy_file_path) as proxy:
+                job_proxy = proxy.read()
+        except:
+            if job_proxy_file_path:
+                log.exception("Couldn't open '%s', continuing without user's proxy")
+            job_proxy = None
 
         if customization or job_proxy:
             vm_optional = nimbus_xml.ws_optional_factory(custom_tasks=customization, credential=job_proxy)
@@ -573,6 +559,14 @@ class NimbusCluster(ICluster):
             return create_return
 
         log.debug("Nimbus create command executed.")
+
+        job_proxy = None
+        if job_proxy_file_path:
+            try:
+                job_proxy_file_path = self._cache_proxy(job_proxy_file_path)
+                log.debug("Cached proxy to '%s'" % job_proxy_file_path)
+            except:
+                log.exception("Problem caching proxy. Continuing without")
 
         log.debug("Deleting temporary Nimbus Metadata files")
         _remove_files(nimbus_files)
@@ -954,6 +948,23 @@ class NimbusCluster(ICluster):
 
         return "Error"
 
+    def _cache_proxy(self, proxy_file_path):
+        """
+        Creates a copy of the user's credential to use in case the user removes
+        his Condor job early.
+
+        Raises an exception if there was a problem creating the cached proxy
+
+        Returns a path to the cached proxy
+        """
+
+        (tmp_proxy_file, tmp_proxy_file_path) = tempfile.mkstemp(suffix='.pem')
+        os.close(tmp_proxy_file)
+
+        shutil.copy2(proxy_file_path, tmp_proxy_file_path)
+
+
+        return tmp_proxy_file_path
 
 class EC2Cluster(ICluster):
 
