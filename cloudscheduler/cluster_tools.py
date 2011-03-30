@@ -357,14 +357,6 @@ class ICluster:
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
-    def vm_recreate(self, vm):
-        log.debug('This method should be defined by all subclasses of Cluster\n')
-        assert 0, 'Must define workspace_recreate'
-
-    def vm_reboot(self, vm):
-        log.debug('This method should be defined by all subclasses of Cluster\n')
-        assert 0, 'Must define workspace_reboot'
-
     def vm_destroy(self, vm, return_resources=True):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_destroy'
@@ -640,75 +632,6 @@ class NimbusCluster(ICluster):
 
         log.info("Started vm %s on %s using image at %s" % (new_vm.id, new_vm.clusteraddr, new_vm.image))
         return create_return
-
-
-    # TODO: Explain parameters, returns, and purpose
-    def vm_recreate(self, vm):
-        log.debug("Recreating a Nimbus VM request")
-
-        # Store VM attributes before destroy
-        vm_name    = vm.name
-        vm_id      = vm.id
-        vm_type    = vm.vmtype
-        vm_network = vm.network
-        vm_cpuarch = vm.cpuarch
-        vm_image = vm.image
-        vm_memory  = vm.memory
-        vm_cores   = vm.cpucores
-        vm_storage = vm.storage
-        vm_proxy_file = vm.get_proxy_file()
-        vm_myproxy_creds_name = vm.get_myproxy_creds_name()
-        vm_myproxy_server = vm.get_myproxy_server()
-        vm_myproxy_server_port = vm.get_myproxy_server_port()
-
-        # Print VM parameters
-        log.debug("(vm_recreate) - name: %s network: %s cpuarch: %s imageloc: %s memory: %d" \
-          % (vm_name, vm_network, vm_cpuarch, vm_image, vm_memory))
-
-        # Call destroy on the given VM
-        log.debug("(vm_recreate) - Destroying VM %s..." % vm_name)
-        destroy_ret = self.vm_destroy(vm)
-        if (destroy_ret != 0):
-            log.warning("(vm_recreate) - Destroying VM failed. Aborting recreate.")
-            return destroy_ret
-
-        # Call create with the given VM's parameters
-        log.debug("(vm_recreate) - Recreating VM %s..." % vm_name)
-        create_ret = self.vm_create(vm_name, vm_type, vm_network, vm_cpuarch, \
-          vm_image, vm_memory, vm_cores, vm_storage, job_proxy_file_path=vm_proxy_file, myproxy_creds_name = vm_myproxy_creds_name, myproxy_server = vm_myproxy_server, myproxy_server_port = vm_myproxy_server_port)
-        if (create_ret != 0):
-            log.warning("(vm_recreate) - Recreating VM %s failed. Aborting recreate.")
-            return create_ret
-
-        # Print success message and return
-        log.debug("(vm_recreate) - VM %s successfully recreated." % vm_name)
-        return create_ret
-
-
-    # TODO: Explain parameters and returns
-    def vm_reboot(self, vm):
-        log.debug("dbg - Nimbus cloud reboot VM command")
-
-        # Create workspace reboot command as a list (priv. method)
-        ws_cmd = self.vmreboot_factory(vm.id)
-        log.debug("(vm_reboot) - workspace reboot command prepared.")
-        log.debug("(vm_reboot) - Command: " + string.join(ws_cmd, " "))
-
-        # Execute the reboot command: wait for return
-        (reboot_return, reboot_out, reboot_err) = self.vm_execwait(ws_cmd, env=vm.get_env())
-
-        # Check reboot return code. If successful, continue. Otherwise, set
-        # VM state to "Error" and return.
-        if (reboot_return != 0):
-            log.warning("vm_reboot - Error rebooting VM %s: %s %s" % (vm.id, reboot_out, reboot_err))
-            log.warning("vm_reboot - Setting VM status 'Error'.")
-            vm.status = "Error"
-            return reboot_return
-
-        # Set state to initial default state "Starting" and return
-        vm.status = "Starting"
-        log.debug("(vm_reboot) - workspace reboot command executed. VM rebooting...")
-        return reboot_return
 
 
     def vm_destroy(self, vm, return_resources=True, shutdown_first=True):
