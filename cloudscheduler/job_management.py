@@ -81,7 +81,7 @@ class Job:
              VMKeepAlive=1, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
-             Iwd=None,
+             Iwd=None, SUBMIT_x509userproxy=None,
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
              TargetClouds="", ServerTime=0, JobStartDate=0, **kwargs):
@@ -108,6 +108,7 @@ class Job:
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
      x509userproxysubject - (str) The DN of the authenticated user
      x509userproxy - (str) The user proxy certificate (full path)
+     SUBMIT_x509userproxy - (str) The user proxy certificate (full path) as originally submitted
      Iwd - (str) The initial working directory (spool directory) of the job. Used in spooled jobs
      VMJobPerCore   - (boolean) Whether or not the machines you request will have
                                 multiple slots. This is mostly an advanced feature
@@ -140,6 +141,7 @@ class Job:
         self.myproxy_creds_name = CSMyProxyCredsName
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
+        self.original_x509userproxy = SUBMIT_x509userproxy
         self.spool_dir = Iwd
         self.x509userproxy_expiry_time = None
         self.job_per_core = VMJobPerCore in ['true', "True", True]
@@ -238,7 +240,7 @@ class Job:
 
     def get_x509userproxy(self):
         proxy = ""
-        if self.spool_dir:
+        if self.spool_dir and self.original_x509userproxy:
             proxy += self.spool_dir + "/"
 
         if self.x509userproxy == None:
@@ -553,6 +555,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "TargetClouds")
                 _add_if_exists(xml_job, job_dictionary, "JobStartDate")
                 _add_if_exists(xml_job, job_dictionary, "Iwd")
+                _add_if_exists(xml_job, job_dictionary, "SUBMIT_x509userproxy")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
