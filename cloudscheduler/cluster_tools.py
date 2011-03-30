@@ -753,57 +753,6 @@ class NimbusCluster(ICluster):
 
     ## NimbusCluster private methods
 
-    # A function to contain the execution of the workspace command and surrounding
-    # functionality (such as logging output).
-    # Built in order to limit command execution to one function.
-    # Parameters:
-    #    ws_cmd   - The command to be executed, as a list of strings (commands
-    #               created by the _factory methods).
-    def vm_execute(self, cmd, env=None):
-        # Execute a workspace command with the passed cmd list. Wait for return,
-        # and return return value.
-        out = ""
-        err = ""
-        try:
-            sp = Popen(cmd, executable=config.workspace_path, shell=False, env=env)
-            if not utilities.check_popen_timeout(sp):
-                (out, err) = sp.communicate(input=None)
-            else:
-                log.warning("Process timed out!")
-            return sp.returncode
-        except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
-            return -1
-        except:
-            log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
-            return -1
-
-    # A command execution with stdout and stderr output destination specified as a filehandle.
-    # Waits on the command to finish, and returns the command's return code.
-    # Parameters:
-    #    cmd   - A list containing the command to execute.
-    #    out   - A filehandle or file object into which stdout and stderr streams are
-    #            dumped.
-    # Returns:
-    #    ret   - The return value of the executed command
-    def vm_execdump(self, cmd, out, env=None):
-        out = ""
-        err = ""
-        try:
-            sp = Popen(cmd, executable=config.workspace_path, shell=False, stdout=out, stderr=out, env=env)
-            if not utilities.check_popen_timeout(sp):
-                (out, err) = sp.communicate(input=None)
-            else:
-                log.warning("Process timed out!")
-            return sp.returncode
-        except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "),e.errno, e.strerror))
-            return -1
-        except:
-            log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
-            return -1
-
-
     # As above, a function to encapsulate command execution via Popen.
     # vm_execwait executes the given cmd list, waits for the process to finish,
     # and returns the return code of the process. STDOUT and STDERR are stored
@@ -877,10 +826,6 @@ class NimbusCluster(ICluster):
             ws_list.append(optional_file)
 
         # Return the workspace command list
-        return ws_list
-
-    def vmreboot_factory(self, epr_file):
-        ws_list = [config.workspace_path, "-e", epr_file, "--reboot"]
         return ws_list
 
     def vmdestroy_factory(self, epr_file):
