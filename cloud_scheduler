@@ -889,18 +889,18 @@ class Cleanup(threading.Thread):
         vm_matches = []
         vm_starting = []
         changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
+        internal_types = self.resource_pool.get_vmtypes_count_internal()
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 if vm.hostname in changed:
                     vm_matches.append(vm)
-                if vm.status == "Starting":
+                if vm.status == "Starting" and internal_types[vm.vmtype] > num_to_change[vm.vmtype]:
                     vm_starting.append(vm)
         to_shutdown = []
         fitting_set = self.filter_fitting_resources(num_to_change)
 
         for vm in vm_starting + vm_matches:
             if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-                #need to check that going to shutdown on appropriate resources
                 vm_in_cluster = self.resource_pool.get_cluster_with_vm(vm)
                 if vm_in_cluster and vm_in_cluster in fitting_set:
                     to_shutdown.append(vm)
