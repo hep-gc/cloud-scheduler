@@ -630,7 +630,8 @@ class Cleanup(threading.Thread):
         for job in self.job_pool.job_container.get_unscheduled_jobs():
             if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                 bad_jobs.append(job)
-                self.job_pool.job_container.remove_jobs(bad_jobs)
+                log.debug("No cluster fits job %s ignoring" % job.id)
+        self.job_pool.job_container.remove_jobs(bad_jobs)
 
     def clean_balance_vms(self):
 
