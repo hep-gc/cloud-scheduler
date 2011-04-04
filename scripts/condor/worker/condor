@@ -342,9 +342,10 @@ update_condor_local_config() {
 	echo "Applying modifications to ${local_file} ..."
 	while read LINE
 	do
-	    variable=`expr "${LINE}" : '\([[:alnum:]]\+\)=.*$'`
-	    value=`expr "${LINE}" : '[[:alnum:]]\+=\(.*\)$'`
-	    replace_or_append "${variable}" "${variable}=${value}" $local_file
+	# Split values like 'variable = value'
+		variable=`echo ${LINE} | perl -pe 's/(\w*?) \s*? = \s* (.*)/\1/x'`
+		value=`echo ${LINE} | perl -pe 's/(\w*?) \s*? = \s* (.*)/\2/x'`
+		replace_or_append "${variable}" "${variable}=${value}" $local_file
 	done < $CONDOR_CONFIG_LOCAL_MODIFS
     fi
 }

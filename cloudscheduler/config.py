@@ -64,8 +64,11 @@ vm_poller_interval = 5
 job_poller_interval = 5
 machine_poller_interval = 5
 scheduler_interval = 5
-job_proxy_refresher_interval = -1 # The current default is not to refresh the proxies. (until code is thouroughly tested -- Andre C.)
+job_proxy_refresher_interval = -1 # The current default is not to refresh the job proxies. (until code is thouroughly tested -- Andre C.)
 job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
+vm_proxy_refresher_interval = -1 # The current default is not to refresh the VM proxies. (until code is thouroughly tested -- Andre C.)
+vm_proxy_renewal_threshold = 15 * 60 # 15 minutes default
+override_vmtype = False
 
 default_VMType= "default"
 default_VMNetwork= ""
@@ -139,7 +142,9 @@ def setup(path=None):
     global scheduler_interval
     global job_proxy_refresher_interval
     global job_proxy_renewal_threshold
-
+    global vm_proxy_refresher_interval
+    global vm_proxy_renewal_threshold
+    global override_vmtype
     global default_VMType
     global default_VMNetwork
     global default_VMCPUArch
@@ -445,6 +450,25 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "vm_proxy_refresher_interval"):
+        try:
+            vm_proxy_refresher_interval = config_file.getint("global", "vm_proxy_refresher_interval")
+        except ValueError:
+            print "Configuration file problem: vm_proxy_refresher_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "vm_proxy_renewal_threshold"):
+        try:
+            vm_proxy_renewal_threshold = config_file.getint("global", "vm_proxy_renewal_threshold")
+        except ValueError:
+            print "Configuration file problem: vm_proxy_renewal_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "override_vmtype"):
+        override_vmtype = config_file.getboolean("global", "override_vmtype")
+
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")
 
@@ -524,3 +548,4 @@ def setup(path=None):
         condor_host = condor_host_on_vm
     else:
         condor_host = utilities.get_hostname_from_url(condor_webservice_url)
+

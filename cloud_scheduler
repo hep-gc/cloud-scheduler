@@ -43,7 +43,7 @@ import cloudscheduler.__version__ as version
 import cloudscheduler.info_server as info_server
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
-import cloudscheduler.job_proxy_refresher as job_proxy_refresher
+import cloudscheduler.proxy_refreshers as proxy_refreshers
 
 #from cloudscheduler.monitoring.get_clouds import getCloudsClient
 
@@ -406,6 +406,12 @@ class Scheduler(threading.Thread):
         if config.condor_host != "localhost" and config.condor_context_file:
             customizations.append((config.condor_host, config.condor_context_file))
 
+        # local modifications are changes made to the VM's condor_config.local modifications file
+        local_modifications = ""
+
+        if config.override_vmtype:
+            local_modifications += "VMType = %s\n" % job.req_vmtype
+
         if config.cert_file:
             file_contents = open(config.cert_file).read()
 
@@ -452,6 +458,18 @@ class Scheduler(threading.Thread):
                     customizations.append((file_contents, destination))
                 except:
                     log.error('Error reading %s' % (source))
+
+        # Add the owner restriction requirement
+        # This is to prevent a VM started by a user being recycled to run jobs from another user.
+        # The user's DN is extracted from the x509userproxysubject variable in the job classad.
+        # This variable is set by condor (either the client or server), and cannot be overwritten by
+        # the user.
+        if job.get_x509userproxysubject() != None:
+            start_requirement = 'START=(x509userproxysubject == "%s")\n' % (job.get_x509userproxysubject())
+            log.debug("Adding START requirement to match user's DN:\n%s" % start_requirement)
+            local_modifications += start_requirement
+
+        customizations.append((local_modifications, '/etc/condor/condor_config.local.modifications'))
             
         for resource in good_resources:
             # Print details of the resource selected
@@ -461,15 +479,6 @@ class Scheduler(threading.Thread):
             #TODO: unify this
             if resource.__class__.__name__ == "NimbusCluster":
 
-                # Add the owner restriction requirement (Andre)
-                # This is to prevent a VM started by a user being recycled to run jobs from another user.
-                # The user's DN is extracted from the x509userproxysubject variable in the job classad.
-                # This variable is set by condor (either the client or server), and cannot be overwritten by
-                # the user.
-                if job.get_x509userproxysubject() != None:
-                    start_requirement = 'START=(x509userproxysubject == "%s")\n' % (job.get_x509userproxysubject())
-                    log.debug("Adding START requirement to match user's DN:\n%s" % (start_requirement))
-                    customizations.append(('START=(x509userproxysubject == "%s")\n' % (job.get_x509userproxysubject()), '/etc/condor/condor_config.local.modifications'))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_networkassoc':job.req_network,
@@ -481,6 +490,9 @@ class Scheduler(threading.Thread):
                         'customization':customizations,
                         'vm_keepalive':job.keep_alive,
                         'job_proxy_file_path':job.get_x509userproxy(),
+                        'myproxy_creds_name':job.get_myproxy_creds_name(), 
+                        'myproxy_server':job.get_myproxy_server(),
+                        'myproxy_server_port':job.get_myproxy_server_port(),
                         'job_per_core':job.job_per_core}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "EC2Cluster":
@@ -618,7 +630,8 @@ class Cleanup(threading.Thread):
         for job in self.job_pool.job_container.get_unscheduled_jobs():
             if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                 bad_jobs.append(job)
-                self.job_pool.job_container.remove_jobs(bad_jobs)
+                log.debug("No cluster fits job %s ignoring" % job.id)
+        self.job_pool.job_container.remove_jobs(bad_jobs)
 
     def clean_balance_vms(self):
 
@@ -686,7 +699,7 @@ class Cleanup(threading.Thread):
                 reduce_per_type = int(excess_diff / len(positive_types))
                 if reduce_per_type == 0 and len(positive_types) > 1:
                     reduce_per_type = 1
-                    postive_types.pop()
+                    positive_types.pop()
                 for vmtype in positive_types:
                     num_to_change[vmtype] -= reduce_per_type
                     if num_to_change[vmtype] < 0:
@@ -877,22 +890,22 @@ class Cleanup(threading.Thread):
         vm_matches = []
         vm_starting = []
         changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
+        internal_types = self.resource_pool.get_vmtypes_count_internal()
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 if vm.hostname in changed:
                     vm_matches.append(vm)
-                if vm.status == "Starting":
+                if vm.status == "Starting" and internal_types[vm.vmtype] > num_to_change[vm.vmtype]:
                     vm_starting.append(vm)
         to_shutdown = []
+        fitting_set = self.filter_fitting_resources(num_to_change)
 
-        for vm in vm_starting:
+        for vm in vm_starting + vm_matches:
             if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-                to_shutdown.append(vm)
-                num_to_change[vm.vmtype] -= 1
-        for vm in vm_matches:
-            if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
-                to_shutdown.append(vm)
-                num_to_change[vm.vmtype] -= 1
+                vm_in_cluster = self.resource_pool.get_cluster_with_vm(vm)
+                if vm_in_cluster and vm_in_cluster in fitting_set:
+                    to_shutdown.append(vm)
+                    num_to_change[vm.vmtype] -= 1
         for vm in to_shutdown:
             log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
             cluster = self.resource_pool.get_cluster_with_vm(vm)
@@ -909,7 +922,7 @@ class Cleanup(threading.Thread):
                 self.job_pool.release_vmtype(vmtype)
         self.remove_idle_machines(machineList, num_to_change)
 
-    def graceful_shutdown_condor_off(self, machineList, num_to_change):
+    def filter_fitting_resources(self, num_to_change):
         vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_type()
         
         fitting_clusters = []
@@ -920,7 +933,10 @@ class Cleanup(threading.Thread):
                     vmtypes_jobs[vmtype][0].req_network, \
                     vmtypes_jobs[vmtype][0].req_cpuarch, vmtypes_jobs[vmtype][0].req_memory, \
                     vmtypes_jobs[vmtype][0].req_storage, vmtypes_jobs[vmtype][0].target_clouds))
-        fitting_set = set(fitting_clusters)
+        return set(fitting_clusters)
+
+    def graceful_shutdown_condor_off(self, machineList, num_to_change):
+        fitting_set = self.filter_fitting_resources(num_to_change)
 
         for vmtype, val in num_to_change.iteritems():
             criteria = {'VMType': vmtype, 'Activity': 'Retiring'}
@@ -935,10 +951,7 @@ class Cleanup(threading.Thread):
                 for busy_vm in reversed(busy_vms):
                     vm_in_cluster = None
                     vm = self.resource_pool.find_vm_with_name(busy_vm['Name'])
-                    for cluster in self.resource_pool.resources:
-                        if vm in cluster.vms:
-                            vm_in_cluster = cluster
-                            break
+                    vm_in_cluster = self.resource_pool.get_cluster_with_vm(vm)
                     if vm_in_cluster != None and vm_in_cluster not in fitting_set:
                         busy_vms.remove(busy_vm)
                 if len(busy_vms) < adjusted_val:
@@ -952,11 +965,14 @@ class Cleanup(threading.Thread):
                     else:
                         # Unable to use condor_off on this machine for some reason - name is bad
                         bad_name_vm = self.resource_pool.find_vm_with_addr(busy_vms[x]['MyAddress'])
-                        log.debug("Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
-                        cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
-                        destroy_ret = cluster.vm_destroy(bad_name_vm)
-                        if destroy_ret != 0:
-                            log.error("Failed to destroy vm %s" % bad_name_vm.id)
+                        if bad_name_vm != None:
+                            log.debug("Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
+                            cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
+                            destroy_ret = cluster.vm_destroy(bad_name_vm)
+                            if destroy_ret != 0:
+                                log.error("Failed to destroy vm %s" % bad_name_vm.id)
+                        else:
+                            log.error("Lookup of %s failed, does this vm still exist within CS?" % busy_vms[x]['Name'])
             elif adjusted_val < 0:
                 if abs(adjusted_val) > len(retiring_vms_of_type):
                     adjusted_val = len(retiring_vms_of_type)
@@ -1119,10 +1135,18 @@ def main():
 
     # Create the JobProxyRefresher thread, if needed
     if config.job_proxy_refresher_interval != -1:
-        job_proxy_refresher_thread = job_proxy_refresher.JobProxyRefresher(job_pool)
+        job_proxy_refresher_thread = proxy_refreshers.JobProxyRefresher(job_pool)
         service_threads.append(job_proxy_refresher_thread)
     else:
         log.debug('Job proxy refresher thread not enabled.')
+
+    # Create the VMProxyRefresher thread, if needed
+    if config.vm_proxy_refresher_interval != -1:
+        vm_proxy_refresher_thread = proxy_refreshers.VMProxyRefresher(cloud_resources)
+        service_threads.append(vm_proxy_refresher_thread)
+    else:
+        log.debug('VM proxy refresher thread not enabled.')
+
 
     # Create the GetClouds Thread if wanted
     if config.getclouds:
