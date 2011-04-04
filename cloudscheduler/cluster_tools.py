@@ -447,7 +447,6 @@ class NimbusCluster(ICluster):
     """
 
     # Global Nimbus command variables
-    VM_DURATION = config.vm_lifetime
     VM_TARGETSTATE = "Running"
     VM_NODES = "1"
 
@@ -514,7 +513,7 @@ class NimbusCluster(ICluster):
                 vm_cpuarch, vm_image)
 
         # Create a deployment request file
-        vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.VM_DURATION, \
+        vm_deploymentrequest = nimbus_xml.ws_deployment_factory(config.vm_lifetime, \
                 self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
 
         try:
