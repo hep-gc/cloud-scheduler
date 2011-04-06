@@ -157,13 +157,12 @@ class Job:
         global log
         log = logging.getLogger("cloudscheduler")
 
+        self.target_clouds = []
         try:
             if len(TargetClouds) != 0:
-                self.target_clouds = re.sub(r'\s', '', TargetClouds).split(',')
-            else:
-                self.target_clouds = []
+                for cloud in TargetClouds.split(','):
+                    self.target_clouds.append(cloud.strip())
         except:
-            self.target_clouds = []
             log.error("Failed to parse TargetClouds - use a comma separated list")
 
         log.verbose("New Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
