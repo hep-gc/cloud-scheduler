@@ -50,6 +50,8 @@ polling_error_threshold = 10
 condor_register_time_limit = 900
 graceful_shutdown = False
 graceful_shutdown_method = "hold"
+retire_before_lifetime = False
+retire_before_lifetime_factor = 1.5
 getclouds = False
 scheduling_metric = "slot"
 scheduling_algorithm = "fairshare"
@@ -127,6 +129,8 @@ def setup(path=None):
     global condor_register_time_limit
     global graceful_shutdown
     global graceful_shutdown_method
+    global retire_before_lifetime
+    global retire_before_lifetime_factor
     global getclouds
     global scheduling_metric
     global scheduling_algorithm
@@ -339,6 +343,20 @@ def setup(path=None):
 
     if config_file.has_option("global", "graceful_shutdown_method"):
         graceful_shutdown_method = config_file.get("global", "graceful_shutdown_method")
+
+    if config_file.has_option("global", "retire_before_lifetime"):
+        retire_before_lifetime = config_file.getboolean("global", "retire_before_lifetime")
+
+    if config_file.has_option("global", "retire_before_lifetime_factor"):
+        try:
+            retire_before_lifetime_factor = config_file.getfloat("global", "retire_before_lifetime_factor")
+            if retire_before_lifetime_factor < 1.0:
+                print "Please use a float value (1.0, X] for the retire_before_lifetime_factor"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: retire_before_lifetime_factor must be a " \
+                  "float value."
+            sys.exit(1)
 
     if config_file.has_option("global", "getclouds"):
         getclouds = config_file.getboolean("global", "getclouds")

@@ -589,7 +589,9 @@ class Cleanup(threading.Thread):
             self.clean_scheduled_unscheduled()
             # Check the scheduled Jobs to see which running jobs are on what cloud
             self.clean_match_jobs_clouds()
-
+            if config.retire_before_lifetime:
+                # Check for VMs near max lifetime 
+                self.clean_retire_near_lifetime()
             # Remove unneeded VMs.
             # Make sure we only do this if we have ever gotten a list of jobs
             # from Condor. Otherwise, when we persist from a previous run
@@ -985,6 +987,22 @@ class Cleanup(threading.Thread):
                         retiring_vms_of_type[x].override_status = None
                     else:
                         log.debug("Unable to turn condor on on machine %s" % retiring_vms_of_type[x].condorname)
+
+    def clean_retire_near_lifetime(self):
+        for cluster in self.resource_pool.resources:
+            for vm in cluster.vms:
+                # check job_run_times average run time against the vm lifetime
+                if vm.startup_time:
+                    if vm.job_run_times.average() * config.retire_before_lifetime_factor > (config.vm_lifetime*60 - (time.time() - vm.initialize_time)):
+                        # Next job submitted to this VM may not finish running before VM is shutdown
+                        if not vm.force_retire:
+                            (ret1, ret2) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr)
+                            if ret2 == 0:
+                                vm.force_retire = True
+                                vm.override_status = 'Retiring'
+                            else:
+                                log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
+
 
 class GetClouds(threading.Thread):
     """
