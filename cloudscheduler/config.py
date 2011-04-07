@@ -68,6 +68,7 @@ job_proxy_refresher_interval = -1 # The current default is not to refresh the jo
 job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 vm_proxy_refresher_interval = -1 # The current default is not to refresh the VM proxies. (until code is thouroughly tested -- Andre C.)
 vm_proxy_renewal_threshold = 15 * 60 # 15 minutes default
+proxy_cache_dir = None
 override_vmtype = False
 
 default_VMType= "default"
@@ -144,6 +145,7 @@ def setup(path=None):
     global job_proxy_renewal_threshold
     global vm_proxy_refresher_interval
     global vm_proxy_renewal_threshold
+    global proxy_cache_dir
     global override_vmtype
     global default_VMType
     global default_VMNetwork
@@ -465,6 +467,9 @@ def setup(path=None):
             print "Configuration file problem: vm_proxy_renewal_threshold must be an " \
                   "integer value."
             sys.exit(1)
+
+    if config_file.has_option("global", "proxy_cache_dir"):
+        proxy_cache_dir = config_file.get("global", "proxy_cache_dir")
 
     if config_file.has_option("global", "override_vmtype"):
         override_vmtype = config_file.getboolean("global", "override_vmtype")
