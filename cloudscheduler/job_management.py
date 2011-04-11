@@ -70,7 +70,9 @@ class Job:
 
     """
     # A list of possible statuses for internal job representation
-    statuses = ("Unscheduled", "Scheduled")
+    SCHEDULED = "Scheduled"
+    UNSCHEDULED = "Unscheduled"
+    statuses = (SCHEDULED, UNSCHEDULED)
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
              JobStatus=0, ClusterId=0, ProcId=0, VMType=config.default_VMType,
