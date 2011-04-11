@@ -315,10 +315,10 @@ replace_or_append() {
 	with_this=$2
 	on_this_file=$3
 
-	grep $replace_this $on_this_file >/dev/null 2>&1
+	grep -e ^$replace_this $on_this_file >/dev/null 2>&1
 	REPLACE=$?
 	if [ $REPLACE -eq 0 ]; then
-		sed -i "s/.*$replace_this.*/$with_this/" $on_this_file
+		sed -i "s/^$replace_this.*/$with_this/" $on_this_file
 	else
 		echo $with_this >> $on_this_file
 	fi
