@@ -247,6 +247,8 @@ class Job:
         if self.spool_dir and self.original_x509userproxy:
             proxy += self.spool_dir + "/"
 
+        log.debug("spool: %s orig: %s x509prox: %s" % (self.spool_dir, self.original_x509userproxy, self.x509userproxy))
+
         if self.x509userproxy == None:
             proxy = None
         else:
