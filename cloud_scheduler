@@ -939,7 +939,7 @@ class Cleanup(threading.Thread):
 
     def graceful_shutdown_condor_off(self, machineList, num_to_change):
         fitting_set = self.filter_fitting_resources(num_to_change)
-
+        internal_vms = self.resource_pool.get_vmtypes_count_internal()
         for vmtype, val in num_to_change.iteritems():
             criteria = {'VMType': vmtype, 'Activity': 'Retiring'}
             retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
@@ -965,6 +965,11 @@ class Cleanup(threading.Thread):
                         if retired_vm != None:
                             retired_vm.override_status = 'Retiring'
                     else:
+                        # Since the machine could not retire make sure not to destroy the last VM of type
+                        if internal_vms[vmtype] <= adjusted_val:
+                            # fewer or equal vms left that trying to shutdown
+                            if internal_vms[vmtype] - x-1 <= 0:
+                                continue
                         # Unable to use condor_off on this machine for some reason - name is bad
                         bad_name_vm = self.resource_pool.find_vm_with_addr(busy_vms[x]['MyAddress'])
                         if bad_name_vm != None:
