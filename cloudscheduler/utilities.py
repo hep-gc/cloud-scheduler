@@ -55,6 +55,9 @@ def get_or_none(config, section, value):
     else:
         return None
 
+def splitnstrip(sep, str):
+    return [x.strip() for x in str.split(sep)];
+
 
 def get_globus_path(executable="grid-proxy-init"):
     """

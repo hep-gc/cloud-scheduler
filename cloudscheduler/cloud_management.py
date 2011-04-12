@@ -43,6 +43,7 @@ import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
 from cloudscheduler.utilities import ErrTrackQueue
+from cloudscheduler.utilities import splitnstrip
 import cloudscheduler.utilities as utilities
 
 ##
@@ -232,9 +233,9 @@ class ResourcePool:
                     host = get_or_none(config, cluster, "host"),
                     port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, get_or_none(config, cluster, "memory").split(",")),
-                    cpu_archs = get_or_none(config, cluster, "cpu_archs").split(","),
-                    networks = get_or_none(config, cluster, "networks").split(","),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
@@ -244,9 +245,9 @@ class ResourcePool:
             return cluster_tools.EC2Cluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, get_or_none(config, cluster, "memory").split(",")),
-                    cpu_archs = get_or_none(config, cluster, "cpu_archs").split(","),
-                    networks = get_or_none(config, cluster, "networks").split(","),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
