@@ -322,6 +322,8 @@ class Scheduler(threading.Thread):
                         log.verbose("Skipping previously scheduled job")
                         continue
 
+                    log.verbose("Job '%s' not running or scheduled, trying to schedule it" % job.id)
+
                     # Check that type of VM for job is needed
                     if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
                         if self.sched_resource_create_track(user, job):
