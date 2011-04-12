@@ -173,11 +173,11 @@ class MyProxyProxyRefresher():
         myproxy_logon_cmd = '%s -s %s -p %s -k "%s" -a %s -o %s -d' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path)
         log.debug('myproxy-logon command: [%s]' % (myproxy_logon_cmd))
         log.debug('Invoking myproxy-logon command to refresh proxy %s ...' % (proxy_file_path))
-        myproxy_logon_process = subprocess.Popen(myproxy_logon_cmd, shell=True)
-        myproxy_logon_process.wait()
+        myproxy_logon_process = subprocess.Popen(myproxy_logon_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (stdout, stderr) = myproxy_logon_process.communicate()
         log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
         if myproxy_logon_process.returncode != 0:
-            log.error("Error renewing proxy from MyProxy server.")
+            log.error("Error renewing proxy from MyProxy server: %s" % stderr)
             log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
             os.remove(new_proxy_file_path)
             return False
