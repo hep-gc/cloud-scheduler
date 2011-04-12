@@ -217,7 +217,10 @@ class ResourcePool:
                         else:
                             if vm.condorname:
                                 vm.force_retire = True
-                                self.do_condor_off(vm.condorname, vm.condoraddr)
+                                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr)
+                                if ret2 != 0 or ret22 != 0:
+                                    # condor off failed
+                                    cluster.vm_destroy(vm, return_resources=False)
                             else:
                                 # No condor name cannot perform condor_off
                                 cluster.vm_destroy(vm, return_resources=False)
@@ -1114,7 +1117,7 @@ class ResourcePool:
             if not utilities.check_popen_timeout(sp2):
                 (out, err) = sp2.communicate(input=None)
             ret2 = -1
-            if out.startswith("Kill"):
+            if out.startswith("Sent"):
                 ret2 = 0
             if sp2.returncode == 0 and ret2 == 0:
                 log.debug("Successfuly sent condor_off to %s" % (machine_name))
