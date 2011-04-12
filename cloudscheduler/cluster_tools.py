@@ -318,8 +318,8 @@ class ICluster:
     # Return a short form of cluster information
     def get_cluster_info_short(self):
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s \n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY")
-        output += "%-25s  %-15s  %-10s  %-10s \n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB)
         return output
     # Return information about running VMs on Cluster
     def get_cluster_vms_info(self):
