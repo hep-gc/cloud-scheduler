@@ -959,8 +959,8 @@ class Cleanup(threading.Thread):
                 if len(busy_vms) < adjusted_val:
                     adjusted_val = len(busy_vms)
                 for x in range(0, adjusted_val):
-                    (ret1, ret2) = self.resource_pool.do_condor_off(busy_vms[x]['Name'], busy_vms[x]['MyAddress'])
-                    if ret2 == 0:
+                    (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(busy_vms[x]['Name'], busy_vms[x]['MyAddress'])
+                    if ret2 == 0 and ret22 == 0:
                         retired_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Name'])
                         if retired_vm != None:
                             retired_vm.override_status = 'Retiring'
@@ -1001,8 +1001,8 @@ class Cleanup(threading.Thread):
                     if vm.job_run_times.average() * config.retire_before_lifetime_factor > (config.vm_lifetime*60 - (time.time() - vm.initialize_time)):
                         # Next job submitted to this VM may not finish running before VM is shutdown
                         if not vm.force_retire:
-                            (ret1, ret2) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr)
-                            if ret2 == 0:
+                            (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr)
+                            if ret2 == 0 and ret22:
                                 vm.force_retire = True
                                 vm.override_status = 'Retiring'
                             else:
