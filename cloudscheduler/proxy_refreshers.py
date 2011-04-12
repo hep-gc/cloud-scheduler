@@ -177,7 +177,7 @@ class MyProxyProxyRefresher():
         (stdout, stderr) = myproxy_logon_process.communicate()
         log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
         if myproxy_logon_process.returncode != 0:
-            log.error("Error renewing proxy from MyProxy server: %s" % stderr)
+            log.error("Error renewing proxy from MyProxy server: %s %s" % (stdout, stderr))
             log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
             os.remove(new_proxy_file_path)
             return False
