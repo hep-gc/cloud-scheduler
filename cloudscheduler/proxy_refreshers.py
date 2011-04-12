@@ -170,7 +170,7 @@ class MyProxyProxyRefresher():
         # This is a bit of a hack; there must me a better way to handle this problem.
         (new_proxy_file, new_proxy_file_path) = tempfile.mkstemp(suffix='.csRenewedProxy')
         os.close(new_proxy_file)
-        myproxy_logon_cmd = '%s -s %s -p %s -k %s -a %s -o %s -d' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path)
+        myproxy_logon_cmd = '%s -s %s -p %s -k "%s" -a %s -o %s -d' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path)
         log.debug('myproxy-logon command: [%s]' % (myproxy_logon_cmd))
         log.debug('Invoking myproxy-logon command to refresh proxy %s ...' % (proxy_file_path))
         myproxy_logon_process = subprocess.Popen(myproxy_logon_cmd, shell=True)
