@@ -168,6 +168,9 @@ class Job:
         log.verbose("New Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
 
+    def __repr__(self):
+        return "Job '%s'" % self.id
+
 
     # Log a short string representing the job
     def log(self):
