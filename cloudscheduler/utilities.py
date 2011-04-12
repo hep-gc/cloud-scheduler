@@ -55,43 +55,36 @@ def get_or_none(config, section, value):
     else:
         return None
 
-def myproxy_init(myproxy_server, myproxy_server_port, myproxy_creds_name):
-    log = get_cloudscheduler_logger()
-    job_proxy_file_path = None
-    if myproxy_creds_name != None:
-        log.debug("myproxy_creds_name: %s" % (myproxy_creds_name))
-        if myproxy_server == None:
-            log.warning("MyProxy credential name given but missing MyProxy server host. Defaulting to localhost")
-            myproxy_server = "localhost"
-            
-        if myproxy_server_port == None:
-            log.debug("No MyProxy server port given; using default port (7512)")
-            myproxy_server_port = "7512"
-            
-        # Check to see if $GLOBUS_LOCATION is defined.
-        if os.environ["GLOBUS_LOCATION"] == None:
-            log.error("GLOBUS_LOCATION not set.  Please set GLOBUS_LOCATION.")
-            return None
 
-        # Check to see of myproxy-logon is present in globus installation
-        if not os.path.exists(os.environ["GLOBUS_LOCATION"] + "/bin/myproxy-logon"):
-            log.error("MyProxy credentials specified but $GLOBUS_LOCATION/bin/myproxy-logon not found.  Make sure you have a valid MyProxy client installation on your system.")
-            return None
+def get_globus_path(executable="grid-proxy-init"):
+    """
+    Finds the path for Globus executables on the machine. 
 
-        job_proxy_file_path = "/tmp/" + myproxy_creds_name + ".cs_x509proxy"
-        log.debug("job_proxy_file_path: %s" % (job_proxy_file_path))
-        myproxy_logon_cmd = '. $GLOBUS_LOCATION/etc/globus-user-env.sh && $GLOBUS_LOCATION/bin/myproxy-logon -s %s -p %s -l %s -o %s -n' % (myproxy_server, myproxy_server_port, myproxy_creds_name, job_proxy_file_path)
-        log.debug('myproxy-logon command: [%s]' % (myproxy_logon_cmd))
-        log.debug('Invoking myproxy-logon command...')
-        myproxy_logon_process = subprocess.Popen(myproxy_logon_cmd, shell=True)
-        myproxy_logon_process.wait()
-        log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
-        if myproxy_logon_process.returncode != 0:
-            log.error("Error fetching proxy from MyProxy server.  Aborting vm creation...")
-            return None
+    If GLOBUS_LOCATION is set, and executable exists, use that,
+    otherwise, check the path to see if its in there,
+    otherwise, raise an exception.
+    """
 
-    
-    return job_proxy_file_path
+    try:
+        os.environ["GLOBUS_LOCATION"]
+        retcode = subprocess.call("$GLOBUS_LOCATION/bin/%s -help" % executable, shell=True, 
+                                  stdout=open('/dev/null', 'w'), stderr=subprocess.STDOUT)
+
+        if retcode != 0:
+            raise EnvironmentError(retcode, "GLOBUS_LOCATION is in your environment, but unable to call '%s'" % executable)
+        else:
+            return os.environ["GLOBUS_LOCATION"] + "/bin/"
+
+    except:
+        retcode = subprocess.call("%s -help" % executable, shell=True, 
+                                  stdout=open('/dev/null', 'w'), stderr=subprocess.STDOUT)
+        if retcode == 127:
+            raise EnvironmentError(retcode, "'%s' is not in your PATH" % executable)
+        elif retcode != 0:
+            raise EnvironmentError(retcode, "'%s' is in your PATH, but it returned '%s'" % (executable, retcode))
+        else:
+            return ""
+
 
 
 # This utility function will extract the subject DN from an x509

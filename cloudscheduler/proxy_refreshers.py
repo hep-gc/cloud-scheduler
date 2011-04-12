@@ -151,15 +151,13 @@ class MyProxyProxyRefresher():
             log.debug("No MyProxy server port given; using default port (7512)")
             myproxy_server_port = "7512"
 
-        # Check to see if $GLOBUS_LOCATION is defined.
-        if os.environ["GLOBUS_LOCATION"] == None:
-            log.error("GLOBUS_LOCATION not set.  Please set GLOBUS_LOCATION.")
-            return False
+        myproxy_command = "myproxy-logon"
+        try:
+            myproxy_command = utilities.get_globus_path(executable=myproxy_command) + myproxy_command
+        except:
+            log.exception("Problem getting myproxy-logon path")
+            return None
 
-        # Check to see of myproxy-logon is present in globus installation
-        if not os.path.exists(os.environ["GLOBUS_LOCATION"] + "/bin/myproxy-logon"):
-            log.error("MyProxy credentials specified but $GLOBUS_LOCATION/bin/myproxy-logon not found.  Make sure you have a valid MyProxy client installation on your system.")
-            return False
 
         # Note: Here we put the refreshed proxy in a seperate file.  We do this to protect the ownership and permisions on the
         # original user's proxy in case the condor_submit was run on the same machine as the cloud scheduler.  If we do not do
@@ -172,7 +170,7 @@ class MyProxyProxyRefresher():
         # This is a bit of a hack; there must me a better way to handle this problem.
         (new_proxy_file, new_proxy_file_path) = tempfile.mkstemp(suffix='.csRenewedProxy')
         os.close(new_proxy_file)
-        myproxy_logon_cmd = '. $GLOBUS_LOCATION/etc/globus-user-env.sh && $GLOBUS_LOCATION/bin/myproxy-logon -s %s -p %s -k %s -a %s -o %s -d' % (myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path)
+        myproxy_logon_cmd = '%s -s %s -p %s -k %s -a %s -o %s -d' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path)
         log.debug('myproxy-logon command: [%s]' % (myproxy_logon_cmd))
         log.debug('Invoking myproxy-logon command to refresh proxy %s ...' % (proxy_file_path))
         myproxy_logon_process = subprocess.Popen(myproxy_logon_cmd, shell=True)
