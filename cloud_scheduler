@@ -750,10 +750,11 @@ class Cleanup(threading.Thread):
                 vms = self.resource_pool.get_vmtypes_count_internal()
                 job_req_count = {}
                 for job in self.job_pool.job_container.get_scheduled_jobs():
-                    if job.req_vmtype in job_req_count:
-                        job_req_count[job.req_vmtype] += 1
-                    else:
-                        job_req_count[job.req_vmtype] = 1
+                    if job.job_status <= self.RUNNING: # Ignore held, complete, etc
+                        if job.req_vmtype in job_req_count:
+                            job_req_count[job.req_vmtype] += 1
+                        else:
+                            job_req_count[job.req_vmtype] = 1
                 for job in self.job_pool.job_container.get_scheduled_jobs():
                     if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
                         self.job_pool.unschedule(job)
