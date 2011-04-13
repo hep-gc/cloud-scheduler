@@ -713,6 +713,57 @@ class Cleanup(threading.Thread):
                     num_to_change[vmtype] -= reduce_per_type
                     if num_to_change[vmtype] < 0:
                         num_to_change[vmtype] = 0
+            # Postive num_to_change is how many CS going to try and shutdown
+            # Negative is how many it wants to start
+            # TODO Check if there are free resources for that type and how many VMs 
+            # could fill those resources, re-adjust num_to_change accordingly
+            pos_change_types = []
+            for vmtype, val in num_to_change.iteritems():
+                if val > 0:
+                    pos_change_types.append(vmtype)
+            unsched_jobs = self.job_pool.get_unscheduled_jobs_by_type()
+            fits_by_type = {}
+            for vmtype in num_to_change.keys():
+                job = unsched_jobs[vmtype][0]
+                fitting = self.resource_pool.get_fitting_resources(job.req_network,  \
+                        job.req_cpuarch, job.req_memory, job.req_cpucores, \
+                        job.req_storage, job.req_ami, job.req_imageloc, job.target_clouds)
+                fits_by_type[vmtype] = set(fitting)
+
+            for vmtype in num_to_change.keys():
+                if num_to_change[vmtype] < 0:
+                    num_fit = 0
+                    for cloud in fits_by_type[vmtype]:
+                        num_fit_cloud = 0
+                        numstore = int(cloud.storageGB / job.req_storage)
+                        num_fit_cloud = numstore if numstore < num_fit_cloud else num_fit_cloud
+                        nummem = 0
+                        for mement in cloud.memory:
+                            nummem += (mement / job.req_memory)
+                        num_fit_cloud = nummem if nummem < num_fit_cloud else num_fit_cloud
+                        num_fit += num_fit_cloud
+                    # Add the number that can fit to what it wants to change
+                    can_boot = num_to_change[vmtype] + num_fit
+                    excess = 0
+                    if can_boot >= 0:
+                        # Room for all desired VMs with current resources
+                        # Don't need to shutdown others
+                        excess = num_to_change[vmtype]
+                        num_to_change[vmtype] = 0
+                    else:
+                        num_to_change[vmtype] = can_boot
+                        excess = num_fit
+                    if len(pos_change_types) > 0:
+                        ## TODO Redistribute the excess, favor vmtypes that are on clusters this job can't use
+                        ## can get that by subtracting it's fits from other types ? or maybe it's union then subtract
+                        pass
+                            
+                        
+                        #adjustby = excess / len(pos_change_types)
+                        #for vmtype in pos_change_types:
+                        #    num_to_change[vmtype] -= adjustby
+                        
+                        
 
             if config.graceful_shutdown:
                 if config.graceful_shutdown_method == 'hold':
