@@ -6,6 +6,7 @@ import datetime
 import subprocess
 import tempfile
 import shutil
+import shlex
 
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
@@ -151,12 +152,13 @@ class MyProxyProxyRefresher():
             log.debug("No MyProxy server port given; using default port (7512)")
             myproxy_server_port = "7512"
 
-        myproxy_command = "myproxy-logon"
-        try:
-            myproxy_command = utilities.get_globus_path(executable=myproxy_command) + myproxy_command
-        except:
-            log.exception("Problem getting myproxy-logon path")
-            return None
+        myproxy_command = config.myproxy_logon_command
+        if not os.path.isabs(myproxy_command):
+            try:
+                myproxy_command = utilities.get_globus_path(executable=myproxy_command) + myproxy_command
+            except:
+                log.exception("Problem getting myproxy-logon path")
+                return None
 
 
         # Note: Here we put the refreshed proxy in a seperate file.  We do this to protect the ownership and permisions on the
@@ -171,9 +173,10 @@ class MyProxyProxyRefresher():
         (new_proxy_file, new_proxy_file_path) = tempfile.mkstemp(suffix='.csRenewedProxy')
         os.close(new_proxy_file)
         myproxy_logon_cmd = '%s -s %s -p %s -k "%s" -a %s -o %s -d -v' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path)
-        log.debug('myproxy-logon command: [%s]' % (myproxy_logon_cmd))
+        cmd_args = shlex.split(myproxy_logon_cmd)
+        log.debug('myproxy-logon command: %s' % (cmd_args))
         log.debug('Invoking myproxy-logon command to refresh proxy %s ...' % (proxy_file_path))
-        myproxy_logon_process = subprocess.Popen(myproxy_logon_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        myproxy_logon_process = subprocess.Popen(cmd_args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (stdout, stderr) = myproxy_logon_process.communicate()
         log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
         if myproxy_logon_process.returncode != 0:
