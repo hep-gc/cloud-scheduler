@@ -920,9 +920,9 @@ class JobPool:
             # If job has completed and been removed it's last state should
             # have been running
             if job.job_status == self.RUNNING:
-                if job.jobstarttime > 0:
+                if int(job.jobstarttime) > 0:
                     if job.running_vm != None:
-                        job.running_vm.job_run_times.append(job.servertime - job.jobstarttime)
+                        job.running_vm.job_run_times.append(int(job.servertime) - int(job.jobstarttime))
 
     ##
     ## JobPool Private methods (Support methods)
