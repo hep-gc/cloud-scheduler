@@ -1127,7 +1127,7 @@ class ResourcePool:
         args = []
         
         if config.cloudscheduler_ssh_key:
-            args.append(config.shh_path)
+            args.append(config.ssh_path)
             args.append('-i')
             args.append(config.cloudscheduler_ssh_key)
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
