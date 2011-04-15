@@ -143,7 +143,7 @@ class VM:
     def get_vm_info(self):
         output = "%-11s %-23s %-20s %-12s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.status[-8:], self.clusteraddr[-23:])
         if self.override_status != None:
-            output = "%-11s %-23s %-20s %-12s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.override_status[-8:], self.clusteraddr[-23:])
+            output = "%-11s %-23s %-20s %-12s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.override_status[-12:], self.clusteraddr[-23:])
         return output
 
     @staticmethod
