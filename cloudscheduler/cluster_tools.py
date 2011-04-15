@@ -556,6 +556,9 @@ class NimbusCluster(ICluster):
         if (create_return != 0):
             log.warning("Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
             _remove_files(nimbus_files)
+            print 'ret', create_return
+            print 'out', create_out
+            print 'err', create_err
             return create_return
 
         log.debug("Nimbus create command executed.")
@@ -895,6 +898,36 @@ class NimbusCluster(ICluster):
 
         return "Error"
 
+    @staticmethod
+    def _extract_create_error(output):
+        """
+        _extract_create_error -- extract the state from a Nimbus workspace command
+    
+        Parameters:
+            output -- expects the error output from a workspace.sh deploy command
+        """
+
+        # Check if you have no proxy
+        no_proxy = re.search("Defective credential detected.*not found", output)
+        if no_proxy:
+            return "NoProxy"
+
+        # Check if your proxy is expired
+        expired_proxy = re.search("Expired credentials detected", output)
+        if expired_proxy:
+            return "ExpiredProxy"
+
+        # Check if out of network slots
+        out_of_slots = re.search("Resource request denied: Error creating*network*not currently available", output)
+        if out_of_slots:
+            return "NoSlotsInNetwork"
+
+        # Check if out of memory
+        out_of_memory = re.search("Resource request denied: Error creating*based on memory", output)
+        if out_of_memory:
+            return "NotEnoughMemory"
+
+        return "Error"
     def _cache_proxy(self, proxy_file_path):
         """
         Creates a copy of the user's credential to use in case the user removes
