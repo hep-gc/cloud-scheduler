@@ -152,6 +152,8 @@ class Job:
         self.running_vm = None
         self.servertime = ServerTime
         self.jobstarttime = JobStartDate
+        self.banned = False
+        self.ban_time = None
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -715,7 +717,7 @@ class JobPool:
         required_vmtypes = []
         for job in self.job_container.get_all_jobs():
             if job.req_vmtype not in required_vmtypes and job.job_status != self.HELD \
-            and job.job_status != self.COMPLETE:
+            and job.job_status != self.COMPLETE and not job.banned:
                 required_vmtypes.append(job.req_vmtype)
 
         log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
@@ -731,9 +733,9 @@ class JobPool:
         required_vmtypes = {}
         for job in self.job_container.get_all_jobs():
             if job.req_vmtype not in required_vmtypes and job.job_status != self.HELD \
-               and job.job_status != self.COMPLETE:
+               and job.job_status != self.COMPLETE and not job.banned:
                 required_vmtypes[job.req_vmtype] = 1
-            elif job.job_status != self.HELD and job.job_status != self.COMPLETE:
+            elif job.job_status != self.HELD and job.job_status != self.COMPLETE and not job.banned:
                 required_vmtypes[job.req_vmtype] += 1
         log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
@@ -750,7 +752,7 @@ class JobPool:
         for user in new_jobs_by_users.keys():
             vmtype = None
             for job in new_jobs_by_users[user]:
-                if job.job_status != self.HELD and job.job_status != self.COMPLETE:
+                if job.job_status != self.HELD and job.job_status != self.COMPLETE and not job.banned:
                     vmtype = job.req_vmtype
                     break
             if vmtype == None:
@@ -763,7 +765,7 @@ class JobPool:
         for user in high_priority_jobs_by_users.keys():
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
-                if job.job_status != self.HELD and job.job_status != self.COMPLETE:
+                if job.job_status != self.HELD and job.job_status != self.COMPLETE and not job.banned:
                     vmtype = job.req_vmtype
                     break
             if vmtype == None:
@@ -790,7 +792,7 @@ class JobPool:
             vmtypes = set()
             highest_priority = new_jobs_by_users[user][0].priority
             for job in new_jobs_by_users[user]:
-                if job.job_status <= self.RUNNING and job.priority == highest_priority:
+                if job.job_status <= self.RUNNING and job.priority == highest_priority and not job.banned:
                     vmtypes.add(job.req_vmtype)
             if len(vmtypes) == 0: # user is held / complete
                 held_user_adjust -= 1
@@ -800,7 +802,7 @@ class JobPool:
             vmtypes = set()
             highest_priority = high_priority_jobs_by_users[user][0].priority
             for job in high_priority_jobs_by_users[user]:
-                if job.job_status <= self.RUNNING and job.priority == highest_priority:
+                if job.job_status <= self.RUNNING and job.priority == highest_priority and not job.banned:
                     vmtypes.add(job.req_vmtype)
             if len(vmtypes) == 0: # user is held / complete
                 held_user_adjust -= 1

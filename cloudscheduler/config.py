@@ -42,6 +42,7 @@ scratch_attach_device = "sdb"
 info_server_port = 8111
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
+job_ban_timeout = 60*60 # 1 hour default
 ban_tracking = False
 ban_file = "/var/run/cloudscheduler.banned"
 ban_min_track = 5
@@ -298,6 +299,14 @@ def setup(path=None):
 
     if config_file.has_option("global", "persistence_file"):
         persistence_file = config_file.get("global", "persistence_file")
+
+    if config_file.has_option("global", "job_ban_timeout"):
+        try:
+            job_ban_timeout = 60 * config_file.getint("global", "job_ban_timeout")
+        except ValueError:
+            print "Configuration file problem: job_ban_timeout must be an " \
+                  "integer value in minutes."
+            sys.exit(1)
 
     if config_file.has_option("global", "ban_file"):
         ban_file = config_file.get("global", "ban_file")

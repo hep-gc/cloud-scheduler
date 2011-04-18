@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import time
 import threading
 import logging
 import cloudscheduler.config as config
@@ -404,6 +405,10 @@ class HashTableJobContainer(JobContainer):
             job.remote_host = remote
             job.servertime = int(servertime)
             job.jobstarttime = int(starttime)
+            if job.banned and job.ban_time:
+                if (time.time() - job.ban_time) > config.job_ban_timeout:
+                    job.banned = False
+                    job.ban_time = None
             return True
         else:
             return False

@@ -559,11 +559,9 @@ class NimbusCluster(ICluster):
             err_type = self._extract_create_error(create_err)
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
             if err_type == 'NoProxy':
-                pass
+                create_return = -1
             elif err_type == 'ExpiredProxy':
-                pass
-            else:
-                pass
+                create_return = -1
 
             return create_return
 

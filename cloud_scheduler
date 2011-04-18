@@ -301,7 +301,7 @@ class Scheduler(threading.Thread):
         for user in high_priority_jobs_by_users.keys():
             for job in high_priority_jobs_by_users[user]:
 
-                if job.job_status > self.RUNNING:
+                if job.job_status > self.RUNNING or job.banned:
                     continue
                 if self.sched_resource_create_track(user, job):
                     break
@@ -320,6 +320,9 @@ class Scheduler(threading.Thread):
                         continue
                     elif job.status == job.SCHEDULED:
                         log.verbose("Skipping previously scheduled job")
+                        continue
+                    elif job.banned:
+                        log.verbose("Skipping banned job")
                         continue
 
                     log.verbose("Job '%s' not running or scheduled, trying to schedule it" % job.id)
@@ -397,6 +400,9 @@ class Scheduler(threading.Thread):
             self.job_pool.schedule(job)
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, True)
+        elif create_ret == -1:
+            job.banned = True
+            job.ban_time = time.time()
         else:
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, False)
