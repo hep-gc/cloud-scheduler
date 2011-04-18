@@ -51,14 +51,15 @@
 # Ensure that the settings below are correct for your Condor
 # installation.
 
+
 # EC2 Metadata server
 EC2_METADATA=169.254.169.254
 
 # Central Manager of your condor pool
-CENTRAL_MANAGER=`cat /etc/condor/central_manager`
+CENTRAL_MANAGER=`cat /etc/condor/central_manager 2>/dev/null`
 
 # START requirement for resource
-START_REQUIREMENT=`cat /etc/condor/start_req_config`
+START_REQUIREMENT=`cat /etc/condor/start_req_config 2>/dev/null`
 
 # Path to your primary condor configuration file.
 CONDOR_CONFIG=/etc/condor/condor_config
@@ -68,6 +69,10 @@ CONDOR_CONFIG_VAL=/usr/bin/condor_config_val
 
 # Path to condor_config.local.modifications
 CONDOR_CONFIG_LOCAL_MODIFS=/etc/condor/condor_config.local.modifications
+
+# Path to image metadata file. If its not set, or file doesn't exist
+# VMType won't automatically be set
+IMAGE_METADATA=/.image.metadata
 
 # A file used to track the running instance. Needs to be writable
 # and deletable.  If left blank, defaults to $RUN/master.pid,
@@ -310,10 +315,10 @@ replace_or_append() {
 	with_this=$2
 	on_this_file=$3
 
-	grep $replace_this $on_this_file >/dev/null 2>&1
+	grep -e ^$replace_this $on_this_file >/dev/null 2>&1
 	REPLACE=$?
 	if [ $REPLACE -eq 0 ]; then
-		sed -i "s/.*$replace_this.*/$with_this/" $on_this_file
+		sed -i "s/^$replace_this.*/$with_this/" $on_this_file
 	else
 		echo $with_this >> $on_this_file
 	fi
@@ -321,6 +326,13 @@ replace_or_append() {
 
 set_central_manager() {
 	condor_host=$1
+
+	if [ "xxx" = "xxx${condor_host}" ]; then
+
+		echo "CENTRAL_MANAGER is undefined. Check /etc/condor/central_manager" >&1
+		exit 1
+	fi
+
 	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
 	replace_or_append "CONDOR_HOST" "CONDOR_HOST=$condor_host" $local_file
 }
@@ -331,9 +343,10 @@ update_condor_local_config() {
 	echo "Applying modifications to ${local_file} ..."
 	while read LINE
 	do
-	    variable=`expr "${LINE}" : '\([[:alnum:]]\+\)=.*$'`
-	    value=`expr "${LINE}" : '[[:alnum:]]\+=\(.*\)$'`
-	    replace_or_append "${variable}" "${variable}=${value}" $local_file
+	# Split values like 'variable = value'
+		variable=`echo ${LINE} | perl -pe 's/(\w*?) \s*? = \s* (.*)/\1/x'`
+		value=`echo ${LINE} | perl -pe 's/(\w*?) \s*? = \s* (.*)/\2/x'`
+		replace_or_append "${variable}" "${variable}=${value}" $local_file
 	done < $CONDOR_CONFIG_LOCAL_MODIFS
     fi
 }
@@ -350,13 +363,30 @@ setup_ccb() {
 	fi
 }
 
+# usage: setup_vmtype metadata
+setup_vmtype() {
+	IMAGE_META_FILE=$1
+
+	if [ -f $IMAGE_META_FILE ]; then
+
+		# Parse VMType out of repoman metadata file
+		VMTYPE=`cat $IMAGE_META_FILE | awk -F: '/^name:/ { print $2 }' | sed  's/[ \t]* //'`
+
+		if [ "xxx" != "xxx${VMTYPE}" ]; then
+
+			local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+			replace_or_append "VMType" "VMType= \"$VMTYPE\"" $local_file
+		fi
+        fi
+}
+
 setup_on_ec2() {
 
 	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
 
 	# Eucalyptus can give us just a private IP
 	public_ip=`curl -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
-	test $public_ip != "0.0.0.0"
+	test $public_ip != "0.0.0.0" > /dev/null 2>&1
 	HAS_PUBLIC_IP=$?
 
 	curl -s http://$EC2_METADATA/ >/dev/null 2>&1
@@ -389,6 +419,17 @@ setup_on_ec2() {
 
 }
 
+# Make sure the permissions on the grid hostkey
+# are restrictive enough, else GSI will fail.
+set_hostkey_permissions () {
+    HOST_KEY=`get_condor_config_val GSI_DAEMON_KEY`
+    if [ -f $HOST_KEY ]; then
+	chmod 400 $HOST_KEY
+    else
+	echo "Grid certificate host key not found. $HOST_KEY"
+    fi
+}
+
 cleanup_ccb () {
 	sed -i '/# Added for Condor CCB/d' /etc/hosts
 }
@@ -412,9 +453,11 @@ verify_execute () {
 
 # Start condor.
 start() {
+        set_hostkey_permissions
 	setup_on_ec2
 	setup_ccb
 	set_central_manager $CENTRAL_MANAGER
+        setup_vmtype $IMAGE_METADATA
 	update_condor_local_config
 	verify_execute
 	init_condor_master

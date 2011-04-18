@@ -1,4 +1,4 @@
-# Cloud Scheduler 0.9.1 README
+# Cloud Scheduler 0.13 README
 
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
@@ -6,14 +6,11 @@ Cloud Scheduler: Automatically boot VMs for your HTC jobs
 Cloud Scheduler manages virtual machines on clouds configured with Nimbus,
 Eucalyptus, or Amazon EC2 to create an environment for HTC batch job execution.
 Users submit their jobs to a Condor job queue, and Cloud Scheduler boots VMs to
-suit those jobs, creating a malleable environment for efficient job execution
-and resource utilization.
+suit those jobs. 
 
 For more documentation on Cloud Scheduler, please refer to:
 
 -  [Cloud Scheduler Wiki](http://wiki.github.com/hep-gc/cloud-scheduler)
--  [Cloud Scheduler Homepage](http://cloudscheduler.org)
-
 
 ## Prerequisites
 
@@ -27,6 +24,11 @@ For more documentation on Cloud Scheduler, please refer to:
 ## Optional Prerequisites
 
 * [Guppy](http://guppy-pe.sourceforge.net/) -- Used for memory usage info.
+
+### Quick Start for People Who Think They Know What They're Doing
+
+    # pip install cloud-scheduler
+
 
 ### Special help for RHEL 5
 
@@ -123,10 +125,18 @@ Make sure you can run condor_status and condor_q, and make sure your
 ALLOW_WRITE will permit the VMs you will start to add themselves to your Condor
 Pool.
 
-Condor must also be installed on your VM images that will run your jobs. There
-is a sample configuration for your Condor installation in scripts/condor/worker/
-condor_config, condor_config.local and central_manager must be in /etc/condor/
-and you must use the customized condor init script scripts/condor/worker/condor
+## Preparing VM Images
+
+The VM images you would like to run jobs with need to be prepared to join your
+Condor pool. Cloud Scheduler will do most of the heavy lifting for you, but at
+the very least, you need to install Condor, and configure it as a worker that
+will join your Condor pool. The easiest way to do this is use the example
+configuration (at least as inspiration) from scripts/condor/worker/ . You'll
+want to put these in your /etc/condor directory. You will probably also want to
+use our custom Condor init script. This does things like set up an appropriate
+environment for when Condor is started with private networking only, when
+started on EC2, and also will automatically point your node to your Condor
+Pool.
 
 ## Installing Nimbus Cloud Client
 
@@ -153,36 +163,39 @@ Scheduler. You can create one with:
 
 ## Configuration
 
-There are two Cloud Scheduler configuration files.
+### cloud_scheduler.conf
 
-### The general cloud scheduler configuration file
+The Cloud Scheduler configuration file allows you to configure most of its 
+functionality, and you'll need to open it up to get a usable installation.
+All of its options are described inline in the example configuration file
+cloud_scheduler.conf, which is included with Cloud Scheduler. 
 
-The general (or central) cloud scheduler configuration file contains fields for
-defining cloud scheduler program functionality, including Condor job pool con-
-figuration information, logging information, and default cloud resource config-
-uration options. 
+By default, the Cloud Scheduler setup script installs its configuration files
+to /etc/cloudscheduler/, but you can manually select a different configuration
+by running cloud_scheduler with the -f option. If you're running as a non-root
+user, Cloud Scheduler will also check for config files in ~/.cloud_scheduler/
 
-The cloud scheduler config file can be manually specified on the command line 
-when the cloud scheduler is run via the -f option, or can be stored in the
-following locations:
+Cloud Scheduler checks for config files in the following order, and will use the first one it finds:
+
+    [config specified with the -f option]
     ~/.cloudscheduler/cloud_scheduler.conf
     /etc/cloudscheduler/cloud_scheduler.conf
 
-Note: the cloud scheduler will attempt first to get the general configuration
-file from the command-line, then from the ~/... directory, and finally from the
-/etc/... directory.
+### cloud_resources.conf
 
-### The cloud resource configuration file
+The cloud resource configuration file, cloud_resources.conf, is where you
+define which clouds Cloud Scheduler should use for starting VMs. You'll specify
+how many VMs you want to boot on each cloud, and what it's capabilities are.
+The best way to get familiar with this file is to open up the sample
+cloud_resources.conf file, where all of its configuration options, and a sample
+configuration are included.
 
-The cloud resource configuration file contains information on the cloud-enabled
-clusters that the cloud scheduler will use as resources. Clusters in this con-
-figuration file will be used by the cloud scheduler to create and manage VMs.
-See the cloud_resources.conf file for an explanation of cluster configuration parameters.
+Like cloud_scheduler.conf, the Cloud Scheduler setup script installs this file
+in /etc/cloudscheduler/, but you can manually select a different configuration
+by running cloud_scheduler with the -c option. You can also specify the
+location of this file with the cloud_resource_config option in the
+cloud_scheduler.conf file.
 
-The cloud resource config file can be specified on the command-line with the
--c option. If the cloud resource config file is not specified on the command
-line, it will be taken from the location given in the cloud_resource_config
-field of the cloud_scheduler.conf file.
 
 ## Init Script
 There is a cloud scheduler init script at scripts/cloud_scheduler. To install
@@ -202,6 +215,17 @@ NOTE: If you've used a non-default Python, you may need to set the PYTHON variab
 in the init script. If you've installed in a non-default location, you may need to 
 set your EXECUTABLEPATH variable.
 
+To Stop Cloud Scheduler without it shutting down VMs (Current VMs will be saved
+to the persistence file specified in the cloud_scheduler.conf and get reloaded 
+when Cloud Scheduler is started - Note that loading the VMs from persistence may 
+take awhile)
+
+    # /etc/init.d/cloud_scheduler forcekill
+
+To Reload the cloud_resources.conf without restarting Cloud Scheduler
+
+    # /etc/init.d/cloud_scheduler reconfig
+
 ## Configuring a VM for EC2 / Eucalyptus
 
 The way Cloud Scheduler manipulates Condor to connect to the correct central
@@ -209,20 +233,18 @@ manager is by writing files which are read by the Condor init script to
 configure itself. Nimbus supports this out of the box, but EC2 requires a 
 helper script to accomplish this. This section explains how to install it.
 
-0. Install the EC2 Context Helper script to your machine. This is a part of the
-   Cloud Scheduler release tarball, and is in the scripts/ec2contexthelper/
-   directory.
+Install the EC2 Context Helper script to your machine. This is a part of the
+Cloud Scheduler release tarball, and is in the scripts/ec2contexthelper/
+directory.
 
-1. Switch to the ec2contexthelper directory, and run setup.py
 
+    # /etc/init.d/cloud_scheduler start
     # cd scripts/ec2contexthelper/
     # python setup.py install
     # which contexthelper
-    /usr/bin/contexthelper
-
-2. Enable the init script.
-
+    # /usr/bin/contexthelper
     # chkconfig context on
+
 
 ## Job Submission
 
@@ -240,6 +262,14 @@ parameters to work properly. These are: (Required parameters are highlighted)
 * VMStorage : The amount of scratch storage space the job requires. (Currently ignored on EC2-like Clusters)
 * VMMem : The amount of RAM that the VM requires.
 * VMNetwork : The type of networking required for your VM. Only used with Nimbus. Corresponds to Nimbus’s network pool.
+* VMInstanceType : The EC2 instance type of the VM requested. Only used with EC2 clouds like Amazon.
+* VMMaximumPrice : The maximum price in cents per hour for a VM (EC2 Only)
+* VMKeepAlive : Number of minutes a VM should stay up after job finishes
+* VMHighPriority : 1 (Optional flag) Indicates a high priority job to Cloud Scheduler – high priority job support can be enabled in the cloud_scheduler.conf
+* TargetClouds : A comma separated list of names of clouds that you would like your job to use
+* CSMyProxyServer : The hostname of the myproxy server you’d like to use for credential renewal
+* CSMyProxyCredsName : The name of your myproxy credentials
+* VMJobPerCore : bool – Assigns multiple slots to a multi-core VM
 
 ### A Sample Job
 
@@ -263,6 +293,13 @@ parameters to work properly. These are: (Required parameters are highlighted)
     +VMMem         = "512"
     +VMStorage     = "20"
     Queue
+
+## Using Proxy Certificates
+
+For a more secure, but more complicated setup allowing your users to use their
+own proxy certificates, there is a guide on the heprc wiki:
+
+https://wiki.heprc.uvic.ca/twiki/bin/view/Main/CsGsiSupport
 
 ## License
 

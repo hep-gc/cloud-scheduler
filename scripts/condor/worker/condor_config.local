@@ -8,3 +8,14 @@ CONDOR_HOST=your.central.manager
 
 ## START requirement
 START = TRUE
+
+## These varibales tells condor which certificate to 
+## use to GSI authenticate this host.
+##
+## Note that the /etc/init.d/condor startup script
+## also relies on those values being properly
+## set.
+GSI_DAEMON_DIRECTORY = /etc/grid-security
+GSI_DAEMON_CERT = /etc/grid-security/hostcert.pem
+GSI_DAEMON_KEY = /etc/grid-security/hostkey.pem
+

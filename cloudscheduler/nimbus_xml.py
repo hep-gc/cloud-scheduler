@@ -149,7 +149,7 @@ def ws_epr(workspace_id, nimbus_hostname):
 
     return doc.toxml(encoding="utf-8")
 
-def ws_optional_factory(custom_tasks):
+def ws_optional_factory(custom_tasks=None, credential=None):
     """
     Creates and returns a Nimbus optional file
 
@@ -198,6 +198,11 @@ def ws_optional_factory(custom_tasks):
         pathOnVM = doc.createTextNode(task[1])
         pathOnVM_el.appendChild(pathOnVM)
 
+    if credential:
+        credentialToCopy_el = doc.createElement("credentialToCopy")
+        op.appendChild(credentialToCopy_el)
+        credentialToCopy = doc.createTextNode(credential)
+        credentialToCopy_el.appendChild(credentialToCopy)
 
 
     ##

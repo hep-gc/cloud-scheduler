@@ -43,6 +43,8 @@ import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
 from cloudscheduler.utilities import ErrTrackQueue
+from cloudscheduler.utilities import splitnstrip
+import cloudscheduler.utilities as utilities
 
 ##
 ## GLOBALS
@@ -61,6 +63,7 @@ class ResourcePool:
     ## Instance variables
     resources = []
     machine_list = []
+    retired_resources = []
     config_file = ""
 
     ## Instance methods
@@ -84,6 +87,8 @@ class ResourcePool:
         self.ban_lock = threading.Lock()
         self.banned_job_resource = {}
         self.failures = {}
+        self.setup_lock = threading.Lock()
+        self.setup_queued = False
 
         if not condor_query_type:
             condor_query_type = config.condor_retrieval_method
@@ -95,6 +100,18 @@ class ResourcePool:
         else:
             log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
             self.resource_query = self.resource_query_SOAP
+            
+        if config.scheduling_metric.lower() == "slot":
+            self.vmtype_distribution = self.vmtype_slot_distribution
+        elif config.scheduling_metric.lower() == "memory":
+            self.vmtype_distribution = self.vmtype_mem_distribution
+        elif config.scheduling_metric.lower() == "memory_cpu":
+            self.vmtype_distribution = self.vmtype_mem_cpu_distribution
+        elif config.scheduling_metric.lower() == "memory_cpu_storage":
+            self.vmtype_distribution = self.vmtype_mem_cpu_storage_distribution
+        else:
+            log.error("Can't use '%s' distribution method, not valid" % config.scheduling_metric)
+            self.vmtype_distribution = self.vmtype_slot_distribution
 
         self.setup()
         if config.ban_tracking:
@@ -106,6 +123,11 @@ class ResourcePool:
     def setup(self):
 
         log.info("Loading cloud resource configuration file %s" % self.config_file)
+
+        if not self.setup_lock.acquire(False):
+            log.warning("Reconfig already in progress, queuing the request")
+            self.setup_queued = True
+            return
 
         new_resources = []
 
@@ -189,17 +211,15 @@ class ResourcePool:
                 if cluster.name == removed_cluster_name:
                     log.info("Removing %s from available resources" % 
                                                           removed_cluster_name)
+                    self.retired_resources.append(cluster)
                     for vm in cluster.vms:
-                        if config.graceful_shutdown_method != 'off':
                             cluster.vm_destroy(vm, return_resources=False)
-                        else:
-                            if vm.condorname:
-                                self.do_condor_off(vm.condorname)
-                            else:
-                                # No condor name cannot perform condor_off
-                                cluster.vm_destroy(vm, return_resources=False)
-
                     old_resources.remove(cluster)
+
+        self.setup_lock.release()
+        if self.setup_queued:
+            self.setup_queued = False
+            self.setup()
 
 
     @staticmethod
@@ -211,10 +231,11 @@ class ResourcePool:
         if cloud_type == "Nimbus":
             return cluster_tools.NimbusCluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
+                    port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, get_or_none(config, cluster, "memory").split(",")),
-                    cpu_archs = get_or_none(config, cluster, "cpu_archs").split(","),
-                    networks = get_or_none(config, cluster, "networks").split(","),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
@@ -224,9 +245,9 @@ class ResourcePool:
             return cluster_tools.EC2Cluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, get_or_none(config, cluster, "memory").split(",")),
-                    cpu_archs = get_or_none(config, cluster, "cpu_archs").split(","),
-                    networks = get_or_none(config, cluster, "networks").split(","),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
@@ -324,13 +345,17 @@ class ResourcePool:
     # Parameters: (as for get_resource methods)
     # Return: a list of Cluster objects representing clusters that meet given
     #         requirements for network, cpu, memory, and storage
-    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc):
+    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[]):
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return list of fitting resources")
             return []
 
         fitting_clusters = []
-        for cluster in self.resources:
+        if len(targets) > 0:
+            clusters = self.filter_resources_by_names(targets)
+        else:
+            clusters = self.resources
+        for cluster in clusters:
             if cluster.__class__.__name__ == "NimbusCluster":
                 # If not valid image file to download
                 if imageloc == "":
@@ -407,10 +432,10 @@ class ResourcePool:
     #         Normal return, (Primary_Cluster, Secondary_Cluster)
     #         If no secondary cluster is found, (Cluster, None) is returned.
     #         If no fitting clusters are found, (None, None) is returned.
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc):
+    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[]):
 
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc)
+        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
@@ -476,9 +501,14 @@ class ResourcePool:
         # If no clusters are found (no clusters can host the required VM)
         return potential_fit
 
-    def get_potential_fitting_resources(self, network, cpuarch, memory, disk):
+    def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[]):
         fitting = []
-        for cluster in self.resources:
+        clusters = []
+        if len(targets) == 0:
+            clusters = self.resources
+        else:
+            clusters = self.filter_resources_by_names(targets)
+        for cluster in clusters:
             if not (cpuarch in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
@@ -490,6 +520,17 @@ class ResourcePool:
                 continue
             fitting.append(cluster)
         return fitting
+
+    # Return list of clusters that match names 
+    def filter_resources_by_names(self, names):
+        clusters = []
+        for name in names:
+            cluster = self.get_cluster(name)
+            if cluster != None:
+                clusters.append(cluster)
+            else:
+                log.debug("No Cluster with name %s in system" % name)
+        return clusters
 
     # Return cluster that matches cluster_name
     def get_cluster(self, cluster_name):
@@ -682,7 +723,7 @@ class ResourcePool:
         return count
 
     # VM Type Distribution
-    def vmtype_distribution(self):
+    def vmtype_slot_distribution(self):
         types = self.get_vmtypes_count_internal()
         count = Decimal(self.vm_count())
         if count == 0:
@@ -706,6 +747,48 @@ class ResourcePool:
         mem_total = 1 / Decimal(mem_total)
         for vmtype in types.keys():
             types[vmtype] *= mem_total
+        return types
+
+    # VM Type Memory & CPU Distribution
+    def vmtype_mem_cpu_distribution(self):
+        usage = self.vmtype_resource_usage()
+        types = {}
+        mem_cpu_total = 0
+        for vmtype in usage:
+            mem_cpu_area = usage[vmtype][0] * usage[vmtype][1]
+            types[vmtype] = mem_cpu_area
+            mem_cpu_total += mem_cpu_area
+        del usage
+        if mem_cpu_total == 0:
+            return {}
+        mem_cpu_total = 1 / Decimal(mem_cpu_total)
+        for vmtype in types.keys():
+            types[vmtype] *= mem_cpu_total
+        return types
+
+    # VM Type Memory & CPU & Storage Distribution
+    def vmtype_mem_cpu_storage_distribution(self):
+        usage = self.vmtype_resource_usage()
+        types = {}
+        vol_total = 0
+        weight_all = config.cpu_distribution_weight * config.memory_distribution_weight * config.storage_distribution_weight
+        weight_cm = config.cpu_distribution_weight * config.memory_distribution_weight
+        for vmtype in usage:
+            vol = 0
+            if usage[vmtype][2] != 0:
+                vol = usage[vmtype][0] * usage[vmtype][1] * usage[vmtype][2] * weight_all
+                types[vmtype] = Decimal(str(vol))
+            else:
+                vol = usage[vmtype][0] * usage[vmtype][1] * weight_cm
+                types[vmtype] = Decimal(str(vol))
+            vol_total += vol
+        del usage
+        if vol_total == 0:
+            return {}
+        if vol_total != 0:
+            mem_cpu_storage_total = 1 / Decimal(str(vol_total))
+        for vmtype in types.keys():
+            types[vmtype] *= mem_cpu_storage_total
         return types
 
     # VM Type resource usage
@@ -950,47 +1033,129 @@ class ResourcePool:
             self.banned_job_resource = updated_ban
 
     def do_condor_off(self, machine_name, machine_addr):
-        cmd = '/usr/sbin/condor_off -subsystem master -peaceful -addr "%s"' % (machine_addr)
+        cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
+        cmd2 = '%s -peaceful -addr "%s" -startd' % (config.condor_off_command, machine_addr)
+        cmd3 = '%s -peaceful -addr "%s" -master' % (config.condor_off_command, machine_addr)
         args = []
-        args.append('/usr/bin/ssh')
+        args2 = []
+        args3 = []
         if config.cloudscheduler_ssh_key:
+            args.append(config.ssh_path)
             args.append('-i')
             args.append(config.cloudscheduler_ssh_key)
-        central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
-        args.append(central_address)
-        args.append(cmd)
-        sp = subprocess.Popen(args, shell=False,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (out, err) = sp.communicate(input=None)
-        ret = -1
-        if out.startswith("Sent"):
-            ret = 0
-        if sp.returncode == 0 and ret == 0:
-            log.debug("Successfuly sent condor_off to %s" % (machine_name))
+            central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
+            args.append(central_address)
+            args.append(cmd)
+            
+            args2.append(config.ssh_path)
+            args2.append('-i')
+            args2.append(config.cloudscheduler_ssh_key)
+            args2.append(central_address)
+            args2.append(cmd2)
+            
+            args3.append(config.ssh_path)
+            args3.append('-i')
+            args3.append(config.cloudscheduler_ssh_key)
+            args3.append(central_address)
+            args3.append(cmd3)
         else:
-            log.debug("Failed to send condor_off to %s" % (machine_name))
-            log.debug("Reason: %s \n Error: %s" % (out, err))
-        return (sp.returncode, ret)
+            args.append(config.condor_off_command)
+            args.append('-peaceful')
+            args.append('-name')
+            args.append(machine_name)
+            args.append('-subsystem')
+            args.append('startd')
+            
+            args2.append(config.condor_off_command)
+            args2.append('-peaceful')
+            args2.append('-addr')
+            args2.append(machine_addr)
+            args2.append('-subsystem')
+            args2.append('startd')
+            
+            args3.append(config.condor_off_command)
+            args3.append('-peaceful')
+            args3.append('-addr')
+            args3.append(machine_addr)
+            args3.append('-subsystem')
+            args3.append('master')
+        # Send condor_off to startd first
+        try:
+            sp1 = subprocess.Popen(args2, shell=False,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if not utilities.check_popen_timeout(sp1):
+                (out, err) = sp1.communicate(input=None)
+            ret1 = -1
+            if out.startswith("Sent"):
+                ret1 = 0
+            if sp1.returncode == 0 and ret1 == 0:
+                log.debug("Successfuly sent condor_off to %s" % (machine_name))
+            else:
+                log.debug("Failed to send condor_off to %s" % (machine_name))
+                log.debug("Reason: %s \n Error: %s" % (out, err))
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            return (-1, "", "", "")
+        except:
+            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            return (-1, "", "", "")
+        # Now send the master off
+        try:
+            sp2 = subprocess.Popen(args3, shell=False,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if not utilities.check_popen_timeout(sp2):
+                (out, err) = sp2.communicate(input=None)
+            ret2 = -1
+            if out.startswith("Sent"):
+                ret2 = 0
+            if sp2.returncode == 0 and ret2 == 0:
+                log.debug("Successfuly sent condor_off to %s" % (machine_name))
+            else:
+                log.debug("Failed to send condor_off to %s" % (machine_name))
+                log.debug("Reason: %s \n Error: %s" % (out, err))
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            return (-1, "", "", "")
+        except:
+            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            print args
+            return (-1, "", "", "")
+        return (sp1.returncode, ret1, sp2.returncode, ret2)
 
     def do_condor_on(self, machine_name, machine_addr):
-        cmd = '/usr/sbin/condor_on -subsystem master -addr "%s"' % (machine_addr)
+        cmd = '%s -subsystem startd -name "%s"' % (config.condor_on_command, machine_name)
         args = []
-        args.append('/usr/bin/ssh')
+        
         if config.cloudscheduler_ssh_key:
+            args.append(config.ssh_path)
             args.append('-i')
             args.append(config.cloudscheduler_ssh_key)
-        central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
-        args.append(central_address)
-        args.append(cmd)
-        sp = subprocess.Popen(args, shell=False,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (out, err) = sp.communicate(input=None)
-        if sp.returncode == 0:
-            log.debug("Successfuly sent condor_on to %s" % (machine_name))
+            central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
+            args.append(central_address)
+            args.append(cmd)
         else:
-            log.debug("Failed to send condor_on to %s" % (machine_name))
-            log.debug("Reason: %s \n Error: %s" % (out, err))
-        return sp.returncode
+            args.append(config.condor_on_command)
+            args.append('-subsystem')
+            args.append('startd')
+            args.append('-name')
+            args.append(machine_name)
+        try:
+            sp = subprocess.Popen(args, shell=False,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if not utilities.check_popen_timeout(sp):
+                (out, err) = sp.communicate(input=None)
+            if sp.returncode == 0:
+                log.debug("Successfuly sent condor_on to %s" % (machine_name))
+            else:
+                log.debug("Failed to send condor_on to %s" % (machine_name))
+                log.debug("Reason: %s \n Error: %s" % (out, err))
+            return sp.returncode
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            return (-1, "")
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(args, " "))
+            return (-1, "")
 
     def find_vm_with_name(self, condor_name):
         foundIt = False
@@ -1008,15 +1173,30 @@ class ResourcePool:
     def find_cluster_with_vm(self, condor_name):
         foundIt = False
         cluster_match = None
+        vm_match = None
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.condorname == condor_name:
                     foundIt = True
                     cluster_match = cluster
+                    vm_match = vm
                     break
             if foundIt:
                 break
-        return cluster_match
+        return (cluster_match, vm_match)
+
+    def find_vm_with_addr(self, condor_addr):
+        foundIt = False
+        vm_match = None
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.condoraddr == condor_addr:
+                    foundIt = True
+                    vm_match = vm
+                    break
+            if foundIt:
+                break
+        return vm_match
 
     def retiring_vms_of_type(self, vmtype):
         retiring = []
@@ -1026,3 +1206,10 @@ class ResourcePool:
                     if vm.override_status == 'Retiring':
                         retiring.append(vm)
         return retiring
+
+    def get_all_vms(self):
+        all_vms = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                all_vms.append(vm)
+        return all_vms

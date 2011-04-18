@@ -10,13 +10,19 @@ export GLOBUS_LOCATION=/usr/local/nimbus/
 EXECUTABLEPATH="cloud_scheduler" 
 
 # Non-default python (eg. if you installed python 2.6 on RHEL5)
-PYTHON="python"
+PYTHON=""
 
 # You probably won't want to change these.
 SERVICE=cloud_scheduler
+CRASHLOG=/tmp/${SERVICE}.crash.log
 PIDSPATH=/var/run
 PIDFILE=$PIDSPATH/$SERVICE.pid
 export PATH=$PATH:$GLOBUS_LOCATION/bin/
+
+
+ok () {
+    echo -e "\t\t\t\t[ " "\e[0;32mOK\e[0m" " ]"
+}
 
 start () {
     if [ -f $PIDFILE ]; then
@@ -33,48 +39,50 @@ start () {
         fi
     fi
 
-    echo -n $"Starting $SERVICE..."
+    echo -n $"Starting $SERVICE:"
     if [ "$SUDO_COMMAND" ]; then
-        sudo nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >/dev/null &
+        sudo nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >${CRASHLOG} 2>&1 &
         echo $! > $PIDFILE
     else
-        nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >/dev/null &
+        nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >${CRASHLOG} 2>&1 &
         echo $! > $PIDFILE
     fi
-    echo
     RETVAL=$?
     touch /var/lock/subsys/$SERVICE
+    ok
 }
 
 stop () {
     if [ -f $PIDFILE ]; then
-        echo -n $"Stopping $SERVICE..."
-        /bin/kill `cat $PIDFILE`
-        echo
+        echo -n $"Stopping $SERVICE:"
+	PID=`cat $PIDFILE`
+        /bin/kill $PID
+	while ps -p $PID >/dev/null; do sleep 1; done
         if [ $? -eq 0 ]; then
             rm -f $PIDFILE >/dev/null 2>&1
         fi
         rm -f /var/lock/subsys/$SERVICE
+    	ok
     fi
 }
 
 forcekill () {
     if [ -f $PIDFILE ]; then
-        echo -n $"Killing $SERVICE..."
+        echo -n $"Killing $SERVICE:"
         /bin/kill -9 `cat $PIDFILE`
-        echo
         if [ $? -eq 0 ]; then
             rm -f $PIDFILE >/dev/null 2>&1
         fi
+        ok
         rm -f /var/lock/subsys/$SERVICE
     fi
 }
 
 reconfig () {
     if [ -f $PIDFILE ]; then
-        echo -n $"Reconfiguring $SERVICE..."
+        echo -n $"Reconfiguring $SERVICE:"
         /bin/kill -s SIGUSR1 `cat $PIDFILE`
-        echo
+        ok
     fi
 }
 

@@ -288,6 +288,7 @@ class HashTableJobContainer(JobContainer):
         with self.lock:
             # create a dictionary of the given jobs to keep first (for effeciency)
             jobs_to_keep_dict = {}
+            removed_jobs = []
             for job in jobs_to_keep:
                 jobs_to_keep_dict[job.id] = job
 
@@ -295,7 +296,9 @@ class HashTableJobContainer(JobContainer):
                 # If the job is not in the jobs to keep, simply remove it.
                 if job.id not in jobs_to_keep_dict:
                     self.remove_job(job)
-            
+                    removed_jobs.append(job)
+        return removed_jobs
+
     def get_users(self):
         return self.jobs_by_user.keys()
 
@@ -393,12 +396,14 @@ class HashTableJobContainer(JobContainer):
     def is_empty(self):
         return len(self.all_jobs) == 0
 
-    def update_job_status(self, jobid, status, remote):
+    def update_job_status(self, jobid, status, remote, servertime, starttime):
         with self.lock:
             job = self.get_job_by_id(jobid)
         if job != None:
             job.job_status = status
             job.remote_host = remote
+            job.servertime = int(servertime)
+            job.jobstarttime = int(starttime)
             return True
         else:
             return False

@@ -52,6 +52,15 @@ def main(argv=None):
                       action="store", dest="job_queue",
                       type="choice", choices=['all', 'new', 'sched', 'high'],
                       help="Get Information about the job queues")
+    parser.add_option("-i", "--ip-address", default=False, action="store_true",
+                      dest="ips",
+                      help="output ip information for munin monitoring")
+    parser.add_option("-b", "--boot-time", dest="boot_time",
+                      action="store_true", default=False, help="Display boot times")
+    parser.add_option("-t", "--diff_type", dest="diff_type",
+                      action="store_true", default=False, help="Display diff_types for debugging")
+    parser.add_option("-g", "--avg_job_time", dest="get_job_run_times", action="store_true",
+                      default=False, help="Display Average Run time of Jobs on VMs")
 
     (cli_options, args) = parser.parse_args()
 
@@ -113,6 +122,14 @@ def main(argv=None):
             elif cli_options.job_queue.startswith('h'):
                 print "Jobs in High Priority Queue"
                 print s.get_highjobs()
+        elif cli_options.ips:
+            print s.get_ips_munin()
+        elif cli_options.boot_time:
+            print s.get_vm_startup_time()
+        elif cli_options.diff_type:
+            print s.get_diff_types()
+        elif cli_options.get_job_run_times:
+            print s.get_vm_job_run_times()
         else:
             print s.get_cloud_resources()
 

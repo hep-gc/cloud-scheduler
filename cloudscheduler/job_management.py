@@ -70,20 +70,24 @@ class Job:
 
     """
     # A list of possible statuses for internal job representation
-    statuses = ("Unscheduled", "Scheduled")
+    SCHEDULED = "Scheduled"
+    UNSCHEDULED = "Unscheduled"
+    statuses = (SCHEDULED, UNSCHEDULED)
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
              JobStatus=0, ClusterId=0, ProcId=0, VMType=config.default_VMType,
              VMNetwork=config.default_VMNetwork, VMCPUArch=config.default_VMCPUArch, 
              VMName=config.default_VMName, VMLoc=config.default_VMLoc, 
-             VMAMI=config.default_VMAMI, VMMem=config.default_VMMem, 
+             VMAMI={"default": config.default_VMAMI}, VMMem=config.default_VMMem, 
              VMCPUCores=config.default_VMCPUCores, VMStorage=config.default_VMStorage, 
              VMKeepAlive=1, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              CDSCredsURL=None,
+             Iwd=None, SUBMIT_x509userproxy=None,
              VMInstanceType=config.default_VMInstanceType, 
-             VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False, **kwargs):
+             VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
+             TargetClouds="", ServerTime=0, JobStartDate=0, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -108,6 +112,8 @@ class Job:
      x509userproxysubject - (str) The DN of the authenticated user
      x509userproxy - (str) The user proxy certificate (full path)
      CDSCredsURL - (str) The full URL of the user's credential stored in a Credential Delegation Service
+     SUBMIT_x509userproxy - (str) The user proxy certificate (full path) as originally submitted
+     Iwd - (str) The initial working directory (spool directory) of the job. Used in spooled jobs
      VMJobPerCore   - (boolean) Whether or not the machines you request will have
                                 multiple slots. This is mostly an advanced feature
                                 for when this can save you money (eg. with EC2)
@@ -139,12 +145,16 @@ class Job:
         self.myproxy_creds_name = CSMyProxyCredsName
         self.x509userproxysubject = x509userproxysubject
         self.x509userproxy = x509userproxy
+        self.original_x509userproxy = SUBMIT_x509userproxy
+        self.spool_dir = Iwd
         self.x509userproxy_expiry_time = None
         self.cds_creds_url = CDSCredsURL
         self.job_per_core = VMJobPerCore in ['true', "True", True]
         self.remote_host = RemoteHost
         self.running_cloud = ""
-
+        self.running_vm = None
+        self.servertime = ServerTime
+        self.jobstarttime = JobStartDate
 
         # Set the new job's status
         self.status = self.statuses[0]
@@ -152,8 +162,19 @@ class Job:
         global log
         log = logging.getLogger("cloudscheduler")
 
+        self.target_clouds = []
+        try:
+            if len(TargetClouds) != 0:
+                for cloud in TargetClouds.split(','):
+                    self.target_clouds.append(cloud.strip())
+        except:
+            log.error("Failed to parse TargetClouds - use a comma separated list")
+
         log.verbose("New Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
+
+    def __repr__(self):
+        return "Job '%s'" % self.id
 
 
     # Log a short string representing the job
@@ -165,10 +186,10 @@ class Job:
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def get_job_info(self):
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
-        return "%-15s %-10s %-10s %-15s %-15s %-15s\n" % (self.id[-15:], self.user[-10:], self.req_vmtype[-10:], CONDOR_STATUS[self.job_status], self.status[-25:], self.running_cloud[-15:])
+        return "%-20s %-15s %-15s %-10s %-12s %-15s\n" % (self.id[-20:], self.user[:15], self.req_vmtype[:15], CONDOR_STATUS[self.job_status], self.status[:12], self.running_cloud[:15])
     @staticmethod
-    def get_job_info_header(self):
-        return "%-15s %-10s %-10s %-15s %-15s %-15\n" % ("Global ID", "User", "VM Type", "Job Status", "Status", "Cloud")
+    def get_job_info_header():
+        return "%-20s %-15s %-15s %-10s %-12s %-15s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status", "Cloud")
     def get_job_info_pretty(self):
         output = self.get_job_info_header()
         output += self.get_job_info()
@@ -225,7 +246,18 @@ class Job:
         return
 
     def get_x509userproxy(self):
-        return self.x509userproxy
+        proxy = ""
+        if self.spool_dir and self.original_x509userproxy:
+            proxy += self.spool_dir + "/"
+
+        log.debug("spool: %s orig: %s x509prox: %s" % (self.spool_dir, self.original_x509userproxy, self.x509userproxy))
+
+        if self.x509userproxy == None:
+            proxy = None
+        else:
+            proxy += self.x509userproxy
+
+        return proxy
 
     def get_x509userproxysubject(self):
         return self.x509userproxysubject
@@ -329,6 +361,11 @@ class JobPool:
         else:
             log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
             self.job_query = self.job_query_SOAP
+            
+        if config.job_distribution_type.lower() == "normal":
+            self.job_type_distribution = self.job_type_distribution_normal
+        elif config.job_distribution_type.lower() == "split":
+            self.job_type_distribution = self.job_type_distribution_multi_vmtype
 
     # Method to get all jobs in the JobPool
     # Returns a list of Job instances, or [] if there are no jobs in the the JobPool.
@@ -352,8 +389,14 @@ class JobPool:
             sp = subprocess.Popen(condor_q, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (condor_out, condor_err) = sp.communicate(input=None)
+            returncode = sp.returncode
         except:
             log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            return None
+
+        if returncode != 0:
+            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
+                              (returncode, string.join(condor_q, " "), condor_err))
             return None
 
         job_ads = self._condor_q_to_job_list(condor_out)
@@ -407,6 +450,17 @@ class JobPool:
             else:
                 return ""
 
+        def _attribute_from_list(classad, attribute):
+            try:
+                attr_list = classad[attribute]
+                try:
+                    attr_dict = _attr_list_to_dict(attr_list)
+                    classad[attribute] = attr_dict
+                except ValueError:
+                    log.exception("Problem extracting %s attribute '%s'" % (attribute, attr_list))
+            except:
+                pass
+
         jobs = []
 
         # The first three lines look like:
@@ -433,6 +487,10 @@ class JobPool:
             except:
                 log.exception("Problem extracting VMType from Requirements")
 
+            # VMAMI requires special fiddling
+            _attribute_from_list(classad, "VMAMI")
+            _attribute_from_list(classad, "VMInstanceType")
+
             jobs.append(Job(**classad))
         return jobs
 
@@ -454,6 +512,15 @@ class JobPool:
             job_value = string.strip(_job_attribute(xml, attribute))
             if job_value:
                 dictionary[attribute] = job_value
+
+        def _add_dict_if_exists(xml, dictionary, attribute):
+            attr_list = _job_attribute(xml_job, attribute)
+            if attr_list:
+                try:
+                    attr_dict = _attr_list_to_dict(attr_list)
+                    dictionary[attribute] = attr_dict
+                except:
+                    log.exception("Problem extracting %s attribute '%s'" % (attribute, attr_list))
 
         def _attribute_from_requirements(requirements, attribute):
             regex = "%s\s=\?=\s\"(?P<value>.+?)\"" % attribute
@@ -477,18 +544,17 @@ class JobPool:
                 job_dictionary['JobStatus'] = _job_attribute(xml_job, "JobStatus")
                 job_dictionary['ClusterId'] = _job_attribute(xml_job, "ClusterId")
                 job_dictionary['ProcId'] = _job_attribute(xml_job, "ProcId")
+                job_dictionary['ServerTime'] = _job_attribute(xml_job, "ServerTime")
 
                 # Optional parameters
                 _add_if_exists(xml_job, job_dictionary, "VMNetwork")
                 _add_if_exists(xml_job, job_dictionary, "VMCPUArch")
                 _add_if_exists(xml_job, job_dictionary, "VMName")
                 _add_if_exists(xml_job, job_dictionary, "VMLoc")
-                _add_if_exists(xml_job, job_dictionary, "VMAMI")
                 _add_if_exists(xml_job, job_dictionary, "VMMem")
                 _add_if_exists(xml_job, job_dictionary, "VMCPUCores")
                 _add_if_exists(xml_job, job_dictionary, "VMStorage")
                 _add_if_exists(xml_job, job_dictionary, "VMKeepAlive")
-                _add_if_exists(xml_job, job_dictionary, "VMInstanceType")
                 _add_if_exists(xml_job, job_dictionary, "VMMaximumPrice")
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyCredsName")
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyServer")
@@ -499,6 +565,10 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMHighPriority")
                 _add_if_exists(xml_job, job_dictionary, "VMJobPerCore")
                 _add_if_exists(xml_job, job_dictionary, "RemoteHost")
+                _add_if_exists(xml_job, job_dictionary, "TargetClouds")
+                _add_if_exists(xml_job, job_dictionary, "JobStartDate")
+                _add_if_exists(xml_job, job_dictionary, "Iwd")
+                _add_if_exists(xml_job, job_dictionary, "SUBMIT_x509userproxy")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -507,13 +577,17 @@ class JobPool:
                     if vmtype:
                         job_dictionary['VMType'] = vmtype
 
+                # VMAMI requires special fiddling
+                _add_dict_if_exists(xml_job, job_dictionary, "VMAMI")
+                _add_dict_if_exists(xml_job, job_dictionary, "VMInstanceType")
+
                 jobs.append(Job(**job_dictionary))
 
                 elem.clear()
         return jobs
 
 
-
+ 
     # Updates the system jobs:
     #   - Removes finished or deleted jobs from the system
     #   - Ignores jobs already in the system and still in Condor
@@ -529,7 +603,7 @@ class JobPool:
 
         # Filter out any jobs in an error status (from the given job list)
         for job in query_jobs:
-            if job.job_status >= self.ERROR:
+            if job.job_status >= self.ERROR or job.job_status == self.REMOVED or job.job_status == self.COMPLETE:
                 query_jobs.remove(job)
 
         # Update all system jobs:
@@ -547,7 +621,9 @@ class JobPool:
 
         # Lets remove all jobs in the container that do not appear in the
         # given condor job list.
-        self.job_container.remove_all_not_in(query_jobs)
+        # Keep a list of the removed jobs
+        removed = self.job_container.remove_all_not_in(query_jobs)
+        self.track_run_time(removed)
 
         # Now lets loop through the remaining jobs given by condor and
         # check if each job is in the job container.
@@ -623,7 +699,7 @@ class JobPool:
     #   True - updated
     #   False - failed
     def update_job_status(self, target_job):
-        return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host)
+        return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host, target_job.servertime, target_job.jobstarttime)
 
     # Mark job scheduled
     # Makes all changes to a job to indicate that the job has been scheduled
@@ -673,7 +749,7 @@ class JobPool:
     # Get desired vmtype distribution
     # Based on top jobs in user new_job queue determine
     # a 'fair' distribution of vmtypes
-    def job_type_distribution(self):
+    def job_type_distribution_normal(self):
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_high_priority_jobs_by_users(prioritized = True)
@@ -695,7 +771,7 @@ class JobPool:
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
                 if job.job_status != self.HELD and job.job_status != self.COMPLETE:
-                    vmtype = job.vmtype
+                    vmtype = job.req_vmtype
                     break
             if vmtype == None:
                 held_user_adjust -= 1 # this user is completely held
@@ -709,6 +785,53 @@ class JobPool:
             type_desired[vmtype] = type_desired[vmtype] / num_users
         return type_desired
 
+    def job_type_distribution_multi_vmtype(self):
+        type_desired = {}
+        new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
+        high_priority_jobs_by_users = self.job_container.get_high_priority_jobs_by_users(prioritized = True)
+        held_user_adjust = 0
+        user_types = {}
+        high_user_types = {}
+        # Want to check all jobs of the highest priority in their list
+        for user in new_jobs_by_users.keys():
+            vmtypes = set()
+            highest_priority = new_jobs_by_users[user][0].priority
+            for job in new_jobs_by_users[user]:
+                if job.job_status <= self.RUNNING and job.priority == highest_priority:
+                    vmtypes.add(job.req_vmtype)
+            if len(vmtypes) == 0: # user is held / complete
+                held_user_adjust -= 1
+            else:
+                user_types[user] = vmtypes
+        for user in high_priority_jobs_by_users.keys():
+            vmtypes = set()
+            highest_priority = high_priority_jobs_by_users[user][0].priority
+            for job in high_priority_jobs_by_users[user]:
+                if job.job_status <= self.RUNNING and job.priority == highest_priority:
+                    vmtypes.add(job.req_vmtype)
+            if len(vmtypes) == 0: # user is held / complete
+                held_user_adjust -= 1
+            else:
+                high_user_types[user] = vmtypes
+        # Types for users gathered - figure out distributions
+        for user in user_types.keys():
+            for vmtype in user_types[user]:
+                if vmtype in type_desired.keys():
+                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+                else:
+                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+        for user in high_user_types.keys():
+            for vmtype in high_user_types[user]:
+                if vmtype in type_desired.keys():
+                    type_desired[vmtype] += Decimal('1.0') / len(high_user_types[user]) * config.high_priority_job_weight
+                else:
+                    type_desired[vmtype] = Decimal('1.0') / len(high_user_types[user]) * config.high_priority_job_weight
+        num_users = held_user_adjust + len(set(user_types.keys() + high_user_types.keys()))
+        if num_users != 0:
+            num_users = Decimal('1.0') / num_users
+        for vmtype in type_desired.keys():
+            type_desired[vmtype] *= num_users
+        return type_desired
 
     def get_jobs_of_type_for_user(self, type, user):
         """
@@ -799,6 +922,15 @@ class JobPool:
         ret = self.release_jobSOAP(jobs)
         return ret
 
+    def track_run_time(self, removed):
+        for job in removed:
+            # If job has completed and been removed it's last state should
+            # have been running
+            if job.job_status == self.RUNNING:
+                if int(job.jobstarttime) > 0:
+                    if job.running_vm != None:
+                        job.running_vm.job_run_times.append(int(job.servertime) - int(job.jobstarttime))
+
     ##
     ## JobPool Private methods (Support methods)
     ##
@@ -854,6 +986,41 @@ class JobPool:
             log.verbose("(none)")
         for job in jobs:
             log.verbose("\tJob: %s, %10s, %4d, %10s" % (job.id, job.user, job.priority, job.req_vmtype))
+
+
+
+# utility parsing methods
+
+def _attr_list_to_dict(attr_list):
+    """
+    _attr_list_to_dict -- parse a string like: host:ami, ..., host:ami into a
+    dictionary of the form:
+    {
+        host: ami
+        host: ami
+    }
+
+    if the string is in the form "ami" then parse to format
+    {
+        default: ami
+    }
+
+    raises ValueError if list can't be parsed
+    """
+
+    attr_dict = {}
+    for host_attr in attr_list.split(","):
+        host_attr = host_attr.split(":")
+        if len(host_attr) == 1:
+            attr_dict["default"] = host_attr[0].strip()
+        elif len(host_attr) == 2:
+            attr_dict[host_attr[0].strip()] = host_attr[1].strip()
+        else:
+            raise ValueError("Can't split '%s' into suitable host attribute pair" % host_attr)
+
+    return attr_dict
+
+
 
 
 # A class to contain a subset of all jobs obtained from the scheduler, to be

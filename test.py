@@ -47,6 +47,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.job_poller_interval = 42
         self.machine_poller_interval = 42
         self.cleanup_interval = 42
+        self.override_vmtype = "true"
 
         self.log_level = "ERROR"
         self.log_location = "/tmp/test.log"
@@ -81,6 +82,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'job_poller_interval', self.job_poller_interval)
         testconfig.set('global', 'machine_poller_interval', self.machine_poller_interval)
         testconfig.set('global', 'cleanup_interval', self.cleanup_interval)
+        testconfig.set('global', 'override_vmtype', self.override_vmtype)
 
         testconfig.add_section('logging')
         testconfig.set('logging', 'log_level', self.log_level)
@@ -167,6 +169,9 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
 
     def test_cleanup_interval(self):
         self.assertEqual(int(self.cleanup_interval), cloudscheduler.config.cleanup_interval)
+
+    def test_override_vmtype(self):
+        self.assertEqual(bool(self.override_vmtype), cloudscheduler.config.override_vmtype)
 
     def test_log_level(self):
         self.assertEqual(self.log_level, cloudscheduler.config.log_level)
@@ -310,7 +315,8 @@ class NimbusXMLTests(unittest.TestCase):
         self.custom_filename = "/tmp/filename"
         self.custom_string = "stringtoput"
         self.custom_tasks = [(self.custom_string, self.custom_filename)]
-        self.optional_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite></OptionalParameters>" % (self.custom_string, self.custom_filename)
+        self.credential = "fakecredential"
+        self.optional_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite><credentialToCopy>%s</credentialToCopy></OptionalParameters>" % (self.custom_string, self.custom_filename, self.credential)
         self.workspace_id = 42
         self.bad_workspace_id = "whatev"
         self.nimbus_hostname = "your.nimbus.tld"
@@ -327,7 +333,7 @@ class NimbusXMLTests(unittest.TestCase):
         self.assertEqual(txml, None)
 
     def test_for_good_optional_parameters(self):
-        txml = cloudscheduler.nimbus_xml.ws_optional_factory(self.custom_tasks)
+        txml = cloudscheduler.nimbus_xml.ws_optional_factory(custom_tasks=self.custom_tasks, credential=self.credential)
         
         xml_file = open(txml, "r")
         generated_xml = xml_file.read()
@@ -2235,7 +2241,7 @@ xmlns:condor="urn:condor">
                           'ClusterId': 85,
                           'ProcId': 0,
                           'VMType': 'canfarbase',
-                          'VMAMI': 'ami-fdee0094',
+                          'VMAMI': {'default': 'ami-fdee0094'},
                           'VMLoc': 'http://vmrepo.phys.uvic.ca/vms/canfarbase_i386.img.gz',
                           'VMStorage': 10,
                           'VMMaximumPrice': 15,
@@ -2254,13 +2260,25 @@ xmlns:condor="urn:condor">
         self.assertEqual(parsed_job.req_cpuarch, test_job.req_cpuarch)
         self.assertEqual(parsed_job.req_image, test_job.req_image)
         self.assertEqual(parsed_job.req_imageloc, test_job.req_imageloc)
-        self.assertEqual(parsed_job.req_ami, test_job.req_ami)
         self.assertEqual(parsed_job.req_memory, test_job.req_memory)
         self.assertEqual(parsed_job.req_cpucores, test_job.req_cpucores)
         self.assertEqual(parsed_job.req_storage, test_job.req_storage)
         self.assertEqual(parsed_job.keep_alive, test_job.keep_alive)
         self.assertEqual(parsed_job.instance_type, test_job.instance_type)
         self.assertEqual(parsed_job.maximum_price, test_job.maximum_price)
+
+    def test_condor_attr_list_to_dict(self):
+        east_host = "us-east-1.ec2.amazonaws.com"
+        east_ami = "ami-east"
+        euca_host = "euca.example.com"
+        euca_ami = "emi-example"
+
+        amilist = "%s:%s, %s:%s" % (east_host, east_ami, euca_host, euca_ami)
+        parsed_dict = cloudscheduler.job_management._attr_list_to_dict(amilist)
+
+        self.assertEqual(east_ami, parsed_dict[east_host])
+
+
 
     def test_set_query_type(self):
         job_pool = cloudscheduler.job_management.JobPool("testpool", condor_query_type="local")

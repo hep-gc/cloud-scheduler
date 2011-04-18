@@ -7,6 +7,8 @@ import socket
 import logging
 import ConfigParser
 import subprocess
+import time
+import errno
 from urlparse import urlparse
 from datetime import datetime
 import config
@@ -53,43 +55,39 @@ def get_or_none(config, section, value):
     else:
         return None
 
-def myproxy_init(myproxy_server, myproxy_server_port, myproxy_creds_name):
-    log = get_cloudscheduler_logger()
-    job_proxy_file_path = None
-    if myproxy_creds_name != None:
-        log.debug("myproxy_creds_name: %s" % (myproxy_creds_name))
-        if myproxy_server == None:
-            log.warning("MyProxy credential name given but missing MyProxy server host. Defaulting to localhost")
-            myproxy_server = "localhost"
-            
-        if myproxy_server_port == None:
-            log.debug("No MyProxy server port given; using default port (7512)")
-            myproxy_server_port = "7512"
-            
-        # Check to see if $GLOBUS_LOCATION is defined.
-        if os.environ["GLOBUS_LOCATION"] == None:
-            log.error("GLOBUS_LOCATION not set.  Please set GLOBUS_LOCATION.")
-            return None
+def splitnstrip(sep, str):
+    return [x.strip() for x in str.split(sep)];
 
-        # Check to see of myproxy-logon is present in globus installation
-        if not os.path.exists(os.environ["GLOBUS_LOCATION"] + "/bin/myproxy-logon"):
-            log.error("MyProxy credentials specified but $GLOBUS_LOCATION/bin/myproxy-logon not found.  Make sure you have a valid MyProxy client installation on your system.")
-            return None
 
-        job_proxy_file_path = "/tmp/" + myproxy_creds_name + ".cs_x509proxy"
-        log.debug("job_proxy_file_path: %s" % (job_proxy_file_path))
-        myproxy_logon_cmd = '. $GLOBUS_LOCATION/etc/globus-user-env.sh && $GLOBUS_LOCATION/bin/myproxy-logon -s %s -p %s -l %s -o %s -n' % (myproxy_server, myproxy_server_port, myproxy_creds_name, job_proxy_file_path)
-        log.debug('myproxy-logon command: [%s]' % (myproxy_logon_cmd))
-        log.debug('Invoking myproxy-logon command...')
-        myproxy_logon_process = subprocess.Popen(myproxy_logon_cmd, shell=True)
-        myproxy_logon_process.wait()
-        log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
-        if myproxy_logon_process.returncode != 0:
-            log.error("Error fetching proxy from MyProxy server.  Aborting vm creation...")
-            return None
+def get_globus_path(executable="grid-proxy-init"):
+    """
+    Finds the path for Globus executables on the machine. 
 
-    
-    return job_proxy_file_path
+    If GLOBUS_LOCATION is set, and executable exists, use that,
+    otherwise, check the path to see if its in there,
+    otherwise, raise an exception.
+    """
+
+    try:
+        os.environ["GLOBUS_LOCATION"]
+        retcode = subprocess.call("$GLOBUS_LOCATION/bin/%s -help" % executable, shell=True, 
+                                  stdout=open('/dev/null', 'w'), stderr=subprocess.STDOUT)
+
+        if retcode != 0:
+            raise EnvironmentError(retcode, "GLOBUS_LOCATION is in your environment, but unable to call '%s'" % executable)
+        else:
+            return os.environ["GLOBUS_LOCATION"] + "/bin/"
+
+    except:
+        retcode = subprocess.call("%s -help" % executable, shell=True, 
+                                  stdout=open('/dev/null', 'w'), stderr=subprocess.STDOUT)
+        if retcode == 127:
+            raise EnvironmentError(retcode, "'%s' is not in your PATH" % executable)
+        elif retcode != 0:
+            raise EnvironmentError(retcode, "'%s' is in your PATH, but it returned '%s'" % (executable, retcode))
+        else:
+            return ""
+
 
 
 # This utility function will extract the subject DN from an x509
@@ -98,18 +96,29 @@ def myproxy_init(myproxy_server, myproxy_server_port, myproxy_creds_name):
 def get_cert_DN(cert_file_path):
     log = get_cloudscheduler_logger()
     openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-subject', '-noout']
-    return subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
+    try:
+        dn = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
+        return dn
+    except:
+        log.exception("Problem getting cert DN")
+        return None
     
 # This utility function will extract the expiry time from an x509
 # certificate.
 # It requires the openssl package to be installed.
 # Returns a datetime instance, with UTC time.
+# Returns None on error
 def get_cert_expiry_time(cert_file_path):
     log = get_cloudscheduler_logger()
     openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-enddate', '-noout']
-    datetime_string = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip().split('=')[1]
-    expiry_time = datetime.strptime(datetime_string, '%b %d %H:%M:%S %Y %Z')
-    return expiry_time
+    try:
+        stdout_stderr = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()
+        datetime_string = stdout_stderr[0].strip().split('=')[1]
+        expiry_time = datetime.strptime(datetime_string, '%b %d %H:%M:%S %Y %Z')
+        return expiry_time
+    except:
+        log.exception("Problem getting certificate time")
+        return None
     
 def match_host_with_condor_host(hostname, condor_hostname):
     """
@@ -172,6 +181,13 @@ class CircleQueue():
             min_use = False
         return min_use
 
+    def length(self):
+        length = 0
+        for x in self.data:
+            if x != None:
+                length += 1
+        return length
+
 class ErrTrackQueue(CircleQueue):
     def __init__(self, name):
         CircleQueue.__init__(self, config.ban_min_track)
@@ -182,7 +198,51 @@ class ErrTrackQueue(CircleQueue):
         for x in self.data:
             if x:
                 tc += 1
-        return float(tc) / float(len(self.data))
+        return (float(tc) / float(len(self.data))) if len(self.data) > 0 else 0
 
     def dist_false(self):
         return 1.0 - self.dist_true()
+    
+class JobRunTrackQueue(CircleQueue):
+    def __init__(self, name):
+        CircleQueue.__init__(self, 10)
+        self.name = name
+        self.avg = 0
+        
+    def average(self):
+        total = 0
+        for x in self.data:
+            if x:
+                total += x
+        if self.length() > 0:
+            self.avg = total / self.length()
+        return self.avg
+
+# Timeout feature for subprocess.Popen - polls the process for timeout seconds waiting for it to complete
+# If the process has exited return False (process did not timeout)
+# Else if the process times out attempt to terminate the process or kill if terminate fails and return True (process timed out)
+def check_popen_timeout(process, timeout=180):
+    log = get_cloudscheduler_logger()
+    ret = True
+    while timeout > 0:
+        if process.poll() != None:
+            ret = False
+            break
+        time.sleep(1)
+        timeout -= 1
+    if timeout == 0:
+        log.debug("subprocess timed out - attempting to terminate")
+        try:
+            process.terminate()
+        except OSError, e:
+            if e.errno != errno.ESRCH:
+                raise
+        time.sleep(2) # give OS a chance to terminate
+        if process.poll() == None: # Did not terminate
+            log.debug("terminate() failed using kill()")
+            try:
+                process.kill()
+            except OSError, e:
+                if e.errno != errno.ESRCH:
+                    raise
+    return ret

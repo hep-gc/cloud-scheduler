@@ -22,6 +22,9 @@ condor_collector_url = "http://localhost:9618"
 condor_retrieval_method = "soap"
 condor_q_command = "condor_q -l"
 condor_status_command = "condor_status -l"
+condor_off_command = "/usr/sbin/condor_off"
+condor_on_command = "/usr/sbin/condor_on"
+ssh_path = "/usr/bin/ssh"
 condor_host = "localhost"
 condor_host_on_vm = ""
 condor_context_file = ""
@@ -47,18 +50,29 @@ polling_error_threshold = 10
 condor_register_time_limit = 900
 graceful_shutdown = False
 graceful_shutdown_method = "hold"
+retire_before_lifetime = False
+retire_before_lifetime_factor = 1.5
 getclouds = False
 scheduling_metric = "slot"
 scheduling_algorithm = "fairshare"
+job_distribution_type = "normal"
 high_priority_job_support = False
 high_priority_job_weight = 1
+cpu_distribution_weight = 1.0
+memory_distribution_weight = 1.0
+storage_distribution_weight = 1.0
 cleanup_interval = 5
 vm_poller_interval = 5
 job_poller_interval = 5
 machine_poller_interval = 5
 scheduler_interval = 5
-job_proxy_refresher_interval = -1 # The current default is not to refresh the proxies. (until code is thouroughly tested -- Andre C.)
+job_proxy_refresher_interval = -1 # The current default is not to refresh the job proxies. (until code is thouroughly tested -- Andre C.)
 job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
+vm_proxy_refresher_interval = -1 # The current default is not to refresh the VM proxies. (until code is thouroughly tested -- Andre C.)
+vm_proxy_renewal_threshold = 15 * 60 # 15 minutes default
+myproxy_logon_command = 'myproxy-logon'
+proxy_cache_dir = None
+override_vmtype = False
 
 # The following 2 variable are used by the cloud scheduler to authenticate to CDS when renewing proxies.
 # By default, the host grid cert will be used.
@@ -93,6 +107,9 @@ def setup(path=None):
     global condor_retrieval_method
     global condor_q_command
     global condor_status_command
+    global condor_off_command
+    global condor_on_command
+    global ssh_path
     global condor_context_file
     global condor_host
     global condor_host_on_vm
@@ -118,11 +135,17 @@ def setup(path=None):
     global condor_register_time_limit
     global graceful_shutdown
     global graceful_shutdown_method
+    global retire_before_lifetime
+    global retire_before_lifetime_factor
     global getclouds
     global scheduling_metric
     global scheduling_algorithm
+    global job_distribution_type
     global high_priority_job_support
     global high_priority_job_weight
+    global cpu_distribution_weight
+    global memory_distribution_weight
+    global storage_distribution_weight
     global cleanup_interval
     global vm_poller_interval
     global job_poller_interval
@@ -132,7 +155,11 @@ def setup(path=None):
     global job_proxy_renewal_threshold
     global cds_ssl_auth_cert
     global cds_ssl_auth_key
-
+    global vm_proxy_refresher_interval
+    global vm_proxy_renewal_threshold
+    global proxy_cache_dir
+    global myproxy_logon_command
+    global override_vmtype
     global default_VMType
     global default_VMNetwork
     global default_VMCPUArch
@@ -192,6 +219,17 @@ def setup(path=None):
     if config_file.has_option("global", "condor_q_command"):
         condor_q_command = config_file.get("global",
                                                 "condor_q_command")
+
+    if config_file.has_option("global", "condor_off_command"):
+        condor_off_command = config_file.get("global",
+                                                "condor_off_command")
+
+    if config_file.has_option("global", "condor_on_command"):
+        condor_on_command = config_file.get("global",
+                                                "condor_on_command")
+
+    if config_file.has_option("global", "ssh_path"):
+        ssh_path = config_file.get("global", "ssh_path")
 
     if config_file.has_option("global", "condor_status_command"):
         condor_status_command = config_file.get("global",
@@ -315,12 +353,62 @@ def setup(path=None):
     if config_file.has_option("global", "graceful_shutdown_method"):
         graceful_shutdown_method = config_file.get("global", "graceful_shutdown_method")
 
+    if config_file.has_option("global", "retire_before_lifetime"):
+        retire_before_lifetime = config_file.getboolean("global", "retire_before_lifetime")
+
+    if config_file.has_option("global", "retire_before_lifetime_factor"):
+        try:
+            retire_before_lifetime_factor = config_file.getfloat("global", "retire_before_lifetime_factor")
+            if retire_before_lifetime_factor < 1.0:
+                print "Please use a float value (1.0, X] for the retire_before_lifetime_factor"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: retire_before_lifetime_factor must be a " \
+                  "float value."
+            sys.exit(1)
+
     if config_file.has_option("global", "getclouds"):
         getclouds = config_file.getboolean("global", "getclouds")
         
     if config_file.has_option("global", "scheduling_metric"):
         scheduling_metric = config_file.get("global", "scheduling_metric")
-        
+
+    if config_file.has_option("global", "job_distribution_type"):
+        job_distribution_type = config_file.get("global", "job_distribution_type")
+
+    if config_file.has_option("global", "memory_distribution_weight"):
+        try:
+            memory_distribution_weight = config_file.getfloat("global", "memory_distribution_weight")
+            if ban_failrate_threshold <= 0:
+                print "Please use a float value (0, x]"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: memory_distribution_weight must be an " \
+                  "float value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "cpu_distribution_weight"):
+        try:
+            cpu_distribution_weight = config_file.getfloat("global", "cpu_distribution_weight")
+            if ban_failrate_threshold <= 0:
+                print "Please use a float value (0, x]"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: cpu_distribution_weight must be an " \
+                  "float value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "storage_distribution_weight"):
+        try:
+            storage_distribution_weight = config_file.getfloat("global", "storage_distribution_weight")
+            if ban_failrate_threshold <= 0:
+                print "Please use a float value (0, x]"
+                sys.exit(1)
+        except ValueError:
+            print "Configuration file problem: storage_distribution_weight must be an " \
+                  "float value."
+            sys.exit(1)
+
     if config_file.has_option("global", "scheduling_algorithm"):
         scheduling_algorithm = config_file.get("global", "scheduling_algorithm")
 
@@ -396,6 +484,31 @@ def setup(path=None):
 
     if config_file.has_option("global", "cds_ssl_auth_key"):
         cds_ssl_auth_key = config_file.get("global", "cds_ssl_auth_key")
+
+    if config_file.has_option("global", "vm_proxy_refresher_interval"):
+        try:
+            vm_proxy_refresher_interval = config_file.getint("global", "vm_proxy_refresher_interval")
+        except ValueError:
+            print "Configuration file problem: vm_proxy_refresher_interval must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "vm_proxy_renewal_threshold"):
+        try:
+            vm_proxy_renewal_threshold = config_file.getint("global", "vm_proxy_renewal_threshold")
+        except ValueError:
+            print "Configuration file problem: vm_proxy_renewal_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "proxy_cache_dir"):
+        proxy_cache_dir = config_file.get("global", "proxy_cache_dir")
+
+    if config_file.has_option("global", "myproxy_logon_command"):
+         myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
+
+    if config_file.has_option("global", "override_vmtype"):
+        override_vmtype = config_file.getboolean("global", "override_vmtype")
 
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")
@@ -476,3 +589,4 @@ def setup(path=None):
         condor_host = condor_host_on_vm
     else:
         condor_host = utilities.get_hostname_from_url(condor_webservice_url)
+
