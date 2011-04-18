@@ -1095,10 +1095,10 @@ class ResourcePool:
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "")
+            return (-1, "", "", "")
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
-            return (-1, "")
+            return (-1, "", "", "")
         # Now send the master off
         try:
             sp2 = subprocess.Popen(args3, shell=False,
@@ -1115,11 +1115,11 @@ class ResourcePool:
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "")
+            return (-1, "", "", "")
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
             print args
-            return (-1, "")
+            return (-1, "", "", "")
         return (sp1.returncode, ret1, sp2.returncode, ret2)
 
     def do_condor_on(self, machine_name, machine_addr):
