@@ -7,7 +7,7 @@ Requirements:
  - The CDS must be configured to accept the Cloud Scheduler host cert DN for
  authentication.
  - GSI authentication must be enabled and properly configured.  See
-   https://wiki.heprc.uvic.ca/twiki/bin/view/Restricted/CsGsiSupport for more
+   https://wiki.heprc.uvic.ca/twiki/bin/view/Main/CsGsiSupport for more
    information about this.
 
 
