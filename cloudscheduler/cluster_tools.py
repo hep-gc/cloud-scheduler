@@ -556,9 +556,15 @@ class NimbusCluster(ICluster):
         if (create_return != 0):
             log.warning("Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
             _remove_files(nimbus_files)
-            print 'ret', create_return
-            print 'out', create_out
-            print 'err', create_err
+            err_type = self._extract_create_error(create_err)
+            ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
+            if err_type == 'NoProxy':
+                pass
+            elif err_type == 'ExpiredProxy':
+                pass
+            else:
+                pass
+
             return create_return
 
         log.debug("Nimbus create command executed.")
