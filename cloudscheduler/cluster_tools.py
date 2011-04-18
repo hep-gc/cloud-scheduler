@@ -624,7 +624,7 @@ class NimbusCluster(ICluster):
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
             storage = vm_storage, keep_alive = vm_keepalive, 
             proxy_file = job_proxy_file_path, 
-            cds_creds_url = cds_creds_url(),
+            cds_creds_url = cds_creds_url,
             myproxy_creds_name = myproxy_creds_name, myproxy_server = myproxy_server, 
             myproxy_server_port = myproxy_server_port, job_per_core = job_per_core)
 
