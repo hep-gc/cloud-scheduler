@@ -349,7 +349,7 @@ class Scheduler(threading.Thread):
             for user in unscheduled_jobs_by_users.keys():
                 userjob = unscheduled_jobs_by_users[user][0]
                 # Check for an underallocated job that has resources
-                if userjob.req_vmtype in diff_types.keys() and diff_types[userjob.req_vmtype] <= 0:
+                if userjob and userjob.req_vmtype in diff_types.keys() and diff_types[userjob.req_vmtype] <= 0:
                     (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(userjob.req_network, \
                         userjob.req_cpuarch, userjob.req_memory, userjob.req_cpucores, userjob.req_storage, \
                         userjob.req_ami, userjob.req_imageloc, userjob.target_clouds)
