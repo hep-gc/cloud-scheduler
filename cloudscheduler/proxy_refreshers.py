@@ -53,7 +53,7 @@ class JobProxyRefresher(threading.Thread):
                                 log.error("Error renewing proxy for job %s" % (job.id))
                         elif job.get_cds_creds_url() != None:
                             log.debug("Renewing proxy %s via CDS" % (job.get_x509userproxy()))
-                            if self.renew_proxy_via_CDS(job):
+                            if self.renew_proxy_via_CDS(job.get_x509userproxy(), job.get_cds_creds_url()):
                                 # Yay, proxy renewal worked! :-)
                                 log.debug("Proxy for job %s renewed." % (job.id))
                             else:
@@ -113,6 +113,11 @@ class VMProxyRefresher(threading.Thread):
                                 log.debug("Proxy for VM %s renewed." % (vm.id))
                                 # Don't forget to reset the proxy expiry time cache.
                                 vm.reset_x509userproxy_expiry_time()
+                        elif vm.get_cds_creds_url() != None:
+                            log.debug("Renewing proxy %s via CDS" % (vm.get_proxy_file()))
+                            if self.renew_proxy_via_CDS(vm.get_proxy_file(), vm.get_cds_creds_url()):
+                                # Yay, proxy renewal worked! :-)
+                                log.debug("Proxy for VM %s renewed. (via CDS)" % (vm.id))
                             else:
                                 log.error("Error renewing proxy for VM %s" % (vm.id))
                         else:
@@ -206,14 +211,13 @@ class MyProxyProxyRefresher():
     # This method will attempt to renew the job's proxy via CDS.
     # 
     # Returns True on sucess, False otherwise.
-    def renew_proxy_via_CDS(self, job):
-        job_proxy_file_path = job.get_x509userproxy()
-        if job_proxy_file_path == None:
+    def renew_proxy_via_CDS(self, proxy_file_path, cds_creds_url):
+        if proxy_file_path == None:
             log.error("Attemp to renew proxy for job with no proxy.  Aborting proxy renew operation.")
             return False
 
-        if job.get_cds_creds_url() == None:
-            log.error("Missing CDS credential url for job %s" % (job.id))
+        if cds_creds_url() == None:
+            log.error("Missing CDS credential url.")
             return False
 
         # Note: Here we put the refreshed proxy in a seperate file.  We do this to protect the ownership and permisions on the
@@ -228,10 +232,11 @@ class MyProxyProxyRefresher():
         (new_proxy_file, new_proxy_file_path) = tempfile.mkstemp(suffix='.csRenewedProxy')
         os.close(new_proxy_file)
 
-        proxy_fetch_cmd = '. $GLOBUS_LOCATION/etc/globus-user-env.sh && /usr/bin/curl --cert %s --key %s --output %s %s' % (config.cds_ssl_auth_cert, config.cds_ssl_auth_key, new_proxy_file_path, job.get_cds_creds_url())
+        proxy_fetch_cmd = '/usr/bin/curl --cert %s --key %s --output %s %s' % (config.cds_ssl_auth_cert, config.cds_ssl_auth_key, new_proxy_file_path, cds_creds_url)
         log.debug('CDS creds renewal command: [%s]' % (proxy_fetch_cmd))
-        log.debug('Invoking command to refresh proxy %s via CDS...' % (job_proxy_file_path))
-        p = subprocess.Popen(proxy_fetch_cmd, shell=True)
+        log.debug('Invoking command to refresh proxy %s via CDS...' % (proxy_file_path))
+        cmd_args = shlex.split(proxy_fetch_cmd)
+        p = subprocess.Popen(cmd_args, shell=False)
         p.wait()
         log.debug('CDS creds renewal command returned %d' % (p.returncode))
         if p != 0:
@@ -243,21 +248,18 @@ class MyProxyProxyRefresher():
         # IMPORTANT:
         # Now we MUST verify that the fetched proxy is owned by the job owner (has the same DN).
         # If it does not match, then we simply reject it and delete the temporary file.
-        if utilities.get_cert_DN(new_proxy_file_path) != utilities.get_cert_DN(job_proxy_file_path):
-            log.warn("DN of proxy fetched from CDS does not match DN of job owner.  Proxy renewal operation aborted.")
+        if utilities.get_cert_DN(new_proxy_file_path) != utilities.get_cert_DN(proxy_file_path):
+            log.warn("DN of proxy fetched from CDS does not match DN of job/VM owner.  Proxy renewal operation aborted.")
             log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
             os.remove(new_proxy_file_path)
             return False
         else:
             log.debug("DN check on proxy fetched from CDS successful.")
             # DN matches, so we can proceed.
-            log.debug('Copying %s to %s ...' % (new_proxy_file_path, job_proxy_file_path))
-            shutil.copyfile(new_proxy_file_path, job_proxy_file_path)
+            log.debug('Copying %s to %s ...' % (new_proxy_file_path, proxy_file_path))
+            shutil.copyfile(new_proxy_file_path, proxy_file_path)
             log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
             os.remove(new_proxy_file_path)
 
-            # Don't forget to reset the proxy expiry time cache.
-            job.reset_x509userproxy_expiry_time()
-        
         return True
 

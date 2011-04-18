@@ -65,6 +65,7 @@ class VM:
             cloudtype="", network="public", cpuarch="x86",
             image="", memory=0, mementry=0,
             cpucores=0, storage=0, keep_alive=0, spot_id="",
+            cds_creds_url=None,
             proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
         """
         Constructor
@@ -91,6 +92,7 @@ class VM:
         myproxy_server_port - (str) The port of the myproxy server to retreive user creds from
         errorcount   - (int) Number of Polling Errors VM has had
         force_retire - (bool) Flag to prevent a retiring VM from being turned back on
+        cds_creds_url - (str) The full URL of the user's credential stored in a Credential Delegation Service
         """
         self.name = name
         self.id = id
@@ -125,6 +127,7 @@ class VM:
         self.force_retire = False
         self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
         self.x509userproxy_expiry_time = None
+        self.cds_creds_url = cds_creds_url
 
         # Set a status variable on new creation
         self.status = "Starting"
@@ -212,6 +215,9 @@ class VM:
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
         log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.job_proxy_renewal_threshold))
         return td_in_seconds < config.vm_proxy_renewal_threshold
+
+    def get_cds_creds_url(self):
+        return self.cds_creds_url
 
     # The following method will return the environment that should
     # be used when executing subprocesses.  This is needed for setting
@@ -488,7 +494,8 @@ class NimbusCluster(ICluster):
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
-            job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
+            job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False,
+            cds_creds_url=None):
 
         def _remove_files(files):
             for file in files:
@@ -617,6 +624,7 @@ class NimbusCluster(ICluster):
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
             storage = vm_storage, keep_alive = vm_keepalive, 
             proxy_file = job_proxy_file_path, 
+            cds_creds_url = cds_creds_url(),
             myproxy_creds_name = myproxy_creds_name, myproxy_server = myproxy_server, 
             myproxy_server_port = myproxy_server_port, job_per_core = job_per_core)
 

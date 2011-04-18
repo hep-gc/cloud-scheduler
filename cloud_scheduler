@@ -498,6 +498,7 @@ class Scheduler(threading.Thread):
                         'myproxy_creds_name':job.get_myproxy_creds_name(), 
                         'myproxy_server':job.get_myproxy_server(),
                         'myproxy_server_port':job.get_myproxy_server_port(),
+                        'cds_creds_url':job.get_cds_creds_url(),
                         'job_per_core':job.job_per_core}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "EC2Cluster":
