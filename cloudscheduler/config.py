@@ -123,6 +123,7 @@ def setup(path=None):
     global info_server_port
     global workspace_path
     global persistence_file
+    global job_ban_timeout
     global ban_tracking
     global ban_file
     global ban_min_track
