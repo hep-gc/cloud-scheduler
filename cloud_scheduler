@@ -762,10 +762,11 @@ class Cleanup(threading.Thread):
                         cantuse = set()
                         preftypes = []
                         for postype in pos_change_types:
-                            cu = fits_by_type[postype] - fits_by_type[vmtype]
-                            if len(cu) > 0:
-                                preftypes.append(postype)
-                                cantuse.add(cu)
+                            if postype in fits_by_type.keys() and vmtype in fits_by_type.keys():
+                                cu = fits_by_type[postype] - fits_by_type[vmtype]
+                                if len(cu) > 0:
+                                    preftypes.append(postype)
+                                    cantuse.add(cu)
                         if len(cantuse) > 0:
                             adjustby = excess / len(cantuse)
                             if len(preftypes) > 0:
