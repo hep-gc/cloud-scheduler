@@ -29,6 +29,7 @@ from subprocess import Popen
 import nimbus_xml
 import config
 import cloudscheduler.utilities as utilities
+from cloudscheduler.utilities import get_cert_expiry_time
 
 log = utilities.get_cloudscheduler_logger()
 
