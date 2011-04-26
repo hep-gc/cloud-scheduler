@@ -93,7 +93,7 @@ class VMProxyRefresher(threading.Thread):
             log.info("Starting VMProxyRefresher thread...")
 
             while not self.quit:
-                vms = cloud_resources.get_all_vms()
+                vms = self.cloud_resources.get_all_vms()
                 log.debug("Refreshing VM proxies. [%d proxies to process]" % (len(vms)))
                 for vm in vms:
                     log.debug("Proxy for VM %s expires on: %s" % (vm.id, vm.get_x509userproxy_expiry_time()))
