@@ -261,6 +261,7 @@ class ICluster:
         self.vms = [] # List of running VMs
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
+        self.net_slots = netslots
 
         self.setup_logging()
         log.info("New cluster %s created" % self.name)
@@ -409,6 +410,7 @@ class ICluster:
         """
         log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
         with self.res_lock:
+
             remaining_vm_slots = self.vm_slots - 1
             if remaining_vm_slots < 0:
                 raise NoResourcesError("vm_slots")
@@ -477,7 +479,8 @@ class NimbusCluster(ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost", port="8443",
                  cloud_type="Dummy", memory=[], cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0,
-                 access_key_id=None, secret_access_key=None, security_group=None):
+                 access_key_id=None, secret_access_key=None, security_group=None,
+                 netslots={}):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -486,6 +489,7 @@ class NimbusCluster(ICluster):
                          storage=storage,)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
+        self.net_slots = netslots
 
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
@@ -958,6 +962,34 @@ class NimbusCluster(ICluster):
 
 
         return tmp_proxy_file_path
+
+    def resource_checkout(self, vm):
+        """
+        Checks out resources taken by a VM in creation from the internal rep-
+        resentation of the Cluster
+    
+        Parameters:
+        vm   - the VM object used to check out resources from the Cluster.
+    
+        Raises NoResourcesError if there are not enough available resources
+        to check out.
+        """
+        with self.res_lock:
+            remaining_net_slots = self.net_slots[vm.network] - 1
+            if remaining_net_slots < 0:
+                raise NoResourceError("net_slots: " + vm.network)
+            ICluster.resource_checkout(self, vm)
+            self.net_slots[vm.network] = remaining_net_slots
+
+    # Returns the resources taken by the passed in VM to the Cluster's internal
+    # storage.
+    # Parameters: (as for checkout() )
+    # Notes: (as for checkout)
+    def resource_return(self, vm):
+        with self.res_lock:
+            self.net_slots[vm.network] += 1
+            ICluster.resource_return(self, vm)
+
 
 class EC2Cluster(ICluster):
 

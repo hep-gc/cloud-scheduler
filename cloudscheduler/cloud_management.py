@@ -227,22 +227,29 @@ class ResourcePool:
         """
         Create a new cluster object from a config file's specification
         """
-        if config.has_option(cluster, "enabled"):
-            enabled = config.getboolean(cluster, "enabled")
-            if not enabled:
-                return None
         cloud_type = get_or_none(config, cluster, "cloud_type")
         if cloud_type == "Nimbus":
+            nets = splitnstrip(",", get_or_none(config, cluster, "networks"))
+            if len(nets) > 1:
+                # Split the vm_slots too
+                slots = map(int, splitnstrip(",", get_or_none(config, cluster, "vm_slots")))
+            else:
+                slots = [int(get_or_none(config, cluster, "vm_slots"))]
+            net_slots = {}
+            for x in range(len(nets)):
+                net_slots[nets[x]] = slots[x]
+            total_slots = sum(slots)
             return cluster_tools.NimbusCluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
-                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
-                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
+                    networks = nets,
+                    vm_slots = total_slots,
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
+                    netslot = net_slots,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus":
