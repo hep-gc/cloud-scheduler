@@ -25,6 +25,7 @@ import subprocess
 import threading
 
 from subprocess import Popen
+from urlparse import urlparse
 
 import nimbus_xml
 import config
@@ -526,8 +527,14 @@ class NimbusCluster(ICluster):
                 log.exception("Couldn't open '%s', continuing without user's proxy" % (job_proxy_file_path))
             job_proxy = None
 
+
         if customization or job_proxy:
-            vm_optional = nimbus_xml.ws_optional_factory(custom_tasks=customization, credential=job_proxy)
+            image_scheme = urlparse(vm_image).scheme
+            if image_scheme == "https":
+                _job_proxy = job_proxy
+            else:
+                _job_proxy = None
+            vm_optional = nimbus_xml.ws_optional_factory(custom_tasks=customization, credential=_job_proxy)
         else:
             vm_optional = None
 
