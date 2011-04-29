@@ -739,7 +739,13 @@ class Cleanup(threading.Thread):
                 if num_to_change[vmtype] < 0:
                     num_fit = 0
                     for cloud in fits_by_type[vmtype]:
-                        num_fit_cloud = cloud.vm_slots
+                        num_fit_cloud = 0
+                        if cloud.__class__.__name__ == "NimbusCluster":
+                            if vmtype in unsched_jobs.keys():
+                                if unsched_jobs[vmtype][0].req_network in cloud.networks:
+                                    num_fit_cloud = cloud.net_slots[unsched_jobs[vmtype][0].req_network]
+                        else:
+                            num_fit_cloud = cloud.vm_slots
                         numstore = int(cloud.storageGB / job.req_storage)
                         num_fit_cloud = numstore if numstore < num_fit_cloud else num_fit_cloud
                         nummem = 0
