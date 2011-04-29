@@ -335,6 +335,8 @@ class ResourcePool:
             # If required network is NOT in cluster's network associations
             if not (network in cluster.network_pools):
                 continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.net_slots[network] <= 0:
+                continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
                 continue
@@ -376,6 +378,9 @@ class ResourcePool:
                 # just always okay it.
                 if network and (network not in cluster.network_pools):
                     log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
+                    continue
+                if cluster.net_slots[network] <= 0:
+                    log.verbose("get_fitting_resources - No Slots left in network %s on %s" % (network, cluster.name))
                     continue
                 if imageloc in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[imageloc]:
