@@ -772,7 +772,7 @@ class Cleanup(threading.Thread):
                                 cu = fits_by_type[postype] - fits_by_type[vmtype]
                                 if len(cu) > 0:
                                     preftypes.append(postype)
-                                    cantuse.add(cu)
+                                    cantuse.update(cu)
                         if len(cantuse) > 0:
                             adjustby = excess / len(cantuse)
                             if len(preftypes) > 0:
