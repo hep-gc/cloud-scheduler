@@ -249,7 +249,7 @@ class ResourcePool:
                     vm_slots = total_slots,
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
-                    netslot = net_slots,
+                    netslots = net_slots,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus":

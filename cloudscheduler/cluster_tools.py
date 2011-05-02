@@ -261,7 +261,6 @@ class ICluster:
         self.vms = [] # List of running VMs
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
-        self.net_slots = netslots
 
         self.setup_logging()
         log.info("New cluster %s created" % self.name)
@@ -491,6 +490,11 @@ class NimbusCluster(ICluster):
         self.port = port if port != None else "8443"
         self.net_slots = netslots
 
+    def get_cluster_info_short(self):
+        output = "Cluster: %s \n" % self.name
+        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB)
+        return output
 
     def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
