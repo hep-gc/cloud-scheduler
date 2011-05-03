@@ -227,6 +227,10 @@ class ResourcePool:
         """
         Create a new cluster object from a config file's specification
         """
+        if config.has_option(cluster, "enabled"):
+            enabled = config.getboolean(cluster, "enabled")
+            if not enabled:
+                return None
         cloud_type = get_or_none(config, cluster, "cloud_type")
         if cloud_type == "Nimbus":
             nets = splitnstrip(",", get_or_none(config, cluster, "networks"))
