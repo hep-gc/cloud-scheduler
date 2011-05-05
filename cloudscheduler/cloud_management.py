@@ -1227,6 +1227,16 @@ class ResourcePool:
                         retiring.append(vm)
         return retiring
 
+    def get_starting_of_type(self, vmtype):
+        starting = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.vmtype == vmtype:
+                    if vm.status == "Starting":
+                        starting.append(vm)
+        return starting
+
+
     def get_all_vms(self):
         all_vms = []
         for cluster in self.resources:

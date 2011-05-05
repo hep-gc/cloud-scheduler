@@ -34,6 +34,7 @@ import threading
 import traceback
 import ConfigParser
 import logging.handlers
+from itertools import islice
 from optparse import OptionParser
 from decimal import *
 
@@ -742,7 +743,7 @@ class Cleanup(threading.Thread):
                         num_fit_cloud = 0
                         if cloud.__class__.__name__ == "NimbusCluster":
                             if vmtype in unsched_jobs.keys():
-                                if unsched_jobs[vmtype][0].req_network in cloud.networks:
+                                if unsched_jobs[vmtype][0].req_network in cloud.network_pools:
                                     num_fit_cloud = cloud.net_slots[unsched_jobs[vmtype][0].req_network]
                         else:
                             num_fit_cloud = cloud.vm_slots
@@ -1019,17 +1020,56 @@ class Cleanup(threading.Thread):
                     vmtypes_jobs[vmtype][0].req_storage, vmtypes_jobs[vmtype][0].target_clouds))
         return set(fitting_clusters)
 
+    def want_to_balance(self, num_to_change):
+        balance = False
+        for key, val in num_to_change.iteritems():
+            if num_to_change[key] < 0:
+                balance = True
+                break
+        return balance
+
     def graceful_shutdown_condor_off(self, machineList, num_to_change):
         fitting_set = self.filter_fitting_resources(num_to_change)
         internal_vms = self.resource_pool.get_vmtypes_count_internal()
+        sched_jobs = self.job_pool.job_container.get_scheduled_jobs_by_type()
         for vmtype, val in num_to_change.iteritems():
-            criteria = {'VMType': vmtype, 'Activity': 'Retiring'}
             retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
+            num_force = 0
             for vm in reversed(retiring_vms_of_type):
                 if vm.force_retire:
+                    num_force += 1
                     retiring_vms_of_type.remove(vm)
             adjusted_val = val - len(retiring_vms_of_type)
             if adjusted_val > 0:
+                criteria = {'VMType': vmtype}
+                tot_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
+                if vmtype in internal_vms.keys() and internal_vms[vmtype] > len(tot_vms_of_type):
+                    # There are Starting or Unregistered VMs of this type - may not want to Retire yet
+                    registered_diff = internal_vms[vmtype] - len(tot_vms_of_type) - num_force
+                    # have registered_diff starting machines - shutdown those instead of running ones
+                    if registered_diff > 0:
+                        starting_vms_of_type = self.resource_pool.get_starting_of_type(vmtype)
+                        num_start_to_destroy = 0
+                        if registered_diff > adjusted_val:
+                            num_start_to_destroy = adjusted_val
+                        else:
+                            num_start_to_destroy = registered_diff
+                        successful_destroy = 0
+                        for start_vm in islice(starting_vms_of_type, num_start_to_destroy):
+                            # Since the machine could not retire make sure not to destroy the last VM of type
+                            if internal_vms[vmtype] <= len(sched_jobs[vmtype]):
+                                # fewer or equal vms left that trying to shutdown
+                                continue
+                            vm_in_cluster = self.resource_pool.get_cluster_with_vm(start_vm)
+                            if vm_in_cluster != None and vm_in_cluster in fitting_set:
+                                destroy_ret = vm_in_cluster.vm_destroy(start_vm)
+                                if destroy_ret == 0:
+                                    successful_destroy += 1
+                                elif destroy_ret != 0:
+                                    log.error("Failed to destroy vm %s" % start_vm.id)
+                        adjusted_val -= successful_destroy
+                        if adjusted_val <= 0:
+                            continue
                 criteria = {'VMType': vmtype, 'Activity': 'Busy'}
                 busy_vms = self.resource_pool.find_in_where(machineList, criteria)
                 for busy_vm in reversed(busy_vms):

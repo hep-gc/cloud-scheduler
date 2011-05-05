@@ -141,6 +141,14 @@ class JobContainer():
     def get_scheduled_jobs_by_users(self, prioritized=False):
         pass
 
+    # Get a list of all scheduled jobs per type.
+    # Returns dictionary where the items are:
+    # {type, [list of scheduled jobs]}
+    # If prioritized i True, then the returned lists of jobs will be sorted by job.priority, high to low.
+    @abstractmethod
+    def get_unscheduled_jobs_by_type(self, prioritized=False):
+        pass
+
     # Get a list of all unscheduled jobs in the container, or [] if there are no unscheduled jobs.
     @abstractmethod
     def get_unscheduled_jobs(self):
@@ -336,6 +344,19 @@ class HashTableJobContainer(JobContainer):
                     return_value[job.user] = []
                 return_value[job.user].append(job)
             # Now lets sort if needed.
+            if prioritized:
+                for job_list in return_value.values():
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
+            return return_value
+
+    def get_scheduled_jobs_by_type(self, prioritized=False):
+        with self.lock:
+            return_value = {}
+            for job in self.sched_jobs.values():
+                if job.req_vmtype not in return_value:
+                    return_value[job.req_vmtype] = []
+                return_value[job.req_vmtype].append(job)
+            # Now sort if needed.
             if prioritized:
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
