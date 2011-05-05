@@ -199,7 +199,7 @@ class VM:
     # See get_x509userproxy_expiry_time for more info about how the proxy expiry time is
     # cached in memory.
     def reset_x509userproxy_expiry_time(self):
-        self.x509userproxy_expiry_time = None    # This method will test if a job's user proxy is expired.
+        self.x509userproxy_expiry_time = None
 
 
     # This method will test if a VM's user proxy is expired.
