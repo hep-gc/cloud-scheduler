@@ -37,6 +37,9 @@ class JobProxyRefresher(threading.Thread):
             log.info("Starting JobProxyRefresher thread...")
 
             while not self.quit:
+                # The following timestamp is use to time this proxy refresh cycle.
+                cycle_start_ts = datetime.datetime.today()
+
                 jobs = self.job_pool.job_container.get_all_jobs()
                 log.debug("Refreshing job user proxies. [%d proxies to process]" % (len(jobs)))
                 for job in jobs:
@@ -61,6 +64,10 @@ class JobProxyRefresher(threading.Thread):
                             log.debug("Not renewing proxy for job %s because missing MyProxy info." % (job.id))
                     else:
                         log.debug("No need to renew proxy for job %s" % (job.id))
+
+                # Lets record the current time and then log how much time the cycle took.
+                cycle_end_ts = datetime.datetime.today()
+                log.debug("Job proxy refreshing cycle done. [%s -> %s (%s)]" % (cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
 
                 log.debug("JobProxyRefresher waiting %ds..." % self.polling_interval)
                 sleep_tics = self.polling_interval
@@ -95,6 +102,9 @@ class VMProxyRefresher(threading.Thread):
             log.info("Starting VMProxyRefresher thread...")
 
             while not self.quit:
+                # The following timestamp is use to time this proxy refresh cycle.
+                cycle_start_ts = datetime.datetime.today()
+
                 vms = self.cloud_resources.get_all_vms()
                 log.debug("Refreshing VM proxies. [%d proxies to process]" % (len(vms)))
                 for vm in vms:
@@ -119,6 +129,10 @@ class VMProxyRefresher(threading.Thread):
                             log.debug("Not renewing proxy for VM %s because missing MyProxy info." % (vm.id))
                     else:
                         log.debug("No need to renew proxy for VM %s" % (vm.id))
+
+                # Lets record the current time and then log how much time the cycle took.
+                cycle_end_ts = datetime.datetime.today()
+                log.debug("VM proxy refreshing cycle done. [%s -> %s (%s)]" % (cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
 
                 log.debug("VMProxyRefresher waiting %ds..." % self.polling_interval)
                 sleep_tics = self.polling_interval
