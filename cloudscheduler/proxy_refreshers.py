@@ -45,7 +45,7 @@ class JobProxyRefresher(threading.Thread):
                         log.warning("Proxy for job %s is expired.  Skipping proxy renewal for this job." % (job.id))
                     elif job.needs_proxy_renewal():
                         if job.get_myproxy_creds_name() != None:
-                            log.debug("Renewing proxy %s" % (job.get_x509userproxy()))
+                            log.debug("Renewing proxy %s for job %s" % (job.get_x509userproxy(), job.id))
                             if MyProxyProxyRefresher().renew_proxy(job.get_x509userproxy(), job.get_myproxy_creds_name(), job.get_myproxy_server(), job.get_myproxy_server_port()):
                                 # Yay, proxy renewal worked! :-)
                                 log.debug("Proxy for job %s renewed." % (job.id))
@@ -58,7 +58,7 @@ class JobProxyRefresher(threading.Thread):
                             # is not MyProxy info for that job's proxy.  Not an error; just that the
                             # owner of the job didn't give any MyProxy information to renew the
                             # credentials.
-                            log.debug("Not renewing proxy job %s because missing MyProxy info." % (job.id))
+                            log.debug("Not renewing proxy for job %s because missing MyProxy info." % (job.id))
                     else:
                         log.debug("No need to renew proxy for job %s" % (job.id))
 
@@ -103,7 +103,7 @@ class VMProxyRefresher(threading.Thread):
                         log.warning("Proxy for VM %s is expired.  Skipping proxy renewal for this VM." % (vm.id))
                     elif vm.needs_proxy_renewal():
                         if vm.get_myproxy_creds_name() != None:
-                            log.debug("Renewing proxy %s" % (vm.get_proxy_file()))
+                            log.debug("Renewing proxy %s for VM %s" % (vm.get_proxy_file(), vm.id))
                             if MyProxyProxyRefresher().renew_proxy(vm.get_proxy_file(), vm.get_myproxy_creds_name(), vm.get_myproxy_server(), vm.get_myproxy_server_port()):
                                 # Yay, proxy renewal worked! :-)
                                 log.debug("Proxy for VM %s renewed." % (vm.id))
@@ -116,7 +116,7 @@ class VMProxyRefresher(threading.Thread):
                             # is no MyProxy info for that vm's proxy.  Not an error; just that the
                             # owner of the vm didn't give any MyProxy information to renew the
                             # credentials.
-                            log.debug("Not renewing proxy VM %s because missing MyProxy info." % (vm.id))
+                            log.debug("Not renewing proxy for VM %s because missing MyProxy info." % (vm.id))
                     else:
                         log.debug("No need to renew proxy for VM %s" % (vm.id))
 
