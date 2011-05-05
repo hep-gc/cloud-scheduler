@@ -153,7 +153,6 @@ class MyProxyProxyRefresher():
             myproxy_server = "localhost"
 
         if myproxy_server_port == None:
-            log.debug("No MyProxy server port given; using default port (7512)")
             myproxy_server_port = "7512"
 
         myproxy_command = config.myproxy_logon_command
