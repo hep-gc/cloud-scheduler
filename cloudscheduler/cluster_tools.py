@@ -199,7 +199,18 @@ class VM:
     # See get_x509userproxy_expiry_time for more info about how the proxy expiry time is
     # cached in memory.
     def reset_x509userproxy_expiry_time(self):
-        self.x509userproxy_expiry_time = None
+        self.x509userproxy_expiry_time = None    # This method will test if a job's user proxy is expired.
+
+
+    # This method will test if a VM's user proxy is expired.
+    #
+    # Returns True if the proxy is expired, False otherwise.
+    def is_proxy_expired(self):
+        expiry_time = self.get_x509userproxy_expiry_time()
+        if expiry_time == None:
+            return False
+        return expiry_time <= datetime.datetime.utcnow()
+
 
     # This method will test if a VM's user proxy needs to be refreshed, according
     # the VM proxy refresh threshold found in the cloud scheduler configuration.
@@ -212,7 +223,7 @@ class VM:
             return False
         td = expiry_time - datetime.datetime.utcnow()
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.job_proxy_renewal_threshold))
+        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_renewal_threshold))
         return td_in_seconds < config.vm_proxy_renewal_threshold
 
     # The following method will return the environment that should

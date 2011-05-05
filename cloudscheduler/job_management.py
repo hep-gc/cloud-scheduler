@@ -294,6 +294,15 @@ class Job:
         log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.job_proxy_renewal_threshold))
         return td_in_seconds < config.job_proxy_renewal_threshold
 
+    # This method will test if a job's user proxy is expired.
+    #
+    # Returns True if the proxy is expired, False otherwise.
+    def is_proxy_expired(self):
+        expiry_time = self.get_x509userproxy_expiry_time()
+        if expiry_time == None:
+            return False
+        return expiry_time <= datetime.datetime.utcnow()
+
     # A method that will compare a job's requirements listed below with another job to see if they
     # all match.
     def has_same_reqs(self, job):
