@@ -1243,3 +1243,25 @@ class ResourcePool:
             for vm in cluster.vms:
                 all_vms.append(vm)
         return all_vms
+
+    def get_cloud_config_output(self):
+        try:
+            cloud_config = ConfigParser.SafeConfigParser()
+            cloud_config.read(self.config_file)
+        except ConfigParser.ParsingError:
+            log.exception("Cloud config problem: Couldn't " \
+                  "parse your cloud config file. Check for spaces " \
+                  "before or after variables.")
+            return None
+        outputlist = []
+        # Read in config file, parse into Cluster objects
+        for cluster in cloud_config.sections():
+            items = cloud_config.items(cluster) # list of (name, value) pairs for each option
+            outputlist.append(cluster)
+            outputlist.append(' ')
+            for item in items:
+                outputlist.append('[')
+                outputlist.append(','.join(item))
+                outputlist.append(']')
+            outputlist.append('\n')
+        return "".join(outputlist)

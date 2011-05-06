@@ -61,6 +61,8 @@ def main(argv=None):
                       action="store_true", default=False, help="Display diff_types for debugging")
     parser.add_option("-g", "--avg_job_time", dest="get_job_run_times", action="store_true",
                       default=False, help="Display Average Run time of Jobs on VMs")
+    parser.add_option("-l", "--cloud-conf", dest='cloud_conf', action="store_true",
+                      default=False, help='Display the cloud_resources config')
 
     (cli_options, args) = parser.parse_args()
 
@@ -130,6 +132,8 @@ def main(argv=None):
             print s.get_diff_types()
         elif cli_options.get_job_run_times:
             print s.get_vm_job_run_times()
+        elif cli_options.cloud_conf:
+            print s.get_cloud_config_values()
         else:
             print s.get_cloud_resources()
 
