@@ -865,6 +865,9 @@ class Cleanup(threading.Thread):
     def clean_kill_unregistered_vms(self, unregisteredvms, retired = False):
         to_kill = []
         for vm in unregisteredvms:
+            if vm.last_state_change == -1:
+                vm.last_state_change = int(time.time())
+                continue
             # now -state change will be how long VM 'running'
             running_time = int(time.time()) - vm.last_state_change
 
@@ -1111,6 +1114,7 @@ class Cleanup(threading.Thread):
 
                     ret = self.resource_pool.do_condor_on(retiring_vms_of_type[x].condorname, retiring_vms_of_type[x].condoraddr)
                     if ret == 0:
+                        retiring_vms_of_type[x].last_state_change = -1
                         retiring_vms_of_type[x].override_status = None
                     else:
                         log.debug("Unable to turn condor on on machine %s" % retiring_vms_of_type[x].condorname)
