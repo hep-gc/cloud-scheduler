@@ -383,7 +383,7 @@ class ResourcePool:
                 if network and (network not in cluster.network_pools):
                     log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
                     continue
-                if cluster.net_slots[network] <= 0:
+                if network and network in cluster.net_slots.keys() and cluster.net_slots[network] <= 0:
                     log.verbose("get_fitting_resources - No Slots left in network %s on %s" % (network, cluster.name))
                     continue
                 if imageloc in self.banned_job_resource.keys():
