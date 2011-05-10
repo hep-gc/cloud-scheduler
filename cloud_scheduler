@@ -317,13 +317,13 @@ class Scheduler(threading.Thread):
                 for job in unscheduled_jobs_by_users[user]:
 
                     if job.job_status >= self.RUNNING:
-                        log.verbose("Skipping job with status '%s'" % job.job_status)
+                        log.verbose("Skipping job '%s' with status '%s'" % (job.id, job.job_status))
                         continue
                     elif job.status == job.SCHEDULED:
-                        log.verbose("Skipping previously scheduled job")
+                        log.verbose("Skipping previously scheduled job '%s'" % job.id)
                         continue
                     elif job.banned:
-                        log.verbose("Skipping banned job")
+                        log.verbose("Skipping banned job '%s'" % job.id)
                         continue
 
                     log.verbose("Job '%s' not running or scheduled, trying to schedule it" % job.id)
@@ -745,6 +745,7 @@ class Cleanup(threading.Thread):
                             if vmtype in unsched_jobs.keys():
                                 if unsched_jobs[vmtype][0].req_network in cloud.network_pools:
                                     num_fit_cloud = cloud.net_slots[unsched_jobs[vmtype][0].req_network]
+                                    # IF no specified network do something
                         else:
                             num_fit_cloud = cloud.vm_slots
                         numstore = int(cloud.storageGB / job.req_storage)
