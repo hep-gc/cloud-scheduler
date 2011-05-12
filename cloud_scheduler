@@ -404,6 +404,7 @@ class Scheduler(threading.Thread):
         elif create_ret == -1:
             job.banned = True
             job.ban_time = time.time()
+            job.override_status = "TempBanned"
         else:
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, False)

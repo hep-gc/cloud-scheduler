@@ -430,6 +430,7 @@ class HashTableJobContainer(JobContainer):
                 if (time.time() - job.ban_time) > config.job_ban_timeout:
                     job.banned = False
                     job.ban_time = None
+                    job.override_status = None
             return True
         else:
             return False

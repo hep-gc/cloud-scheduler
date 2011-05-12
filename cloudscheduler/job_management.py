@@ -157,6 +157,7 @@ class Job:
 
         # Set the new job's status
         self.status = self.statuses[0]
+        self.override_status = None
 
         global log
         log = logging.getLogger("cloudscheduler")
@@ -185,7 +186,7 @@ class Job:
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def get_job_info(self):
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
-        return "%-20s %-15s %-15s %-10s %-12s %-15s\n" % (self.id[-20:], self.user[:15], self.req_vmtype[:15], CONDOR_STATUS[self.job_status], self.status[:12], self.running_cloud[:15])
+        return "%-20s %-15s %-15s %-10s %-12s %-15s\n" % (self.id[-20:], self.user[:15], self.req_vmtype[:15], CONDOR_STATUS[self.job_status], self.status[:12] if not self.override_status else self.override_status[:12], self.running_cloud[:15])
     @staticmethod
     def get_job_info_header():
         return "%-20s %-15s %-15s %-10s %-12s %-15s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status", "Cloud")
