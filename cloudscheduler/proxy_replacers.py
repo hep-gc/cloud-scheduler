@@ -23,6 +23,10 @@ class ProxyReplacer():
         pass
 
     def process_proxy_replace_jobs(self, proxy_replace_jobs, job_container, clusters = None):
+        if job_container.is_empty():
+            log.info('Empty job container.  Proxy refresh jobs ignored for now.')
+            return
+
         for proxy_replace_job_classad in proxy_replace_jobs:
             try:
                 if 'userProxyOverwriteTargetJob' in proxy_replace_job_classad:
