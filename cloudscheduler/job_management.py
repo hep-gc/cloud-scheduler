@@ -410,7 +410,7 @@ class JobPool:
         # Handle the user proxy replace jobs.
         # Note that the ProxyReplacer is reponsible for removing these
         # proxy replacing jobs from the condor_q once they are done.
-        proxy_replacers.ProxyReplacer().process_proxy_replace_jobs(proxy_replace_jobs_classads, job_container)
+        proxy_replacers.ProxyReplacer().process_proxy_replace_jobs(proxy_replace_jobs_classads, self.job_container)
 
         self.last_query = datetime.datetime.now()
         return job_ads
