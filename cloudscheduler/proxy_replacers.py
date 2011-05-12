@@ -92,10 +92,10 @@ class ProxyReplacer():
         if source_proxy == None:
             raise ProxyReplaceException('Attempt to replace proxy with no source proxy.')
 
-        # IMPORTANT: Check to make sure that both proxy DNs match.
-        if utilities.get_cert_DN(destination_proxy) != utilities.get_cert_DN(source_proxy):
-            # Proxy DNs do not match!  Log a warning and abort operation.
-            raise ProxyReplaceException('Attempt to replace a proxy with DN mismatch.  Operation aborted.')
+        # IMPORTANT: Check to make sure that both proxy identities match.
+        if utilities.get_proxy_identity(destination_proxy) != utilities.get_proxy_identity(source_proxy):
+            # Proxy identities do not match!  Log a warning and abort operation.
+            raise ProxyReplaceException('Attempt to replace a proxy with identity mismatch.  Operation aborted.')
 
         # Replace proxy: overwrite target with source proxy
         previous_expiry_time = utilities.get_cert_expiry_time(destination_proxy)
