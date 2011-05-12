@@ -499,7 +499,7 @@ class JobPool:
             if ('userProxyOverwriteTargetJob' in classad) or ('userProxyOverwriteTargetVM' in classad):
                 proxy_replace_jobs_classads.append(classad)
             else:
-            try:
+                try:
                     classad["VMType"] = _attribute_from_requirements(classad["Requirements"], "VMType")
                 except:
                     log.exception("Problem extracting VMType from Requirements")
