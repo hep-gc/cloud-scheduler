@@ -22,9 +22,12 @@ class ProxyReplacer():
     def __init__(self):
         pass
 
+    #
+    # This method will loop through a list of proxy replace jobs, and process each of them.
+    # It will also delete these proxy replace jobs once processed (remove them from the condor queue).
+    #
     def process_proxy_replace_jobs(self, proxy_replace_jobs, job_container, clusters = None):
         if job_container.is_empty():
-            log.info('Empty job container.  Proxy refresh jobs ignored for now.')
             return
 
         for proxy_replace_job_classad in proxy_replace_jobs:
