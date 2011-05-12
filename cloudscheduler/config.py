@@ -73,7 +73,6 @@ job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 vm_proxy_refresher_interval = -1 # The current default is not to refresh the VM proxies. (until code is thouroughly tested -- Andre C.)
 vm_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 myproxy_logon_command = 'myproxy-logon'
-grid_proxy_info_command = 'grid-proxy-info'
 proxy_cache_dir = None
 override_vmtype = False
 enable_user_proxy_replace = False
@@ -158,7 +157,6 @@ def setup(path=None):
     global vm_proxy_renewal_threshold
     global proxy_cache_dir
     global myproxy_logon_command
-    global grid_proxy_info_command
     global enable_user_proxy_replace
     global override_vmtype
     global default_VMType
@@ -513,9 +511,6 @@ def setup(path=None):
 
     if config_file.has_option("global", "myproxy_logon_command"):
          myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
-
-    if config_file.has_option("global", "grid_proxy_info_command"):
-         grid_proxy_info_command = config_file.get("global", "grid_proxy_info_command")
 
     if config_file.has_option("global", "enable_user_proxy_replace"):
         enable_user_proxy_replace = config_file.getboolean("global", "enable_user_proxy_replace")

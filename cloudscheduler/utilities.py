@@ -107,16 +107,17 @@ def get_cert_DN(cert_file_path):
 # proxy certificate.
 # The identity is the subject DN of the first non-impersonation proxy 
 #  (which is usually an end-entity certificate) in the proxy certificate chain. 
-# It requires the grid-proxy-info command
+# It requires the openssl command
+#
+# TODO: This version only does a simple parsing of the proxy's subject DN.
+#       We should do a better job by actually traversing the certificate
+#       chain.
 def get_proxy_identity(proxy_file_path):
-    log = get_cloudscheduler_logger()
-    cmd = [config.grid_proxy_info_command, '-f', proxy_file_path, '-identity']
-    try:
-        dn = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0].strip()
+    dn = get_cert_DN(proxy_file_path)
+    if dn.count('/CN=') > 1:
+        return dn[0:dn.find('/CN=', dn.find('/CN=')+1)]
+    else:
         return dn
-    except:
-        log.exception("Problem getting proxy identity for %s" % (proxy_file_path))
-        return None
     
 # This utility function will extract the expiry time from an x509
 # certificate.
