@@ -31,6 +31,7 @@ class ProxyReplacer():
                         self.replace_job_proxy(proxy_replace_job_classad, target_job)
                     else:
                         log.warn('Could not fetch job %s while attempting to replace user proxy.' % (proxy_replace_job_classad['userProxyOverwriteTargetJob']))
+                        log.info('%s' % (job_container.get_all_jobs()))
                         break
                 if (clusters != None) and ('userProxyOverwriteTargetVM' in proxy_replace_job_classad):
                     for cluster in clusters:
