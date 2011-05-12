@@ -22,20 +22,22 @@ class ProxyReplacer():
     def __init__(self):
         pass
 
-    def process_proxy_replace_jobs(proxy_replace_jobs, job_container, cluster):
+    def process_proxy_replace_jobs(self, proxy_replace_jobs, job_container, clusters = None):
         for proxy_replace_job_classad in proxy_replace_jobs:
             try:
                 if 'userProxyOverwriteTargetJob' in proxy_replace_job_classad:
                     target_job = job_container.get_job_by_id(proxy_replace_job_classad['userProxyOverwriteTargetJob'])
                     if target_job != None:
-                        this.replace_job_proxy(proxy_replace_job_classad, target_job)
-                if 'userProxyOverwriteTargetVM' in proxy_replace_job_classad:
-                    target_vm = cluster.get_vm(proxy_replace_job_classad['userProxyOverwriteTargetVM'])
-                    # TODO: The above line will make a linear search to access each VM.
-                    # OK for small number of VMs, but might need to be optimized for large number
-                    # of VMs.
-                    if target_vm != None:
-                        this.replace_vm_proxy(proxy_replace_job_classad, target_vm)
+                        self.replace_job_proxy(proxy_replace_job_classad, target_job)
+                if (clusters != None) and ('userProxyOverwriteTargetVM' in proxy_replace_job_classad):
+                    for cluster in clusters:
+                        target_vm = cluster.get_vm(proxy_replace_job_classad['userProxyOverwriteTargetVM'])
+                        # TODO: The above line will make a linear search to access each VM.
+                        # OK for small number of VMs, but might need to be optimized for large number
+                        # of VMs.
+                        if target_vm != None:
+                            self.replace_vm_proxy(proxy_replace_job_classad, target_vm)
+                            break
 
 
                 # Let's not forget to remove the proxy replace job from the condor_q
@@ -63,22 +65,22 @@ class ProxyReplacer():
 
 
 
-    def replace_job_proxy(src_classad, target_job):
+    def replace_job_proxy(self, src_classad, target_job):
         proxy_to_replace = target_job.get_x509userproxy()
         source_proxy = src_classad['x509userproxy']
         if (source_proxy != None) and ('Iwd' in src_classad):
             source_proxy = src_classad['Iwd'] + '/' + source_proxy
-        this.replace_proxy(source_proxy, proxy_to_replace)
+        self.replace_proxy(source_proxy, proxy_to_replace)
 
-    def replace_vm_proxy(src_classad, target_vm):
+    def replace_vm_proxy(self, src_classad, target_vm):
         proxy_to_replace = target_vm.get_x509userproxy()
         source_proxy = src_classad['x509userproxy']
         if (source_proxy != None) and ('Iwd' in src_classad):
             source_proxy = src_classad['Iwd'] + '/' + source_proxy
-        this.replace_proxy(source_proxy, proxy_to_replace)
+        self.replace_proxy(source_proxy, proxy_to_replace)
         
 
-    def _replace_proxy(source_proxy, destination_proxy):
+    def _replace_proxy(self, source_proxy, destination_proxy):
         # Check to make sure source and destination are valid.
         if destination_proxy == None:
             raise ProxyReplaceException('Attempt to replace proxy for target job with no user proxy defined.')

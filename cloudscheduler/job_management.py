@@ -390,8 +390,8 @@ class JobPool:
         job_query_local -- query and parse condor_q for job information
         """
         log.debug("Querying Condor scheduler daemon (schedd) with %s" % config.condor_q_command)
+        condor_q = shlex.split(config.condor_q_command)
         try:
-            condor_q = shlex.split(config.condor_q_command)
             sp = subprocess.Popen(condor_q, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (condor_out, condor_err) = sp.communicate(input=None)
@@ -410,7 +410,7 @@ class JobPool:
         # Handle the user proxy replace jobs.
         # Note that the ProxyReplacer is reponsible for removing these
         # proxy replacing jobs from the condor_q once they are done.
-        proxy_replacers.ProxyReplacer().process_proxy_replace_jobs(proxy_replace_jobs_classads)
+        proxy_replacers.ProxyReplacer().process_proxy_replace_jobs(proxy_replace_jobs_classads, job_container)
 
         self.last_query = datetime.datetime.now()
         return job_ads
