@@ -37,8 +37,8 @@ global_job_id = None
 
 # Extract the full job id
 cmd = ['condor_q', '-l', condor_job_id]
-output = subprocess.check_output(cmd)
-for line in output:
+output = Popen(cmd, stdout=PIPE).communicate()[0]
+for line in output.split('\n'):
     fields = line.split(' = ')
     if fields[0] == 'GlobalJobId':
         global_job_id = fields[1]
@@ -47,7 +47,7 @@ for line in output:
 
 if global_job_id == None:
     log.error('Could not extract global job id.  Operation aborted.')
-    return
+    sys.exit(-1)
 
 # Create condor submit file
 new_condor_job_file = open(tempfile.mkstemp()[1], 'w')
@@ -78,6 +78,6 @@ if condor_submit_process.returncode != 0:
 
 # Cleanup
 try:
-    #os.remove(new_condor_job_file.name)
+    os.remove(new_condor_job_file.name)
 except OSError:
     print('Error deleting temporary condor job description file %s' % (new_condor_job_file,))
