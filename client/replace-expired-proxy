@@ -21,10 +21,12 @@ log = logging.getLogger('replace-expired-proxy')
 parser = OptionParser()
 
 parser.set_defaults(condor_submit_path="condor_submit")
-parser.set_defaults(condor_args="")
+parser.set_defaults(condor_submit_args="")
+parser.set_defaults(condor_q_args="")
 parser.set_defaults(debug_output=False)
 
-parser.add_option("--condor-args", action="store", type="string", dest="condor_args", help="arguments to pass to condor_submit command")
+parser.add_option("--condor-submit-args", action="store", type="string", dest="condor_submit_args", help="arguments to pass to condor_submit command")
+parser.add_option("--condor-q-args", action="store", type="string", dest="condor_q_args", help="arguments to pass to the condor_q command")
 parser.add_option("--condor-submit-path", action="store", type="string", dest="condor_submit_path", help="path to condor_submit command")
 parser.add_option("--debug", action="store_true", dest="debug_output", help="Enable verbose output")
 
@@ -36,7 +38,7 @@ condor_job_id = sys.argv[len(sys.argv)-1]
 global_job_id = None
 
 # Extract the full job id
-cmd = ['condor_q', '-l', condor_job_id]
+cmd = ['condor_q', options.condor_q_args, '-l', condor_job_id]
 output = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0]
 for line in output.split('\n'):
     fields = line.split(' = ')
@@ -67,7 +69,7 @@ log.debug("New condor job description file created: %s" % (new_condor_job_file.n
 # Basically, we simply use whatever arguments was given starting with the
 # condor_submit argument, up to the one before the last.  The last is then
 # replaced by the new ammended condor job description file.
-condor_submit_cmd = options.condor_submit_path + ' ' + options.condor_args + ' ' + new_condor_job_file.name
+condor_submit_cmd = options.condor_submit_path + ' ' + options.condor_submit_args + ' ' + new_condor_job_file.name
 log.debug('condor_submit command: %s' % (condor_submit_cmd))
 condor_submit_process = subprocess.Popen(condor_submit_cmd, shell=True)
 condor_submit_process.wait()
