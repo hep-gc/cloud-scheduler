@@ -1,0 +1,83 @@
+#!/usr/bin/python
+
+import subprocess
+import uuid
+import tempfile
+import sys
+import os
+import logging
+from optparse import OptionParser
+
+
+# Set up a specific logger with our desired output level
+logging.basicConfig(level=logging.WARNING)
+log = logging.getLogger('replace-expired-proxy')
+
+
+
+#
+# Parse command line options
+#
+parser = OptionParser()
+
+parser.set_defaults(condor_submit_path="condor_submit")
+parser.set_defaults(condor_args="")
+parser.set_defaults(debug_output=False)
+
+parser.add_option("--condor-args", action="store", type="string", dest="condor_args", help="arguments to pass to condor_submit command")
+parser.add_option("--condor-submit-path", action="store", type="string", dest="condor_submit_path", help="path to condor_submit command")
+parser.add_option("--debug", action="store_true", dest="debug_output", help="Enable verbose output")
+
+(options, args) = parser.parse_args()
+if options.debug_output == True:
+    log.setLevel(logging.DEBUG)
+
+condor_job_id = sys.argv[len(sys.argv)-1]
+global_job_id = None
+
+# Extract the full job id
+cmd = ['condor_q', '-l', condor_job_id]
+output = subprocess.check_output(cmd)
+for line in output:
+    fields = line.split(' = ')
+    if fields[0] == 'GlobalJobId':
+        global_job_id = fields[1]
+        log.debug('Global job id: %s' % (global_job_id))
+        break
+
+if global_job_id == None:
+    log.error('Could not extract global job id.  Operation aborted.')
+    return
+
+# Create condor submit file
+new_condor_job_file = open(tempfile.mkstemp()[1], 'w')
+new_condor_job_file.write('Universe   = vanilla\n')
+new_condor_job_file.write('Executable = /bin/true\n')
+new_condor_job_file.write('x509userproxy = /tmp/x509up_u%s\n' % (os.geteuid()))
+new_condor_job_file.write('+Owner = UNDEFINED\n')
+new_condor_job_file.write('Requirements = VMType =?= "%s"\n' % (uuid.uuid1()))
+new_condor_job_file.write('+userProxyOverwriteTargetJob = %s\n' % (global_job_id))
+new_condor_job_file.write('Queue\n')
+new_condor_job_file.close()
+
+
+log.debug("New condor job description file created: %s" % (new_condor_job_file.name))
+
+# Now let's do the condor_submit call.
+# Basically, we simply use whatever arguments was given starting with the
+# condor_submit argument, up to the one before the last.  The last is then
+# replaced by the new ammended condor job description file.
+condor_submit_cmd = options.condor_submit_path + ' ' + options.condor_args + ' ' + new_condor_job_file.name
+log.debug('condor_submit command: %s' % (condor_submit_cmd))
+condor_submit_process = subprocess.Popen(condor_submit_cmd, shell=True)
+condor_submit_process.wait()
+log.debug('condor_submit command returned %d' % (condor_submit_process.returncode))
+if condor_submit_process.returncode != 0:
+    log.error('Error with condor_submit command.')
+
+
+# Cleanup
+try:
+    #os.remove(new_condor_job_file.name)
+except OSError:
+    print('Error deleting temporary condor job description file %s' % (new_condor_job_file,))
