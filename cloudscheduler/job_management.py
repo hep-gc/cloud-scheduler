@@ -50,7 +50,7 @@ import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_cert_expiry_time
 import job_containers
-import proxy_refreshers
+import proxy_replacers
 from decimal import *
 
 ##
@@ -410,7 +410,7 @@ class JobPool:
         # Handle the user proxy replace jobs.
         # Note that the ProxyReplacer is reponsible for removing these
         # proxy replacing jobs from the condor_q once they are done.
-        proxy_refreshers.ProxyReplacer().process_proxy_replace_jobs(proxy_replace_jobs_classads)
+        proxy_replacers.ProxyReplacer().process_proxy_replace_jobs(proxy_replace_jobs_classads)
 
         self.last_query = datetime.datetime.now()
         return job_ads
