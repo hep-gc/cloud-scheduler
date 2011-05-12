@@ -31,8 +31,6 @@ class ProxyReplacer():
                         self.replace_job_proxy(proxy_replace_job_classad, target_job)
                     else:
                         log.warn('Could not fetch job %s while attempting to replace user proxy.' % (proxy_replace_job_classad['userProxyOverwriteTargetJob']))
-                        log.info('%s' % (job_container.get_all_jobs()))
-                        break
                 if (clusters != None) and ('userProxyOverwriteTargetVM' in proxy_replace_job_classad):
                     for cluster in clusters:
                         target_vm = cluster.get_vm(proxy_replace_job_classad['userProxyOverwriteTargetVM'])
@@ -42,7 +40,6 @@ class ProxyReplacer():
                         if target_vm != None:
                             self.replace_vm_proxy(proxy_replace_job_classad, target_vm)
                         else:
-                            break
 
 
                 # Let's not forget to remove the proxy replace job from the condor_q
@@ -75,14 +72,14 @@ class ProxyReplacer():
         source_proxy = src_classad['x509userproxy']
         if (source_proxy != None) and ('Iwd' in src_classad):
             source_proxy = src_classad['Iwd'] + '/' + source_proxy
-        self.replace_proxy(source_proxy, proxy_to_replace)
+        self._replace_proxy(source_proxy, proxy_to_replace)
 
     def replace_vm_proxy(self, src_classad, target_vm):
         proxy_to_replace = target_vm.get_x509userproxy()
         source_proxy = src_classad['x509userproxy']
         if (source_proxy != None) and ('Iwd' in src_classad):
             source_proxy = src_classad['Iwd'] + '/' + source_proxy
-        self.replace_proxy(source_proxy, proxy_to_replace)
+        self._replace_proxy(source_proxy, proxy_to_replace)
         
 
     def _replace_proxy(self, source_proxy, destination_proxy):
