@@ -100,6 +100,6 @@ class ProxyReplacer():
             raise ProxyReplaceException('Error replacing proxy %s with %s.\n%s' % (destination_proxy, source_proxy, e))
         new_expiry_time =  utilities.get_cert_expiry_time(destination_proxy)
 
-        log.debug('Proxy %s [%s] successfully replace with %s [%s]' % (source_proxy, previous_expiry_time, destination_proxy, new_expiry_time))
+        log.info('Proxy %s [%s] successfully replace with %s [%s]' % (source_proxy, previous_expiry_time, destination_proxy, new_expiry_time))
         return
 
