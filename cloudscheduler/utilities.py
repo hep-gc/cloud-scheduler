@@ -110,7 +110,7 @@ def get_cert_DN(cert_file_path):
 # It requires the grid-proxy-info command
 def get_proxy_identity(proxy_file_path):
     log = get_cloudscheduler_logger()
-    cmd = [config.grid_proxy_info_command, , '-f', proxy_file_path, '-identity']
+    cmd = [config.grid_proxy_info_command, '-f', proxy_file_path, '-identity']
     try:
         dn = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0].strip()
         return dn
