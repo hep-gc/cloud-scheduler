@@ -240,7 +240,7 @@ class ProxyReplacer():
                 # Let's not forget to remove the proxy replace job from the condor_q
                 jobid = proxy_replace_job_classad['GlobalJobId'].split('#')[1]
                 try:
-                    cmd = config.condor_rm_command + ' ' + jobid)
+                    cmd = config.condor_rm_command + ' ' + jobid
                     condor_rm = shlex.split(cmd)
                     sp = subprocess.Popen(condor_rm, shell=False,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
