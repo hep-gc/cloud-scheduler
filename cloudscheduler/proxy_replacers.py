@@ -55,7 +55,7 @@ class ProxyReplacer():
                     (condor_out, condor_err) = sp.communicate(input=None)
                     returncode = sp.returncode
                     if returncode == 0:
-                        log.info('Proxy replace job %s removed from condor queue.' % (jobid))
+                        log.debug('Proxy replace job %s removed from condor queue.' % (jobid))
                     else:
                         raise ProxyReplaceException("Got non-zero return code '%s' from '%s'. stderr was: %s" %
                                           (returncode, cmd, condor_err))
@@ -105,6 +105,6 @@ class ProxyReplacer():
             raise ProxyReplaceException('Error replacing proxy %s with %s.\n%s' % (destination_proxy, source_proxy, e))
         new_expiry_time =  utilities.get_cert_expiry_time(destination_proxy)
 
-        log.info('Proxy %s [%s] successfully replace with %s [%s]' % (source_proxy, previous_expiry_time, destination_proxy, new_expiry_time))
+        log.info('Proxy %s [%s] successfully replaced with %s [%s]' % (destination_proxy, previous_expiry_time, source_proxy, new_expiry_time))
         return
 
