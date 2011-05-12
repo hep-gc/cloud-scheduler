@@ -39,8 +39,7 @@ class ProxyReplacer():
                         # of VMs.
                         if target_vm != None:
                             self.replace_vm_proxy(proxy_replace_job_classad, target_vm)
-                        else:
-
+                            break
 
                 # Let's not forget to remove the proxy replace job from the condor_q
                 jobid = proxy_replace_job_classad['GlobalJobId'].split('#')[1]
