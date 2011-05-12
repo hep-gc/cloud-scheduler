@@ -50,7 +50,7 @@ class ProxyReplacer():
                     (condor_out, condor_err) = sp.communicate(input=None)
                     returncode = sp.returncode
                     if returncode == 0:
-                        log.debug('Proxy replace job %s removed from condor queue.' % (jobid))
+                        log.info('Proxy replace job %s removed from condor queue.' % (jobid))
                     else:
                         raise ProxyReplaceException("Got non-zero return code '%s' from '%s'. stderr was: %s" %
                                           (returncode, cmd, condor_err))
