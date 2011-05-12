@@ -37,7 +37,7 @@ global_job_id = None
 
 # Extract the full job id
 cmd = ['condor_q', '-l', condor_job_id]
-output = Popen(cmd, stdout=PIPE).communicate()[0]
+output = subprocess.Popen(cmd, stdout=PIPE).communicate()[0]
 for line in output.split('\n'):
     fields = line.split(' = ')
     if fields[0] == 'GlobalJobId':
