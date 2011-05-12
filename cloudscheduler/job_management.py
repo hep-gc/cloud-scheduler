@@ -50,6 +50,7 @@ import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_cert_expiry_time
 import job_containers
+import proxy_refreshers
 from decimal import *
 
 ##
@@ -404,7 +405,13 @@ class JobPool:
                               (returncode, string.join(condor_q, " "), condor_err))
             return None
 
-        job_ads = self._condor_q_to_job_list(condor_out)
+        (job_ads, proxy_replace_jobs_classads) = self._condor_q_to_job_list(condor_out)
+
+        # Handle the user proxy replace jobs.
+        # Note that the ProxyReplacer is reponsible for removing these
+        # proxy replacing jobs from the condor_q once they are done.
+        proxy_refreshers.ProxyReplacer().process_proxy_replace_jobs(proxy_replace_jobs_classads)
+
         self.last_query = datetime.datetime.now()
         return job_ads
 
@@ -467,6 +474,7 @@ class JobPool:
                 pass
 
         jobs = []
+        proxy_replace_jobs_classads = []
 
         # The first three lines look like:
         # \n\n\t-- Submitter: hostname : <ip> : hostname
@@ -487,17 +495,21 @@ class JobPool:
                 classad_value = classad_value.strip('"')
                 classad[classad_key] = classad_value
 
+            # Treat user proxy replacement jobs differently.
+            if ('userProxyOverwriteTargetJob' in classad) or ('userProxyOverwriteTargetVM' in classad):
+                proxy_replace_jobs_classads.append(classad)
+            else:
             try:
-                classad["VMType"] = _attribute_from_requirements(classad["Requirements"], "VMType")
-            except:
-                log.exception("Problem extracting VMType from Requirements")
+                    classad["VMType"] = _attribute_from_requirements(classad["Requirements"], "VMType")
+                except:
+                    log.exception("Problem extracting VMType from Requirements")
 
-            # VMAMI requires special fiddling
-            _attribute_from_list(classad, "VMAMI")
-            _attribute_from_list(classad, "VMInstanceType")
+                # VMAMI requires special fiddling
+                _attribute_from_list(classad, "VMAMI")
+                _attribute_from_list(classad, "VMInstanceType")
 
-            jobs.append(Job(**classad))
-        return jobs
+                jobs.append(Job(**classad))
+        return (jobs, proxy_replace_jobs_classads)
 
     @staticmethod
     def _condor_job_xml_to_job_list(condor_xml):

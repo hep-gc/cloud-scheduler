@@ -20,10 +20,11 @@ import utilities
 condor_webservice_url = "http://localhost:8080"
 condor_collector_url = "http://localhost:9618"
 condor_retrieval_method = "soap"
-condor_q_command = "condor_q -l"
+condor_q_command = "condor_q -l'"
 condor_status_command = "condor_status -l"
 condor_off_command = "/usr/sbin/condor_off"
 condor_on_command = "/usr/sbin/condor_on"
+condor_rm_command = "condor_rm "
 ssh_path = "/usr/bin/ssh"
 condor_host = "localhost"
 condor_host_on_vm = ""
@@ -74,6 +75,7 @@ vm_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
+enable_user_proxy_replace = False
 
 default_VMType= "default"
 default_VMNetwork= ""
@@ -102,6 +104,7 @@ def setup(path=None):
     global condor_collector_url
     global condor_retrieval_method
     global condor_q_command
+    global condor_rm_command
     global condor_status_command
     global condor_off_command
     global condor_on_command
@@ -154,6 +157,7 @@ def setup(path=None):
     global vm_proxy_renewal_threshold
     global proxy_cache_dir
     global myproxy_logon_command
+    global enable_user_proxy_replace
     global override_vmtype
     global default_VMType
     global default_VMNetwork
@@ -214,6 +218,10 @@ def setup(path=None):
     if config_file.has_option("global", "condor_q_command"):
         condor_q_command = config_file.get("global",
                                                 "condor_q_command")
+
+    if config_file.has_option("global", "condor_rm_command"):
+        condor_rm_command = config_file.get("global",
+                                                "condor_rm_command")
 
     if config_file.has_option("global", "condor_off_command"):
         condor_off_command = config_file.get("global",
@@ -503,6 +511,9 @@ def setup(path=None):
 
     if config_file.has_option("global", "myproxy_logon_command"):
          myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
+
+    if config_file.has_option("global", "enable_user_proxy_replace"):
+        enable_user_proxy_replace = config_file.getboolean("global", "enable_user_proxy_replace")
 
     if config_file.has_option("global", "override_vmtype"):
         override_vmtype = config_file.getboolean("global", "override_vmtype")
