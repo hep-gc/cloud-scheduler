@@ -94,13 +94,11 @@ def get_globus_path(executable="grid-proxy-init"):
 # certificate.
 # It requires the openssl package to be installed.
 def get_cert_DN(cert_file_path):
-    log = get_cloudscheduler_logger()
     openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-subject', '-noout']
     try:
         dn = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
         return dn
     except:
-        log.exception("Problem getting cert DN")
         return None
     
 # This utility function will extract the expiry time from an x509
@@ -109,7 +107,6 @@ def get_cert_DN(cert_file_path):
 # Returns a datetime instance, with UTC time.
 # Returns None on error
 def get_cert_expiry_time(cert_file_path):
-    log = get_cloudscheduler_logger()
     openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-enddate', '-noout']
     try:
         stdout_stderr = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()
@@ -117,7 +114,6 @@ def get_cert_expiry_time(cert_file_path):
         expiry_time = datetime.strptime(datetime_string, '%b %d %H:%M:%S %Y %Z')
         return expiry_time
     except:
-        log.exception("Problem getting certificate time")
         return None
     
 def match_host_with_condor_host(hostname, condor_hostname):
