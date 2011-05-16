@@ -67,7 +67,7 @@ class JobProxyRefresher(threading.Thread):
 
                 # Lets record the current time and then log how much time the cycle took.
                 cycle_end_ts = datetime.datetime.today()
-                log.debug("Job proxy refreshing cycle done. [%s -> %s (%s)]" % (cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
+                log.debug("Job proxy refreshing cycle done. [%d;%s;%s;%s]" % (len(jobs), cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
 
                 log.debug("JobProxyRefresher waiting %ds..." % self.polling_interval)
                 sleep_tics = self.polling_interval
@@ -132,7 +132,7 @@ class VMProxyRefresher(threading.Thread):
 
                 # Lets record the current time and then log how much time the cycle took.
                 cycle_end_ts = datetime.datetime.today()
-                log.debug("VM proxy refreshing cycle done. [%s -> %s (%s)]" % (cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
+                log.debug("VM proxy refreshing cycle done. [%d;%s;%s;%s]" % (len(vms), cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
 
                 log.debug("VMProxyRefresher waiting %ds..." % self.polling_interval)
                 sleep_tics = self.polling_interval
