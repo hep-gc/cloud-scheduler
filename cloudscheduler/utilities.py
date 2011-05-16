@@ -12,6 +12,10 @@ import errno
 from urlparse import urlparse
 from datetime import datetime
 import config
+try:
+    from OpenSSL import crypto
+except ImportError:
+    pass
 
 def determine_path ():
     """Borrowed from wxglade.py"""
@@ -92,29 +96,70 @@ def get_globus_path(executable="grid-proxy-init"):
 
 # This utility function will extract the subject DN from an x509
 # certificate.
+#
+# Note that this method is affected by the use_pyopenssl config variable.
+# If use_pyopenssl is True, then the pyopenssl librairies will be used to extract
+# the certificate subject.  Else a openssl subprocess will be forked to
+# extract the info out of the certificate.
+#
 # It requires the openssl package to be installed.
 def get_cert_DN(cert_file_path):
-    openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-subject', '-noout']
-    try:
-        dn = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
-        return dn
-    except:
-        return None
+    if config.use_pyopenssl:
+        try:
+            cert_file = open(cert_file_path, 'r')
+            cert_data = cert_file.read()
+            cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert_data)
+            cert_file.close()
+            return cert.get_subject()
+        except:
+            log = get_cloudscheduler_logger()
+            log.exception('Error extracting cert subject using pyopenssl.')
+            return None
+    else:
+        openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-subject', '-noout']
+        try:
+            dn = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
+            return dn
+        except:
+            log = get_cloudscheduler_logger()
+            log.exception('Error extracting cert subject using openssl.')
+            return None
     
+
 # This utility function will extract the expiry time from an x509
 # certificate.
 # It requires the openssl package to be installed.
-# Returns a datetime instance, with UTC time.
+# Returns a datetime instance, with UTC time (naive).
+#
+# Note that this method is affected by the use_pyopenssl config variable.
+# If use_pyopenssl is True, then the pyopenssl librairies will be used to extract
+# the certificate expiry time.  Else a openssl subprocess will be forked to
+# extract the info out of the certificate.
+#
 # Returns None on error
 def get_cert_expiry_time(cert_file_path):
-    openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-enddate', '-noout']
-    try:
-        stdout_stderr = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()
-        datetime_string = stdout_stderr[0].strip().split('=')[1]
-        expiry_time = datetime.strptime(datetime_string, '%b %d %H:%M:%S %Y %Z')
-        return expiry_time
-    except:
-        return None
+    if config.use_pyopenssl:
+        try:
+            cert_file = open(cert_file_path, 'r')
+            cert_data = cert_file.read()
+            cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert_data)
+            cert_file.close()
+            return datetime.strptime(cert.get_notAfter(), '%Y%m%d%H%M%SZ')
+        except:
+            log = get_cloudscheduler_logger()
+            log.exception('Error extracting cert expiry time using pyopenssl.')
+            return None
+    else:
+        openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-enddate', '-noout']
+        try:
+            stdout_stderr = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()
+            datetime_string = stdout_stderr[0].strip().split('=')[1]
+            expiry_time = datetime.strptime(datetime_string, '%b %d %H:%M:%S %Y %Z')
+            return expiry_time
+        except:
+            log = get_cloudscheduler_logger()
+            log.exception('Error extracting cert expiry time using openssl.')
+            return None
     
 def match_host_with_condor_host(hostname, condor_hostname):
     """
@@ -242,3 +287,5 @@ def check_popen_timeout(process, timeout=180):
                 if e.errno != errno.ESRCH:
                     raise
     return ret
+
+

@@ -93,6 +93,8 @@ log_stdout = False
 log_max_size = None
 log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
 
+use_pyopenssl = False
+
 
 # setup will look for a configuration file specified on the command line,
 # or in ~/.cloudscheduler.conf or /etc/cloudscheduler.conf
@@ -172,6 +174,8 @@ def setup(path=None):
     global log_stdout
     global log_max_size
     global log_format
+
+    global use_pyopenssl
 
     homedir = os.path.expanduser('~')
 
@@ -587,3 +591,5 @@ def setup(path=None):
     else:
         condor_host = utilities.get_hostname_from_url(condor_webservice_url)
 
+    if config_file.has_option("global", "use_pyopenssl"):
+        use_pyopenssl = config_file.getboolean("global", "use_pyopenssl")
