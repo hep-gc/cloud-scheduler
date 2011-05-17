@@ -1062,7 +1062,7 @@ class Cleanup(threading.Thread):
                         successful_destroy = 0
                         for start_vm in islice(starting_vms_of_type, num_start_to_destroy):
                             # Since the machine could not retire make sure not to destroy the last VM of type
-                            if internal_vms[vmtype] <= len(sched_jobs[vmtype]):
+                            if vmtype in internal_vms.keys() and vmtype in sched_jobs.keys() and internal_vms[vmtype] <= len(sched_jobs[vmtype]):
                                 # fewer or equal vms left that trying to shutdown
                                 continue
                             vm_in_cluster = self.resource_pool.get_cluster_with_vm(start_vm)
