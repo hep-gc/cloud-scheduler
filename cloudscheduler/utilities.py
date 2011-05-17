@@ -116,7 +116,7 @@ def get_cert_DN(cert_file_path):
             log.exception('Error extracting cert subject using pyopenssl.')
             return None
     else:
-        openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-subject', '-noout']
+        openssl_cmd = [config.openssl_path, 'x509', '-in', cert_file_path, '-subject', '-noout']
         try:
             dn = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
             return dn
@@ -150,7 +150,7 @@ def get_cert_expiry_time(cert_file_path):
             log.exception('Error extracting cert expiry time using pyopenssl.')
             return None
     else:
-        openssl_cmd = ['/usr/bin/openssl', 'x509', '-in', cert_file_path, '-enddate', '-noout']
+        openssl_cmd = [config.openssl_path, 'x509', '-in', cert_file_path, '-enddate', '-noout']
         try:
             stdout_stderr = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()
             datetime_string = stdout_stderr[0].strip().split('=')[1]
