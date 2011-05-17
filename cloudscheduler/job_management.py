@@ -292,7 +292,6 @@ class Job:
             return False
         td = expiry_time - datetime.datetime.utcnow()
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.job_proxy_renewal_threshold))
         return td_in_seconds < config.job_proxy_renewal_threshold
 
     # This method will test if a job's user proxy is expired.

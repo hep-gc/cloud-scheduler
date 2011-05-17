@@ -43,7 +43,7 @@ class JobProxyRefresher(threading.Thread):
                 jobs = self.job_pool.job_container.get_all_jobs()
                 log.debug("Refreshing job user proxies. [%d proxies to process]" % (len(jobs)))
                 for job in jobs:
-                    log.debug("Proxy for job %s expires on: %s" % (job.id, job.get_x509userproxy_expiry_time()))
+                    log.debug("Proxy for job %s expires in %s" % (job.id, job.get_x509userproxy_expiry_time() - datetime.datetime.utcnow()))
                     if job.is_proxy_expired():
                         log.warning("Proxy for job %s is expired.  Skipping proxy renewal for this job." % (job.id))
                     elif job.needs_proxy_renewal():
@@ -108,7 +108,7 @@ class VMProxyRefresher(threading.Thread):
                 vms = self.cloud_resources.get_all_vms()
                 log.debug("Refreshing VM proxies. [%d proxies to process]" % (len(vms)))
                 for vm in vms:
-                    log.debug("Proxy for VM %s expires on: %s" % (vm.id, vm.get_x509userproxy_expiry_time()))
+                    log.debug("Proxy for VM %s expires in %s" % (vm.id, vm.get_x509userproxy_expiry_time() - datetime.datetime.utcnow()))
                     if vm.is_proxy_expired():
                         log.warning("Proxy for VM %s is expired.  Skipping proxy renewal for this VM." % (vm.id))
                     elif vm.needs_proxy_renewal():
@@ -175,7 +175,7 @@ class MyProxyProxyRefresher():
                 myproxy_command = utilities.get_globus_path(executable=myproxy_command) + myproxy_command
             except:
                 log.exception("Problem getting myproxy-logon path")
-                return None
+                return False
 
 
         # Note: Here we put the refreshed proxy in a seperate file.  We do this to protect the ownership and permisions on the
@@ -187,24 +187,26 @@ class MyProxyProxyRefresher():
         # permissions.
         #
         # This is a bit of a hack; there must me a better way to handle this problem.
-        (new_proxy_file, new_proxy_file_path) = tempfile.mkstemp(suffix='.csRenewedProxy')
-        os.close(new_proxy_file)
-        myproxy_logon_cmd = '%s -s %s -p %s -k "%s" -a %s -o %s -d -v' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path)
-        cmd_args = shlex.split(myproxy_logon_cmd)
-        log.debug('myproxy-logon command: %s' % (cmd_args))
-        log.debug('Invoking myproxy-logon command to refresh proxy %s ...' % (proxy_file_path))
-        myproxy_logon_process = subprocess.Popen(cmd_args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (stdout, stderr) = myproxy_logon_process.communicate()
-        log.debug('myproxy-logon command returned %d' % (myproxy_logon_process.returncode))
-        if myproxy_logon_process.returncode != 0:
-            log.error("Error renewing proxy from MyProxy server: %s %s" % (stdout, stderr))
-            log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
+        try:
+            (new_proxy_file, new_proxy_file_path) = tempfile.mkstemp(suffix='.csRenewedProxy')
+            os.close(new_proxy_file)
+            myproxy_logon_cmd = '%s -s %s -p %s -k "%s" -a %s -o %s -d -v' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path)
+            cmd_args = shlex.split(myproxy_logon_cmd)
+            log.debug('Invoking myproxy-logon command to refresh proxy %s ...' % (proxy_file_path))
+            myproxy_logon_process = subprocess.Popen(cmd_args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (stdout, stderr) = myproxy_logon_process.communicate()
+            if myproxy_logon_process.returncode != 0:
+                log.error("Error renewing proxy from MyProxy server: %s %s" % (stdout, stderr))
+                os.remove(new_proxy_file_path)
+                return False
+            else:
+                log.debug('myproxy-logon command returned successfully')
+
+            shutil.copyfile(new_proxy_file_path, proxy_file_path)
             os.remove(new_proxy_file_path)
+        except:
+            log.exception('Unexpected error during proxy renewal using MyProxy.')
             return False
-        log.debug('Copying %s to %s ...' % (new_proxy_file_path, proxy_file_path))
-        shutil.copyfile(new_proxy_file_path, proxy_file_path)
-        log.debug('(Cleanup) Deleting %s ...' % (new_proxy_file_path))
-        os.remove(new_proxy_file_path)
 
         return True
 
