@@ -144,6 +144,8 @@ def get_cert_expiry_time(cert_file_path):
             cert_data = cert_file.read()
             cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert_data)
             cert_file.close()
+            # Note that the following time format string ends with 'Z'.
+            # This is not a typo (i.e., we need 'Z', not %Z)
             return datetime.strptime(cert.get_notAfter(), '%Y%m%d%H%M%SZ')
         except:
             log = get_cloudscheduler_logger()
