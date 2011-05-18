@@ -298,11 +298,11 @@ class Scheduler(threading.Thread):
         # TODO: This should be less explicit in its reference to JobPool class parts.
         #       Something like 'for job in self.job_pool.get_unsched_jobs()'
         log.debug("Schedule any high priority jobs")
-        high_priority_jobs_by_users = self.job_pool.job_container.get_high_priority_jobs_by_users(prioritized = True)
+        high_priority_jobs_by_users = self.job_pool.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
         for user in high_priority_jobs_by_users.keys():
             for job in high_priority_jobs_by_users[user]:
 
-                if job.job_status > self.RUNNING or job.banned:
+                if job.job_status > self.RUNNING or job.banned or job.status == 'Scheduled':
                     continue
                 if self.sched_resource_create_track(user, job):
                     break
@@ -698,13 +698,14 @@ class Cleanup(threading.Thread):
             vm_count = self.resource_pool.vm_count()
             for vmtype, val in diff_types.iteritems():
                 num_to_change[vmtype] = int(round(val * vm_count))
+
             excess_diff = 0
             positive_types = []
             # check if there are fewer jobs in queue than trying to adjust VM count by
             # this makes up the excess amount
             for vmtype, val in num_to_change.iteritems():
                 if vmtype in required_vmtypes_dict.keys() and val < 0 and abs(val) > required_vmtypes_dict[vmtype]:
-                    excess_diff += abs(val) - required_vmtypes_dict[vmtype]
+                    excess_diff += abs(val) - required_vmtypes_dict[vmtype] #-1 # off by 1 ?
                     num_to_change[vmtype] = -required_vmtypes_dict[vmtype]
                 elif val > 0:
                     positive_types.append(vmtype)
@@ -740,22 +741,23 @@ class Cleanup(threading.Thread):
             for vmtype in num_to_change.keys():
                 if num_to_change[vmtype] < 0:
                     num_fit = 0
-                    for cloud in fits_by_type[vmtype]:
-                        num_fit_cloud = 0
-                        if cloud.__class__.__name__ == "NimbusCluster":
-                            if vmtype in unsched_jobs.keys():
-                                if unsched_jobs[vmtype][0].req_network in cloud.network_pools:
-                                    num_fit_cloud = cloud.net_slots[unsched_jobs[vmtype][0].req_network]
-                                    # IF no specified network do something
-                        else:
-                            num_fit_cloud = cloud.vm_slots
-                        numstore = int(cloud.storageGB / job.req_storage)
-                        num_fit_cloud = numstore if numstore < num_fit_cloud else num_fit_cloud
-                        nummem = 0
-                        for mement in cloud.memory:
-                            nummem += (mement / job.req_memory)
-                        num_fit_cloud = nummem if nummem < num_fit_cloud else num_fit_cloud
-                        num_fit += num_fit_cloud
+                    if vmtype in fits_by_type.keys():
+                        for cloud in fits_by_type[vmtype]:
+                            num_fit_cloud = 0
+                            if cloud.__class__.__name__ == "NimbusCluster":
+                                if vmtype in unsched_jobs.keys():
+                                    if unsched_jobs[vmtype][0].req_network in cloud.network_pools:
+                                        num_fit_cloud = cloud.net_slots[unsched_jobs[vmtype][0].req_network]
+                                        # IF no specified network do something
+                            else:
+                                num_fit_cloud = cloud.vm_slots
+                            numstore = int(cloud.storageGB / job.req_storage)
+                            num_fit_cloud = numstore if numstore < num_fit_cloud else num_fit_cloud
+                            nummem = 0
+                            for mement in cloud.memory:
+                                nummem += (mement / job.req_memory)
+                            num_fit_cloud = nummem if nummem < num_fit_cloud else num_fit_cloud
+                            num_fit += num_fit_cloud
                     # Add the number that can fit to what it wants to change
                     can_boot = num_to_change[vmtype] + num_fit
                     excess = 0

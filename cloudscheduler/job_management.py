@@ -756,7 +756,7 @@ class JobPool:
     def job_type_distribution_normal(self):
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
-        high_priority_jobs_by_users = self.job_container.get_high_priority_jobs_by_users(prioritized = True)
+        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
         held_user_adjust = 0
         for user in new_jobs_by_users.keys():
             vmtype = None
@@ -792,7 +792,7 @@ class JobPool:
     def job_type_distribution_multi_vmtype(self):
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
-        high_priority_jobs_by_users = self.job_container.get_high_priority_jobs_by_users(prioritized = True)
+        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
         held_user_adjust = 0
         user_types = {}
         high_user_types = {}

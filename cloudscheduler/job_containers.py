@@ -415,6 +415,29 @@ class HashTableJobContainer(JobContainer):
 
             return return_value
 
+    def get_unscheduled_high_priority_jobs(self):
+        jobs = []
+        for job in self.all_jobs.values():
+            if job.high_priority and job.status == 'Unscheduled':
+                jobs.append(job)
+        return jobs
+
+    def get_unscheduled_high_priority_jobs_by_users(self, prioritized=False):
+        with self.lock:
+            return_value = {}
+            for job in self.get_unscheduled_high_priority_jobs():
+                if job.user not in return_value:
+                    return_value[job.user] = []
+                return_value[job.user].append(job)
+            # Now lets sort if needed.
+            if prioritized:
+                for job_list in return_value.values():
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
+
+            log.verbose("(OUT) get_unscheduled_high_priority_jobs_by_users")
+
+            return return_value
+
     def is_empty(self):
         return len(self.all_jobs) == 0
 
