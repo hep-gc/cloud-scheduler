@@ -743,7 +743,7 @@ class NimbusCluster(ICluster):
 
         Note: If VM does not appear to be running any longer, it will be destroyed.
         """
-
+        bad_status = ("Destroyed", "NoProxy", "ExpiredProxy")
         # Create an epr for our poll command
         vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
 
@@ -775,6 +775,9 @@ class NimbusCluster(ICluster):
             elif vm.status != new_status:
                 vm.last_state_change = int(time.time())
                 vm.status = new_status
+
+            elif vm.override_status != None and new_status not in bad_status:
+                vm.override_status = None
 
             # If there was some other error we're not aware of (temporary network problem, etc...)
             elif (poll_return != 0):
