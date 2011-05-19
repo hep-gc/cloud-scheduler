@@ -419,6 +419,7 @@ class Scheduler(threading.Thread):
 
     def vm_creation(self, job, good_resources):
         # Create an optional customization metadata file
+        log.verbose("Preparing to create vm for job '%s'." % job.id)
         customizations = []
         create_ret = None
         if config.condor_host != "localhost" and config.condor_context_file:
@@ -488,7 +489,7 @@ class Scheduler(threading.Thread):
             local_modifications += start_requirement
 
         customizations.append((local_modifications, '/etc/condor/condor_config.local.modifications'))
-            
+        log.verbose("Finished customizations for job '%s'" % job.id)
         for resource in good_resources:
             # Print details of the resource selected
             log.debug("Booting VM for job %s on %s:" % (job.id, resource.name))
