@@ -465,7 +465,7 @@ class HashTableJobContainer(JobContainer):
                 job.set_status("Scheduled")
                 self.sched_jobs[jobid] = job
                 del self.new_jobs[jobid]
-                #log.debug('Job %s marked as scheduled in the job container' % (jobid))
+                log.verbose('Job %s marked as scheduled in the job container' % (jobid))
                 return True
             else:
                 return False
@@ -478,7 +478,7 @@ class HashTableJobContainer(JobContainer):
                 job.set_status("Unscheduled")
                 self.new_jobs[jobid] = job
                 del self.sched_jobs[jobid]
-                #log.debug('Job %s marked as unscheduled in the job container' % (jobid))
+                log.verbose('Job %s marked as unscheduled in the job container' % (jobid))
                 return True
             else:
                 return False

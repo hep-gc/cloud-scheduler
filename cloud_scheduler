@@ -337,7 +337,10 @@ class Scheduler(threading.Thread):
 
                                     job.status = job.statuses[1]
                             break
+                        else:
+                            log.verbose("Failed to schedule job '%s' for user %s" % (job.id, user))
                     else:
+                        log.verbose("User %s vmtype %s already has share" % (user, job.req_vmtype))
                         # This user already has their share
                         break
                 # ENDFOR - for jobs in user's unscheduled job set
