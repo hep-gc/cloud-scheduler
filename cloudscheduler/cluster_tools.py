@@ -757,7 +757,7 @@ class NimbusCluster(ICluster):
         with self.vms_lock:
 
             # Print output, and parse the VM status from it
-            vm.hostname = self._extract_hostname(poll_out)
+            #vm.hostname = self._extract_hostname(poll_out)
             new_status = self._extract_state(poll_out)
             if new_status == "Destroyed":
                 log.info("Discarding VM %s because Nimbus has destroyed it" % vm.id)
