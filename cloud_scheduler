@@ -1206,6 +1206,8 @@ def main():
         config.setup()
 
     # Set up logging
+    logging._srcfile = None 
+    logging.logProcesses = 0
     log.setLevel(utilities.LEVELS[config.log_level])
     log_formatter = logging.Formatter(config.log_format)
     if config.log_stdout:
