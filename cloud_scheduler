@@ -1191,10 +1191,7 @@ class GetClouds(threading.Thread):
 ##
 ## Functions
 ##
-
 def main():
-    # Log entry message (for timestamp in log)
-    log.info("Cloud Scheduler starting...")
 
     # Create a parser and process commandline arguments
     version_str = "Cloud Scheduler " + version.version
@@ -1237,7 +1234,12 @@ def main():
     if not config.log_location and not config.log_stdout:
         null_handler = utilities.NullHandler()
         log.addHandler(null_handler)
-
+    # Log entry message (for timestamp in log)
+    log.info("Cloud Scheduler starting...")
+    if config.log_level == 'VERBOSE':
+        log.warning("WARNING - using VERBOSE logging will result is poor performance with more than a few hundred jobs in the condor queue")
+    if config.log_level == 'DEBUG':
+        log.warning("WARNING - using DEBUG logging can result in poor performance with more than a few thousand jobs in the condor queue")
 
     # Command line options take precedence, so replace config file
     # option with command line option
@@ -1365,6 +1367,7 @@ def main():
         thread.join()
 
     log.info("Cloud Scheduler stopped. Bye!")
+
     sys.exit()
 
 
@@ -1410,7 +1413,6 @@ def set_options(parser):
     parser.add_option("-m", "--MDS", dest="mds_server", metavar="SERVER",
                       help="Designate an MDS server from which cloud cluster "
                            "information is obtained")
-
 
 ##
 ## Main Functionality
