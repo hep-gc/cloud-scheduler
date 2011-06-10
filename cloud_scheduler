@@ -140,7 +140,8 @@ class JobPoller(threading.Thread):
     def run(self):
         try:
             log.info("Starting job polling...")
-
+            prev_req_vmtypes = []
+            new_req_vmtypes = []
             while not self.quit:
                 log.debug("Polling job scheduler")
 
@@ -153,7 +154,18 @@ class JobPoller(threading.Thread):
                     log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
                 del condor_jobs
 
+                new_req_vmtypes = self.job_pool.get_required_vmtypes()
+                # What's no longer needed
+                taken_out = set(prev_req_vmtypes) - set(new_req_vmtypes)
+                for vmtype in taken_out:
+                    log.info("%s vmtype removed from required types" % vmtype)
+                # What's been added?
+                added_in = set(new_req_vmtypes) - set(prev_req_vmtypes)
+                for vmtype in added_in:
+                    log.info("%s vmtype added to required types" % vmtype)
+
                 log.debug("Job Poller waiting %ds..." % self.polling_interval)
+                prev_req_vmtypes = new_req_vmtypes
                 sleep_tics = self.polling_interval
                 while (not self.quit) and sleep_tics > 0:
                     time.sleep(1)
@@ -254,10 +266,10 @@ class Scheduler(threading.Thread):
 
         # Destroy all VMs and finish
         remaining_vms = []
-        log.debug("### Destroying all remaining VMs and exiting :-(")
+        log.info("### Destroying all remaining VMs and exiting :-(")
         for cluster in self.resource_pool.resources:
             for vm in reversed(cluster.vms):
-                log.debug("Destroying VM: %s" % vm.id)
+                log.info("Destroying VM: %s" % vm.id)
                 vm.log()
                 destroy_ret = cluster.vm_destroy(vm)
                 if destroy_ret != 0:
@@ -275,7 +287,6 @@ class Scheduler(threading.Thread):
 
     def scheduler_fair_share(self):
         ## Figure out distribution of VMs requested and available
-        current_types = {}
         current_types = self.resource_pool.vmtype_distribution()
         desired_types = self.job_pool.job_type_distribution()
         # Negative difference means will need to create that type
@@ -289,8 +300,9 @@ class Scheduler(threading.Thread):
             if type not in current_types.keys():
                 diff_types[type] = -desired_types[type]
 
-        del desired_types
-        del current_types
+        if len(diff_types) == 0:
+            if len(self.job_pool.get_required_vmtypes()) != 0:
+                log.error("Possible discrepency in diff_types detected.")
         ## Check failures to ban jobs on affected resources
         self.resource_pool.check_failures()
 
