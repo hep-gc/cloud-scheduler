@@ -824,7 +824,7 @@ class Cleanup(threading.Thread):
         for cluster in self.resource_pool.resources:
             for vm in reversed(cluster.vms):
                 if vm.vmtype not in req_vmtypes and (not vm.idle_start or vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
-                    log.debug("VM of type %s id %s no longer required" % (vm.vmtype, vm.id))
+                    log.info("VM of type %s id %s no longer required - shutting down" % (vm.vmtype, vm.id))
                     destroy_ret = cluster.vm_destroy(vm)
                     if destroy_ret != 0:
                         log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
@@ -899,7 +899,7 @@ class Cleanup(threading.Thread):
             for cluster in resources:
                 for vm in cluster.vms:
                     if vm == machine:
-                        log.debug("Shutting down VM: %s that has not registered with Condor after %i sec" % (vm.id, config.condor_register_time_limit))
+                        log.info("Shutting down VM: %s that has not registered with Condor after %i sec" % (vm.id, config.condor_register_time_limit))
                         cluster.vm_destroy(machine, return_resources=(not retired))
                         killedIt = True
                         break
@@ -917,7 +917,7 @@ class Cleanup(threading.Thread):
             for cluster in resources:
                 for vm in cluster.vms:
                     if vm == machine:
-                        log.debug("Shutting down VM: %s that has finished Retiring" % (vm.id))
+                        log.info("Shutting down VM: %s that has finished Retiring" % (vm.id))
                         cluster.vm_destroy(machine, return_resources=(not retired))
                         killedIt = True
                         break
@@ -1013,7 +1013,7 @@ class Cleanup(threading.Thread):
         for vm in to_shutdown:
             log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
             cluster = self.resource_pool.get_cluster_with_vm(vm)
-            log.debug("VM %s on cluster %s shutting down" % (vm.id, cluster.name))
+            log.info("VM %s on cluster %s shutting down" % (vm.id, cluster.name))
             destroy_ret = cluster.vm_destroy(vm)
             if destroy_ret != 0:
                 log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
@@ -1114,7 +1114,7 @@ class Cleanup(threading.Thread):
                         # Unable to use condor_off on this machine for some reason - name is bad
                         bad_name_vm = self.resource_pool.find_vm_with_addr(busy_vms[x]['MyAddress'])
                         if bad_name_vm != None:
-                            log.debug("Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
+                            log.info("Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
                             cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
                             destroy_ret = cluster.vm_destroy(bad_name_vm)
                             if destroy_ret != 0:
@@ -1248,6 +1248,9 @@ def main():
         log.warning("WARNING - using VERBOSE logging will result is poor performance with more than a few hundred jobs in the condor queue")
     if config.log_level == 'DEBUG':
         log.warning("WARNING - using DEBUG logging can result in poor performance with more than a few thousand jobs in the condor queue")
+
+    # Log the config 
+    log.info(get_cloud_scheduler_config_output())
 
     # Command line options take precedence, so replace config file
     # option with command line option
@@ -1422,6 +1425,14 @@ def set_options(parser):
                       help="Designate an MDS server from which cloud cluster "
                            "information is obtained")
 
+def get_cloud_scheduler_config_output():
+    outputlist = []
+    for attr in dir(config):
+        if not attr.startswith('_'):
+            pair = attr + ': ' + str(getattr(config, attr))
+            outputlist.append(pair)
+            outputlist.append(', ')
+    return "".join(outputlist)
 ##
 ## Main Functionality
 ##
