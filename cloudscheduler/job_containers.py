@@ -504,3 +504,17 @@ class HashTableJobContainer(JobContainer):
 
             return matching_jobs
 
+    def get_unscheduled_user_jobs_by_type(self, user, prioritized=False):
+        with self.lock:
+            unsched = self.get_unscheduled_jobs_by_users()
+            return_value = {}
+            if user in unsched.keys():
+                for job in unsched[user]:
+                    if job.req_vmtype not in return_value:
+                        return_value[job.req_vmtype] = []
+                    return_value[job.req_vmtype].append(job)
+            # Sort if needed
+            if prioritized:
+                for job_list in return_value.values():
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
+        return return_value
