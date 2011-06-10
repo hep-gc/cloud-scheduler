@@ -43,7 +43,9 @@ class JobProxyRefresher(threading.Thread):
                 jobs = self.job_pool.job_container.get_all_jobs()
                 log.debug("Refreshing job user proxies. [%d proxies to process]" % (len(jobs)))
                 for job in jobs:
-                    log.debug("Proxy for job %s expires in %s" % (job.id, job.get_x509userproxy_expiry_time() - datetime.datetime.utcnow()))
+                    jobcertextime = job.get_x509userproxy_expiry_time()
+                    if jobcertextime:
+                        log.debug("Proxy for job %s expires in %s" % (job.id, jobcertextime - datetime.datetime.utcnow()))
                     if job.is_proxy_expired():
                         log.warning("Proxy for job %s is expired.  Skipping proxy renewal for this job." % (job.id))
                     elif job.needs_proxy_renewal():
