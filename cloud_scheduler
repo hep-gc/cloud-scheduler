@@ -498,12 +498,9 @@ class Scheduler(threading.Thread):
 
         # Add the owner restriction requirement
         # This is to prevent a VM started by a user being recycled to run jobs from another user.
-        # The user's DN is extracted from the x509userproxysubject variable in the job classad.
-        # This variable is set by condor (either the client or server), and cannot be overwritten by
-        # the user.
-        if job.get_x509userproxysubject() != None:
-            start_requirement = 'START=(x509userproxysubject == "%s")\n' % (job.get_x509userproxysubject())
-            log.debug("Adding START requirement to match user's DN:\n%s" % start_requirement)
+        if job.user != None:
+            start_requirement = 'START=(Owner == "%s")\n' % (job.user)
+            log.debug("Adding START requirement to match resource's original owner:\n%s" % start_requirement)
             local_modifications += start_requirement
 
         customizations.append((local_modifications, '/etc/condor/condor_config.local.modifications'))
