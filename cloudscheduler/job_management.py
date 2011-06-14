@@ -785,6 +785,9 @@ class JobPool:
             else:
                 type_desired[vmtype] = 1 * config.high_priority_job_weight
         num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
+        if num_users == 0:
+            log.debug("All users held, completed, or banned")
+            return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
         return type_desired
@@ -833,6 +836,9 @@ class JobPool:
         num_users = held_user_adjust + len(set(user_types.keys() + high_user_types.keys()))
         if num_users != 0:
             num_users = Decimal('1.0') / num_users
+        else:
+            log.debug("All users' jobs held, complete, or banned")
+            return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] *= num_users
         return type_desired

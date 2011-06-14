@@ -62,7 +62,7 @@ class VM:
     maps specific cloud software state to these global states.
     """
 
-    def __init__(self, name="", id="", vmtype="",
+    def __init__(self, name="", id="", vmtype="", user="",
             hostname="", ipaddress="", clusteraddr="",
             cloudtype="", network="public", cpuarch="x86",
             image="", memory=0, mementry=0,
@@ -75,6 +75,7 @@ class VM:
         id           - (str) The id tag for the VM. Whatever is used to access the vm
                        by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
         vmtype       - (str) The condor VMType attribute for the VM
+        user         - (str) The user who 'owns' this VM
         hostname     - (str) The first part of hostname given to VM
         ipaddress    - (str) The IP Address of the VM
         condorname   - (str) The name of the VM as it's registered with Condor
@@ -97,6 +98,7 @@ class VM:
         self.name = name
         self.id = id
         self.vmtype = vmtype
+        self.user = user
         self.hostname = hostname
         self.ipaddress = ipaddress
         self.condorname = None
@@ -138,19 +140,19 @@ class VM:
           % (name, id, clusteraddr, image, memory))
 
     def log(self):
-        log.info("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
+        log.info("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype,  self.user, self.status, self.clusteraddr))
     def log_dbg(self):
-        log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
+        log.debug("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.user, self.status, self.clusteraddr))
 
     def get_vm_info(self):
-        output = "%-11s %-23s %-20s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.status[-8:])
+        output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.status[-8:])
         if self.override_status != None:
-            output = "%-11s %-23s %-20s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.override_status[-12:])
+            output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.override_status[-12:])
         return output
 
     @staticmethod
     def get_vm_info_header():
-        return "%-11s %-23s %-20s %-12s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "STATUS", "CLUSTER")
+        return "%-11s %-23s %-20s %-10s %-12s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "USER", "STATUS", "CLUSTER")
 
     def get_vm_info_pretty(self):
         output = get_vm_info_header()
@@ -507,7 +509,7 @@ class NimbusCluster(ICluster):
         output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB)
         return output
 
-    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
             job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
 
@@ -634,7 +636,7 @@ class NimbusCluster(ICluster):
 
 
         # Create a VM object to represent the newly created VM
-        new_vm = VM(name = vm_name, id = vm_id, vmtype = vm_type,
+        new_vm = VM(name = vm_name, id = vm_id, vmtype = vm_type, user = vm_user,
             hostname = vm_hostname, ipaddress = vm_ip, 
             clusteraddr = self.network_address,
             cloudtype = self.cloud_type,network = vm_networkassoc,
@@ -1100,7 +1102,7 @@ class EC2Cluster(ICluster):
         connection = self._get_connection()
 
 
-    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
                   job_per_core=False):
@@ -1207,7 +1209,7 @@ class EC2Cluster(ICluster):
             return self.ERROR
         log.debug("vm_create - Memory entry found in given cluster: %d" %
                                                                     vm_mementry)
-        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type,
+        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     cpuarch = vm_cpuarch, image= vm_image,

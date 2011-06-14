@@ -515,6 +515,7 @@ class Scheduler(threading.Thread):
 
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
                         'vm_networkassoc':job.req_network,
                         'vm_cpuarch':job.req_cpuarch,
                         'vm_image':job.req_imageloc,
@@ -532,6 +533,7 @@ class Scheduler(threading.Thread):
             elif resource.__class__.__name__ == "EC2Cluster":
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
                         'vm_networkassoc':job.req_network,
                         'vm_cpuarch':job.req_cpuarch,
                         'vm_image':job.req_ami,
