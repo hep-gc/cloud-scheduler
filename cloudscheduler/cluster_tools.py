@@ -76,6 +76,7 @@ class VM:
                        by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
         vmtype       - (str) The condor VMType attribute for the VM
         user         - (str) The user who 'owns' this VM
+        uservmtype   - (str) Aggregate type in form 'user:vmtype'
         hostname     - (str) The first part of hostname given to VM
         ipaddress    - (str) The IP Address of the VM
         condorname   - (str) The name of the VM as it's registered with Condor
@@ -99,6 +100,7 @@ class VM:
         self.id = id
         self.vmtype = vmtype
         self.user = user
+        self.uservmtype = ':'.join([user,vmtype])
         self.hostname = hostname
         self.ipaddress = ipaddress
         self.condorname = None

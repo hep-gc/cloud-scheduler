@@ -121,6 +121,7 @@ class Job:
      #     (Have option to set them there, and default values)
         self.id           = GlobalJobId
         self.user         = Owner
+        self.uservmtype   = ':'.join([user, VMType])
         self.priority     = int(JobPrio)
         self.job_status   = int(JobStatus)
         self.cluster_id   = int(ClusterId)
@@ -306,7 +307,7 @@ class Job:
     # A method that will compare a job's requirements listed below with another job to see if they
     # all match.
     def has_same_reqs(self, job):
-        return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network
+        return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network and self.user == job.user
 
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
