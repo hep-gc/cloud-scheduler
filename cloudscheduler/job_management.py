@@ -369,9 +369,11 @@ class JobPool:
             self.job_query = self.job_query_SOAP
             
         if config.job_distribution_type.lower() == "normal":
-            self.job_type_distribution = self.job_type_distribution_normal
+            #self.job_type_distribution = self.job_type_distribution_normal
+            self.job_type_distribution = self.job_usertype_distribution_normal
         elif config.job_distribution_type.lower() == "split":
-            self.job_type_distribution = self.job_type_distribution_multi_vmtype
+            #self.job_type_distribution = self.job_type_distribution_multi_vmtype
+            self.job_type_distribution = self.job_usertype_distribution_multi_vmtype
 
     # Method to get all jobs in the JobPool
     # Returns a list of Job instances, or [] if there are no jobs in the the JobPool.
@@ -918,7 +920,7 @@ class JobPool:
         return type_desired
 
     # Modified version for uservmtype use
-    def job_type_distribution_multi_uservmtype(self):
+    def job_usertype_distribution_multi_vmtype(self):
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)

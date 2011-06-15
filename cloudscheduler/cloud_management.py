@@ -716,11 +716,15 @@ class ResourcePool:
     def get_uservmtypes_count(self, machineList):
         count = {}
         for vm in machineList:
-            if vm.has_key('VMType'):
-                if vm['VMType'] not in count:
-                    count[vm['VMType']] = 1
-                else:
-                    count[vm['VMType']] += 1
+            if vm.has_key('VMType') and vm.has_key('Start'):
+                userexp = re.search('(?<=Owner == ")\w+', vm['Start'])
+                if userexp:
+                    user = userexp.group(0)
+                    vmusertype = ':'.join([user, vm['VMType']])
+                    if vmusertype not in count:
+                        count[vmusertype] = 1
+                    else:
+                        count[vmusertype] += 1
         return count
 
     # Determines if the key value pairs in in criteria are in the dictionary
