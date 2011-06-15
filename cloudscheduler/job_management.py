@@ -121,7 +121,7 @@ class Job:
      #     (Have option to set them there, and default values)
         self.id           = GlobalJobId
         self.user         = Owner
-        self.uservmtype   = ':'.join([user, VMType])
+        self.uservmtype   = ':'.join([Owner, VMType])
         self.priority     = int(JobPrio)
         self.job_status   = int(JobStatus)
         self.cluster_id   = int(ClusterId)

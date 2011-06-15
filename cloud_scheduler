@@ -289,7 +289,7 @@ class Scheduler(threading.Thread):
     def scheduler_fair_share(self):
         ## Figure out distribution of VMs requested and available
         current_types = self.resource_pool.vmtype_distribution()
-        desired_types = self.job_pool.job_usertype_distribution()
+        desired_types = self.job_pool.job_type_distribution()
         # Negative difference means will need to create that type
         diff_types = {}
         for vmtype in current_types.keys():
@@ -347,8 +347,8 @@ class Scheduler(threading.Thread):
                         log.verbose("Job '%s' not running or scheduled, trying to schedule it" % job.id)
     
                         # Check that type of VM for job is needed
-                        if job.uservmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
                         #if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
+                        if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
                             if self.sched_resource_create_track(user, job):
                                 if job.job_per_core:
                                     for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, \
@@ -878,7 +878,7 @@ class Cleanup(threading.Thread):
                     #if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
                     if job.job_status == self.IDLE and (job.uservmtype not in vms.keys() or (vms[job.uservmtype] < job_req_count[job.uservmtype])):
                         self.job_pool.unschedule(job)
-                        job_req_count[job.req_vmtype] -= 1
+                        #job_req_count[job.req_vmtype] -= 1
                         job_req_count[job.uservmtype] -= 1
 
     def clean_check_diff_vms_machines(self, machineList, retired=False):
