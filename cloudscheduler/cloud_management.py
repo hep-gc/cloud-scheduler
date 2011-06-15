@@ -722,6 +722,7 @@ class ResourcePool:
                 else:
                     count[vm['VMType']] += 1
         return count
+
     # Determines if the key value pairs in in criteria are in the dictionary
     def match_criteria(self, base, criteria):
         return criteria == dict(set(base.items()).intersection(set(criteria.items())))
@@ -734,15 +735,15 @@ class ResourcePool:
         return matches
 
     # Get a dictionary of types of VMs the scheduler is currently tracking
-    def get_vmtypes_count_internal(self):
-        types = {}
-        for cluster in self.resources:
-            for vm in cluster.vms:
-                if vm.vmtype in types:
-                    types[vm.vmtype] += 1
-                else:
-                    types[vm.vmtype] = 1
-        return types
+    #def get_vmtypes_count_internal(self):
+        #types = {}
+        #for cluster in self.resources:
+            #for vm in cluster.vms:
+                #if vm.vmtype in types:
+                    #types[vm.vmtype] += 1
+                #else:
+                    #types[vm.vmtype] = 1
+        #return types
 
     # Get a dictionary of uservmtypes of VMs the scheduler is currently tracking
     def get_vmtypes_count_internal(self):
@@ -834,19 +835,19 @@ class ResourcePool:
     # VM Type resource usage
     # Counts up how much/many of each resource (RAM, Cores, Storage)
     # are being used by each type of VM
-    def vmtype_resource_usage(self):
-        types = {}
-        for cluster in self.resources:
-            for vm in cluster.vms:
-                if vm.vmtype in types.keys():
-                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
-                else:
-                    types[vm.vmtype] = []
-                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
-        results = {}
-        for vmtype in types.keys():
-            results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
-        return results
+    #def vmtype_resource_usage(self):
+        #types = {}
+        #for cluster in self.resources:
+            #for vm in cluster.vms:
+                #if vm.vmtype in types.keys():
+                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+                #else:
+                    #types[vm.vmtype] = []
+                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+        #results = {}
+        #for vmtype in types.keys():
+            #results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
+        #return results
 
     # VM Type resource usage w/ uservmtype
     # Counts up how much/many of each resource (RAM, Cores, Storage)
@@ -865,20 +866,20 @@ class ResourcePool:
             results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
         return results
 
-    def vm_slots_used(self):
-        types = {}
-        for cluster in self.resources:
-            for vm in cluster.vms:
-                if not types.has_key(vm.vmtype):
-                    types[vm.vmtype] = []
-                if hasattr(vm, "job_per_core") and vm.job_per_core:
-                    for core in range(vm.cpucores):
-                        types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
-                else:
-                    types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
-        return types
+    #def vm_slots_used(self):
+        #types = {}
+        #for cluster in self.resources:
+            #for vm in cluster.vms:
+                #if not types.has_key(vm.vmtype):
+                    #types[vm.vmtype] = []
+                #if hasattr(vm, "job_per_core") and vm.job_per_core:
+                    #for core in range(vm.cpucores):
+                        #types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+                #else:
+                    #types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
+        #return types
 
-    def vm_slots_used_uservmtype(self):
+    def vm_slots_used(self):
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:

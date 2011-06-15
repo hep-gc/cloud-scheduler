@@ -154,7 +154,8 @@ class JobPoller(threading.Thread):
                     log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
                 del condor_jobs
 
-                new_req_vmtypes = self.job_pool.get_required_vmtypes()
+                #new_req_vmtypes = self.job_pool.get_required_vmtypes()
+                new_req_vmtypes = self.job_pool.get_required_uservmtypes()
                 # What's no longer needed
                 taken_out = set(prev_req_vmtypes) - set(new_req_vmtypes)
                 for vmtype in taken_out:
@@ -288,17 +289,17 @@ class Scheduler(threading.Thread):
     def scheduler_fair_share(self):
         ## Figure out distribution of VMs requested and available
         current_types = self.resource_pool.vmtype_distribution()
-        desired_types = self.job_pool.job_type_distribution()
+        desired_types = self.job_pool.job_usertype_distribution()
         # Negative difference means will need to create that type
         diff_types = {}
-        for type in current_types.keys():
-            if type in desired_types.keys():
-                diff_types[type] = current_types[type] - desired_types[type]
+        for vmtype in current_types.keys():
+            if vmtype in desired_types.keys():
+                diff_types[vmtype] = current_types[vmtype] - desired_types[vmtype]
             else:
-                diff_types[type] = 1 # changed from 0 to handle users with multiple job types
-        for type in desired_types.keys():
-            if type not in current_types.keys():
-                diff_types[type] = -desired_types[type]
+                diff_types[vmtype] = 1 # changed from 0 to handle users with multiple job types
+        for vmtype in desired_types.keys():
+            if vmtype not in current_types.keys():
+                diff_types[vmtype] = -desired_types[vmtype]
 
         if len(diff_types) == 0:
             if len(self.job_pool.get_required_vmtypes()) != 0:
@@ -346,7 +347,8 @@ class Scheduler(threading.Thread):
                         log.verbose("Job '%s' not running or scheduled, trying to schedule it" % job.id)
     
                         # Check that type of VM for job is needed
-                        if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
+                        if job.uservmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
+                        #if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
                             if self.sched_resource_create_track(user, job):
                                 if job.job_per_core:
                                     for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, \
@@ -358,7 +360,8 @@ class Scheduler(threading.Thread):
                                 log.verbose("Failed to schedule job '%s' for user %s" % (job.id, user))
                                 break # only try one per user's job types
                         else:
-                            log.verbose("User %s vmtype %s already has share" % (user, job.req_vmtype))
+                            #log.verbose("User %s vmtype %s already has share" % (user, job.req_vmtype))
+                            log.verbose("User %s vmtype %s already has share" % (user, job.uservmtype))
                             # This user already has their share
                             break
                     # ENDFOR - for jobs in user's unscheduled job set
@@ -366,15 +369,18 @@ class Scheduler(threading.Thread):
 
     def sched_allow_over_allocation(self, diff_types, job):
         allow = False
-        retiring = self.resource_pool.retiring_vms_of_type(job.req_vmtype)
-        if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] > 0 and len(retiring) == 0:
+        #retiring = self.resource_pool.retiring_vms_of_type(job.req_vmtype)
+        retiring = self.resource_pool.retiring_vms_of_usertype(job.uservmtype)
+        #if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] > 0 and len(retiring) == 0:
+        if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] > 0 and len(retiring) == 0:
             over_allocate = True
             # Job may be candidate to over allocate if all underallocated jobs have no available resources
             unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
             for user in unscheduled_jobs_by_users.keys():
                 userjob = unscheduled_jobs_by_users[user][0]
                 # Check for an underallocated job that has resources
-                if userjob and userjob.req_vmtype in diff_types.keys() and diff_types[userjob.req_vmtype] <= 0:
+                #if userjob and userjob.req_vmtype in diff_types.keys() and diff_types[userjob.req_vmtype] <= 0:
+                if userjob and userjob.uservmtype in diff_types.keys() and diff_types[userjob.uservmtype] <= 0:
                     (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(userjob.req_network, \
                         userjob.req_cpuarch, userjob.req_memory, userjob.req_cpucores, userjob.req_storage, \
                         userjob.req_ami, userjob.req_imageloc, userjob.target_clouds)
@@ -563,7 +569,8 @@ class Scheduler(threading.Thread):
 
     def need_vm(self, user, userjob):
         #TODO: clean this mess
-        vmtype = userjob.req_vmtype
+        #vmtype = userjob.req_vmtype
+        vmtype = userjob.uservmtype
         cores = userjob.req_cpucores
         if userjob.job_per_core:
             cores = 1
@@ -676,13 +683,15 @@ class Cleanup(threading.Thread):
         # Count the number of jobs that require a certain VM type,
         # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
         log.debug("Gathering required VM types.")
-        required_vmtypes = self.job_pool.get_required_vmtypes()
+        #required_vmtypes = self.job_pool.get_required_vmtypes()
+        required_vmtypes = self.job_pool.get_required_uservmtypes()
 
         machineList = self.resource_pool.machine_list
         if machineList:
 
             # Remove excess VMs when available VM type exceedes required by jobs.
-            required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
+            #required_vmtypes_dict = self.job_pool.get_required_vmtypes_dict()
+            required_vmtypes_dict = self.job_pool.get_required_uservmtypes_dict()
             if self.job_pool.last_query:
                 available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
                 log.debug("Removing excess VMs from the system.")
