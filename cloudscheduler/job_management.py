@@ -745,7 +745,7 @@ class JobPool:
         for job in self.job_container.get_all_jobs():
             if job.uservmtype not in required_vmtypes and job.job_status <= self.RUNNING \
                and not job.banned:
-                required_vmtypes.append(job.req_vmtype)
+                required_vmtypes.append(job.uservmtype)
 
         log.debug("get_required_uservmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes

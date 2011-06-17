@@ -725,6 +725,8 @@ class ResourcePool:
                         count[vmusertype] = 1
                     else:
                         count[vmusertype] += 1
+                else:
+                    log.warning("VM Missing expected Start = ( Owner=='user') restriction - are the condor init scripts on the VM up-to-date?")
         return count
 
     # Determines if the key value pairs in in criteria are in the dictionary

@@ -714,7 +714,7 @@ class Cleanup(threading.Thread):
             current_types = {}
             current_types = self.resource_pool.vmtype_distribution()
             #desired_types = self.job_pool.job_type_distribution()
-            desired_types = self.job_pool.job_usertype_distribution()
+            desired_types = self.job_pool.job_type_distribution()
             # Negative difference means will need to create that type
             diff_types = {}
             for type in current_types.keys():
@@ -967,7 +967,7 @@ class Cleanup(threading.Thread):
     def remove_idle_machines(self, machineList, to_remove):
         for vmtype, count in to_remove.iteritems():
             log.debug("Attemping to remove %i VMs of type %s" % (count, vmtype))
-            criteria = {'VMType': vmtype, 'State': 'Unclaimed', 'Activity': 'Idle'}
+            criteria = {'VMType': vmtype.split(':')[1], 'State': 'Unclaimed', 'Activity': 'Idle'}
             unused_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
             num_to_shutdown = 0
             len_unused = len(unused_vms_of_type)
@@ -986,7 +986,7 @@ class Cleanup(threading.Thread):
                 found_vm = False
                 for cluster in self.resource_pool.resources:
                     for vm in cluster.vms:
-                        if utilities.match_host_with_condor_host(vm.hostname, condor_name) and vm.vmtype == vmtype:
+                        if utilities.match_host_with_condor_host(vm.hostname, condor_name) and vm.uservmtype == vmtype:
                             found_vm = True
                             # Verify that all slots of this VM are idle
                             is_part_of_machine = {'Machine': vm.hostname}
@@ -1087,6 +1087,7 @@ class Cleanup(threading.Thread):
         internal_vms = self.resource_pool.get_vmtypes_count_internal()
         #sched_jobs = self.job_pool.job_container.get_scheduled_jobs_by_type()
         sched_jobs = self.job_pool.job_container.get_scheduled_jobs_by_usertype()
+        unsched_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
         for vmtype, val in num_to_change.iteritems():
             #retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
             retiring_vms_of_type = self.resource_pool.retiring_vms_of_usertype(vmtype)
@@ -1097,7 +1098,7 @@ class Cleanup(threading.Thread):
                     retiring_vms_of_type.remove(vm)
             adjusted_val = val - len(retiring_vms_of_type)
             if adjusted_val > 0:
-                criteria = {'VMType': vmtype}
+                criteria = {'VMType': vmtype.split(':')[1]}
                 tot_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
                 if vmtype in internal_vms.keys() and internal_vms[vmtype] > len(tot_vms_of_type):
                     # There are Starting or Unregistered VMs of this type - may not want to Retire yet
@@ -1114,7 +1115,7 @@ class Cleanup(threading.Thread):
                         successful_destroy = 0
                         for start_vm in islice(starting_vms_of_type, num_start_to_destroy):
                             # Since the machine could not retire make sure not to destroy the last VM of type
-                            if vmtype in internal_vms.keys() and vmtype in sched_jobs.keys() and internal_vms[vmtype] <= len(sched_jobs[vmtype]):
+                            if vmtype in internal_vms.keys() and vmtype in sched_jobs.keys() and (internal_vms[vmtype] <= len(sched_jobs[vmtype])) and vmtype not in unsched_jobs.keys():
                                 # fewer or equal vms left that trying to shutdown
                                 continue
                             vm_in_cluster = self.resource_pool.get_cluster_with_vm(start_vm)
@@ -1127,7 +1128,7 @@ class Cleanup(threading.Thread):
                         adjusted_val -= successful_destroy
                         if adjusted_val <= 0:
                             continue
-                criteria = {'VMType': vmtype, 'Activity': 'Busy'}
+                criteria = {'VMType': vmtype.split(':')[1], 'Activity': 'Busy'}
                 busy_vms = self.resource_pool.find_in_where(machineList, criteria)
                 for busy_vm in reversed(busy_vms):
                     vm_in_cluster = None
