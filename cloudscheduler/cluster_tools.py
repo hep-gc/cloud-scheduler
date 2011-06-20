@@ -571,6 +571,17 @@ class NimbusCluster(ICluster):
 
         nimbus_files = [vm_epr, vm_metadata, vm_deploymentrequest, vm_optional]
 
+        # Create cached copy of job proxy to be used by VM for startup and shutdown.
+        vm_proxy_file_path = None
+        if job_proxy_file_path:
+            try:
+                vm_proxy_file_path = self._cache_proxy(job_proxy_file_path)
+                log.debug("Cached proxy to '%s'" % vm_proxy_file_path)
+            except:
+                log.exception("Problem caching proxy.")
+                _remove_files(nimbus_files)
+                return -1
+
         # Create the workspace command as a list (private method)
         ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest, optional_file=vm_optional)
         
@@ -579,14 +590,14 @@ class NimbusCluster(ICluster):
 
         # Execute the workspace create command: returns immediately.
         env = None;
-        if job_proxy_file_path != None:
-            env = {'X509_USER_PROXY':job_proxy_file_path}
-            log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (job_proxy_file_path))
+        if vm_proxy_file_path != None:
+            env = {'X509_USER_PROXY':vm_proxy_file_path}
+            log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (vm_proxy_file_path))
         
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
         if (create_return != 0):
             log.warning("Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
-            _remove_files(nimbus_files)
+            _remove_files(nimbus_files + [vm_proxy_file_path])
             err_type = self._extract_create_error(create_err)
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
             if err_type == 'NoProxy':
@@ -597,13 +608,6 @@ class NimbusCluster(ICluster):
             return create_return
 
         log.debug("Nimbus create command executed.")
-
-        if job_proxy_file_path:
-            try:
-                job_proxy_file_path = self._cache_proxy(job_proxy_file_path)
-                log.debug("Cached proxy to '%s'" % job_proxy_file_path)
-            except:
-                log.exception("Problem caching proxy. Continuing without")
 
         log.debug("Deleting temporary Nimbus Metadata files")
         _remove_files(nimbus_files)
@@ -645,7 +649,7 @@ class NimbusCluster(ICluster):
             cpuarch = vm_cpuarch, image = vm_image,
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
             storage = vm_storage, keep_alive = vm_keepalive, 
-            proxy_file = job_proxy_file_path, 
+            proxy_file = vm_proxy_file_path, 
             myproxy_creds_name = myproxy_creds_name, myproxy_server = myproxy_server, 
             myproxy_server_port = myproxy_server_port, job_per_core = job_per_core)
 
