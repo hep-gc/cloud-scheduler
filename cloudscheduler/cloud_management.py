@@ -713,6 +713,22 @@ class ResourcePool:
                     count[vm['VMType']] += 1
         return count
 
+    def get_uservmtypes_count(self, machineList):
+        count = {}
+        for vm in machineList:
+            if vm.has_key('VMType') and vm.has_key('Start'):
+                userexp = re.search('(?<=Owner == ")\w+', vm['Start'])
+                if userexp:
+                    user = userexp.group(0)
+                    vmusertype = ':'.join([user, vm['VMType']])
+                    if vmusertype not in count:
+                        count[vmusertype] = 1
+                    else:
+                        count[vmusertype] += 1
+                else:
+                    log.warning("VM Missing expected Start = ( Owner=='user') restriction - are the condor init scripts on the VM up-to-date?")
+        return count
+
     # Determines if the key value pairs in in criteria are in the dictionary
     def match_criteria(self, base, criteria):
         return criteria == dict(set(base.items()).intersection(set(criteria.items())))
@@ -725,16 +741,27 @@ class ResourcePool:
         return matches
 
     # Get a dictionary of types of VMs the scheduler is currently tracking
+    #def get_vmtypes_count_internal(self):
+        #types = {}
+        #for cluster in self.resources:
+            #for vm in cluster.vms:
+                #if vm.vmtype in types:
+                    #types[vm.vmtype] += 1
+                #else:
+                    #types[vm.vmtype] = 1
+        #return types
+
+    # Get a dictionary of uservmtypes of VMs the scheduler is currently tracking
     def get_vmtypes_count_internal(self):
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.vmtype in types:
-                    types[vm.vmtype] += 1
+                if vm.uservmtype in types:
+                    types[vm.uservmtype] += 1
                 else:
-                    types[vm.vmtype] = 1
+                    types[vm.uservmtype] = 1
         return types
-
+    
     # Count of VMs in the system
     def vm_count(self):
         count = 0
@@ -814,32 +841,61 @@ class ResourcePool:
     # VM Type resource usage
     # Counts up how much/many of each resource (RAM, Cores, Storage)
     # are being used by each type of VM
+    #def vmtype_resource_usage(self):
+        #types = {}
+        #for cluster in self.resources:
+            #for vm in cluster.vms:
+                #if vm.vmtype in types.keys():
+                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+                #else:
+                    #types[vm.vmtype] = []
+                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+        #results = {}
+        #for vmtype in types.keys():
+            #results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
+        #return results
+
+    # VM Type resource usage w/ uservmtype
+    # Counts up how much/many of each resource (RAM, Cores, Storage)
+    # are being used by each type of VM
     def vmtype_resource_usage(self):
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.vmtype in types.keys():
-                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+                if vm.uservmtype in types.keys():
+                    types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
                 else:
-                    types[vm.vmtype] = []
-                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+                    types[vm.uservmtype] = []
+                    types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
         results = {}
         for vmtype in types.keys():
             results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
-        del types
         return results
+
+    #def vm_slots_used(self):
+        #types = {}
+        #for cluster in self.resources:
+            #for vm in cluster.vms:
+                #if not types.has_key(vm.vmtype):
+                    #types[vm.vmtype] = []
+                #if hasattr(vm, "job_per_core") and vm.job_per_core:
+                    #for core in range(vm.cpucores):
+                        #types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+                #else:
+                    #types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
+        #return types
 
     def vm_slots_used(self):
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:
-                if not types.has_key(vm.vmtype):
-                    types[vm.vmtype] = []
+                if not types.has_key(vm.uservmtype):
+                    types[vm.uservmtype] = []
                 if hasattr(vm, "job_per_core") and vm.job_per_core:
                     for core in range(vm.cpucores):
-                        types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+                        types[vm.uservmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
                 else:
-                    types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
+                    types[vm.uservmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
         return types
 
     # Take the current and previous machineLists
@@ -1227,6 +1283,15 @@ class ResourcePool:
                         retiring.append(vm)
         return retiring
 
+    def retiring_vms_of_usertype(self, vmtype):
+        retiring = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.uservmtype == vmtype:
+                    if vm.override_status == 'Retiring':
+                        retiring.append(vm)
+        return retiring
+
     def get_starting_of_type(self, vmtype):
         starting = []
         for cluster in self.resources:
@@ -1236,6 +1301,14 @@ class ResourcePool:
                         starting.append(vm)
         return starting
 
+    def get_starting_of_usertype(self, vmtype):
+        starting = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.uservmtype == vmtype:
+                    if vm.status == "Starting":
+                        starting.append(vm)
+        return starting
 
     def get_all_vms(self):
         all_vms = []

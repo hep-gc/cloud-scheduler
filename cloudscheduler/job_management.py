@@ -121,6 +121,7 @@ class Job:
      #     (Have option to set them there, and default values)
         self.id           = GlobalJobId
         self.user         = Owner
+        self.uservmtype   = ':'.join([Owner, VMType])
         self.priority     = int(JobPrio)
         self.job_status   = int(JobStatus)
         self.cluster_id   = int(ClusterId)
@@ -306,7 +307,7 @@ class Job:
     # A method that will compare a job's requirements listed below with another job to see if they
     # all match.
     def has_same_reqs(self, job):
-        return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network
+        return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network and self.user == job.user
 
 
 # A pool of all jobs read from the job scheduler. Stores all jobs until they
@@ -368,9 +369,11 @@ class JobPool:
             self.job_query = self.job_query_SOAP
             
         if config.job_distribution_type.lower() == "normal":
-            self.job_type_distribution = self.job_type_distribution_normal
+            #self.job_type_distribution = self.job_type_distribution_normal
+            self.job_type_distribution = self.job_usertype_distribution_normal
         elif config.job_distribution_type.lower() == "split":
-            self.job_type_distribution = self.job_type_distribution_multi_vmtype
+            #self.job_type_distribution = self.job_type_distribution_multi_vmtype
+            self.job_type_distribution = self.job_usertype_distribution_multi_vmtype
 
     # Method to get all jobs in the JobPool
     # Returns a list of Job instances, or [] if there are no jobs in the the JobPool.
@@ -725,11 +728,26 @@ class JobPool:
     def get_required_vmtypes(self):
         required_vmtypes = []
         for job in self.job_container.get_all_jobs():
-            if job.req_vmtype not in required_vmtypes and job.job_status != self.HELD \
-            and job.job_status != self.COMPLETE and not job.banned:
+            if job.req_vmtype not in required_vmtypes and job.job_status <= self.RUNNING \
+            and not job.banned:
                 required_vmtypes.append(job.req_vmtype)
 
         log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
+        return required_vmtypes
+
+    # Get required UserVM types
+    # Returns a list (of strings) containing the unique required VM types
+    # gathered from all jobs in the job pool (scheduled and unscheduled)
+    # Returns:
+    #   required_vmtypes - (list of strings) A list of required VM types
+    def get_required_uservmtypes(self):
+        required_vmtypes = []
+        for job in self.job_container.get_all_jobs():
+            if job.uservmtype not in required_vmtypes and job.job_status <= self.RUNNING \
+               and not job.banned:
+                required_vmtypes.append(job.uservmtype)
+
+        log.debug("get_required_uservmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes
 
     # Get required VM types
@@ -741,14 +759,30 @@ class JobPool:
     def get_required_vmtypes_dict(self):
         required_vmtypes = {}
         for job in self.job_container.get_all_jobs():
-            if job.req_vmtype not in required_vmtypes and job.job_status != self.HELD \
-               and job.job_status != self.COMPLETE and not job.banned:
+            if job.req_vmtype not in required_vmtypes and job.job_status <= self.RUNNING \
+               and not job.banned:
                 required_vmtypes[job.req_vmtype] = 1
-            elif job.job_status != self.HELD and job.job_status != self.COMPLETE and not job.banned:
+            elif job.job_status <= self.RUNNING and not job.banned:
                 required_vmtypes[job.req_vmtype] += 1
         log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
 
+    # Get required UserVM types
+    # Returns a dictionary containing the unique required VM types as a key
+    # gathered from all jobs in the job pool (scheduled and unscheduled), and
+    # count of the number of jobs needing that type as the value.
+    # Returns:
+    #   required_vmtypes - (dictionary, string key, int value) A dict of required VM types
+    def get_required_uservmtypes_dict(self):
+        required_vmtypes = {}
+        for job in self.job_container.get_all_jobs():
+            if job.uservmtype not in required_vmtypes and job.job_status <= self.RUNNING \
+               and not job.banned:
+                required_vmtypes[job.uservmtype] = 1
+            elif job.job_status <= self.RUNNING and not job.banned:
+                required_vmtypes[job.uservmtype] += 1
+        log.debug("get_required_vm_usertypes_dict - Required VM Type : Count " + str(required_vmtypes))
+        return required_vmtypes
 
     # Get desired vmtype distribution
     # Based on top jobs in user new_job queue determine
@@ -761,7 +795,7 @@ class JobPool:
         for user in new_jobs_by_users.keys():
             vmtype = None
             for job in new_jobs_by_users[user]:
-                if job.job_status != self.HELD and job.job_status != self.COMPLETE and not job.banned:
+                if job.job_status <= self.RUNNING and not job.banned:
                     vmtype = job.req_vmtype
                     break
             if vmtype == None:
@@ -774,7 +808,7 @@ class JobPool:
         for user in high_priority_jobs_by_users.keys():
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
-                if job.job_status != self.HELD and job.job_status != self.COMPLETE and not job.banned:
+                if job.job_status <= self.RUNNING and not job.banned:
                     vmtype = job.req_vmtype
                     break
             if vmtype == None:
@@ -785,6 +819,51 @@ class JobPool:
             else:
                 type_desired[vmtype] = 1 * config.high_priority_job_weight
         num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
+        if num_users == 0:
+            log.debug("All users held, completed, or banned")
+            return {}
+        for vmtype in type_desired.keys():
+            type_desired[vmtype] = type_desired[vmtype] / num_users
+        return type_desired
+
+    # Get desired uservmtype distribution
+    # Based on top jobs in user new_job queue determine
+    # a 'fair' distribution of vmtypes
+    def job_usertype_distribution_normal(self):
+        type_desired = {}
+        new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
+        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
+        held_user_adjust = 0
+        for user in new_jobs_by_users.keys():
+            vmtype = None
+            for job in new_jobs_by_users[user]:
+                if job.job_status <= self.RUNNING and not job.banned:
+                    vmtype = job.uservmtype
+                    break
+            if vmtype == None:
+                held_user_adjust -= 1 #This user is completely held
+                break
+            if vmtype in type_desired.keys():
+                type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+            else:
+                type_desired[vmtype] = 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+        for user in high_priority_jobs_by_users.keys():
+            vmtype = None
+            for job in high_priority_jobs_by_users[user]:
+                if job.job_status <= self.RUNNING and not job.banned:
+                    vmtype = job.uservmtype
+                    break
+            if vmtype == None:
+                held_user_adjust -= 1 # this user is completely held
+                break
+            if vmtype in type_desired.keys():
+                type_desired[vmtype] += 1 * config.high_priority_job_weight
+            else:
+                type_desired[vmtype] = 1 * config.high_priority_job_weight
+        num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
+        if num_users == 0:
+            log.debug("All users held, completed, or banned")
+            return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
         return type_desired
@@ -833,6 +912,61 @@ class JobPool:
         num_users = held_user_adjust + len(set(user_types.keys() + high_user_types.keys()))
         if num_users != 0:
             num_users = Decimal('1.0') / num_users
+        else:
+            log.debug("All users' jobs held, complete, or banned")
+            return {}
+        for vmtype in type_desired.keys():
+            type_desired[vmtype] *= num_users
+        return type_desired
+
+    # Modified version for uservmtype use
+    def job_usertype_distribution_multi_vmtype(self):
+        type_desired = {}
+        new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
+        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
+        held_user_adjust = 0
+        user_types = {}
+        high_user_types = {}
+        # Want to check all jobs of the highest priority in their list
+        for user in new_jobs_by_users.keys():
+            vmtypes = set()
+            highest_priority = new_jobs_by_users[user][0].priority
+            for job in new_jobs_by_users[user]:
+                if job.job_status <= self.RUNNING and job.priority == highest_priority and not job.banned:
+                    vmtypes.add(job.uservmtype)
+            if len(vmtypes) == 0: # user is held / complete
+                held_user_adjust -= 1
+            else:
+                user_types[user] = vmtypes
+        for user in high_priority_jobs_by_users.keys():
+            vmtypes = set()
+            highest_priority = high_priority_jobs_by_users[user][0].priority
+            for job in high_priority_jobs_by_users[user]:
+                if job.job_status <= self.RUNNING and job.priority == highest_priority and not job.banned:
+                    vmtypes.add(job.uservmtype)
+            if len(vmtypes) == 0: # user is held / complete
+                held_user_adjust -= 1
+            else:
+                high_user_types[user] = vmtypes
+        # Types for users gathered - figure out distributions
+        for user in user_types.keys():
+            for vmtype in user_types[user]:
+                if vmtype in type_desired.keys():
+                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+                else:
+                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+        for user in high_user_types.keys():
+            for vmtype in high_user_types[user]:
+                if vmtype in type_desired.keys():
+                    type_desired[vmtype] += Decimal('1.0') / len(high_user_types[user]) * config.high_priority_job_weight
+                else:
+                    type_desired[vmtype] = Decimal('1.0') / len(high_user_types[user]) * config.high_priority_job_weight
+        num_users = held_user_adjust + len(set(user_types.keys() + high_user_types.keys()))
+        if num_users != 0:
+            num_users = Decimal('1.0') / num_users
+        else:
+            log.debug("All users' jobs held, complete, or banned")
+            return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] *= num_users
         return type_desired
@@ -895,6 +1029,7 @@ class JobPool:
                 return None
         return failed
 
+    # Deprecated
     def hold_user(self, user):
         jobs = []
         for job in self.job_container.get_jobs_for_user(user):
@@ -903,6 +1038,7 @@ class JobPool:
         return self.hold_jobSOAP(jobs)
 
 
+    # Deprecated
     def release_user(self, user):
         jobs = []
         for job in self.job_container.get_jobs_for_user(user):
@@ -910,6 +1046,7 @@ class JobPool:
                 jobs.append(job)
         return self.release_jobSOAP(jobs)
 
+    # Deprecated
     def hold_vmtype(self, vmtype):
         jobs = []
         for job in self.job_container.get_all_jobs():
@@ -918,6 +1055,7 @@ class JobPool:
         ret = self.hold_jobSOAP(jobs)
         return ret
 
+    # Deprecated
     def release_vmtype(self, vmtype):
         jobs = []
         for job in self.job_container.get_all_jobs():
@@ -1033,6 +1171,7 @@ def _attr_list_to_dict(attr_list):
 #       until explicitly removed via a method call on the jobset indicating that
 #       the jobs have been scheduled (at which point, the JobPool will move the
 #       jobs into the 'Scheduled' list
+# Deprecated
 class JobSet:
 
     ## Instance Variables
