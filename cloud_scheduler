@@ -973,7 +973,18 @@ class Cleanup(threading.Thread):
             len_unused = len(unused_vms_of_type)
             # Make sure we don't try to shutdown more than is possible
             if len_unused == 0:
-                log.debug("Could not find any VMs to shutdown")
+                log.debug("Could not find any idle VMs to shutdown")
+                criteria = {'VMType': vmtype.split(':')[1], 'State': 'Claimed', 'Activity': 'Busy'}
+                busy_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
+                if len(busy_vms_of_type) != 0:
+                    log.debug("Looks like some registered VMs are still running jobs")
+                else:
+                    criteria = {'VMType': vmtype.split(':')[1]}
+                    any_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
+                    if len(any_vms_of_type) != 0:
+                        log.debug("Registered VM in mystery state - maybe Retiring?")
+                    else:
+                        log.debug("No %s type VMs registered with Condor" % vmtype)
             elif len_unused >= count:
                 num_to_shutdown = count
             elif len_unused < count:
