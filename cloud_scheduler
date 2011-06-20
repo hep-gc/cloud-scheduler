@@ -503,9 +503,8 @@ class Scheduler(threading.Thread):
                     log.error('Error reading %s' % (source))
 
         # Add the owner restriction requirement.
-        # Do this only if GSI is used.
         # This is to prevent a VM started by a user being recycled to run jobs from another user.
-        if (job.get_x509userproxy() != None) and (job.user != None):
+        if job.user != None:
             start_requirement = 'START=(Owner == "%s")\n' % (job.user)
             log.debug("Adding START requirement to match resource's original owner:\n%s" % start_requirement)
             local_modifications += start_requirement
