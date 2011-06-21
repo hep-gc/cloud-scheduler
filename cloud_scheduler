@@ -56,9 +56,10 @@ class VMPoller(threading.Thread):
     """
     VMPoller - Polls all the requested VMs, and checks on their status
     """
-    def __init__(self, resource_pool):
+    def __init__(self, resource_pool, job_pool):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.resource_pool = resource_pool
+        self.job_pool = job_pool
         self.quit          = False
         self.starting_poll_interval = 120 # 2 minutes
         self.running_poll_interval = 900 # 15 minutes
@@ -109,6 +110,9 @@ class VMPoller(threading.Thread):
                     vm.errorcount += 1
                 elif vm.errorcount > 0:
                     vm.errorcount = 0
+                if ret_state == "HttpError":
+                    vm.errorcount = config.polling_error_threshold
+                    self.handle_bad_image(vm.user, vm.image)
                 if ret_state == "Running":
                     if vm.startup_time == None:
                         vm.startup_time = vm.last_state_change - vm.initialize_time
@@ -121,6 +125,14 @@ class VMPoller(threading.Thread):
                         log.error("Destroying VM failed. Leaving VM in error state.")
                         continue
 
+    def handle_bad_image(self, user, image):
+        log.info("User %s has job(s) with bad image location: %s - temporairly banning those jobs" % (user, image))
+        user_jobs = self.job_pool.job_container.get_jobs_for_user(user)
+        for job in user_jobs:
+            if job.req_imageloc == image and not job.banned:
+                job.banned = True
+                job.ban_time = time.time()
+                job.override_status = "HTTPFail"
 
 class JobPoller(threading.Thread):
     """
@@ -1344,7 +1356,7 @@ def main():
     service_threads.append(machine_poller)
 
     # Create the VM Polling thread
-    vm_poller = VMPoller(cloud_resources)
+    vm_poller = VMPoller(cloud_resources, job_pool)
     service_threads.append(vm_poller)
 
     # Create the Scheduling thread

@@ -593,7 +593,7 @@ class NimbusCluster(ICluster):
         if vm_proxy_file_path != None:
             env = {'X509_USER_PROXY':vm_proxy_file_path}
             log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (vm_proxy_file_path))
-        
+
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
         if (create_return != 0):
             log.warning("Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
@@ -762,6 +762,7 @@ class NimbusCluster(ICluster):
         # Execute the workspace poll (wait, retrieve return code, stdout, and stderr)
         (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd, env=vm.get_env())
         poll_out = poll_out + poll_err
+
         with self.vms_lock:
 
             # Print output, and parse the VM status from it
@@ -919,6 +920,10 @@ class NimbusCluster(ICluster):
         if match:
             status = match.group(1)
             if (status in NimbusCluster.VM_STATES):
+                if status == 'Corrupted':
+                    http_fail = re.search("Problem: TRANSFER FAILED Problem propagating :UnexpectedError :HTTP error Not Found", output)
+                    if http_fail:
+                        return "HttpError"
                 return NimbusCluster.VM_STATES[status]
             else:
                 return "Error"
