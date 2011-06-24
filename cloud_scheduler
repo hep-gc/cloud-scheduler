@@ -1143,6 +1143,7 @@ class Cleanup(threading.Thread):
                                 continue
                             vm_in_cluster = self.resource_pool.get_cluster_with_vm(start_vm)
                             if vm_in_cluster != None and vm_in_cluster in fitting_set:
+                                log.info("Shutting down starting VM to try and speed up balancing")
                                 destroy_ret = vm_in_cluster.vm_destroy(start_vm)
                                 if destroy_ret == 0:
                                     successful_destroy += 1
