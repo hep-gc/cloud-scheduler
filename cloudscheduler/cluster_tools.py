@@ -25,10 +25,12 @@ import subprocess
 import threading
 
 from subprocess import Popen
+from urlparse import urlparse
 
 import nimbus_xml
 import config
 import cloudscheduler.utilities as utilities
+from cloudscheduler.utilities import get_cert_expiry_time
 
 log = utilities.get_cloudscheduler_logger()
 
@@ -60,7 +62,7 @@ class VM:
     maps specific cloud software state to these global states.
     """
 
-    def __init__(self, name="", id="", vmtype="",
+    def __init__(self, name="", id="", vmtype="", user="",
             hostname="", ipaddress="", clusteraddr="",
             cloudtype="", network="public", cpuarch="x86",
             image="", memory=0, mementry=0,
@@ -73,6 +75,8 @@ class VM:
         id           - (str) The id tag for the VM. Whatever is used to access the vm
                        by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
         vmtype       - (str) The condor VMType attribute for the VM
+        user         - (str) The user who 'owns' this VM
+        uservmtype   - (str) Aggregate type in form 'user:vmtype'
         hostname     - (str) The first part of hostname given to VM
         ipaddress    - (str) The IP Address of the VM
         condorname   - (str) The name of the VM as it's registered with Condor
@@ -95,6 +99,8 @@ class VM:
         self.name = name
         self.id = id
         self.vmtype = vmtype
+        self.user = user
+        self.uservmtype = ':'.join([user,vmtype])
         self.hostname = hostname
         self.ipaddress = ipaddress
         self.condorname = None
@@ -136,19 +142,19 @@ class VM:
           % (name, id, clusteraddr, image, memory))
 
     def log(self):
-        log.info("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
+        log.info("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype,  self.user, self.status, self.clusteraddr))
     def log_dbg(self):
-        log.debug("VM Name: %s, ID: %s, Type: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.status, self.clusteraddr))
+        log.debug("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.user, self.status, self.clusteraddr))
 
     def get_vm_info(self):
-        output = "%-11s %-23s %-20s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.status[-8:], self.clusteraddr[-23:])
+        output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.status[-8:])
         if self.override_status != None:
-            output = "%-11s %-23s %-20s %-8s %-23s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.override_status[-8:], self.clusteraddr[-23:])
+            output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.override_status[-12:])
         return output
 
     @staticmethod
     def get_vm_info_header():
-        return "%-11s %-23s %-20s %-8s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "STATUS", "CLUSTER")
+        return "%-11s %-23s %-20s %-10s %-12s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "USER", "STATUS", "CLUSTER")
 
     def get_vm_info_pretty(self):
         output = get_vm_info_header()
@@ -199,6 +205,17 @@ class VM:
     def reset_x509userproxy_expiry_time(self):
         self.x509userproxy_expiry_time = None
 
+
+    # This method will test if a VM's user proxy is expired.
+    #
+    # Returns True if the proxy is expired, False otherwise.
+    def is_proxy_expired(self):
+        expiry_time = self.get_x509userproxy_expiry_time()
+        if expiry_time == None:
+            return False
+        return expiry_time <= datetime.datetime.utcnow()
+
+
     # This method will test if a VM's user proxy needs to be refreshed, according
     # the VM proxy refresh threshold found in the cloud scheduler configuration.
     #
@@ -210,7 +227,7 @@ class VM:
             return False
         td = expiry_time - datetime.datetime.utcnow()
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.job_proxy_renewal_threshold))
+        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_renewal_threshold))
         return td_in_seconds < config.vm_proxy_renewal_threshold
 
     # The following method will return the environment that should
@@ -318,8 +335,8 @@ class ICluster:
     # Return a short form of cluster information
     def get_cluster_info_short(self):
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s \n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY")
-        output += "%-25s  %-15s  %-10s  %-10s \n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB)
         return output
     # Return information about running VMs on Cluster
     def get_cluster_vms_info(self):
@@ -328,7 +345,7 @@ class ICluster:
         else:
             output = ""
             for vm in self.vms:
-                output += vm.get_vm_info()
+                output += "%s %-15s\n" % (vm.get_vm_info()[:-1], self.name)
             return output
     # Get VM with id
     def get_vm(self, vm_id):
@@ -407,6 +424,7 @@ class ICluster:
         """
         log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
         with self.res_lock:
+
             remaining_vm_slots = self.vm_slots - 1
             if remaining_vm_slots < 0:
                 raise NoResourcesError("vm_slots")
@@ -475,7 +493,8 @@ class NimbusCluster(ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost", port="8443",
                  cloud_type="Dummy", memory=[], cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0,
-                 access_key_id=None, secret_access_key=None, security_group=None):
+                 access_key_id=None, secret_access_key=None, security_group=None,
+                 netslots={}):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -484,9 +503,15 @@ class NimbusCluster(ICluster):
                          storage=storage,)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
+        self.net_slots = netslots
 
+    def get_cluster_info_short(self):
+        output = "Cluster: %s \n" % self.name
+        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB)
+        return output
 
-    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
             job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
 
@@ -516,16 +541,23 @@ class NimbusCluster(ICluster):
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(config.vm_lifetime, \
                 self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
 
+        job_proxy = None
         try:
             with open(job_proxy_file_path) as proxy:
                 job_proxy = proxy.read()
         except:
             if job_proxy_file_path:
-                log.exception("Couldn't open '%s', continuing without user's proxy")
+                log.exception("Couldn't open '%s', continuing without user's proxy" % (job_proxy_file_path))
             job_proxy = None
 
+
         if customization or job_proxy:
-            vm_optional = nimbus_xml.ws_optional_factory(custom_tasks=customization, credential=job_proxy)
+            image_scheme = urlparse(vm_image).scheme
+            if image_scheme == "https":
+                _job_proxy = job_proxy
+            else:
+                _job_proxy = None
+            vm_optional = nimbus_xml.ws_optional_factory(custom_tasks=customization, credential=_job_proxy)
         else:
             vm_optional = None
 
@@ -539,6 +571,17 @@ class NimbusCluster(ICluster):
 
         nimbus_files = [vm_epr, vm_metadata, vm_deploymentrequest, vm_optional]
 
+        # Create cached copy of job proxy to be used by VM for startup and shutdown.
+        vm_proxy_file_path = None
+        if job_proxy_file_path:
+            try:
+                vm_proxy_file_path = self._cache_proxy(job_proxy_file_path)
+                log.debug("Cached proxy to '%s'" % vm_proxy_file_path)
+            except:
+                log.exception("Problem caching proxy.")
+                _remove_files(nimbus_files)
+                return -1
+
         # Create the workspace command as a list (private method)
         ws_cmd = self.vmcreate_factory(vm_epr, vm_metadata, vm_deploymentrequest, optional_file=vm_optional)
         
@@ -547,25 +590,24 @@ class NimbusCluster(ICluster):
 
         # Execute the workspace create command: returns immediately.
         env = None;
-        if job_proxy_file_path != None:
-            env = {'X509_USER_PROXY':job_proxy_file_path}
-            log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (job_proxy_file_path))
-        
+        if vm_proxy_file_path != None:
+            env = {'X509_USER_PROXY':vm_proxy_file_path}
+            log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (vm_proxy_file_path))
+
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
         if (create_return != 0):
             log.warning("Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
-            _remove_files(nimbus_files)
+            _remove_files(nimbus_files + [vm_proxy_file_path])
+            err_type = self._extract_create_error(create_err)
+            ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
+            if err_type == 'NoProxy':
+                create_return = -1
+            elif err_type == 'ExpiredProxy':
+                create_return = -1
+
             return create_return
 
         log.debug("Nimbus create command executed.")
-
-        job_proxy = None
-        if job_proxy_file_path:
-            try:
-                job_proxy_file_path = self._cache_proxy(job_proxy_file_path)
-                log.debug("Cached proxy to '%s'" % job_proxy_file_path)
-            except:
-                log.exception("Problem caching proxy. Continuing without")
 
         log.debug("Deleting temporary Nimbus Metadata files")
         _remove_files(nimbus_files)
@@ -600,14 +642,14 @@ class NimbusCluster(ICluster):
 
 
         # Create a VM object to represent the newly created VM
-        new_vm = VM(name = vm_name, id = vm_id, vmtype = vm_type,
+        new_vm = VM(name = vm_name, id = vm_id, vmtype = vm_type, user = vm_user,
             hostname = vm_hostname, ipaddress = vm_ip, 
             clusteraddr = self.network_address,
             cloudtype = self.cloud_type,network = vm_networkassoc,
             cpuarch = vm_cpuarch, image = vm_image,
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
             storage = vm_storage, keep_alive = vm_keepalive, 
-            proxy_file = job_proxy_file_path, 
+            proxy_file = vm_proxy_file_path, 
             myproxy_creds_name = myproxy_creds_name, myproxy_server = myproxy_server, 
             myproxy_server_port = myproxy_server_port, job_per_core = job_per_core)
 
@@ -676,7 +718,10 @@ class NimbusCluster(ICluster):
         # Delete VM proxy
         if (vm.get_proxy_file()) :
             log.verbose("Cleaning up proxy for VM %s (%s)" % (vm.id, vm.get_proxy_file()))
-            os.remove(vm.get_proxy_file())
+            try:
+                os.remove(vm.get_proxy_file())
+            except:
+                log.exception("Problem removing VM proxy file")
 
         # Return checked out resources And remove VM from the Cluster's 'vms' list
         with self.vms_lock:
@@ -706,7 +751,7 @@ class NimbusCluster(ICluster):
 
         Note: If VM does not appear to be running any longer, it will be destroyed.
         """
-
+        bad_status = ("Destroyed", "NoProxy", "ExpiredProxy")
         # Create an epr for our poll command
         vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
 
@@ -717,10 +762,11 @@ class NimbusCluster(ICluster):
         # Execute the workspace poll (wait, retrieve return code, stdout, and stderr)
         (poll_return, poll_out, poll_err) = self.vm_execwait(ws_cmd, env=vm.get_env())
         poll_out = poll_out + poll_err
+
         with self.vms_lock:
 
             # Print output, and parse the VM status from it
-            vm.hostname = self._extract_hostname(poll_out)
+            #vm.hostname = self._extract_hostname(poll_out)
             new_status = self._extract_state(poll_out)
             if new_status == "Destroyed":
                 log.info("Discarding VM %s because Nimbus has destroyed it" % vm.id)
@@ -738,6 +784,9 @@ class NimbusCluster(ICluster):
             elif vm.status != new_status:
                 vm.last_state_change = int(time.time())
                 vm.status = new_status
+
+            elif vm.override_status != None and new_status not in bad_status:
+                vm.override_status = None
 
             # If there was some other error we're not aware of (temporary network problem, etc...)
             elif (poll_return != 0):
@@ -871,6 +920,10 @@ class NimbusCluster(ICluster):
         if match:
             status = match.group(1)
             if (status in NimbusCluster.VM_STATES):
+                if status == 'Corrupted':
+                    http_fail = re.search("Problem: TRANSFER FAILED Problem propagating :UnexpectedError :HTTP error Not Found", output)
+                    if http_fail:
+                        return "HttpError"
                 return NimbusCluster.VM_STATES[status]
             else:
                 return "Error"
@@ -892,23 +945,82 @@ class NimbusCluster(ICluster):
 
         return "Error"
 
+    @staticmethod
+    def _extract_create_error(output):
+        """
+        _extract_create_error -- extract the state from a Nimbus workspace command
+    
+        Parameters:
+            output -- expects the error output from a workspace.sh deploy command
+        """
+
+        # Check if you have no proxy
+        no_proxy = re.search("Defective credential detected.*not found", output)
+        if no_proxy:
+            return "NoProxy"
+
+        # Check if your proxy is expired
+        expired_proxy = re.search("Expired credentials detected", output)
+        if expired_proxy:
+            return "ExpiredProxy"
+
+        # Check if out of network slots
+        out_of_slots = re.search("Resource request denied: Error creating*network*not currently available", output)
+        if out_of_slots:
+            return "NoSlotsInNetwork"
+
+        # Check if out of memory
+        out_of_memory = re.search("Resource request denied: Error creating*based on memory", output)
+        if out_of_memory:
+            return "NotEnoughMemory"
+
+        return "Error"
     def _cache_proxy(self, proxy_file_path):
         """
         Creates a copy of the user's credential to use in case the user removes
         his Condor job early.
+        Note that the location of the cached proxies is controled via the
+        proxy_cache_dir config attribute.
 
         Raises an exception if there was a problem creating the cached proxy
 
         Returns a path to the cached proxy
         """
-
-        (tmp_proxy_file, tmp_proxy_file_path) = tempfile.mkstemp(suffix='.pem')
+        (tmp_proxy_file, tmp_proxy_file_path) = tempfile.mkstemp(suffix='.pem', dir=config.proxy_cache_dir)
         os.close(tmp_proxy_file)
 
         shutil.copy2(proxy_file_path, tmp_proxy_file_path)
 
 
         return tmp_proxy_file_path
+
+    def resource_checkout(self, vm):
+        """
+        Checks out resources taken by a VM in creation from the internal rep-
+        resentation of the Cluster
+    
+        Parameters:
+        vm   - the VM object used to check out resources from the Cluster.
+    
+        Raises NoResourcesError if there are not enough available resources
+        to check out.
+        """
+        with self.res_lock:
+            remaining_net_slots = self.net_slots[vm.network] - 1
+            if remaining_net_slots < 0:
+                raise NoResourceError("net_slots: " + vm.network)
+            ICluster.resource_checkout(self, vm)
+            self.net_slots[vm.network] = remaining_net_slots
+
+    # Returns the resources taken by the passed in VM to the Cluster's internal
+    # storage.
+    # Parameters: (as for checkout() )
+    # Notes: (as for checkout)
+    def resource_return(self, vm):
+        with self.res_lock:
+            self.net_slots[vm.network] += 1
+            ICluster.resource_return(self, vm)
+
 
 class EC2Cluster(ICluster):
 
@@ -1001,7 +1113,7 @@ class EC2Cluster(ICluster):
         connection = self._get_connection()
 
 
-    def vm_create(self, vm_name, vm_type, vm_networkassoc, vm_cpuarch,
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
                   job_per_core=False):
@@ -1108,7 +1220,7 @@ class EC2Cluster(ICluster):
             return self.ERROR
         log.debug("vm_create - Memory entry found in given cluster: %d" %
                                                                     vm_mementry)
-        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type,
+        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     cpuarch = vm_cpuarch, image= vm_image,

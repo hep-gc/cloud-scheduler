@@ -51,6 +51,7 @@
 # Ensure that the settings below are correct for your Condor
 # installation.
 
+
 # EC2 Metadata server
 EC2_METADATA=169.254.169.254
 
@@ -314,10 +315,10 @@ replace_or_append() {
 	with_this=$2
 	on_this_file=$3
 
-	grep $replace_this $on_this_file >/dev/null 2>&1
+	grep -e ^$replace_this $on_this_file >/dev/null 2>&1
 	REPLACE=$?
 	if [ $REPLACE -eq 0 ]; then
-		sed -i "s/.*$replace_this.*/$with_this/" $on_this_file
+		sed -i "s/^$replace_this.*/$with_this/" $on_this_file
 	else
 		echo $with_this >> $on_this_file
 	fi
@@ -418,6 +419,17 @@ setup_on_ec2() {
 
 }
 
+# Make sure the permissions on the grid hostkey
+# are restrictive enough, else GSI will fail.
+set_hostkey_permissions () {
+    HOST_KEY=`get_condor_config_val GSI_DAEMON_KEY`
+    if [ -f $HOST_KEY ]; then
+	chmod 400 $HOST_KEY
+    else
+	echo "Grid certificate host key not found. $HOST_KEY"
+    fi
+}
+
 cleanup_ccb () {
 	sed -i '/# Added for Condor CCB/d' /etc/hosts
 }
@@ -441,6 +453,7 @@ verify_execute () {
 
 # Start condor.
 start() {
+        set_hostkey_permissions
 	setup_on_ec2
 	setup_ccb
 	set_central_manager $CENTRAL_MANAGER

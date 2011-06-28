@@ -221,6 +221,8 @@ class InfoServer(threading.Thread,):
                     for vm in cluster.vms:
                         output += "%s : avg %f\n" % (vm.hostname, vm.job_run_times.average())
                 return output
+            def get_cloud_config_values(self):
+                return cloud_resources.get_cloud_config_output()
 
         self.server.register_instance(externalFunctions())
 

@@ -43,6 +43,7 @@ import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
 from cloudscheduler.utilities import ErrTrackQueue
+from cloudscheduler.utilities import splitnstrip
 import cloudscheduler.utilities as utilities
 
 ##
@@ -212,16 +213,7 @@ class ResourcePool:
                                                           removed_cluster_name)
                     self.retired_resources.append(cluster)
                     for vm in cluster.vms:
-                        if config.graceful_shutdown_method != 'off':
                             cluster.vm_destroy(vm, return_resources=False)
-                        else:
-                            if vm.condorname:
-                                vm.force_retire = True
-                                self.do_condor_off(vm.condorname, vm.condoraddr)
-                            else:
-                                # No condor name cannot perform condor_off
-                                cluster.vm_destroy(vm, return_resources=False)
-
                     old_resources.remove(cluster)
 
         self.setup_lock.release()
@@ -235,27 +227,42 @@ class ResourcePool:
         """
         Create a new cluster object from a config file's specification
         """
+        if config.has_option(cluster, "enabled"):
+            enabled = config.getboolean(cluster, "enabled")
+            if not enabled:
+                return None
         cloud_type = get_or_none(config, cluster, "cloud_type")
         if cloud_type == "Nimbus":
+            nets = splitnstrip(",", get_or_none(config, cluster, "networks"))
+            if len(nets) > 1:
+                # Split the vm_slots too
+                slots = map(int, splitnstrip(",", get_or_none(config, cluster, "vm_slots")))
+            else:
+                slots = [int(get_or_none(config, cluster, "vm_slots"))]
+            net_slots = {}
+            for x in range(len(nets)):
+                net_slots[nets[x]] = slots[x]
+            total_slots = sum(slots)
             return cluster_tools.NimbusCluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, get_or_none(config, cluster, "memory").split(",")),
-                    cpu_archs = get_or_none(config, cluster, "cpu_archs").split(","),
-                    networks = get_or_none(config, cluster, "networks").split(","),
-                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = nets,
+                    vm_slots = total_slots,
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
+                    netslots = net_slots,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus":
             return cluster_tools.EC2Cluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, get_or_none(config, cluster, "memory").split(",")),
-                    cpu_archs = get_or_none(config, cluster, "cpu_archs").split(","),
-                    networks = get_or_none(config, cluster, "networks").split(","),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
@@ -332,6 +339,8 @@ class ResourcePool:
             # If required network is NOT in cluster's network associations
             if not (network in cluster.network_pools):
                 continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.net_slots[network] <= 0:
+                continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
                 continue
@@ -373,6 +382,9 @@ class ResourcePool:
                 # just always okay it.
                 if network and (network not in cluster.network_pools):
                     log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
+                    continue
+                if network and network in cluster.net_slots.keys() and cluster.net_slots[network] <= 0:
+                    log.verbose("get_fitting_resources - No Slots left in network %s on %s" % (network, cluster.name))
                     continue
                 if imageloc in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[imageloc]:
@@ -701,6 +713,22 @@ class ResourcePool:
                     count[vm['VMType']] += 1
         return count
 
+    def get_uservmtypes_count(self, machineList):
+        count = {}
+        for vm in machineList:
+            if vm.has_key('VMType') and vm.has_key('Start'):
+                userexp = re.search('(?<=Owner == ")\w+', vm['Start'])
+                if userexp:
+                    user = userexp.group(0)
+                    vmusertype = ':'.join([user, vm['VMType']])
+                    if vmusertype not in count:
+                        count[vmusertype] = 1
+                    else:
+                        count[vmusertype] += 1
+                else:
+                    log.warning("VM Missing expected Start = ( Owner=='user') restriction - are the condor init scripts on the VM up-to-date?")
+        return count
+
     # Determines if the key value pairs in in criteria are in the dictionary
     def match_criteria(self, base, criteria):
         return criteria == dict(set(base.items()).intersection(set(criteria.items())))
@@ -713,16 +741,27 @@ class ResourcePool:
         return matches
 
     # Get a dictionary of types of VMs the scheduler is currently tracking
+    #def get_vmtypes_count_internal(self):
+        #types = {}
+        #for cluster in self.resources:
+            #for vm in cluster.vms:
+                #if vm.vmtype in types:
+                    #types[vm.vmtype] += 1
+                #else:
+                    #types[vm.vmtype] = 1
+        #return types
+
+    # Get a dictionary of uservmtypes of VMs the scheduler is currently tracking
     def get_vmtypes_count_internal(self):
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.vmtype in types:
-                    types[vm.vmtype] += 1
+                if vm.uservmtype in types:
+                    types[vm.uservmtype] += 1
                 else:
-                    types[vm.vmtype] = 1
+                    types[vm.uservmtype] = 1
         return types
-
+    
     # Count of VMs in the system
     def vm_count(self):
         count = 0
@@ -802,32 +841,61 @@ class ResourcePool:
     # VM Type resource usage
     # Counts up how much/many of each resource (RAM, Cores, Storage)
     # are being used by each type of VM
+    #def vmtype_resource_usage(self):
+        #types = {}
+        #for cluster in self.resources:
+            #for vm in cluster.vms:
+                #if vm.vmtype in types.keys():
+                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+                #else:
+                    #types[vm.vmtype] = []
+                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+        #results = {}
+        #for vmtype in types.keys():
+            #results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
+        #return results
+
+    # VM Type resource usage w/ uservmtype
+    # Counts up how much/many of each resource (RAM, Cores, Storage)
+    # are being used by each type of VM
     def vmtype_resource_usage(self):
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.vmtype in types.keys():
-                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+                if vm.uservmtype in types.keys():
+                    types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
                 else:
-                    types[vm.vmtype] = []
-                    types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
+                    types[vm.uservmtype] = []
+                    types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
         results = {}
         for vmtype in types.keys():
             results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
-        del types
         return results
+
+    #def vm_slots_used(self):
+        #types = {}
+        #for cluster in self.resources:
+            #for vm in cluster.vms:
+                #if not types.has_key(vm.vmtype):
+                    #types[vm.vmtype] = []
+                #if hasattr(vm, "job_per_core") and vm.job_per_core:
+                    #for core in range(vm.cpucores):
+                        #types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+                #else:
+                    #types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
+        #return types
 
     def vm_slots_used(self):
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:
-                if not types.has_key(vm.vmtype):
-                    types[vm.vmtype] = []
+                if not types.has_key(vm.uservmtype):
+                    types[vm.uservmtype] = []
                 if hasattr(vm, "job_per_core") and vm.job_per_core:
                     for core in range(vm.cpucores):
-                        types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+                        types[vm.uservmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
                 else:
-                    types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
+                    types[vm.uservmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
         return types
 
     # Take the current and previous machineLists
@@ -1042,7 +1110,11 @@ class ResourcePool:
 
     def do_condor_off(self, machine_name, machine_addr):
         cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
+        cmd2 = '%s -peaceful -addr "%s" -startd' % (config.condor_off_command, machine_addr)
+        cmd3 = '%s -peaceful -addr "%s" -master' % (config.condor_off_command, machine_addr)
         args = []
+        args2 = []
+        args3 = []
         if config.cloudscheduler_ssh_key:
             args.append(config.ssh_path)
             args.append('-i')
@@ -1050,6 +1122,18 @@ class ResourcePool:
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
             args.append(central_address)
             args.append(cmd)
+            
+            args2.append(config.ssh_path)
+            args2.append('-i')
+            args2.append(config.cloudscheduler_ssh_key)
+            args2.append(central_address)
+            args2.append(cmd2)
+            
+            args3.append(config.ssh_path)
+            args3.append('-i')
+            args3.append(config.cloudscheduler_ssh_key)
+            args3.append(central_address)
+            args3.append(cmd3)
         else:
             args.append(config.condor_off_command)
             args.append('-peaceful')
@@ -1057,35 +1141,69 @@ class ResourcePool:
             args.append(machine_name)
             args.append('-subsystem')
             args.append('startd')
+            
+            args2.append(config.condor_off_command)
+            args2.append('-peaceful')
+            args2.append('-addr')
+            args2.append(machine_addr)
+            args2.append('-subsystem')
+            args2.append('startd')
+            
+            args3.append(config.condor_off_command)
+            args3.append('-peaceful')
+            args3.append('-addr')
+            args3.append(machine_addr)
+            args3.append('-subsystem')
+            args3.append('master')
+        # Send condor_off to startd first
         try:
-            sp = subprocess.Popen(args, shell=False,
+            sp1 = subprocess.Popen(args2, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if not utilities.check_popen_timeout(sp):
-                (out, err) = sp.communicate(input=None)
-            ret = -1
+            if not utilities.check_popen_timeout(sp1):
+                (out, err) = sp1.communicate(input=None)
+            ret1 = -1
             if out.startswith("Sent"):
-                ret = 0
-            if sp.returncode == 0 and ret == 0:
+                ret1 = 0
+            if sp1.returncode == 0 and ret1 == 0:
                 log.debug("Successfuly sent condor_off to %s" % (machine_name))
             else:
                 log.debug("Failed to send condor_off to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
-            return (sp.returncode, ret)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "")
+            return (-1, "", "", "")
+        except:
+            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            return (-1, "", "", "")
+        # Now send the master off
+        try:
+            sp2 = subprocess.Popen(args3, shell=False,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if not utilities.check_popen_timeout(sp2):
+                (out, err) = sp2.communicate(input=None)
+            ret2 = -1
+            if out.startswith("Sent"):
+                ret2 = 0
+            if sp2.returncode == 0 and ret2 == 0:
+                log.debug("Successfuly sent condor_off to %s" % (machine_name))
+            else:
+                log.debug("Failed to send condor_off to %s" % (machine_name))
+                log.debug("Reason: %s \n Error: %s" % (out, err))
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            return (-1, "", "", "")
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
             print args
-            return (-1, "")
-
+            return (-1, "", "", "")
+        return (sp1.returncode, ret1, sp2.returncode, ret2)
 
     def do_condor_on(self, machine_name, machine_addr):
         cmd = '%s -subsystem startd -name "%s"' % (config.condor_on_command, machine_name)
         args = []
         
         if config.cloudscheduler_ssh_key:
-            args.append(config.shh_path)
+            args.append(config.ssh_path)
             args.append('-i')
             args.append(config.cloudscheduler_ssh_key)
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
@@ -1165,9 +1283,58 @@ class ResourcePool:
                         retiring.append(vm)
         return retiring
 
+    def retiring_vms_of_usertype(self, vmtype):
+        retiring = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.uservmtype == vmtype:
+                    if vm.override_status == 'Retiring':
+                        retiring.append(vm)
+        return retiring
+
+    def get_starting_of_type(self, vmtype):
+        starting = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.vmtype == vmtype:
+                    if vm.status == "Starting":
+                        starting.append(vm)
+        return starting
+
+    def get_starting_of_usertype(self, vmtype):
+        starting = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.uservmtype == vmtype:
+                    if vm.status == "Starting":
+                        starting.append(vm)
+        return starting
+
     def get_all_vms(self):
         all_vms = []
         for cluster in self.resources:
             for vm in cluster.vms:
                 all_vms.append(vm)
         return all_vms
+
+    def get_cloud_config_output(self):
+        try:
+            cloud_config = ConfigParser.SafeConfigParser()
+            cloud_config.read(self.config_file)
+        except ConfigParser.ParsingError:
+            log.exception("Cloud config problem: Couldn't " \
+                  "parse your cloud config file. Check for spaces " \
+                  "before or after variables.")
+            return None
+        outputlist = []
+        # Read in config file, parse into Cluster objects
+        for cluster in cloud_config.sections():
+            items = cloud_config.items(cluster) # list of (name, value) pairs for each option
+            outputlist.append(cluster)
+            outputlist.append(' ')
+            for item in items:
+                outputlist.append('[')
+                outputlist.append(','.join(item))
+                outputlist.append(']')
+            outputlist.append('\n')
+        return "".join(outputlist)

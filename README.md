@@ -1,4 +1,4 @@
-# Cloud Scheduler 0.12 README
+# Cloud Scheduler 0.13 README
 
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
@@ -215,6 +215,17 @@ NOTE: If you've used a non-default Python, you may need to set the PYTHON variab
 in the init script. If you've installed in a non-default location, you may need to 
 set your EXECUTABLEPATH variable.
 
+To Stop Cloud Scheduler without it shutting down VMs (Current VMs will be saved
+to the persistence file specified in the cloud_scheduler.conf and get reloaded 
+when Cloud Scheduler is started - Note that loading the VMs from persistence may 
+take awhile)
+
+    # /etc/init.d/cloud_scheduler forcekill
+
+To Reload the cloud_resources.conf without restarting Cloud Scheduler
+
+    # /etc/init.d/cloud_scheduler reconfig
+
 ## Configuring a VM for EC2 / Eucalyptus
 
 The way Cloud Scheduler manipulates Condor to connect to the correct central
@@ -251,6 +262,14 @@ parameters to work properly. These are: (Required parameters are highlighted)
 * VMStorage : The amount of scratch storage space the job requires. (Currently ignored on EC2-like Clusters)
 * VMMem : The amount of RAM that the VM requires.
 * VMNetwork : The type of networking required for your VM. Only used with Nimbus. Corresponds to Nimbus’s network pool.
+* VMInstanceType : The EC2 instance type of the VM requested. Only used with EC2 clouds like Amazon.
+* VMMaximumPrice : The maximum price in cents per hour for a VM (EC2 Only)
+* VMKeepAlive : Number of minutes a VM should stay up after job finishes
+* VMHighPriority : 1 (Optional flag) Indicates a high priority job to Cloud Scheduler – high priority job support can be enabled in the cloud_scheduler.conf
+* TargetClouds : A comma separated list of names of clouds that you would like your job to use
+* CSMyProxyServer : The hostname of the myproxy server you’d like to use for credential renewal
+* CSMyProxyCredsName : The name of your myproxy credentials
+* VMJobPerCore : bool – Assigns multiple slots to a multi-core VM
 
 ### A Sample Job
 
