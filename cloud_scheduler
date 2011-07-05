@@ -440,7 +440,7 @@ class Scheduler(threading.Thread):
             self.job_pool.schedule(job)
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, True)
-        elif create_ret == -1:
+        elif create_ret == -1 or create_ret == -2: # -2 on Nimbus resource failures ban until dynamic monitoring can resolve resource misconfigs
             job.banned = True
             job.ban_time = time.time()
             job.override_status = "TempBanned"
