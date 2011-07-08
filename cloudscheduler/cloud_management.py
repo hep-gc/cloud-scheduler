@@ -725,8 +725,18 @@ class ResourcePool:
                         count[vmusertype] = 1
                     else:
                         count[vmusertype] += 1
-                else:
-                    log.warning("VM Missing expected Start = ( Owner=='user') restriction - are the condor init scripts on the VM up-to-date?")
+            elif vm.has_key('VMType') and vm.has_key('RemoteOwner'):
+                try:
+                    user = vm['RemoteOwner'].split('@')[0]
+                    vmusertype = ':'.join([user, vm['VMType']])
+                    if vmusertype not in count:
+                        count[vmusertype] = 1
+                    else:
+                        count[vmusertype] += 1
+                except:
+                    log.error("Failed to parse out remote owner")
+            else:
+                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set - are the condor init scripts on the VM up-to-date?")
         return count
 
     # Determines if the key value pairs in in criteria are in the dictionary
