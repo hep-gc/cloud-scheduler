@@ -717,7 +717,7 @@ class Cleanup(threading.Thread):
                     else:
                         to_remove[vmtype] = count
                 del available_vmtypes_dict
-
+                log.debug("Will try to remove: %s" % str(to_remove))
                 # Go over the types and find idle machines to remove
                 self.remove_idle_machines(machineList, to_remove)
 

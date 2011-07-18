@@ -737,6 +737,7 @@ class ResourcePool:
                     log.error("Failed to parse out remote owner")
             else:
                 log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set - are the condor init scripts on the VM up-to-date?")
+        log.debug("VMs in machinelist: %s" % str(count))
         return count
 
     # Determines if the key value pairs in in criteria are in the dictionary
