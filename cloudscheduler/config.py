@@ -511,7 +511,7 @@ def setup(path=None):
         proxy_cache_dir = config_file.get("global", "proxy_cache_dir")
 
     if config_file.has_option("global", "myproxy_logon_command"):
-         myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
+        myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
 
     if config_file.has_option("global", "override_vmtype"):
         override_vmtype = config_file.getboolean("global", "override_vmtype")
