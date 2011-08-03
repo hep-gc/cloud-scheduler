@@ -71,7 +71,8 @@ scheduler_interval = 5
 job_proxy_refresher_interval = -1 # The current default is not to refresh the job proxies. (until code is thouroughly tested -- Andre C.)
 job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 vm_proxy_refresher_interval = -1 # The current default is not to refresh the VM proxies. (until code is thouroughly tested -- Andre C.)
-vm_proxy_renewal_threshold = 15 * 60 # 15 minutes default
+vm_proxy_renewal_threshold = 60 * 60 # 60 minutes default
+vm_proxy_shutdown_threshold = 30 * 60 # 30 minutes default
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
@@ -156,6 +157,7 @@ def setup(path=None):
     global job_proxy_renewal_threshold
     global vm_proxy_refresher_interval
     global vm_proxy_renewal_threshold
+    global vm_proxy_shutdown_threshold
     global proxy_cache_dir
     global myproxy_logon_command
     global override_vmtype
@@ -504,6 +506,14 @@ def setup(path=None):
             vm_proxy_renewal_threshold = config_file.getint("global", "vm_proxy_renewal_threshold")
         except ValueError:
             print "Configuration file problem: vm_proxy_renewal_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "vm_proxy_shutdown_threshold"):
+        try:
+            vm_proxy_shutdown_threshold = config_file.getint("global", "vm_proxy_shutdown_threshold")
+        except ValueError:
+            print "Configuration file problem: vm_proxy_shutdown_threshold must be an " \
                   "integer value."
             sys.exit(1)
 

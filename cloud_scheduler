@@ -684,6 +684,8 @@ class Cleanup(threading.Thread):
             if config.retire_before_lifetime:
                 # Check for VMs near max lifetime 
                 self.clean_retire_near_lifetime()
+            # Make sure no VMs with proxys are about to expire and get stuck in expired proxy state
+            self.check_vm_proxy_shutdown_threshold()
             # Remove unneeded VMs.
             # Make sure we only do this if we have ever gotten a list of jobs
             # from Condor. Otherwise, when we persist from a previous run
@@ -1278,6 +1280,15 @@ class Cleanup(threading.Thread):
                 to_remove.append(k)
         for key in to_remove:
             del self.destroy_threads[key]
+
+    def check_vm_proxy_shutdown_threshold(self):
+        for cluster in self.resource_pool.resources:
+            for vm in cluster.vms:
+                if vm.needs_proxy_shutdown():
+                    if not self.check_destroy(cluster, vm):
+                        th = VMDestroyCmd(cluster, vm)
+                        th.start()
+                        self.destroy_threads["".join([cluster.name, vm.id])] = th
 
 
 class VMDestroyCmd(threading.Thread):

@@ -230,6 +230,20 @@ class VM:
         log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_renewal_threshold))
         return td_in_seconds < config.vm_proxy_renewal_threshold
 
+    # This method will test if a VM needs to be shutdown before proxy expiry, according
+    # the VM proxy shutdown threshold found in the cloud scheduler configuration.
+    #
+    # Returns True if the VM needs to be shutdown, or False otherwise (or if
+    # the VM has no user proxy associated with it).
+    def needs_proxy_shutdown(self):
+        expiry_time = self.get_x509userproxy_expiry_time()
+        if expiry_time == None:
+            return False
+        td = expiry_time - datetime.datetime.utcnow()
+        td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_shutdown_threshold))
+        return td_in_seconds < config.vm_proxy_shutdown_threshold
+
     # The following method will return the environment that should
     # be used when executing subprocesses.  This is needed for setting
     # the user's x509 proxy for example.
