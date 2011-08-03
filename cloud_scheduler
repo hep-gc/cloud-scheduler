@@ -147,12 +147,15 @@ class VMPoller(threading.Thread):
                 job.override_status = "HTTPFail"
 
     def check_destroy_threads(self):
+        to_remove = []
         for k, thread in self.destroy_threads.iteritems():
             if not thread.is_alive():
                 if thread.get_result() != 0:
                     log.error("Destroying VM %s failed. Leaving in error state." % thread.get_vm().id)
                 thread.join()
-                del self.destroy_threads[k]
+                to_remove.append(k)
+        for key in to_remove:
+            del self.destroy_threads[key]
     def check_destroy(self, cluster, vm):
         found = False
         if "".join([cluster.name, vm.id]) in self.destroy_threads.keys():
@@ -1266,12 +1269,16 @@ class Cleanup(threading.Thread):
         return found
 
     def check_destroy_threads(self):
+        to_remove = []
         for k, thread in self.destroy_threads.iteritems():
             if not thread.is_alive():
                 if thread.get_result() != 0:
                     log.error("Destroying VM %s failed. Leaving it for now." % thread.get_vm().id)
                 thread.join()
-                del self.destroy_threads[k]
+                to_remove.append(k)
+        for key in to_remove:
+            del self.destroy_threads[key]
+
 
 class VMDestroyCmd(threading.Thread):
     """
