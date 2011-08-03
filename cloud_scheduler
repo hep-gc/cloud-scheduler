@@ -121,8 +121,8 @@ class VMPoller(threading.Thread):
                 if vm.errorcount >= config.polling_error_threshold:
                     # make sure we're not already in the middle of a destroy for this VM
                     found = False
-                    for dt in self.destroy_threads:
-                        if dt.get_vm() == vm:
+                    for dtk, dtv in self.destroy_threads.iteritems():
+                        if dtv.get_vm() == vm:
                             found = True
                             break
                     if not found:
