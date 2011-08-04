@@ -1116,11 +1116,12 @@ class Cleanup(threading.Thread):
         for vm in to_shutdown:
             log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
             cluster = self.resource_pool.get_cluster_with_vm(vm)
-            log.info("VM %s on cluster %s shutting down" % (vm.id, cluster.name))
-            if not self.check_destroy(cluster, vm):
-                th = VMDestroyCmd(cluster, vm)
-                th.start()
-                self.destroy_threads["".join([cluster.name, vm.id])] = th
+            if cluster:
+                log.info("VM %s on cluster %s shutting down" % (vm.id, cluster.name))
+                if not self.check_destroy(cluster, vm):
+                    th = VMDestroyCmd(cluster, vm)
+                    th.start()
+                    self.destroy_threads["".join([cluster.name, vm.id])] = th
             #destroy_ret = cluster.vm_destroy(vm)
             #if destroy_ret != 0:
             #    log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
