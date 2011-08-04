@@ -1231,9 +1231,12 @@ class Cleanup(threading.Thread):
                         if bad_name_vm != None:
                             log.info("Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
                             cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
-                            destroy_ret = cluster.vm_destroy(bad_name_vm)
-                            if destroy_ret != 0:
-                                log.error("Failed to destroy vm %s" % bad_name_vm.id)
+                            if cluster:
+                                destroy_ret = cluster.vm_destroy(bad_name_vm)
+                                if destroy_ret != 0:
+                                    log.error("Failed to destroy vm %s" % bad_name_vm.id)
+                            else:
+                                log.warning("cluster lookup failed for vm %s" % bad_name_vm.id)
                         else:
                             log.error("Lookup of %s failed, does this vm still exist within CS?" % busy_vms[x]['Name'])
             elif adjusted_val < 0:
