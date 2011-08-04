@@ -532,8 +532,9 @@ class NimbusCluster(ICluster):
         def _remove_files(files):
             for file in files:
                 try:
-                    log.debug("Deleting %s" % file)
-                    os.remove(file)
+                    if file:
+                        log.debug("Deleting %s" % file)
+                        os.remove(file)
                 except:
                     log.exception("Couldn't delete %s" % file)
 
