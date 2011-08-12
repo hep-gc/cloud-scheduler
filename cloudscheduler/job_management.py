@@ -117,8 +117,6 @@ class Job:
                                 for when this can save you money (eg. with EC2)
 
      """
-     #TODO: Set default job properties in the cloud scheduler main config file
-     #     (Have option to set them there, and default values)
         self.id           = GlobalJobId
         self.user         = Owner
         self.uservmtype   = ':'.join([Owner, VMType])
@@ -178,47 +176,46 @@ class Job:
         return "Job '%s'" % self.id
 
 
-    # Log a short string representing the job
+    
     def log(self):
+        """Log a short string representing the job."""
         log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def log_dbg(self):
+        """Log a longer string representing the job."""
         log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def get_job_info(self):
+        """Formatted job info output for cloud_status -q."""
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
         return "%-20s %-15s %-15s %-10s %-12s %-15s\n" % (self.id[-20:], self.user[:15], self.req_vmtype[:15], CONDOR_STATUS[self.job_status], self.status[:12] if not self.override_status else self.override_status[:12], self.running_cloud[:15])
     @staticmethod
     def get_job_info_header():
+        """Job info Header output for cloud_status -q."""
         return "%-20s %-15s %-15s %-10s %-12s %-15s\n" % ("Global ID", "User", "VM Type", "Job Status", "Status", "Cloud")
     def get_job_info_pretty(self):
+        """Job info with header output for a job."""
         output = self.get_job_info_header()
         output += self.get_job_info()
         return output
-    # Get ID
-    # Returns the job's id string
+
     def get_id(self):
+        """Return the job id (Condor job id)."""
         return self.id
 
-    # Get priority
     def get_priority(self):
+        """Return the condor job priority of the job."""
         return self.priority
 
-    # Set priority
-    # Prio must be an integer.
-    def set_priority(self, prio):
-        try:
-            self.priority = int(prio)
-        except:
-            log.warning("set_priority - Incorrect argument given to set Job priority")
-            return
-
-    # Set status
-    # Sets the job's status to the given string
-    # Parameters:
-    #   status   - (str) A string indicating the job's new status.
-    # Note: Status must be one of Scheduled, Unscheduled
     def set_status(self, status):
+        """Sets the job's status to the given string
+
+        Parameters:
+            status   - (str) A string indicating the job's new status.
+        
+        Note: Status must be one of Scheduled, Unscheduled
+
+        """
         if (status not in self.statuses):
             log.debug("Error: incorrect status '%s' passed" % status)
             log.debug("Status must be one of: " + string.join(self.statuses, ", "))
