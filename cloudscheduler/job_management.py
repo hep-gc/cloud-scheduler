@@ -223,27 +223,34 @@ class Job:
         self.status = status
 
     def get_myproxy_server(self):
+        """Returns address of the myproxy server for job."""
         return self.myproxy_server
 
     def get_myproxy_server_port(self):
+        """Returns the myproxy server port that was specified for job."""
         return self.myproxy_server_port
 
     def get_myproxy_creds_name(self):
+        """Returns the username to use with myproxy for job."""
         return self.myproxy_creds_name
 
     def set_myproxy_server(self, v):
+        """Set the address of the myproxy server for job."""
         self.myproxy_server = v
         return
 
     def set_myproxy_server_port(self, v):
+        """Set the myproxy server port for job."""
         self.myproxy_server_port = v
         return
 
     def set_myproxy_creds_name(self, v):
+        """Set the username to use with myproxy for job."""
         self.myproxy_creds_name = v
         return
 
     def get_x509userproxy(self):
+        """Returns path of the proxy file."""
         proxy = ""
         if self.spool_dir and self.original_x509userproxy:
             proxy += self.spool_dir + "/"
@@ -258,33 +265,40 @@ class Job:
         return proxy
 
     def get_x509userproxysubject(self):
+        """Get the certificate DN of proxy for job."""
         return self.x509userproxysubject
 
-    # Use this method to get the expiry time of the job's user proxy, if any.
-    # Note that lazy initialization is done;  the expiry time will be extracted from the
-    # user proxy the first time the method is called and then it will be cached in the
-    # instance variable.
-    #
-    # Returns the expiry time as a datetime.datetime instance (UTC), or None if there is no
-    # user proxy associated with this job.
+
     def get_x509userproxy_expiry_time(self):
+        """
+        Use this method to get the expiry time of the job's user proxy, if any.
+        Note that lazy initialization is done;  the expiry time will be extracted from the
+        user proxy the first time the method is called and then it will be cached in the
+        instance variable.
+
+        Returns the expiry time as a datetime.datetime instance (UTC), or None if there is no
+        user proxy associated with this job.
+
+        """
         if (self.x509userproxy_expiry_time == None) and (self.get_x509userproxy() != None):
             self.x509userproxy_expiry_time = get_cert_expiry_time(self.get_x509userproxy())
         return self.x509userproxy_expiry_time
 
-    # Use this method to trigger an update of the proxy expiry time next time it is checked.
-    # For example, this must be called right after the proxy has been renewed.
-    # See get_x509userproxy_expiry_time for more info about how the proxy expiry time is
-    # cached in memory.
     def reset_x509userproxy_expiry_time(self):
+        """Use this method to trigger an update of the proxy expiry time next time it is checked.
+           For example, this must be called right after the proxy has been renewed.
+           See get_x509userproxy_expiry_time for more info about how the proxy expiry time is
+           cached in memory.
+        """
         self.x509userproxy_expiry_time = None
 
-    # This method will test if a job's user proxy needs to be refreshed, according
-    # the job proxy refresh threshold found in the cloud scheduler configuration.
-    #
-    # Returns True if the proxy needs to be refreshed, or False otherwise (or if
-    # the job has no user proxy associated with it).
     def needs_proxy_renewal(self):
+        """This method will test if a job's user proxy needs to be refreshed, according
+           the job proxy refresh threshold found in the cloud scheduler configuration.
+    
+           Returns True if the proxy needs to be refreshed, or False otherwise (or if
+           the job has no user proxy associated with it).
+        """
         expiry_time = self.get_x509userproxy_expiry_time()
         if expiry_time == None:
             return False
@@ -292,24 +306,25 @@ class Job:
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
         return td_in_seconds < config.job_proxy_renewal_threshold
 
-    # This method will test if a job's user proxy is expired.
-    #
-    # Returns True if the proxy is expired, False otherwise.
     def is_proxy_expired(self):
+        """This method will test if a job's user proxy is expired.
+    
+           Returns True if the proxy is expired, False otherwise.
+        """
         expiry_time = self.get_x509userproxy_expiry_time()
         if expiry_time == None:
             return False
         return expiry_time <= datetime.datetime.utcnow()
 
-    # A method that will compare a job's requirements listed below with another job to see if they
-    # all match.
     def has_same_reqs(self, job):
+        """A method that will compare a job's requirements listed below with another job to see if they all match."""
         return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network and self.user == job.user
 
 
-# A pool of all jobs read from the job scheduler. Stores all jobs until they
-# complete. Keeps scheduled and unscheduled jobs.
 class JobPool:
+    """ A pool of all jobs read from the job scheduler. Stores all jobs until they
+ complete. Keeps scheduled and unscheduled jobs.
+    """
 
     ## Instance Variables:
 
