@@ -347,11 +347,15 @@ class JobPool:
 
     ## Instance Methods
 
-    # Constructor
-    # name       - The name of the job pool being created
-    # last_query - A timestamp for the last time the scheduler was queried,
-    #              or its creation time
     def __init__(self, name, condor_query_type=""):
+        """Constructor for JobPool class
+        
+        Keyword arguments:
+        name              - The name of the job pool being created
+        condor_query_type - The method to use for querying condor
+        
+        """
+
         global log
         log = logging.getLogger("cloudscheduler")
         log.debug("New JobPool %s created" % name)
@@ -387,9 +391,12 @@ class JobPool:
             #self.job_type_distribution = self.job_type_distribution_multi_vmtype
             self.job_type_distribution = self.job_usertype_distribution_multi_vmtype
 
-    # Method to get all jobs in the JobPool
-    # Returns a list of Job instances, or [] if there are no jobs in the the JobPool.
     def get_all_jobs(self):
+        """Method to get all jobs in the JobPool
+
+           Returns a list of Job instances, or [] if there are no jobs in the the JobPool.
+        """
+
         jobs = []
         for job_list in self.new_jobs.values():
             jobs.extend(job_list)
@@ -400,9 +407,7 @@ class JobPool:
         return jobs
 
     def job_query_local(self):
-        """
-        job_query_local -- query and parse condor_q for job information
-        """
+        """job_query_local -- query and parse condor_q for job information."""
         log.debug("Querying Condor scheduler daemon (schedd) with %s" % config.condor_q_command)
         try:
             condor_q = shlex.split(config.condor_q_command)
@@ -425,6 +430,7 @@ class JobPool:
 
 
     def job_query_SOAP(self):
+        """job_qury_SOAP - query and parse condor for job information via SOAP API."""
         log.debug("Querying Condor scheduler daemon (schedd)")
 
         # Get job classAds from the condor scheduler
@@ -607,13 +613,14 @@ class JobPool:
 
 
  
-    # Updates the system jobs:
-    #   - Removes finished or deleted jobs from the system
-    #   - Ignores jobs already in the system and still in Condor
-    #   - Adds all new jobs to the system
-    # Parameters:
-    #   jobs - (list of Job objects) The jobs received from a condor query
     def update_jobs(self, query_jobs):
+        """Updates the system jobs:
+            - Removes finished or deleted jobs from the system
+            - Ignores jobs already in the system and still in Condor
+            - Adds all new jobs to the system
+           Keywords:
+            - query_jobs - (list of Job objects) The jobs received from a condor query
+        """
         # If no jobs recvd, remove all jobs from the system (all have finished or have been removed)
         if (query_jobs == []):
             log.debug("No jobs received from job query. Removing all jobs from the system.")
@@ -684,60 +691,72 @@ class JobPool:
         #log.verbose("High Priority Jobs (high_jobs):")
         #self.log_high_jobs()
 
-    # Add New Job
-    # Add a new job to the system (in the new_jobs set)
-    # Added in order (of priority)
     def add_new_job(self, job):
+        """Add New Job
+            Add a new job to the system (in the new_jobs set)
+            Added in order (of priority)
+        """
         self.job_container.add_job(job)
 
-    # Add a job to the scheduled jobs set in the system
+    
     def add_sched_job(self, job):
+        """Add a job to the scheduled jobs set in the system."""
         self.job_container.add_job(job)
 
-    # Add High(Priority) Job
-    # Add a new job to the system (in the high_jobs set)
+
     def add_high_job(self, job):
+        """Add High(Priority) Job (in the high_jobs set)."""
         self.job_container.add_job(job)
 
 
-    # Remove System Job
-    # Attempts to remove a given job from the JobPool unscheduled
-    # or scheduled job dictionaries.
-    # Parameters:
-    #   job - (Job) the job to be removed from the system
-    # No return (if job does not exist in system, error message logged)
     def remove_system_job(self, job):
+        """Remove System Job.
+
+        Attempts to remove a given job from the JobPool unscheduled
+        or scheduled job dictionaries.
+           Keywords:
+                job - (Job) the job to be removed from the system
+        No return (if job does not exist in system, error message logged)
+        """
         self.job_container.remove_job(job)
 
 
-    # Update Job Status
-    # Updates the status of a job
-    # Parameters:
-    #   job - the job to update
-    # Returns
-    #   True - updated
-    #   False - failed
     def update_job_status(self, target_job):
+        """Update the status of a job.
+
+        Keywords:
+            target_job - the job to update
+        Returns
+            True - updated
+            False - failed
+        """
         return self.job_container.update_job_status(target_job.id, int(target_job.job_status), target_job.remote_host, target_job.servertime, target_job.jobstarttime)
 
-    # Mark job scheduled
-    # Makes all changes to a job to indicate that the job has been scheduled
-    # Currently: moves passed job from unscheduled to scheduled job list,
-    # and changes job status to "Scheduled"
-    # Parameters:
-    #   job   - (Job object) The job to mark as scheduled
     def schedule(self, job):
+        """Makes all changes to a job to indicate that the job has been scheduled.
+
+            Keywords:
+                job - (Job object) The job to mark as scheduled
+        """
         self.job_container.schedule_job(job.id)
 
     def unschedule(self, job):
+        """Makes all changes to a job to indicate that the job has been unscheduled.
+
+            Keywords:
+                job - (Job object) The job to mark as unscheduled
+        """
         self.job_container.unschedule_job(job.id)
 
-    # Get required VM types
-    # Returns a list (of strings) containing the unique required VM types
-    # gathered from all jobs in the job pool (scheduled and unscheduled)
-    # Returns:
-    #   required_vmtypes - (list of strings) A list of required VM types
     def get_required_vmtypes(self):
+        """Get a list of required VM types.
+
+           Returns a list (of strings) containing the unique required VM types
+           gathered from all jobs in the job pool (scheduled and unscheduled)
+        Returns:
+           required_vmtypes - (list of strings) A list of required VM types
+
+        """
         required_vmtypes = []
         for job in self.job_container.get_all_jobs():
             if job.req_vmtype not in required_vmtypes and job.job_status <= self.RUNNING \
@@ -747,12 +766,16 @@ class JobPool:
         log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes
 
-    # Get required UserVM types
-    # Returns a list (of strings) containing the unique required VM types
-    # gathered from all jobs in the job pool (scheduled and unscheduled)
-    # Returns:
-    #   required_vmtypes - (list of strings) A list of required VM types
     def get_required_uservmtypes(self):
+        """Get a list of the required uservmtype.
+
+           Returns a list (of strings) containing the unique required VM types
+           paired with the username in form 'user:vmtype' gathered from all
+           jobs in the job pool (scheduled and unscheduled)
+        Returns:
+            required_vmtypes - (list of strings) A list of required VM types
+
+        """
         required_vmtypes = []
         for job in self.job_container.get_all_jobs():
             if job.uservmtype not in required_vmtypes and job.job_status <= self.RUNNING \
@@ -762,13 +785,16 @@ class JobPool:
         log.debug("get_required_uservmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes
 
-    # Get required VM types
-    # Returns a dictionary containing the unique required VM types as a key
-    # gathered from all jobs in the job pool (scheduled and unscheduled), and
-    # count of the number of jobs needing that type as the value.
-    # Returns:
-    #   required_vmtypes - (dictionary, string key, int value) A dict of required VM types
     def get_required_vmtypes_dict(self):
+        """Get required VM types dictionary containing a count of each vmtype.
+    
+            Returns a dictionary containing the unique required VM types as a key
+            gathered from all jobs in the job pool (scheduled and unscheduled), and
+            count of the number of jobs needing that type as the value.
+        Returns:
+            required_vmtypes - (dictionary, string key, int value)
+
+        """
         required_vmtypes = {}
         for job in self.job_container.get_all_jobs():
             if job.req_vmtype not in required_vmtypes and job.job_status <= self.RUNNING \
@@ -779,13 +805,13 @@ class JobPool:
         log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
 
-    # Get required UserVM types
-    # Returns a dictionary containing the unique required VM types as a key
-    # gathered from all jobs in the job pool (scheduled and unscheduled), and
-    # count of the number of jobs needing that type as the value.
-    # Returns:
-    #   required_vmtypes - (dictionary, string key, int value) A dict of required VM types
     def get_required_uservmtypes_dict(self):
+        """Returns a dictionary containing the unique required VM types.
+            Same function as get_required_vmtypes_dict() but has user:vmtype as
+            the a key instead of just vmtype.
+        Returns:
+            required_vmtypes - (dictionary, string key, int value) A dict of required VM types
+        """
         required_vmtypes = {}
         for job in self.job_container.get_all_jobs():
             if job.uservmtype not in required_vmtypes and job.job_status <= self.RUNNING \
@@ -796,10 +822,13 @@ class JobPool:
         log.debug("get_required_vm_usertypes_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
 
-    # Get desired vmtype distribution
-    # Based on top jobs in user new_job queue determine
-    # a 'fair' distribution of vmtypes
     def job_type_distribution_normal(self):
+        """Determine a 'fair' distribution of VMs based on jobs in the new_job queue.
+
+        The 'normal' distribution treats a user who has submitted multiple vmtypes
+        in whatever order they appear in (or priority).
+        """
+
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
@@ -838,10 +867,12 @@ class JobPool:
             type_desired[vmtype] = type_desired[vmtype] / num_users
         return type_desired
 
-    # Get desired uservmtype distribution
-    # Based on top jobs in user new_job queue determine
-    # a 'fair' distribution of vmtypes
     def job_usertype_distribution_normal(self):
+        """Determine a 'fair' distribution of VMs based on jobs in the new_job queue.
+
+        The 'normal' distribution treats a user who has submitted multiple vmtypes
+        in whatever order they appear in (or priority).
+        """
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
@@ -881,6 +912,12 @@ class JobPool:
         return type_desired
 
     def job_type_distribution_multi_vmtype(self):
+        """Determine a 'fair' distribution of VMs based on jobs in the new_job queue.
+
+        The 'multi_vmtype' distribution treats a user who has submitted multiple vmtypes
+        equally(based on priority) and will split the users share of resources between
+        the vmtypes.
+        """
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
@@ -931,8 +968,14 @@ class JobPool:
             type_desired[vmtype] *= num_users
         return type_desired
 
-    # Modified version for uservmtype use
     def job_usertype_distribution_multi_vmtype(self):
+        """Determine a 'fair' distribution of VMs based on jobs in the new_job queue.
+
+        The 'multi_vmtype' distribution treats a user who has submitted multiple vmtypes
+        equally(based on priority) and will split the users share of resources between
+        the vmtypes.
+        """
+
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
@@ -998,6 +1041,10 @@ class JobPool:
     # Attempts to place a list of jobs into a Hold Status to prevent running
     # If a job fails to be held it is placed in a list and failed jobs are returned
     def hold_jobSOAP(self, jobs):
+        """Attempt to plate a list of jobs into a Hold status in Condor.
+
+            Returns a list of any job that fails to Hold.
+        """
         log.debug("Holding Jobs via Condor SOAP API")
         failed = []
         for job in jobs:
@@ -1018,9 +1065,11 @@ class JobPool:
                 return None
         return failed
 
-    # Attempts to release a list of jobs that have been previously held
-    # If a job fails to be released it is placed in a list and returned
     def release_jobSOAP(self, jobs):
+        """Attempt to release a list of jobs that are in the Held state.
+        
+        Returns a list of jobs that fail to release.
+        """
         log.debug("Releasing Jobs via Condor SOAP API")
         failed = []
         for job in jobs:
@@ -1043,6 +1092,11 @@ class JobPool:
 
     # Deprecated
     def hold_user(self, user):
+        """Hold all jobs for a specified user.
+        
+            Keywords:
+                user - the user whom jobs will be held
+        """
         jobs = []
         for job in self.job_container.get_jobs_for_user(user):
             if job.job_status != self.RUNNING:
@@ -1052,6 +1106,11 @@ class JobPool:
 
     # Deprecated
     def release_user(self, user):
+        """Release all jobs for a specified user.
+        
+            Keywords:
+                user - the user whom jobs will be released
+        """
         jobs = []
         for job in self.job_container.get_jobs_for_user(user):
             if job.job_status == self.HELD:
@@ -1060,6 +1119,11 @@ class JobPool:
 
     # Deprecated
     def hold_vmtype(self, vmtype):
+        """Hold all jobs for a specified vmtype.
+        
+            Keywords:
+                vmtype - the vmtype of jobs to hold
+        """
         jobs = []
         for job in self.job_container.get_all_jobs():
             if job.req_vmtype == vmtype and job.job_status != self.RUNNING:
@@ -1069,6 +1133,11 @@ class JobPool:
 
     # Deprecated
     def release_vmtype(self, vmtype):
+        """Release all jobs for a specified vmtype.
+        
+            Keywords:
+                vmtype - the vmtype of jobs to release
+        """
         jobs = []
         for job in self.job_container.get_all_jobs():
             if job.req_vmtype == vmtype and job.job_status == self.HELD:
@@ -1077,6 +1146,7 @@ class JobPool:
         return ret
 
     def track_run_time(self, removed):
+        """Keeps track of the approximate run time of jobs on each VM."""
         for job in removed:
             # If job has completed and been removed it's last state should
             # have been running
@@ -1089,17 +1159,19 @@ class JobPool:
     ## JobPool Private methods (Support methods)
     ##
 
-    # Parse classAd Requirements string.
-    # Takes the Requirements string from a condor job classad and retrieves the
-    # VMType string. Returns null object if no VMtype is specified.
-    # NOTE: Could be expanded to return a name=>value dictionary of all Requirements
-    #       fields. (Not currently necessary).
-    # Parameters:
-    #   requirements - (str) The Requirements string from a condor job classAd, or a
-    #                  VMType string, or None (the null object)
-    # Return:
-    #   The VMType string or None (null object)
     def parse_classAd_requirements(self, requirements):
+        """
+        Parse classAd Requirements string.
+        Takes the Requirements string from a condor job classad and retrieves the
+        VMType string. Returns null object if no VMtype is specified.
+        NOTE: Could be expanded to return a name=>value dictionary of all Requirements
+              fields. (Not currently necessary).
+        Parameters:
+          requirements - (str) The Requirements string from a condor job classAd, or a
+                         VMType string, or None (the null object)
+        Return:
+          The VMType string or None (null object)
+        """
 
         # Match against the Requirements string
         req_re = "(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
@@ -1114,28 +1186,29 @@ class JobPool:
 
     ## Log methods
 
-    # Log Job Lists (short)
     def log_jobs(self):
+        """Log Job Lists (short)."""
         self.log_sched_jobs()
         self.log_unsched_jobs()
 
-    # log scheduled jobs (short)
     def log_sched_jobs(self):
+        """Log scheduled jobs (short)."""
         for job in self.job_container.get_scheduled_jobs():
             job.log_dbg()
 
-    # log unscheduled Jobs (short)
     def log_unsched_jobs(self):
+        """Log unscheduled Jobs (short)."""
         for job in self.job_container.get_unscheduled_jobs():
             job.log_dbg()
 
 
-    # log high priority Jobs (short)
     def log_high_jobs(self):
+        """Log high priority Jobs (short)."""
         for job in self.job_container.get_high_priority_jobs():
             job.log_dbg()
 
     def log_jobs_list(self, jobs):
+        """Log a list of jobs."""
         if jobs == []:
             log.verbose("(none)")
         for job in jobs:
