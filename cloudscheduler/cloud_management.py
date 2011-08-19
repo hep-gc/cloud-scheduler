@@ -56,10 +56,9 @@ log = logging.getLogger("cloudscheduler")
 ## CLASSES
 ##
 
-# A class that stores and organises a list of Cluster resources
 
 class ResourcePool:
-
+    """Stores and organises a list of Cluster resources."""
     ## Instance variables
     resources = []
     machine_list = []
@@ -68,9 +67,13 @@ class ResourcePool:
 
     ## Instance methods
 
-    # Constructor
-    # name   - The name of the ResourcePool being created
     def __init__(self, config_file, name="Resources", condor_query_type=""):
+        """ Constructor.
+        
+        Keywords:
+            name   - The name of the ResourcePool being created
+            condor_query_type - type of query to do on condor, either local or soap
+        """
         global log
         log = logging.getLogger("cloudscheduler")
 
@@ -121,7 +124,7 @@ class ResourcePool:
 
 
     def setup(self):
-
+        """Read the cloud_resources.conf to determine the available clouds."""
         log.info("Loading cloud resource configuration file %s" % self.config_file)
 
         if not self.setup_lock.acquire(False):
@@ -224,9 +227,7 @@ class ResourcePool:
 
     @staticmethod
     def _cluster_from_config(config, cluster):
-        """
-        Create a new cluster object from a config file's specification
-        """
+        """Create a new cluster object from a config file's specification."""
         if config.has_option(cluster, "enabled"):
             enabled = config.getboolean(cluster, "enabled")
             if not enabled:
@@ -277,23 +278,24 @@ class ResourcePool:
             return None
 
 
-    # Add a cluster resource to the pool's resource list
     def add_resource(self, cluster):
+        """Add a cluster resource to the pool's resource list."""
         self.resources.append(cluster)
 
-    # Log a list of clusters.
-    # Supports independently logging a list of clusters for specific ResourcePool
-    # functionality (such a printing intermediate working cluster lists)
     def log_list(self, clusters):
+        """Log a list of clusters.
+        Supports independently logging a list of clusters for specific ResourcePool
+        functionality (such a printing intermediate working cluster lists)
+        """
         for cluster in clusters:
             cluster.log()
 
-    # Log the name and address of every cluster in the resource pool
     def log_pool(self, ):
+        """Log the name and address of every cluster in the resource pool."""
         log.debug(self.get_pool_info())
 
-    # Print the name and address of every cluster in the resource pool
     def get_pool_info(self, ):
+        """Print the name and address of every cluster in the resource pool."""
         output = "Resource pool " + self.name + ":\n"
         output += "%-15s  %-10s %-15s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS")
         if len(self.resources) == 0:
@@ -303,28 +305,33 @@ class ResourcePool:
                 output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
         return output
 
-    # Return an arbitrary resource from the 'resources' list. Does not remove
-    # the returned element from the list.
-    # (Currently, the first cluster in the list is returned)
     def get_resource(self, ):
+        """Return an arbitrary resource from the 'resources' list. Does not remove
+        the returned element from the list.
+        (Currently, the first cluster in the list is returned)
+        """
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return resource.")
             return None
 
         return (self.resources[0])
 
-    # Return the first resource that fits the passed in VM requirements. Does
-    # not remove the element returned.
-    # Built to support "First-fit" scheduling.
-    # Parameters:
-    #    network  - the network assoication required by the VM
-    #    cpuarch  - the cpu architecture that the VM must run on
-    #    memory   - the amount of memory (RAM) the VM requires
-    #    cpucores  - the number of cores that a VM requires (dedicated? or general?)
-    #    storage   - the amount of scratch space the VM requires
-    # Return: returns a Cluster object if one is found that fits VM requirments
-    #         Otherwise, returns the 'None' object
     def get_resourceFF(self, network, cpuarch, memory, cpucores, storage):
+        """Return the first resource that fits the passed in VM requirements. 
+        
+        Does not remove the element returned.
+        Built to support "First-fit" scheduling.
+        
+        Keywords:
+           network  - the network assoication required by the VM
+           cpuarch  - the cpu architecture that the VM must run on
+           memory   - the amount of memory (RAM) the VM requires
+           cpucores  - the number of cores that a VM requires (dedicated? or general?)
+           storage   - the amount of scratch space the VM requires
+        
+        Returns: returns a Cluster object if one is found that fits VM requirments
+                Otherwise, returns the 'None' object
+        """
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return FF resource")
             return None
@@ -358,11 +365,21 @@ class ResourcePool:
         return None
 
 
-    # Returns a list of Clusters that fit the given VM/Job requirements
-    # Parameters: (as for get_resource methods)
-    # Return: a list of Cluster objects representing clusters that meet given
-    #         requirements for network, cpu, memory, and storage
     def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[]):
+        """get a list of Clusters that fit the given VM/Job requirements.
+        
+        Keywords: (as for get_resource methods)
+            network  - the network assoication required by the VM
+            cpuarch  - the cpu architecture that the VM must run on
+            memory   - the amount of memory (RAM) the VM requires
+            cpucores  - the number of cores that a VM requires (dedicated? or general?)
+            storage   - the amount of scratch space the VM requires
+            ami       - the ami of the vm image - used by EC2 clouds
+            imageloc  - the image location url - used by Nimbus clouds
+            targets   - list of target clouds 
+        Return: a list of Cluster objects representing clusters that meet given
+            requirements for network, cpu, memory, and storage
+        """
         if len(self.resources) == 0:
             log.debug("Pool is empty... Cannot return list of fitting resources")
             return []
@@ -427,33 +444,38 @@ class ResourcePool:
         return fitting_clusters
 
 
-    # Returns a resource that fits given requirements and fits some balance
-    # criteria between clusters (for example, lowest current load or most free
-    # resources of the fitting clusters).
-    # Returns the first find as the primary balanced cluster choice, and returns
-    # a secondary fitting cluster if available (otherwise, None is returned in
-    # place of a secondary cluster).
-    # Built to support "Cluster-Balanced Fit Scheduling"
-    # Note: Currently, we are considering the "most balanced" cluster to be that
-    # with the fewest running VMs on it. This is to minimize and balance network
-    # traffic to clusters, among other reasons.
-    # Other possible metrics are:
-    #   - Most amount of free space for VMs (vm slots, memory, cpu cores..);
-    #   - etc.
-    # Parameters:
-    #    network  - the network assoication required by the VM
-    #    cpuarch  - the cpu architecture that the VM must run on
-    #    memory   - the amount of memory (RAM) the VM requires
-    #    cpucores  - the number of cores that a VM requires (dedicated? or general?)
-    #    storage   - the amount of scratch space the VM requires
-    # Return: returns a tuple of cluster objects. The first, or primary cluster, is the
-    #         most balanced fit. The second, or secondary, is an alternative fitting
-    #         cluster.
-    #         Normal return, (Primary_Cluster, Secondary_Cluster)
-    #         If no secondary cluster is found, (Cluster, None) is returned.
-    #         If no fitting clusters are found, (None, None) is returned.
     def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[]):
+        """
+        Returns a resource that fits given requirements and fits some balance
+        criteria between clusters (for example, lowest current load or most free
+        resources of the fitting clusters).
+        Returns the first find as the primary balanced cluster choice, and returns
+        a secondary fitting cluster if available (otherwise, None is returned in
+        place of a secondary cluster).
+        Built to support "Cluster-Balanced Fit Scheduling"
+        Note: Currently, we are considering the "most balanced" cluster to be that
+        with the fewest running VMs on it. This is to minimize and balance network
+        traffic to clusters, among other reasons.
+        Other possible metrics are:
+          - Most amount of free space for VMs (vm slots, memory, cpu cores..);
+          - etc.
+        Keywords:
+           network  - the network assoication required by the VM
+           cpuarch  - the cpu architecture that the VM must run on
+           memory   - the amount of memory (RAM) the VM requires
+           cpucores  - the number of cores that a VM requires (dedicated? or general?)
+           storage   - the amount of scratch space the VM requires
+           ami       - image ami - used by EC2 clouds
+           imageloc  - image url - used by Nimbus clouds
+           targets   - list of target clouds
+        Return: returns a tuple of cluster objects. The first, or primary cluster, is the
+                most balanced fit. The second, or secondary, is an alternative fitting
+                cluster.
+                Normal return, (Primary_Cluster, Secondary_Cluster)
+                If no secondary cluster is found, (Cluster, None) is returned.
+                If no fitting clusters are found, (None, None) is returned.
 
+        """
         # Get a list of fitting clusters
         fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets)
 
@@ -496,13 +518,18 @@ class ResourcePool:
         # Return the most balanced cluster after considering all fitting clusters.
         return (mostbal_cluster, nextbal_cluster)
 
-    # Check that a cluster will be able to meet the static requirements.
-    # Parameters:
-    #    network  - the network assoication required by the VM
-    #    cpuarch  - the cpu architecture that the VM must run on
-    # Return: True if cluster is found that fits VM requirments
-    #         Otherwise, returns False
     def resourcePF(self, network, cpuarch, memory=0, disk=0):
+        """
+        Check that a cluster will be able to meet the static requirements.
+        Keywords:
+           network  - the network assoication required by the VM
+           cpuarch  - the cpu architecture that the VM must run on
+           memory   - minimum memory required on cloud
+           disk     - minimum storage space required on cloud
+        Return: True if cluster is found that fits VM requirments
+                Otherwise, returns False
+
+        """
         potential_fit = False
 
         for cluster in self.resources:
@@ -522,6 +549,18 @@ class ResourcePool:
         return potential_fit
 
     def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[]):
+        """
+        Determines which clouds could start a VM with the given requirements.
+        
+        Keywords:
+            network - the network pool
+            cpuarch - CPU architecture that the VM must run on
+            memory  - amount of memory VM requires to run
+            disk    - amount of scratch space needed on VM
+            targets - list of target clouds
+        Return:
+            list of clusters that fit requirements
+        """
         fitting = []
         clusters = []
         if len(targets) == 0:
@@ -541,8 +580,8 @@ class ResourcePool:
             fitting.append(cluster)
         return fitting
 
-    # Return list of clusters that match names 
     def filter_resources_by_names(self, names):
+        """Return list of clusters that match names."""
         clusters = []
         for name in names:
             cluster = self.get_cluster(name)
@@ -552,24 +591,26 @@ class ResourcePool:
                 log.debug("No Cluster with name %s in system" % name)
         return clusters
 
-    # Return cluster that matches cluster_name
     def get_cluster(self, cluster_name):
+        """Return cluster that matches cluster_name."""
         for cluster in self.resources:
             if cluster.name == cluster_name:
                 return cluster
         return None
 
-    # Find cluster that contains vm
     def get_cluster_with_vm(self, vm):
+        """Find cluster that contains vm."""
         cluster = None
         for c in self.resources:
             if vm in c.vms:
                 cluster = c
         return cluster
 
-    # Convert the Condor class ad struct into a python dict
-    # Note this is done 'stupidly' without checking data types
     def convert_classad_dict(self, ad):
+        """Convert the Condor class ad struct into a python dict.
+
+        Note this is done 'stupidly' without checking data types
+        """
         native = {}
         attrs = ad[0]
         for attr in attrs:
@@ -577,8 +618,8 @@ class ResourcePool:
                 native[attr.name] = attr.value
         return native
 
-    # Takes a list of Condor class ads to convert
     def convert_classad_list(self, ad):
+        """Takes a list of Condor class ads to convert."""
         native_list = []
         items = ad[0]
         for item in items:
@@ -701,9 +742,11 @@ class ResourcePool:
         return machines
 
 
-    # Get a Dictionary of required VM Types with how many of that type running
-    # Uses the dict-list structure returned by SOAP query
     def get_vmtypes_count(self, machineList):
+        """Get a Dictionary of required VM Types with how many of that type running.
+        
+        Uses the dict-list structure returned by SOAP/local query
+        """
         count = {}
         for vm in machineList:
             if vm.has_key('VMType'):
@@ -714,6 +757,11 @@ class ResourcePool:
         return count
 
     def get_uservmtypes_count(self, machineList):
+        """Get a dictionary of required VM usertypes currently running.
+        
+        Keywords:
+            machineList - the parsed struct returned from condor of execute nodes
+        """
         count = {}
         for vm in machineList:
             if vm.has_key('VMType') and vm.has_key('Start'):
@@ -740,19 +788,21 @@ class ResourcePool:
         log.debug("VMs in machinelist: %s" % str(count))
         return count
 
-    # Determines if the key value pairs in in criteria are in the dictionary
     def match_criteria(self, base, criteria):
+        """Determines if the key value pairs in in criteria are in the dictionary."""
         return criteria == dict(set(base.items()).intersection(set(criteria.items())))
-    # Find all the matching entries for given criteria
+
     def find_in_where(self, machineList, criteria):
+        """Find all the matching entries for given criteria."""
         matches = []
         for machine in machineList:
             if self.match_criteria(machine, criteria):
                 matches.append(machine)
         return matches
 
-    # Get a dictionary of types of VMs the scheduler is currently tracking
+    #Creating a usertype version of this function was skipped
     #def get_vmtypes_count_internal(self):
+        #"""Get a dictionary of types of VMs the scheduler is currently tracking."""
         #types = {}
         #for cluster in self.resources:
             #for vm in cluster.vms:
@@ -762,8 +812,9 @@ class ResourcePool:
                     #types[vm.vmtype] = 1
         #return types
 
-    # Get a dictionary of uservmtypes of VMs the scheduler is currently tracking
+
     def get_vmtypes_count_internal(self):
+        """Get a dictionary of uservmtypes of VMs the scheduler is currently tracking."""
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:
@@ -772,16 +823,16 @@ class ResourcePool:
                 else:
                     types[vm.uservmtype] = 1
         return types
-    
-    # Count of VMs in the system
+
     def vm_count(self):
+        """Count of VMs in the system."""
         count = 0
         for cluster in self.resources:
             count = count + len(cluster.vms)
         return count
 
-    # VM Type Distribution
     def vmtype_slot_distribution(self):
+        """VM Type Distribution."""
         types = self.get_vmtypes_count_internal()
         count = Decimal(self.vm_count())
         if count == 0:
@@ -791,8 +842,8 @@ class ResourcePool:
             types[vmtype] *= count
         return types
 
-    # VM Type Memory Distribution
     def vmtype_mem_distribution(self):
+        """VM Type Memory Distribution."""
         usage = self.vmtype_resource_usage()
         types = {}
         mem_total = 0
@@ -807,8 +858,8 @@ class ResourcePool:
             types[vmtype] *= mem_total
         return types
 
-    # VM Type Memory & CPU Distribution
     def vmtype_mem_cpu_distribution(self):
+        """VM Type Memory & CPU Distribution."""
         usage = self.vmtype_resource_usage()
         types = {}
         mem_cpu_total = 0
@@ -824,8 +875,8 @@ class ResourcePool:
             types[vmtype] *= mem_cpu_total
         return types
 
-    # VM Type Memory & CPU & Storage Distribution
     def vmtype_mem_cpu_storage_distribution(self):
+        """VM Type Memory & CPU & Storage Distribution."""
         usage = self.vmtype_resource_usage()
         types = {}
         vol_total = 0
@@ -849,6 +900,7 @@ class ResourcePool:
             types[vmtype] *= mem_cpu_storage_total
         return types
 
+    # Skipped creating an alternate usertypes version of this function
     # VM Type resource usage
     # Counts up how much/many of each resource (RAM, Cores, Storage)
     # are being used by each type of VM
@@ -866,10 +918,11 @@ class ResourcePool:
             #results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
         #return results
 
-    # VM Type resource usage w/ uservmtype
-    # Counts up how much/many of each resource (RAM, Cores, Storage)
-    # are being used by each type of VM
     def vmtype_resource_usage(self):
+        """VM Type resource usage w/ uservmtype
+        Counts up how much/many of each resource (RAM, Cores, Storage)
+        are being used by each type of VM
+        """
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:
@@ -897,6 +950,7 @@ class ResourcePool:
         #return types
 
     def vm_slots_used(self):
+        """Figure out the actual number of 'slots' being used when some VMs are using multi-job settings."""
         types = {}
         for cluster in self.resources:
             for vm in cluster.vms:
@@ -909,10 +963,11 @@ class ResourcePool:
                     types[vm.uservmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
         return types
 
-    # Take the current and previous machineLists
-    # Figure out which machines have changed jobs
-    # return list of machine names that have
     def machine_jobs_changed(self, current, previous):
+        """Take the current and previous machineLists
+        Figure out which machines have changed jobs
+        return list of machine names that have
+        """
         auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current if 'GlobalJobId' in d.keys())
         auxPrevious = dict((d['Name'], d['GlobalJobId']) for d in previous if 'GlobalJobId' in d.keys())
         changed = [k for k,v in auxPrevious.items() if k in auxCurrent and auxCurrent[k] != v]
@@ -995,8 +1050,9 @@ class ResourcePool:
                                  (old_cluster.name, vm.id))
                         old_cluster.vm_destroy(vm)
 
-    # Error Tracking to be used to ban / filter resources
+
     def track_failures(self, job, resources,  value):
+        """Error Tracking to be used to ban / filter resources."""
         for cluster in resources:
             if cluster.__class__.__name__ == 'NimbusCluster':
                 if job.req_imageloc in self.failures.keys():
@@ -1036,6 +1092,7 @@ class ResourcePool:
                     self.failures[job.req_ami].append(queue)
 
     def check_failures(self):
+        """Check if failures have crossed the threshold and ban job from resources."""
         with self.ban_lock:
             banned_changed = False
             for img in self.failures.keys():
@@ -1120,6 +1177,17 @@ class ResourcePool:
             self.banned_job_resource = updated_ban
 
     def do_condor_off(self, machine_name, machine_addr):
+        """Perform a condor_off on an execute node.
+
+        Executes multiple commands to condor in order to peacefully stop the start deamon
+        on a VM so that it will finish its current job but accept no new jobs.
+        
+        Keywords:
+            machine_name - the condor machine name to condor_off
+            machine_addr - the condor machine addr to condor_off
+        Return:
+            a 3 tuple of the returncodes from the 2 commands used and a return code
+        """
         cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
         cmd2 = '%s -peaceful -addr "%s" -startd' % (config.condor_off_command, machine_addr)
         cmd3 = '%s -peaceful -addr "%s" -master' % (config.condor_off_command, machine_addr)
@@ -1210,6 +1278,14 @@ class ResourcePool:
         return (sp1.returncode, ret1, sp2.returncode, ret2)
 
     def do_condor_on(self, machine_name, machine_addr):
+        """Attempt to turn on the start deamon of a VM.
+        
+        Keywords:
+            machine_name - the condor machine name to try to condor_on
+            machine_addr - the condor machine addr to try to condor_on
+        Return:
+            the return code indicating success of failure to condor_on
+        """
         cmd = '%s -subsystem startd -name "%s"' % (config.condor_on_command, machine_name)
         args = []
         
@@ -1245,6 +1321,7 @@ class ResourcePool:
             return (-1, "")
 
     def find_vm_with_name(self, condor_name):
+        """Find a VM in cloudscheduler with the given condor machine name(hostname)."""
         foundIt = False
         vm_match = None
         for cluster in self.resources:
@@ -1258,6 +1335,7 @@ class ResourcePool:
         return vm_match
 
     def find_cluster_with_vm(self, condor_name):
+        """Find which cluster holds a VM with the given condor machine name(hostname)."""
         foundIt = False
         cluster_match = None
         vm_match = None
@@ -1273,6 +1351,7 @@ class ResourcePool:
         return (cluster_match, vm_match)
 
     def find_vm_with_addr(self, condor_addr):
+        """Find a VM with the given condor address."""
         foundIt = False
         vm_match = None
         for cluster in self.resources:
@@ -1286,6 +1365,7 @@ class ResourcePool:
         return vm_match
 
     def retiring_vms_of_type(self, vmtype):
+        """Get a list of the VMs in the Retiring state of the given type."""
         retiring = []
         for cluster in self.resources:
             for vm in cluster.vms:
@@ -1295,6 +1375,7 @@ class ResourcePool:
         return retiring
 
     def retiring_vms_of_usertype(self, vmtype):
+        """Get a list of the VMs in the Retiring state of the given usertype."""
         retiring = []
         for cluster in self.resources:
             for vm in cluster.vms:
@@ -1304,6 +1385,7 @@ class ResourcePool:
         return retiring
 
     def get_starting_of_type(self, vmtype):
+        """Get a list of the VMs in the Starting state of the given type."""
         starting = []
         for cluster in self.resources:
             for vm in cluster.vms:
@@ -1313,6 +1395,7 @@ class ResourcePool:
         return starting
 
     def get_starting_of_usertype(self, vmtype):
+        """Get a list of the VMs in the Starting state of the given usertype."""
         starting = []
         for cluster in self.resources:
             for vm in cluster.vms:
@@ -1322,6 +1405,7 @@ class ResourcePool:
         return starting
 
     def get_all_vms(self):
+        "Returns a list of all the VMs in the system."""
         all_vms = []
         for cluster in self.resources:
             for vm in cluster.vms:
@@ -1329,6 +1413,7 @@ class ResourcePool:
         return all_vms
 
     def get_cloud_config_output(self):
+        """Build up a string of the cloudscheduler configuration values."""
         try:
             cloud_config = ConfigParser.SafeConfigParser()
             cloud_config.read(self.config_file)

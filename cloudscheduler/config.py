@@ -98,9 +98,12 @@ log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
 use_pyopenssl = False
 
 
-# setup will look for a configuration file specified on the command line,
-# or in ~/.cloudscheduler.conf or /etc/cloudscheduler.conf
+
 def setup(path=None):
+    """Setup cloudscheduler using config file.
+       setup will look for a configuration file specified on the command line,
+       or in ~/.cloudscheduler.conf or /etc/cloudscheduler.conf
+    """
 
     global condor_webservice_url
     global condor_collector_url

@@ -50,7 +50,6 @@ class VM:
     A class for storing created VM information. Used to populate Cluster classes
     'vms' lists.
 
-
     Instance Variables
 
     The global VM states are:
