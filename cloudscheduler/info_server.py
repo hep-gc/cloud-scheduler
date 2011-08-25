@@ -50,8 +50,12 @@ class InfoServer(threading.Thread,):
 
     cloud_resources = None
     job_pool = None
-
-    def __init__(self, c_resources, c_job_pool):
+    job_poller = None
+    machine_poller = None
+    vm_poller = None
+    scheduler = None
+    cleaner = None
+    def __init__(self, c_resources, c_job_pool, c_job_poller, c_machine_poller, c_vm_poller, c_scheduler, c_cleaner):
 
         global log
         log = logging.getLogger("cloudscheduler")
@@ -61,6 +65,11 @@ class InfoServer(threading.Thread,):
         self.done = False
         cloud_resources = c_resources
         job_pool = c_job_pool
+        job_poller = c_job_poller
+        machine_poller = c_machine_poller
+        vm_poller = c_vm_poller
+        scheduler = c_scheduler
+        cleaner = c_cleaner
         host_name = "0.0.0.0"
         #set up server
         try:
@@ -223,6 +232,14 @@ class InfoServer(threading.Thread,):
                 return output
             def get_cloud_config_values(self):
                 return cloud_resources.get_cloud_config_output()
+            def check_shared_objs(self):
+                output = ""
+                output += "Scheduler Thread:\n" + scheduler.check_shared_objs() + "\n"
+                output += "Cleanup Thread:\n" + cleaner.check_shared_objs() + "\n"
+                output += "VMPoller Thread:\n" + vm_poller.check_shared_objs() + "\n"
+                output += "JobPoller Thread:\n" + job_poller.check_shared_objs() + "\n"
+                output += "MachinePoller Thread:\n" + machine_poller.check_shared_objs() + "\n"
+                return output
 
         self.server.register_instance(externalFunctions())
 

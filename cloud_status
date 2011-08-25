@@ -63,6 +63,8 @@ def main(argv=None):
                       default=False, help="Display Average Run time of Jobs on VMs")
     parser.add_option("-l", "--cloud-conf", dest='cloud_conf', action="store_true",
                       default=False, help='Display the cloud_resources config')
+    parser.add_option("-o", "--check_shared", dest="check_shared",
+                      action="store_true", default=False, help="print shared object debug info")
 
     (cli_options, args) = parser.parse_args()
 
@@ -134,6 +136,8 @@ def main(argv=None):
             print s.get_vm_job_run_times()
         elif cli_options.cloud_conf:
             print s.get_cloud_config_values()
+        elif cli_options.check_shared:
+            print s.check_shared_objs()
         else:
             print s.get_cloud_resources()
 
