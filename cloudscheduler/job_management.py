@@ -155,7 +155,7 @@ class Job:
         self.ban_time = None
 
         # Set the new job's status
-        self.status = self.statuses[0]
+        self.status = self.statuses[1]
         self.override_status = None
 
         global log
