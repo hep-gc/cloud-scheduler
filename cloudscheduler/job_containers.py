@@ -320,6 +320,38 @@ class HashTableJobContainer(JobContainer):
         except KeyError:
             return None
 
+    def get_held_jobs(self):
+        HELD = 5
+        held_jobs = []
+        for job in self.all_jobs.values():
+            if job.job_status == HELD:
+                held_jobs.append(job)
+        return held_jobs
+    
+    def get_idle_jobs(self):
+        IDLE = 1
+        idle_jobs = []
+        for job in self.all_jobs.values():
+            if job.job_status == IDLE:
+                idle_jobs.append(job)
+        return idle_jobs
+
+    def get_running_jobs(self):
+        RUNNING = 2
+        run_jobs = []
+        for job in self.all_jobs.values():
+            if job.job_status == RUNNING:
+                run_jobs.append(job)
+        return run_jobs
+
+    def get_complete_jobs(self):
+        COMPLETE = 4
+        comp_jobs = []
+        for job in self.all_jobs.values():
+            if job.job_status == COMPLETE:
+                comp_jobs.append(job)
+        return comp_jobs
+
     def get_jobs_for_user(self, user, prioritized=False):
         with self.lock:
             if user not in self.jobs_by_user:

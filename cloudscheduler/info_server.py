@@ -168,6 +168,30 @@ class InfoServer(threading.Thread,):
                 for job in jobs:
                     output += job.get_job_info()
                 return output
+            def get_idlejobs(self):
+                jobs = job_pool.job_container.get_idle_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
+                    output += job.get_job_info()
+                return output
+            def get_runningjobs(self):
+                jobs = job_pool.job_container.get_running_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
+                    output += job.get_job_info()
+                return output
+            def get_completejobs(self):
+                jobs = job_pool.job_container.get_complete_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
+                    output += job.get_job_info()
+                return output
+            def get_heldjobs(self):
+                jobs = job_pool.job_container.get_held_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
+                    output += job.get_job_info()
+                return output
             def get_job(self, jobid):
                 output = "Job not found."
                 job = job_pool.job_container.get_job_by_id(jobid)

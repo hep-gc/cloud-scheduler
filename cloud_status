@@ -50,7 +50,7 @@ def main(argv=None):
                       help="Show developer information about cloud_scheduler")
     parser.add_option("-q", "--job-queue", metavar="QUEUE",
                       action="store", dest="job_queue",
-                      type="choice", choices=['all', 'new', 'sched', 'high'],
+                      type="choice", choices=['all', 'new', 'sched', 'high', 'running', 'idle', 'held', 'complete'],
                       help="Get Information about the job queues")
     parser.add_option("-i", "--ip-address", default=False, action="store_true",
                       dest="ips",
@@ -123,9 +123,21 @@ def main(argv=None):
             elif cli_options.job_queue.startswith('s'):
                 print "Jobs in Scheduled Queue"
                 print s.get_schedjobs()
-            elif cli_options.job_queue.startswith('h'):
+            elif cli_options.job_queue.startswith('hi'):
                 print "Jobs in High Priority Queue"
                 print s.get_highjobs()
+            elif cli_options.job_queue.startswith('he'):
+                print "Jobs in Held state"
+                print s.get_heldjobs()
+            elif cli_options.job_queue.startswith('i'):
+                print "Jobs in Idle state"
+                print s.get_idlejobs()
+            elif cli_options.job_queue.startswith('c'):
+                print "Jobs in Complete state"
+                print s.get_completejobs()
+            elif cli_options.job_queue.startswith('r'):
+                print "Jobs in Running state"
+                print s.get_runningjobs()
         elif cli_options.ips:
             print s.get_ips_munin()
         elif cli_options.boot_time:
