@@ -140,11 +140,16 @@ class VMPoller(threading.Thread):
     def handle_bad_image(self, user, image):
         log.info("User %s has job(s) with bad image location: %s - temporairly banning those jobs" % (user, image))
         user_jobs = self.job_pool.job_container.get_jobs_for_user(user)
+        jobs_to_hold = []
+        HELD = 5
         for job in user_jobs:
             if job.req_imageloc == image and not job.banned:
                 job.banned = True
                 job.ban_time = time.time()
                 job.override_status = "HTTPFail"
+                if job.job_status != HELD:
+                    jobs_to_hold.append(job)
+        self.job_pool.hold_jobSOAP(jobs_to_hold)
 
     def check_destroy_threads(self):
         to_remove = []
