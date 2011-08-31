@@ -117,6 +117,8 @@ class Job:
                                 for when this can save you money (eg. with EC2)
 
      """
+        if VMType == "":
+            VMType = config.default_VMType
         self.id           = GlobalJobId
         self.user         = Owner
         self.uservmtype   = ':'.join([Owner, VMType])
