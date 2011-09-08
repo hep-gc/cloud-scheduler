@@ -118,6 +118,12 @@ class VMPoller(threading.Thread):
                 if ret_state == "Running":
                     if vm.startup_time == None:
                         vm.startup_time = vm.last_state_change - vm.initialize_time
+                if ret_status == "ConnectionRefused":
+                    if not vm.errorconnect:
+                        vm.errorconnect = time.time()
+                    else:
+                        if time.time() - vm.errorconnect > 3600:
+                            pass
                 if vm.errorcount >= config.polling_error_threshold:
                     # make sure we're not already in the middle of a destroy for this VM
                     found = False

@@ -114,6 +114,7 @@ class VM:
         self.cpucores = cpucores
         self.storage = storage
         self.errorcount = 0
+        self.errorconnect = None
         self.lastpoll = None
         self.last_state_change = None
         self.initialize_time = int(time.time())
@@ -795,6 +796,9 @@ class NimbusCluster(ICluster):
                 vm.override_status = new_status
                 log.error("Problem polling VM %s. Your proxy expired." % vm.id)
 
+            elif new_status == "ConnectionRefused":
+                vm.override_status = new_status
+                log.error("Unable to connect to nimbus service on %s" % vm.clusteraddr)
             elif vm.status != new_status:
                 vm.last_state_change = int(time.time())
                 vm.status = new_status
@@ -956,6 +960,10 @@ class NimbusCluster(ICluster):
         expired_proxy = re.search("Expired credentials detected", output)
         if expired_proxy:
             return "ExpiredProxy"
+        
+        connect_refused = re.search("Connection refused", output)
+        if connect_refused:
+            return "ConnectionRefused"
 
         return "Error"
 
