@@ -887,7 +887,7 @@ class JobPool:
                     break
             if vmtype == None:
                 held_user_adjust -= 1 #This user is completely held
-                break
+                continue
             if vmtype in type_desired.keys():
                 type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
             else:
@@ -900,7 +900,7 @@ class JobPool:
                     break
             if vmtype == None:
                 held_user_adjust -= 1 # this user is completely held
-                break
+                continue
             if vmtype in type_desired.keys():
                 type_desired[vmtype] += 1 * config.high_priority_job_weight
             else:
