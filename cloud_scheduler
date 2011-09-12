@@ -118,7 +118,7 @@ class VMPoller(threading.Thread):
                 if ret_state == "Running":
                     if vm.startup_time == None:
                         vm.startup_time = vm.last_state_change - vm.initialize_time
-                if ret_status == "ConnectionRefused":
+                if ret_state == "ConnectionRefused":
                     if not vm.errorconnect:
                         vm.errorconnect = time.time()
                     else:
