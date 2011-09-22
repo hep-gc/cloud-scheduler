@@ -50,8 +50,12 @@ class InfoServer(threading.Thread,):
 
     cloud_resources = None
     job_pool = None
-
-    def __init__(self, c_resources, c_job_pool):
+    job_poller = None
+    machine_poller = None
+    vm_poller = None
+    scheduler = None
+    cleaner = None
+    def __init__(self, c_resources, c_job_pool, c_job_poller, c_machine_poller, c_vm_poller, c_scheduler, c_cleaner):
 
         global log
         log = logging.getLogger("cloudscheduler")
@@ -61,6 +65,11 @@ class InfoServer(threading.Thread,):
         self.done = False
         cloud_resources = c_resources
         job_pool = c_job_pool
+        job_poller = c_job_poller
+        machine_poller = c_machine_poller
+        vm_poller = c_vm_poller
+        scheduler = c_scheduler
+        cleaner = c_cleaner
         host_name = "0.0.0.0"
         #set up server
         try:
@@ -159,6 +168,30 @@ class InfoServer(threading.Thread,):
                 for job in jobs:
                     output += job.get_job_info()
                 return output
+            def get_idlejobs(self):
+                jobs = job_pool.job_container.get_idle_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
+                    output += job.get_job_info()
+                return output
+            def get_runningjobs(self):
+                jobs = job_pool.job_container.get_running_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
+                    output += job.get_job_info()
+                return output
+            def get_completejobs(self):
+                jobs = job_pool.job_container.get_complete_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
+                    output += job.get_job_info()
+                return output
+            def get_heldjobs(self):
+                jobs = job_pool.job_container.get_held_jobs()
+                output = Job.get_job_info_header()
+                for job in jobs:
+                    output += job.get_job_info()
+                return output
             def get_job(self, jobid):
                 output = "Job not found."
                 job = job_pool.job_container.get_job_by_id(jobid)
@@ -220,6 +253,16 @@ class InfoServer(threading.Thread,):
                 for cluster in cloud_resources.resources:
                     for vm in cluster.vms:
                         output += "%s : avg %f\n" % (vm.hostname, vm.job_run_times.average())
+                return output
+            def get_cloud_config_values(self):
+                return cloud_resources.get_cloud_config_output()
+            def check_shared_objs(self):
+                output = ""
+                output += "Scheduler Thread:\n" + scheduler.check_shared_objs() + "\n"
+                output += "Cleanup Thread:\n" + cleaner.check_shared_objs() + "\n"
+                output += "VMPoller Thread:\n" + vm_poller.check_shared_objs() + "\n"
+                output += "JobPoller Thread:\n" + job_poller.check_shared_objs() + "\n"
+                output += "MachinePoller Thread:\n" + machine_poller.check_shared_objs() + "\n"
                 return output
 
         self.server.register_instance(externalFunctions())

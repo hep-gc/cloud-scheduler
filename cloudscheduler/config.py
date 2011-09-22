@@ -25,6 +25,7 @@ condor_status_command = "condor_status -l"
 condor_off_command = "/usr/sbin/condor_off"
 condor_on_command = "/usr/sbin/condor_on"
 ssh_path = "/usr/bin/ssh"
+openssl_path = "/usr/bin/openssl"
 condor_host = "localhost"
 condor_host_on_vm = ""
 condor_context_file = ""
@@ -42,6 +43,7 @@ scratch_attach_device = "sdb"
 info_server_port = 8111
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
+job_ban_timeout = 60*60 # 1 hour default
 ban_tracking = False
 ban_file = "/var/run/cloudscheduler.banned"
 ban_min_track = 5
@@ -69,7 +71,8 @@ scheduler_interval = 5
 job_proxy_refresher_interval = -1 # The current default is not to refresh the job proxies. (until code is thouroughly tested -- Andre C.)
 job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 vm_proxy_refresher_interval = -1 # The current default is not to refresh the VM proxies. (until code is thouroughly tested -- Andre C.)
-vm_proxy_renewal_threshold = 15 * 60 # 15 minutes default
+vm_proxy_renewal_threshold = 60 * 60 # 60 minutes default
+vm_proxy_shutdown_threshold = 30 * 60 # 30 minutes default
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
@@ -97,10 +100,15 @@ log_stdout = False
 log_max_size = None
 log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
 
+use_pyopenssl = False
 
-# setup will look for a configuration file specified on the command line,
-# or in ~/.cloudscheduler.conf or /etc/cloudscheduler.conf
+
+
 def setup(path=None):
+    """Setup cloudscheduler using config file.
+       setup will look for a configuration file specified on the command line,
+       or in ~/.cloudscheduler.conf or /etc/cloudscheduler.conf
+    """
 
     global condor_webservice_url
     global condor_collector_url
@@ -110,6 +118,7 @@ def setup(path=None):
     global condor_off_command
     global condor_on_command
     global ssh_path
+    global openssl_path
     global condor_context_file
     global condor_host
     global condor_host_on_vm
@@ -127,6 +136,7 @@ def setup(path=None):
     global info_server_port
     global workspace_path
     global persistence_file
+    global job_ban_timeout
     global ban_tracking
     global ban_file
     global ban_min_track
@@ -157,6 +167,7 @@ def setup(path=None):
     global cds_ssl_auth_key
     global vm_proxy_refresher_interval
     global vm_proxy_renewal_threshold
+    global vm_proxy_shutdown_threshold
     global proxy_cache_dir
     global myproxy_logon_command
     global override_vmtype
@@ -177,6 +188,8 @@ def setup(path=None):
     global log_stdout
     global log_max_size
     global log_format
+
+    global use_pyopenssl
 
     homedir = os.path.expanduser('~')
 
@@ -230,6 +243,9 @@ def setup(path=None):
 
     if config_file.has_option("global", "ssh_path"):
         ssh_path = config_file.get("global", "ssh_path")
+
+    if config_file.has_option("global", "openssl_path"):
+        openssl_path = config_file.get("global", "openssl_path")
 
     if config_file.has_option("global", "condor_status_command"):
         condor_status_command = config_file.get("global",
@@ -305,6 +321,14 @@ def setup(path=None):
 
     if config_file.has_option("global", "persistence_file"):
         persistence_file = config_file.get("global", "persistence_file")
+
+    if config_file.has_option("global", "job_ban_timeout"):
+        try:
+            job_ban_timeout = 60 * config_file.getint("global", "job_ban_timeout")
+        except ValueError:
+            print "Configuration file problem: job_ban_timeout must be an " \
+                  "integer value in minutes."
+            sys.exit(1)
 
     if config_file.has_option("global", "ban_file"):
         ban_file = config_file.get("global", "ban_file")
@@ -501,11 +525,19 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "vm_proxy_shutdown_threshold"):
+        try:
+            vm_proxy_shutdown_threshold = config_file.getint("global", "vm_proxy_shutdown_threshold")
+        except ValueError:
+            print "Configuration file problem: vm_proxy_shutdown_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
     if config_file.has_option("global", "proxy_cache_dir"):
         proxy_cache_dir = config_file.get("global", "proxy_cache_dir")
 
     if config_file.has_option("global", "myproxy_logon_command"):
-         myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
+        myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
 
     if config_file.has_option("global", "override_vmtype"):
         override_vmtype = config_file.getboolean("global", "override_vmtype")
@@ -590,3 +622,5 @@ def setup(path=None):
     else:
         condor_host = utilities.get_hostname_from_url(condor_webservice_url)
 
+    if config_file.has_option("global", "use_pyopenssl"):
+        use_pyopenssl = config_file.getboolean("global", "use_pyopenssl")
