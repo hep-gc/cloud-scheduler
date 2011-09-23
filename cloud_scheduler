@@ -1129,7 +1129,7 @@ class Cleanup(threading.Thread):
                 if vm.hostname in changed:
                     vm_matches.append(vm)
                 #if vm.status == "Starting" and internal_types[vm.vmtype] > num_to_change[vm.vmtype]:
-                if vm.status == "Starting" and internal_types[vm.uservmtype] > num_to_change[vm.uservmtype]:
+                if vm.status == "Starting" and vm.uservmtype in internal_types.keys() and vm.uservmtype in num_to_change.keys() and internal_types[vm.uservmtype] > num_to_change[vm.uservmtype]:
                     vm_starting.append(vm)
         to_shutdown = []
         fitting_set = self.filter_fitting_resources(num_to_change)
