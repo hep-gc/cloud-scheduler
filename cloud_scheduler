@@ -1349,6 +1349,7 @@ class Cleanup(threading.Thread):
         criteria = {'State': 'Unclaimed', 'Activity': 'Idle'}
         idle_vms = self.resource_pool.find_in_where(self.resource_pool.machine_list, criteria)
         to_shutdown = []
+        to_hold = set()
         for vm in idle_vms:
             try:
                 idletime = int(vm['MyCurrentTime']) - int(vm['EnteredCurrentState'])
@@ -1373,13 +1374,25 @@ class Cleanup(threading.Thread):
                                         break
                     if not potentialVM:
                         # shutdown this one
-                        log.debug("Going to shutdown vm %s, no jobs appear to be able to run there" % internal_vm.id)
+                        log.info("Going to shutdown vm %s, no jobs appear to be able to run there" % internal_vm.id)
                         to_shutdown.append(internal_vm)
                     else:
-                        log.debug("job %s looks like it should be to able to run on an idle machine but is not" % job.id)
+                        log.debug("job %s looks like it should be to able to run on an idle machine but is not will hold it." % job.id)
+                        to_hold.add(job)
                         # even weirder state - idle vm with a job that should run on it but is not - try checking the full requirements or just hold the job?
+        if len(to_hold) > 0:
+            failedhold = self.job_pool.hold_jobSOAP(list(to_hold))
+            if len(failedhold) > 0:
+                log.debug("Failed to hold %i jobs" % len(failedhold))
 
-
+        for vm in to_shutdown:
+            cluster = self.resource_pool.get_cluster_with_vm(vm)
+            if cluster:
+                log.info("VM %s on cluster %s shutting down - cannot run any idle jobs for it's vmtype." % (vm.id, cluster.name))
+                if not self.check_destroy(cluster, vm):
+                    th = VMDestroyCmd(cluster, vm)
+                    th.start()
+                    self.destroy_threads["".join([cluster.name, vm.id])] = th
 
             except:
                 log.warning("Unable to parse int value from condor.")
