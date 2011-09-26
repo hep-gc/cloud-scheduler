@@ -799,12 +799,14 @@ class NimbusCluster(ICluster):
             elif new_status == "ConnectionRefused":
                 vm.override_status = new_status
                 log.error("Unable to connect to nimbus service on %s" % vm.clusteraddr)
+
             elif vm.status != new_status:
                 vm.last_state_change = int(time.time())
                 vm.status = new_status
 
             elif vm.override_status != None and new_status not in bad_status:
                 vm.override_status = None
+                vm.errorconnect = None
 
             # If there was some other error we're not aware of (temporary network problem, etc...)
             elif (poll_return != 0):
