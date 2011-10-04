@@ -775,7 +775,9 @@ class Cleanup(threading.Thread):
                     bad_jobs.append(job)
                     log.debug("No matching target cloud for job %s" % job.id)
                     continue
-        failedhold = self.job_pool.hold_jobSOAP(bad_jobs)
+        failedhold = []
+        if len(bad_jobs) > 0:
+            failedhold = self.job_pool.hold_jobSOAP(bad_jobs)
         if len(failedhold) > 0:
             # failed to hold some of these jobs remove from container instead
             self.job_pool.job_container.remove_jobs(failedhold)
@@ -1353,8 +1355,7 @@ class Cleanup(threading.Thread):
         for vm in idle_vms:
             try:
                 idletime = int(vm['MyCurrentTime']) - int(vm['EnteredCurrentState'])
-                if idletime > 60: #config.vm_idle_threshold:
-                    print 'investigate VM / Jobs to try and determine cause for idleness'
+                if idletime > config.vm_idle_threshold:
                     internal_vm = self.resource_pool.find_vm_with_addr(vm['MyAddress'])
                     vmtype = vm['VMType']
                     vmuser = None
@@ -1369,7 +1370,7 @@ class Cleanup(threading.Thread):
                         if jobvmtype == internal_vm.vmtype:
                             for job in userjobtypes[jobvmtype]:
                                 if job.job_status == self.IDLE:
-                                    if check_vm_job_reqs(internal_vm, job):
+                                    if self.check_vm_job_reqs(internal_vm, job):
                                         potentialVM = True
                                         break
                     if not potentialVM:
@@ -1380,6 +1381,8 @@ class Cleanup(threading.Thread):
                         log.debug("job %s looks like it should be to able to run on an idle machine but is not will hold it." % job.id)
                         to_hold.add(job)
                         # even weirder state - idle vm with a job that should run on it but is not - try checking the full requirements or just hold the job?
+            except:
+                log.warning("Failed to convert condor values to int")
         if len(to_hold) > 0:
             failedhold = self.job_pool.hold_jobSOAP(list(to_hold))
             if len(failedhold) > 0:
@@ -1394,14 +1397,10 @@ class Cleanup(threading.Thread):
                     th.start()
                     self.destroy_threads["".join([cluster.name, vm.id])] = th
 
-            except:
-                log.warning("Unable to parse int value from condor.")
-                continue
-
     def check_vm_job_reqs(self, vm, job):
         """ Check if a vm has correct attributes to run a job."""
         vmjobmatch = False
-        if vm.memory >= job.req_memory and vm.network in job.req_network and vm.cpuarch == job.cpuarch \
+        if vm.memory >= job.req_memory and vm.network in job.req_network and vm.cpuarch == job.req_cpuarch \
             and vm.cpucores >= job.req_cpucores and vm.storage >= job.req_storage:
             vmjobmatch = True
         return vmjobmatch
