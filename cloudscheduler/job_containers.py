@@ -372,7 +372,7 @@ class HashTableJobContainer(JobContainer):
         with self.lock:
             return_value = {}
             for job in self.sched_jobs.values():
-                if job.user not in jobs:
+                if job.user not in return_value:
                     return_value[job.user] = []
                 return_value[job.user].append(job)
             # Now lets sort if needed.
@@ -586,6 +586,36 @@ class HashTableJobContainer(JobContainer):
                     if job.uservmtype not in return_value:
                         return_value[job.uservmtype] = []
                     return_value[job.uservmtype].append(job)
+            # Sort if needed
+            if prioritized:
+                for job_list in return_value.values():
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
+        return return_value
+    
+    def get_scheduled_user_jobs_by_type(self, user, prioritized=False):
+        with self.lock:
+            sched = self.get_scheduled_jobs_by_users()
+            return_value = {}
+            if user in sched.keys():
+                for job in sched[user]:
+                    if job.req_vmtype not in return_value:
+                        return_value[job.req_vmtype] = []
+                    return_value[job.req_vmtype].append(job)
+            # Sort if needed
+            if prioritized:
+                for job_list in return_value.values():
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
+        return return_value
+    
+    def get_scheduled_user_jobs_by_usertype(self, user, prioritized=False):
+        with self.lock:
+            sched = self.get_scheduled_jobs_by_users()
+            return_value = {}
+            if user in sched.keys():
+                for job in sched[user]:
+                    if job.req_vmtype not in return_value:
+                        return_value[job.req_vmtype] = []
+                    return_value[job.req_vmtype].append(job)
             # Sort if needed
             if prioritized:
                 for job_list in return_value.values():
