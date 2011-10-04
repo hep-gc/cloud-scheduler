@@ -122,8 +122,16 @@ class VMPoller(threading.Thread):
                     if not vm.errorconnect:
                         vm.errorconnect = time.time()
                     else:
-                        if time.time() - vm.errorconnect > 3600:
-                            pass
+                        pass
+                        #if time.time() - vm.errorconnect > config.vm_connection_fail_threshold:
+                            # Have been unable to connect to service for extended period
+                            # Assume that service is down and VMs have been lost
+                            # Remove VM from cloudscheduler
+                        #    cluster = self.resource_pool.get_cluster_with_vm(vm)
+                        #    with cluster.vms_lock:
+                        #        cluster.vms.remove(vm)
+                        #    cluster.resource_return(vm)
+
                 if vm.errorcount >= config.polling_error_threshold:
                     # make sure we're not already in the middle of a destroy for this VM
                     found = False
@@ -742,6 +750,8 @@ class Cleanup(threading.Thread):
                 unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(machineList, True)
                 self.clean_kill_unregistered_vms(unregisteredvms, True)
                 self.clean_retired_vms(retiredvms, True)
+                # Check for Idle machines that cannot run any jobs
+                self.clean_verify_vm_job_reqs()
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
@@ -753,11 +763,25 @@ class Cleanup(threading.Thread):
 
     def clean_invalid_jobs(self):
         bad_jobs = []
+        cloud_names = []
+        for cloud in self.resource_pool.resources:
+            cloud_names.append(cloud.name)
         for job in self.job_pool.job_container.get_unscheduled_jobs():
             if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                 bad_jobs.append(job)
                 log.debug("No cluster fits job %s ignoring" % job.id)
-        self.job_pool.job_container.remove_jobs(bad_jobs)
+                continue
+            if job.target_clouds:
+                if not set(job.target_clouds).intersection(set(cloud_names)):
+                    bad_jobs.append(job)
+                    log.debug("No matching target cloud for job %s" % job.id)
+                    continue
+        failedhold = []
+        if len(bad_jobs) > 0:
+            failedhold = self.job_pool.hold_jobSOAP(bad_jobs)
+        if len(failedhold) > 0:
+            # failed to hold some of these jobs remove from container instead
+            self.job_pool.job_container.remove_jobs(failedhold)
 
     def clean_balance_vms(self):
 
@@ -1323,6 +1347,85 @@ class Cleanup(threading.Thread):
                         th = VMDestroyCmd(cluster, vm)
                         th.start()
                         self.destroy_threads["".join([cluster.name, vm.id])] = th
+
+    def clean_verify_vm_job_reqs(self):
+        criteria = {'State': 'Unclaimed', 'Activity': 'Idle'}
+        idle_vms = self.resource_pool.find_in_where(self.resource_pool.machine_list, criteria)
+        to_shutdown = []
+        to_hold = set()
+        for vm in idle_vms:
+            try:
+                idletime = int(vm['MyCurrentTime']) - int(vm['EnteredCurrentState'])
+                if idletime > config.vm_idle_threshold:
+                    internal_vm = self.resource_pool.find_vm_with_addr(vm['MyAddress'])
+                    vmtype = vm['VMType']
+                    vmuser = None
+                    try:
+                        vmuser = re.search('(?<=Owner == ")\w+', vm['Start']).group(0)
+                    except:
+                        log.warning("Failed to parse Start: (Owner=user) from vm.")
+                        continue
+
+                    userjobtypes = self.job_pool.job_container.get_unscheduled_user_jobs_by_type(vmuser)
+                    scheduserjobtypes = self.job_pool.job_container.get_scheduled_user_jobs_by_type(vmuser)
+                    potentialVM = False
+                    schedjob_to_hold = None
+                    unschedjob_to_hold = None
+
+                    for jobvmtype in userjobtypes.keys():
+                        if jobvmtype == internal_vm.vmtype:
+                            for job in userjobtypes[jobvmtype]:
+                                if job.job_status == self.IDLE:
+                                    if self.check_vm_job_reqs(internal_vm, job):
+                                        potentialVM = True
+                                        schedjob_to_hold = job
+                                        break
+
+                    for jobvmtype in scheduserjobtypes.keys():
+                        if jobvmtype == internal_vm.vmtype:
+                            for job in scheduserjobtypes[jobvmtype]:
+                                if job.job_status == self.IDLE:
+                                    if self.check_vm_job_reqs(internal_vm, job):
+                                        potentialVM = True
+                                        unschedjob_to_hold = job
+                                        break
+
+                    if not potentialVM:
+                        # shutdown this one
+                        log.info("Going to shutdown vm %s, no jobs appear to be able to run there" % internal_vm.id)
+                        to_shutdown.append(internal_vm)
+                    else:
+                        log.debug("job %s looks like it should be to able to run on an idle machine but is not will hold it." % job.id)
+                        if schedjob_to_hold:
+                            to_hold.add(schedjob_to_hold)
+                        if unschedjob_to_hold:
+                            to_hold.add(unschedjob_to_hold)
+                        # even weirder state - idle vm with a job that should run on it but is not - try checking the full requirements or just hold the job?
+            except Exception as e:
+                log.warning("Exception: %s" % str(e))
+        if len(to_hold) > 0:
+            for job in to_hold:
+                job.override_status = 'HeldBadReqs'
+            failedhold = self.job_pool.hold_jobSOAP(list(to_hold))
+            if len(failedhold) > 0:
+                log.debug("Failed to hold %i jobs" % len(failedhold))
+
+        for vm in to_shutdown:
+            cluster = self.resource_pool.get_cluster_with_vm(vm)
+            if cluster:
+                log.info("VM %s on cluster %s shutting down - cannot run any idle jobs for it's vmtype." % (vm.id, cluster.name))
+                if not self.check_destroy(cluster, vm):
+                    th = VMDestroyCmd(cluster, vm)
+                    th.start()
+                    self.destroy_threads["".join([cluster.name, vm.id])] = th
+
+    def check_vm_job_reqs(self, vm, job):
+        """ Check if a vm has correct attributes to run a job."""
+        vmjobmatch = False
+        if vm.memory >= job.req_memory and vm.network in job.req_network and vm.cpuarch == job.req_cpuarch \
+            and vm.cpucores >= job.req_cpucores and vm.storage >= job.req_storage:
+            vmjobmatch = True
+        return vmjobmatch
 
     def check_shared_objs(self):
         output = ""
