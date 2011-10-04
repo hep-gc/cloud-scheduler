@@ -71,7 +71,10 @@ scheduler_interval = 5
 job_proxy_refresher_interval = -1 # The current default is not to refresh the job proxies. (until code is thouroughly tested -- Andre C.)
 job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 vm_proxy_refresher_interval = -1 # The current default is not to refresh the VM proxies. (until code is thouroughly tested -- Andre C.)
-vm_proxy_renewal_threshold = 15 * 60 # 15 minutes default
+vm_proxy_renewal_threshold = 60 * 60 # 60 minutes default
+vm_proxy_shutdown_threshold = 30 * 60 # 30 minutes default
+vm_connection_fail_threshold = 30 * 60 # 30 minutes default
+vm_idle_threshold = 5 * 60 # 5 minute default
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
@@ -97,9 +100,12 @@ log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
 use_pyopenssl = False
 
 
-# setup will look for a configuration file specified on the command line,
-# or in ~/.cloudscheduler.conf or /etc/cloudscheduler.conf
+
 def setup(path=None):
+    """Setup cloudscheduler using config file.
+       setup will look for a configuration file specified on the command line,
+       or in ~/.cloudscheduler.conf or /etc/cloudscheduler.conf
+    """
 
     global condor_webservice_url
     global condor_collector_url
@@ -156,6 +162,9 @@ def setup(path=None):
     global job_proxy_renewal_threshold
     global vm_proxy_refresher_interval
     global vm_proxy_renewal_threshold
+    global vm_proxy_shutdown_threshold
+    global vm_connection_fail_threshold
+    global vm_idle_threshold
     global proxy_cache_dir
     global myproxy_logon_command
     global override_vmtype
@@ -507,11 +516,35 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "vm_proxy_shutdown_threshold"):
+        try:
+            vm_proxy_shutdown_threshold = config_file.getint("global", "vm_proxy_shutdown_threshold")
+        except ValueError:
+            print "Configuration file problem: vm_proxy_shutdown_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "vm_connection_fail_threshold"):
+        try:
+            vm_connection_fail_threshold = config_file.getint("global", "vm_connection_fail_threshold")
+        except ValueError:
+            print "Configuration file problem: vm_connection_fail_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "vm_idle_threshold"):
+        try:
+            vm_idle_threshold = config_file.getint("global", "vm_idle_threshold")
+        except ValueError:
+            print "Configuration file problem: vm_idle_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
     if config_file.has_option("global", "proxy_cache_dir"):
         proxy_cache_dir = config_file.get("global", "proxy_cache_dir")
 
     if config_file.has_option("global", "myproxy_logon_command"):
-         myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
+        myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
 
     if config_file.has_option("global", "override_vmtype"):
         override_vmtype = config_file.getboolean("global", "override_vmtype")

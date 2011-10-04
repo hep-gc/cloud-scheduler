@@ -50,7 +50,6 @@ class VM:
     A class for storing created VM information. Used to populate Cluster classes
     'vms' lists.
 
-
     Instance Variables
 
     The global VM states are:
@@ -115,6 +114,7 @@ class VM:
         self.cpucores = cpucores
         self.storage = storage
         self.errorcount = 0
+        self.errorconnect = None
         self.lastpoll = None
         self.last_state_change = None
         self.initialize_time = int(time.time())
@@ -229,6 +229,20 @@ class VM:
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
         log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_renewal_threshold))
         return td_in_seconds < config.vm_proxy_renewal_threshold
+
+    # This method will test if a VM needs to be shutdown before proxy expiry, according
+    # the VM proxy shutdown threshold found in the cloud scheduler configuration.
+    #
+    # Returns True if the VM needs to be shutdown, or False otherwise (or if
+    # the VM has no user proxy associated with it).
+    def needs_proxy_shutdown(self):
+        expiry_time = self.get_x509userproxy_expiry_time()
+        if expiry_time == None:
+            return False
+        td = expiry_time - datetime.datetime.utcnow()
+        td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_shutdown_threshold))
+        return td_in_seconds < config.vm_proxy_shutdown_threshold
 
     # The following method will return the environment that should
     # be used when executing subprocesses.  This is needed for setting
@@ -518,8 +532,9 @@ class NimbusCluster(ICluster):
         def _remove_files(files):
             for file in files:
                 try:
-                    log.debug("Deleting %s" % file)
-                    os.remove(file)
+                    if file:
+                        log.debug("Deleting %s" % file)
+                        os.remove(file)
                 except:
                     log.exception("Couldn't delete %s" % file)
 
@@ -600,10 +615,10 @@ class NimbusCluster(ICluster):
             _remove_files(nimbus_files + [vm_proxy_file_path])
             err_type = self._extract_create_error(create_err)
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
-            if err_type == 'NoProxy':
+            if err_type == 'NoProxy' or err_type == 'ExpiredProxy':
                 create_return = -1
-            elif err_type == 'ExpiredProxy':
-                create_return = -1
+            elif err_type == 'NoSlotsInNetwork' or err_type =='NotEnoughMemory':
+                create_return = -2
 
             return create_return
 
@@ -781,12 +796,17 @@ class NimbusCluster(ICluster):
                 vm.override_status = new_status
                 log.error("Problem polling VM %s. Your proxy expired." % vm.id)
 
+            elif new_status == "ConnectionRefused":
+                vm.override_status = new_status
+                log.error("Unable to connect to nimbus service on %s" % vm.clusteraddr)
+
             elif vm.status != new_status:
                 vm.last_state_change = int(time.time())
                 vm.status = new_status
 
             elif vm.override_status != None and new_status not in bad_status:
                 vm.override_status = None
+                vm.errorconnect = None
 
             # If there was some other error we're not aware of (temporary network problem, etc...)
             elif (poll_return != 0):
@@ -942,6 +962,10 @@ class NimbusCluster(ICluster):
         expired_proxy = re.search("Expired credentials detected", output)
         if expired_proxy:
             return "ExpiredProxy"
+        
+        connect_refused = re.search("Connection refused", output)
+        if connect_refused:
+            return "ConnectionRefused"
 
         return "Error"
 

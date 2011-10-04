@@ -64,6 +64,7 @@ class VMPoller(threading.Thread):
         self.starting_poll_interval = 120 # 2 minutes
         self.running_poll_interval = 900 # 15 minutes
         self.run_interval = config.vm_poller_interval
+        self.destroy_threads = {}
 
     def stop(self):
         log.debug("Waiting for VM polling loop to end")
@@ -74,6 +75,7 @@ class VMPoller(threading.Thread):
 
         while not self.quit:
             self.poll_all_machines()
+            self.check_destroy_threads()
             sleep_tics = self.run_interval
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
@@ -116,23 +118,74 @@ class VMPoller(threading.Thread):
                 if ret_state == "Running":
                     if vm.startup_time == None:
                         vm.startup_time = vm.last_state_change - vm.initialize_time
-                if vm.errorcount >= config.polling_error_threshold:
-                    log.info("VM %s on %s in error state. Destroying..." % (vm.id, vm.clusteraddr))
+                if ret_state == "ConnectionRefused":
+                    if not vm.errorconnect:
+                        vm.errorconnect = time.time()
+                    else:
+                        pass
+                        #if time.time() - vm.errorconnect > config.vm_connection_fail_threshold:
+                            # Have been unable to connect to service for extended period
+                            # Assume that service is down and VMs have been lost
+                            # Remove VM from cloudscheduler
+                        #    cluster = self.resource_pool.get_cluster_with_vm(vm)
+                        #    with cluster.vms_lock:
+                        #        cluster.vms.remove(vm)
+                        #    cluster.resource_return(vm)
 
-                    # Destroy the VM
-                    destroy_ret = cluster.vm_destroy(vm)
-                    if (destroy_ret != 0):
-                        log.error("Destroying VM failed. Leaving VM in error state.")
-                        continue
+                if vm.errorcount >= config.polling_error_threshold:
+                    # make sure we're not already in the middle of a destroy for this VM
+                    found = False
+                    for dtk, dtv in self.destroy_threads.iteritems():
+                        if dtv.get_vm() == vm:
+                            found = True
+                            break
+                    if not found:
+                        log.info("VM %s on %s in error state. Destroying..." % (vm.id, vm.clusteraddr))
+                        # Destroy the VM
+                        if not self.check_destroy(cluster, vm):
+                            dt = VMDestroyCmd(cluster, vm)
+                            self.destroy_threads["".join([cluster.name, vm.id])] = dt
+                            dt.start()
+                    #destroy_ret = cluster.vm_destroy(vm)
+                    #if (destroy_ret != 0):
+                    #    log.error("Destroying VM failed. Leaving VM in error state.")
+                    #    continue
 
     def handle_bad_image(self, user, image):
         log.info("User %s has job(s) with bad image location: %s - temporairly banning those jobs" % (user, image))
         user_jobs = self.job_pool.job_container.get_jobs_for_user(user)
+        jobs_to_hold = []
+        HELD = 5
         for job in user_jobs:
             if job.req_imageloc == image and not job.banned:
                 job.banned = True
                 job.ban_time = time.time()
                 job.override_status = "HTTPFail"
+                if job.job_status != HELD:
+                    jobs_to_hold.append(job)
+        self.job_pool.hold_jobSOAP(jobs_to_hold)
+
+    def check_destroy_threads(self):
+        to_remove = []
+        for k, thread in self.destroy_threads.iteritems():
+            if not thread.is_alive():
+                if thread.get_result() != 0:
+                    log.error("Destroying VM %s failed. Leaving in error state." % thread.get_vm().id)
+                thread.join()
+                to_remove.append(k)
+        for key in to_remove:
+            del self.destroy_threads[key]
+    def check_destroy(self, cluster, vm):
+        found = False
+        if "".join([cluster.name, vm.id]) in self.destroy_threads.keys():
+            found = True
+        return found
+
+    def check_shared_objs(self):
+        output = ""
+        output += "Resource Pool: " + str(self.resource_pool) + "\n"
+        output += "Job Pool: " + str(self.job_pool) + "\n"
+        return output
 
 class JobPoller(threading.Thread):
     """
@@ -188,6 +241,11 @@ class JobPoller(threading.Thread):
         except:
             log.error(traceback.format_exc())
 
+    def check_shared_objs(self):
+        output = ""
+        output += "Job Pool: " + str(self.job_pool) + "\n"
+        return output
+
 class MachinePoller(threading.Thread):
     """
     MachinePoller - Polls the Condor collector for VM status, and new VMs
@@ -219,6 +277,10 @@ class MachinePoller(threading.Thread):
 
         log.debug("Exiting machine polling thread")
 
+    def check_shared_objs(self):
+        output = ""
+        output += "Resource Pool: " + str(self.resource_pool) + "\n"
+        return output
 
 class Scheduler(threading.Thread):
     """
@@ -279,15 +341,22 @@ class Scheduler(threading.Thread):
 
         # Destroy all VMs and finish
         remaining_vms = []
+        destroy_threads = []
         log.info("### Destroying all remaining VMs and exiting :-(")
         for cluster in self.resource_pool.resources:
             for vm in reversed(cluster.vms):
                 log.info("Destroying VM: %s" % vm.id)
                 vm.log()
-                destroy_ret = cluster.vm_destroy(vm)
-                if destroy_ret != 0:
-                    log.error("Destroying VM failed. Continuing anyway... check VM logs")
-                    remaining_vms.append(vm)
+                destroy_threads.append(VMDestroyCmd(cluster, vm))
+        for thread in destroy_threads:
+            thread.start()
+        for thread in destroy_threads:
+            thread.join()
+        for thread in destroy_threads:
+            destroy_ret = thread.get_result()
+            if destroy_ret != 0:
+                log.error("Destroying VM failed. Continuing anyway... check VM logs")
+                remaining_vms.append(thread.get_vm())
         #ENDFOR - Attempt to destroy each remaining VM in the system
 
         self.resource_pool.save_persistence()
@@ -440,7 +509,7 @@ class Scheduler(threading.Thread):
             self.job_pool.schedule(job)
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, True)
-        elif create_ret == -1:
+        elif create_ret == -1 or create_ret == -2: # -2 on Nimbus resource failures ban until dynamic monitoring can resolve resource misconfigs
             job.banned = True
             job.ban_time = time.time()
             job.override_status = "TempBanned"
@@ -610,7 +679,11 @@ class Scheduler(threading.Thread):
 
         return len(jobs_like_this) > len(vms_like_this)
 
-
+    def check_shared_objs(self):
+        output = ""
+        output += "Resource Pool: " + str(self.resource_pool) + "\n"
+        output += "Job Pool: " + str(self.job_pool) + "\n"
+        return output
 
 class Cleanup(threading.Thread):
     """
@@ -627,6 +700,7 @@ class Cleanup(threading.Thread):
         self.resource_pool = resource_pool
         self.quit = False
         self.polling_interval = config.cleanup_interval
+        self.destroy_threads = {}
 
     def stop(self):
         log.debug("Waiting for cleanup loop to end")
@@ -647,6 +721,8 @@ class Cleanup(threading.Thread):
             if config.retire_before_lifetime:
                 # Check for VMs near max lifetime 
                 self.clean_retire_near_lifetime()
+            # Make sure no VMs with proxys are about to expire and get stuck in expired proxy state
+            self.check_vm_proxy_shutdown_threshold()
             # Remove unneeded VMs.
             # Make sure we only do this if we have ever gotten a list of jobs
             # from Condor. Otherwise, when we persist from a previous run
@@ -673,6 +749,8 @@ class Cleanup(threading.Thread):
                 unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(machineList, True)
                 self.clean_kill_unregistered_vms(unregisteredvms, True)
                 self.clean_retired_vms(retiredvms, True)
+                # Check for Idle machines that cannot run any jobs
+                self.clean_verify_vm_job_reqs()
 
             log.debug("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
@@ -684,11 +762,25 @@ class Cleanup(threading.Thread):
 
     def clean_invalid_jobs(self):
         bad_jobs = []
+        cloud_names = []
+        for cloud in self.resource_pool.resources:
+            cloud_names.append(cloud.name)
         for job in self.job_pool.job_container.get_unscheduled_jobs():
             if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                 bad_jobs.append(job)
                 log.debug("No cluster fits job %s ignoring" % job.id)
-        self.job_pool.job_container.remove_jobs(bad_jobs)
+                continue
+            if job.target_clouds:
+                if not set(job.target_clouds).intersection(set(cloud_names)):
+                    bad_jobs.append(job)
+                    log.debug("No matching target cloud for job %s" % job.id)
+                    continue
+        failedhold = []
+        if len(bad_jobs) > 0:
+            failedhold = self.job_pool.hold_jobSOAP(bad_jobs)
+        if len(failedhold) > 0:
+            # failed to hold some of these jobs remove from container instead
+            self.job_pool.job_container.remove_jobs(failedhold)
 
     def clean_balance_vms(self):
 
@@ -717,7 +809,7 @@ class Cleanup(threading.Thread):
                     else:
                         to_remove[vmtype] = count
                 del available_vmtypes_dict
-
+                log.debug("Will try to remove: %s" % str(to_remove))
                 # Go over the types and find idle machines to remove
                 self.remove_idle_machines(machineList, to_remove)
 
@@ -862,9 +954,13 @@ class Cleanup(threading.Thread):
                 #if vm.vmtype not in req_vmtypes and (not vm.idle_start or vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
                 if vm.uservmtype not in req_vmtypes and (not vm.idle_start or vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
                     log.info("VM of type %s id %s no longer required - shutting down" % (vm.vmtype, vm.id))
-                    destroy_ret = cluster.vm_destroy(vm)
-                    if destroy_ret != 0:
-                        log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+                    if not self.check_destroy(cluster, vm):
+                        th = VMDestroyCmd(cluster, vm)
+                        th.start()
+                        self.destroy_threads["".join([cluster.name, vm.id])] = th
+                    #destroy_ret = cluster.vm_destroy(vm)
+                    #if destroy_ret != 0:
+                    #    log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
 
     def clean_scheduled_unscheduled(self):
         # We need the setup lock to ensure that we don't set jobs to
@@ -1026,9 +1122,13 @@ class Cleanup(threading.Thread):
                                 if now - vm.idle_start > vm.keep_alive:
                                     log.info("VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
                                     vm.log_dbg()
-                                    destroy_ret = cluster.vm_destroy(vm)
-                                    if destroy_ret != 0:
-                                        log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
+                                    if not self.check_destroy(cluster, vm):
+                                        th = VMDestroyCmd(cluster, vm)
+                                        th.start()
+                                        self.destroy_threads["".join([cluster.name, vm.id])] = th
+                                    #destroy_ret = cluster.vm_destroy(vm)
+                                    #if destroy_ret != 0:
+                                        #log.error("Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
                                     else:
                                         break
                             else:
@@ -1053,7 +1153,7 @@ class Cleanup(threading.Thread):
                 if vm.hostname in changed:
                     vm_matches.append(vm)
                 #if vm.status == "Starting" and internal_types[vm.vmtype] > num_to_change[vm.vmtype]:
-                if vm.status == "Starting" and internal_types[vm.uservmtype] > num_to_change[vm.uservmtype]:
+                if vm.status == "Starting" and vm.uservmtype in internal_types.keys() and vm.uservmtype in num_to_change.keys() and internal_types[vm.uservmtype] > num_to_change[vm.uservmtype]:
                     vm_starting.append(vm)
         to_shutdown = []
         fitting_set = self.filter_fitting_resources(num_to_change)
@@ -1069,10 +1169,15 @@ class Cleanup(threading.Thread):
         for vm in to_shutdown:
             log.debug("Shutting down VM of type %s to rebalance resources" % vm.vmtype)
             cluster = self.resource_pool.get_cluster_with_vm(vm)
-            log.info("VM %s on cluster %s shutting down" % (vm.id, cluster.name))
-            destroy_ret = cluster.vm_destroy(vm)
-            if destroy_ret != 0:
-                log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
+            if cluster:
+                log.info("VM %s on cluster %s shutting down" % (vm.id, cluster.name))
+                if not self.check_destroy(cluster, vm):
+                    th = VMDestroyCmd(cluster, vm)
+                    th.start()
+                    self.destroy_threads["".join([cluster.name, vm.id])] = th
+            #destroy_ret = cluster.vm_destroy(vm)
+            #if destroy_ret != 0:
+            #    log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
 
     # Deprecated
     def graceful_shutdown_condor_hold(self, diff_types, machineList, num_to_change):
@@ -1179,9 +1284,12 @@ class Cleanup(threading.Thread):
                         if bad_name_vm != None:
                             log.info("Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
                             cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
-                            destroy_ret = cluster.vm_destroy(bad_name_vm)
-                            if destroy_ret != 0:
-                                log.error("Failed to destroy vm %s" % bad_name_vm.id)
+                            if cluster:
+                                destroy_ret = cluster.vm_destroy(bad_name_vm)
+                                if destroy_ret != 0:
+                                    log.error("Failed to destroy vm %s" % bad_name_vm.id)
+                            else:
+                                log.warning("cluster lookup failed for vm %s" % bad_name_vm.id)
                         else:
                             log.error("Lookup of %s failed, does this vm still exist within CS?" % busy_vms[x]['Name'])
             elif adjusted_val < 0:
@@ -1213,6 +1321,135 @@ class Cleanup(threading.Thread):
                             else:
                                 log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
 
+    def check_destroy(self, cluster, vm):
+        found = False
+        if "".join([cluster.name, vm.id]) in self.destroy_threads.keys():
+            found = True
+        return found
+
+    def check_destroy_threads(self):
+        to_remove = []
+        for k, thread in self.destroy_threads.iteritems():
+            if not thread.is_alive():
+                if thread.get_result() != 0:
+                    log.error("Destroying VM %s failed. Leaving it for now." % thread.get_vm().id)
+                thread.join()
+                to_remove.append(k)
+        for key in to_remove:
+            del self.destroy_threads[key]
+
+    def check_vm_proxy_shutdown_threshold(self):
+        for cluster in self.resource_pool.resources:
+            for vm in cluster.vms:
+                if vm.needs_proxy_shutdown():
+                    if not self.check_destroy(cluster, vm):
+                        th = VMDestroyCmd(cluster, vm)
+                        th.start()
+                        self.destroy_threads["".join([cluster.name, vm.id])] = th
+
+    def clean_verify_vm_job_reqs(self):
+        criteria = {'State': 'Unclaimed', 'Activity': 'Idle'}
+        idle_vms = self.resource_pool.find_in_where(self.resource_pool.machine_list, criteria)
+        to_shutdown = []
+        to_hold = set()
+        for vm in idle_vms:
+            try:
+                idletime = int(vm['MyCurrentTime']) - int(vm['EnteredCurrentState'])
+                if idletime > config.vm_idle_threshold:
+                    internal_vm = self.resource_pool.find_vm_with_addr(vm['MyAddress'])
+                    vmtype = vm['VMType']
+                    vmuser = None
+                    try:
+                        vmuser = re.search('(?<=Owner == ")\w+', vm['Start']).group(0)
+                    except:
+                        log.warning("Failed to parse Start: (Owner=user) from vm.")
+                        continue
+
+                    userjobtypes = self.job_pool.job_container.get_unscheduled_user_jobs_by_type(vmuser)
+                    scheduserjobtypes = self.job_pool.job_container.get_scheduled_user_jobs_by_type(vmuser)
+                    potentialVM = False
+                    schedjob_to_hold = None
+                    unschedjob_to_hold = None
+
+                    for jobvmtype in userjobtypes.keys():
+                        if jobvmtype == internal_vm.vmtype:
+                            for job in userjobtypes[jobvmtype]:
+                                if job.job_status == self.IDLE:
+                                    if self.check_vm_job_reqs(internal_vm, job):
+                                        potentialVM = True
+                                        schedjob_to_hold = job
+                                        break
+
+                    for jobvmtype in scheduserjobtypes.keys():
+                        if jobvmtype == internal_vm.vmtype:
+                            for job in scheduserjobtypes[jobvmtype]:
+                                if job.job_status == self.IDLE:
+                                    if self.check_vm_job_reqs(internal_vm, job):
+                                        potentialVM = True
+                                        unschedjob_to_hold = job
+                                        break
+
+                    if not potentialVM:
+                        # shutdown this one
+                        log.info("Going to shutdown vm %s, no jobs appear to be able to run there" % internal_vm.id)
+                        to_shutdown.append(internal_vm)
+                    else:
+                        log.debug("job %s looks like it should be to able to run on an idle machine but is not will hold it." % job.id)
+                        if schedjob_to_hold:
+                            to_hold.add(schedjob_to_hold)
+                        if unschedjob_to_hold:
+                            to_hold.add(unschedjob_to_hold)
+                        # even weirder state - idle vm with a job that should run on it but is not - try checking the full requirements or just hold the job?
+            except Exception as e:
+                log.warning("Exception: %s" % str(e))
+        if len(to_hold) > 0:
+            for job in to_hold:
+                job.override_status = 'HeldBadReqs'
+            failedhold = self.job_pool.hold_jobSOAP(list(to_hold))
+            if len(failedhold) > 0:
+                log.debug("Failed to hold %i jobs" % len(failedhold))
+
+        for vm in to_shutdown:
+            cluster = self.resource_pool.get_cluster_with_vm(vm)
+            if cluster:
+                log.info("VM %s on cluster %s shutting down - cannot run any idle jobs for it's vmtype." % (vm.id, cluster.name))
+                if not self.check_destroy(cluster, vm):
+                    th = VMDestroyCmd(cluster, vm)
+                    th.start()
+                    self.destroy_threads["".join([cluster.name, vm.id])] = th
+
+    def check_vm_job_reqs(self, vm, job):
+        """ Check if a vm has correct attributes to run a job."""
+        vmjobmatch = False
+        if vm.memory >= job.req_memory and vm.network in job.req_network and vm.cpuarch == job.req_cpuarch \
+            and vm.cpucores >= job.req_cpucores and vm.storage >= job.req_storage:
+            vmjobmatch = True
+        return vmjobmatch
+
+    def check_shared_objs(self):
+        output = ""
+        output += "Resource Pool: " + str(self.resource_pool) + "\n"
+        output += "Job Pool: " + str(self.job_pool) + "\n"
+        return output
+
+class VMDestroyCmd(threading.Thread):
+    """
+    VMCmd - passing shutdown and destroy requests to a separate thread 
+    """
+
+    def __init__(self, cluster, vm):
+        threading.Thread.__init__(self, name=self.__class__.__name__)
+        self.cluster = cluster
+        self.vm = vm
+        self.result = None
+    def run(self):
+        self.result = self.cluster.vm_destroy(self.vm)
+        if self.result != 0:
+            log.error("Failed to destroy vm %s" % self.vm.id)
+    def get_result(self):
+        return self.result
+    def get_vm(self):
+        return self.vm
 
 class GetClouds(threading.Thread):
     """
@@ -1343,10 +1580,7 @@ def main():
     service_threads = []
     info_threads = []
 
-    # Start the cloud scheduler info server for RPCs
-    info_serv = info_server.InfoServer(cloud_resources, job_pool)
-    info_serv.daemon = True
-    info_threads.append(info_serv)
+
 
     # Create the Job Polling thread
     job_poller = JobPoller(job_pool)
@@ -1387,6 +1621,11 @@ def main():
     if config.getclouds:
         getclouds = GetClouds(cloud_resources)
         service_threads.append(getclouds)
+
+    # Start the cloud scheduler info server for RPCs
+    info_serv = info_server.InfoServer(cloud_resources, job_pool, job_poller, machine_poller, vm_poller, scheduler, cleaner)
+    info_serv.daemon = True
+    info_threads.append(info_serv)
 
     # Set SIGTERM (kill) handler
     signal.signal(signal.SIGTERM, term_handler)

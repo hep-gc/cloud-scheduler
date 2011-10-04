@@ -29,16 +29,20 @@ VIRT_VERSION = "3"
 VM_PERMISSIONS = "ReadWrite"
 
 
-# A support method to translate a time int to the supported duration time format
-# Format: PT##M
-# EG: PT30M
+
 def format_duration_time(time):
+    """Translate a time int to the supported duration time format
+       Format: PT##M
+       EG: PT30M
+    """
     return ("PT" + str(time) + "M")
 
-# A support method for converting the vm storage string (a string rep'ing
-# gigs of storage) to the deployment request file format (a string of the
-# number of megs of storage desired)
+
 def format_storage(storage_gb):
+    """Converts the vm storage string (a string rep'ing
+       gigs of storage) to the deployment request file format (a string of the
+       number of megs of storage desired)
+    """
     return str(int(storage_gb) * 1024)
 
 def ws_epr_factory(workspace_id, nimbus_hostname):
@@ -403,8 +407,8 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
 
 
 
-# Creates and returns a Nimbus workspace metadata XML string.
 def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
+    """ Creates and returns a Nimbus workspace metadata XML string."""
 
     # Namespace variables for populating the xml file
     root_nmspc = "http://www.globus.org/2008/06/workspace/metadata"

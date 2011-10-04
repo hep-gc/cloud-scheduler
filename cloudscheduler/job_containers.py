@@ -320,6 +320,38 @@ class HashTableJobContainer(JobContainer):
         except KeyError:
             return None
 
+    def get_held_jobs(self):
+        HELD = 5
+        held_jobs = []
+        for job in self.all_jobs.values():
+            if job.job_status == HELD:
+                held_jobs.append(job)
+        return held_jobs
+    
+    def get_idle_jobs(self):
+        IDLE = 1
+        idle_jobs = []
+        for job in self.all_jobs.values():
+            if job.job_status == IDLE:
+                idle_jobs.append(job)
+        return idle_jobs
+
+    def get_running_jobs(self):
+        RUNNING = 2
+        run_jobs = []
+        for job in self.all_jobs.values():
+            if job.job_status == RUNNING:
+                run_jobs.append(job)
+        return run_jobs
+
+    def get_complete_jobs(self):
+        COMPLETE = 4
+        comp_jobs = []
+        for job in self.all_jobs.values():
+            if job.job_status == COMPLETE:
+                comp_jobs.append(job)
+        return comp_jobs
+
     def get_jobs_for_user(self, user, prioritized=False):
         with self.lock:
             if user not in self.jobs_by_user:
@@ -340,7 +372,7 @@ class HashTableJobContainer(JobContainer):
         with self.lock:
             return_value = {}
             for job in self.sched_jobs.values():
-                if job.user not in jobs:
+                if job.user not in return_value:
                     return_value[job.user] = []
                 return_value[job.user].append(job)
             # Now lets sort if needed.
@@ -554,6 +586,36 @@ class HashTableJobContainer(JobContainer):
                     if job.uservmtype not in return_value:
                         return_value[job.uservmtype] = []
                     return_value[job.uservmtype].append(job)
+            # Sort if needed
+            if prioritized:
+                for job_list in return_value.values():
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
+        return return_value
+    
+    def get_scheduled_user_jobs_by_type(self, user, prioritized=False):
+        with self.lock:
+            sched = self.get_scheduled_jobs_by_users()
+            return_value = {}
+            if user in sched.keys():
+                for job in sched[user]:
+                    if job.req_vmtype not in return_value:
+                        return_value[job.req_vmtype] = []
+                    return_value[job.req_vmtype].append(job)
+            # Sort if needed
+            if prioritized:
+                for job_list in return_value.values():
+                    job_list.sort(key=lambda job: job.get_priority(), reverse=True)
+        return return_value
+    
+    def get_scheduled_user_jobs_by_usertype(self, user, prioritized=False):
+        with self.lock:
+            sched = self.get_scheduled_jobs_by_users()
+            return_value = {}
+            if user in sched.keys():
+                for job in sched[user]:
+                    if job.req_vmtype not in return_value:
+                        return_value[job.req_vmtype] = []
+                    return_value[job.req_vmtype].append(job)
             # Sort if needed
             if prioritized:
                 for job_list in return_value.values():
