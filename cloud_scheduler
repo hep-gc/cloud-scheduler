@@ -1364,26 +1364,47 @@ class Cleanup(threading.Thread):
                     except:
                         log.warning("Failed to parse Start: (Owner=user) from vm.")
                         continue
+
                     userjobtypes = self.job_pool.job_container.get_unscheduled_user_jobs_by_type(vmuser)
+                    scheduserjobtypes = self.job_pool.job_container.get_scheduled_user_jobs_by_type(vmuser)
                     potentialVM = False
+                    schedjob_to_hold = None
+                    unschedjob_to_hold = None
+
                     for jobvmtype in userjobtypes.keys():
                         if jobvmtype == internal_vm.vmtype:
                             for job in userjobtypes[jobvmtype]:
                                 if job.job_status == self.IDLE:
                                     if self.check_vm_job_reqs(internal_vm, job):
                                         potentialVM = True
+                                        schedjob_to_hold = job
                                         break
+
+                    for jobvmtype in scheduserjobtypes.keys():
+                        if jobvmtype == internal_vm.vmtype:
+                            for job in scheduserjobtypes[jobvmtype]:
+                                if job.job_status == self.IDLE:
+                                    if self.check_vm_job_reqs(internal_vm, job):
+                                        potentialVM = True
+                                        unschedjob_to_hold = job
+                                        break
+
                     if not potentialVM:
                         # shutdown this one
                         log.info("Going to shutdown vm %s, no jobs appear to be able to run there" % internal_vm.id)
                         to_shutdown.append(internal_vm)
                     else:
                         log.debug("job %s looks like it should be to able to run on an idle machine but is not will hold it." % job.id)
-                        to_hold.add(job)
+                        if schedjob_to_hold:
+                            to_hold.add(schedjob_to_hold)
+                        if unschedjob_to_hold:
+                            to_hold.add(unschedjob_to_hold)
                         # even weirder state - idle vm with a job that should run on it but is not - try checking the full requirements or just hold the job?
-            except:
-                log.warning("Failed to convert condor values to int")
+            except Exception as e:
+                log.warning("Exception: %s" % str(e))
         if len(to_hold) > 0:
+            for job in to_hold:
+                job.override_status = 'HeldBadReqs'
             failedhold = self.job_pool.hold_jobSOAP(list(to_hold))
             if len(failedhold) > 0:
                 log.debug("Failed to hold %i jobs" % len(failedhold))
