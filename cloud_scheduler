@@ -836,7 +836,7 @@ class Cleanup(threading.Thread):
             vm_count = self.resource_pool.vm_count()
             for vmtype, val in diff_types.iteritems():
                 num_to_change[vmtype] = int(round(val * vm_count))
-
+            log.debug("Initial num to change: %s adjust for queued jobs." % str(num_to_change))
             excess_diff = 0
             positive_types = []
             # check if there are fewer jobs in queue than trying to adjust VM count by
@@ -861,6 +861,7 @@ class Cleanup(threading.Thread):
 
             # Postive num_to_change is how many CS going to try and shutdown
             # Negative is how many it wants to start
+            log.debug("Midway num to change: %s adjusting for free resources." % str(num_to_change))
             # TODO Check if there are free resources for that type and how many VMs 
             # could fill those resources, re-adjust num_to_change accordingly
             pos_change_types = []
@@ -930,7 +931,8 @@ class Cleanup(threading.Thread):
                                 num_to_change[postype] -= adjustby
                                 if num_to_change[postype] < 0:
                                         num_to_change[postype] = 0
-
+            log.debug("Final num to change: %s" % str(num_to_change))
+            log.verbose("Ready to balance via configured method")
             if config.graceful_shutdown:
                 if config.graceful_shutdown_method == 'hold':
                     # balance using condor_hold and condor_release - may be bugged with recent
@@ -1144,6 +1146,7 @@ class Cleanup(threading.Thread):
         # Looking for machines that have changed jobs since last check
         # and are of a type that has an higher than wanted distribution
         # based on diff_types
+        log.debug("Balancing via hard shutdown of VMs - any running jobs will be rescheduled by condor.")
         vm_matches = []
         vm_starting = []
         changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
@@ -1181,6 +1184,8 @@ class Cleanup(threading.Thread):
 
     # Deprecated
     def graceful_shutdown_condor_hold(self, diff_types, machineList, num_to_change):
+        log.debug("Balancing via condor_hold.")
+        log.warning("This method is deprecated, change graceful_shutdown_method in the config.")
         for vmtype in diff_types.keys():
             if diff_types[vmtype] > Decimal('0.1'):
                 self.job_pool.hold_vmtype(vmtype)
@@ -1211,6 +1216,7 @@ class Cleanup(threading.Thread):
         return balance
 
     def graceful_shutdown_condor_off(self, machineList, num_to_change):
+        log.debug("Balancing via condor_off, machines will be shutdown once finished current job.")
         fitting_set = self.filter_fitting_resources(num_to_change)
         internal_vms = self.resource_pool.get_vmtypes_count_internal()
         #sched_jobs = self.job_pool.job_container.get_scheduled_jobs_by_type()
