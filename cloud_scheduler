@@ -1412,7 +1412,7 @@ class Cleanup(threading.Thread):
             for job in to_hold:
                 job.override_status = 'HeldBadReqs'
             failedhold = self.job_pool.hold_jobSOAP(list(to_hold))
-            if len(failedhold) > 0:
+            if failedhold and len(failedhold) > 0:
                 log.debug("Failed to hold %i jobs" % len(failedhold))
 
         for vm in to_shutdown:
