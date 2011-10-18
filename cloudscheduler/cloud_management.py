@@ -257,7 +257,7 @@ class ResourcePool:
                     netslots = net_slots,
                     )
 
-        elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus":
+        elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
             return cluster_tools.EC2Cluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
