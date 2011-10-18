@@ -1104,6 +1104,24 @@ class EC2Cluster(ICluster):
 
             log.error("OpenNebula support isn't ready yet.")
             raise NotImplementedError
+
+        elif self.cloud_type == "OpenStack":
+            try:
+                region = boto.ec2.regioninfo.RegionInfo(name=self.name,
+                                                 endpoint=self.network_address)
+                connection = boto.connect_ec2(
+                                   aws_access_key_id=self.access_key_id,
+                                   aws_secret_access_key=self.secret_access_key,
+                                   is_secure=False,
+                                   region=region,
+                                   port=8773,
+                                   path="/services/Cloud",
+                                   )
+                log.debug("Created a connection to OpenStack (%s)" % self.name)
+
+            except boto.exception.EC2ResponseError, e:
+                log.error("Couldn't connect to OpenStack because: %s" %
+                            e.error_message)
         else:
             log.error("EC2Cluster don't know how to handle a %s cluster." %
                                                                self.cloud_type)
