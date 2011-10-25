@@ -41,6 +41,7 @@ cloud_resource_config = None
 image_attach_device = "sda"
 scratch_attach_device = "sdb"
 info_server_port = 8111
+admin_server_port = 8112
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
 job_ban_timeout = 60*60 # 1 hour default
@@ -131,6 +132,7 @@ def setup(path=None):
     global image_attach_device
     global scratch_attach_device
     global info_server_port
+    global admin_server_port
     global workspace_path
     global persistence_file
     global job_ban_timeout
@@ -310,6 +312,14 @@ def setup(path=None):
             info_server_port = config_file.getint("global", "info_server_port")
         except ValueError:
             print "Configuration file problem: info_server_port must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "admin_server_port"):
+        try:
+            info_server_port = config_file.getint("global", "admin_server_port")
+        except ValueError:
+            print "Configuration file problem: admin_server_port must be an " \
                   "integer value."
             sys.exit(1)
 

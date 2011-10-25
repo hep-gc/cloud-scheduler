@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+# vim: set expandtab ts=4 sw=4:
+
+# Copyright (C) 2009 University of Victoria
+# You may distribute under the terms of either the GNU General Public
+# License or the Apache v2 License, as specified in the README file.
+
+# cloud_status - tool to display information about cloud scheduler
+# 
+import xmlrpclib
+import sys
+import socket
+from optparse import OptionParser
+import logging
+import platform
+
+import cloudscheduler.utilities as utilities 
+log = utilities.get_cloudscheduler_logger()
+
+import cloudscheduler.cloud_management as cloud_management
+import cloudscheduler.config as config
+
+def main(argv=None):
+
+    # Parse command line options
+    parser = OptionParser()
+    parser.add_option("-f", "--config-file", dest="config_file", metavar="FILE",
+                      help="Designate a Cloud Sceduler config file")
+    parser.add_option("-s", "--server-hostname", dest="server_hostname",
+                      metavar="HOSTNAME",
+                      help="Pick a specific machine's Cloud Scheduler"
+                           "information server")
+    parser.add_option("-p", "--port", dest="port", metavar="PORT",
+                      help="Pick a custom port to connect to Cloud Scheduler"
+                           "information server")
+    parser.add_option("-a", "--all-cluster", action="store_true", 
+                      dest="all_cluster", default=False, 
+                      help="Get All clusters in Cloud Scheduler")
+    parser.add_option("-c", "--cluster", dest="cluster_name", metavar="NAME", 
+                      help="Get Information on a cluster")
+    parser.add_option("-m", "--virtual-machines",action="store_true", 
+                      dest="vms", default=False, 
+                      help="Get all VMs in Cloud Scheduler")
+    parser.add_option("-n", "--vm-info", dest="vm_id", metavar="ID", 
+                      help="Get information on a virtual machine")
+
+    parser.add_option("-d", "--developer-information", action="store_true",
+                      dest="dev_info", default=False,
+                      help="Show developer information about cloud_scheduler")
+    parser.add_option("-q", "--job-queue", metavar="QUEUE",
+                      action="store", dest="job_queue",
+                      type="choice", choices=['all', 'new', 'sched', 'high', 'running', 'idle', 'held', 'complete'],
+                      help="Get Information about the job queues")
+
+
+    (cli_options, args) = parser.parse_args()
+
+    # Initialize config
+    if cli_options.config_file:
+        config.setup(cli_options.config_file)
+    else:
+        config.setup()
+
+
+    # Get port to connect to info server.
+    #   Precedence: -p argument, then from config module
+    if cli_options.port:
+        server_port = cli_options.port
+    else:
+        server_port = config.admin_server_port
+
+    if cli_options.server_hostname:
+        server_hostname = cli_options.server_hostname
+    else:
+        server_hostname = platform.node()
+
+    # Connect to info server
+    try:
+        s = xmlrpclib.ServerProxy("http://%s:%s" %
+                                  (server_hostname, server_port))
+        if cli_options.all_cluster and not cli_options.json:
+            print s.get_cluster_resources()
+        elif cli_options.vms:
+            print s.get_cluster_vm_resources()
+        elif not cli_options.json and cli_options.vm_id and cli_options.cluster_name:
+            print s.get_vm_info(cli_options.cluster_name, cli_options.vm_id)
+        elif cli_options.vm_id and not cli_options.cluster_name:
+            print "Please provide -c cluster_name with vm ID"
+        elif not cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
+            print s.get_cluster_info(cli_options.cluster_name)
+        elif cli_options.json and cli_options.all_cluster:
+            print s.get_json_resource()
+        elif cli_options.json and cli_options.vm_id and cli_options.cluster_name:
+            print s.get_json_vm(cli_options.cluster_name, cli_options.vm_id)
+        elif cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
+            print s.get_json_cluster(cli_options.cluster_name)
+        elif (cli_options.dev_info):
+            print s.get_developer_information()
+        elif cli_options.job_queue:
+            if cli_options.job_queue.startswith('a'):
+                print "Jobs in Scheduled Queue"
+                print s.get_schedjobs()
+                print "Jobs in New Queue"
+                print s.get_newjobs()
+                print "Jobs in High Priority Queue"
+                print s.get_highjobs()
+            elif cli_options.job_queue.startswith('n'):
+                print "Jobs in New Queue"
+                print s.get_newjobs()
+            elif cli_options.job_queue.startswith('s'):
+                print "Jobs in Scheduled Queue"
+                print s.get_schedjobs()
+            elif cli_options.job_queue.startswith('hi'):
+                print "Jobs in High Priority Queue"
+                print s.get_highjobs()
+            elif cli_options.job_queue.startswith('he'):
+                print "Jobs in Held state"
+                print s.get_heldjobs()
+            elif cli_options.job_queue.startswith('i'):
+                print "Jobs in Idle state"
+                print s.get_idlejobs()
+            elif cli_options.job_queue.startswith('c'):
+                print "Jobs in Complete state"
+                print s.get_completejobs()
+            elif cli_options.job_queue.startswith('r'):
+                print "Jobs in Running state"
+                print s.get_runningjobs()
+        elif cli_options.ips:
+            print s.get_ips_munin()
+        elif cli_options.boot_time:
+            print s.get_vm_startup_time()
+        elif cli_options.diff_type:
+            print s.get_diff_types()
+        elif cli_options.get_job_run_times:
+            print s.get_vm_job_run_times()
+        elif cli_options.cloud_conf:
+            print s.get_cloud_config_values()
+        else:
+            print s.get_cloud_resources()
+
+
+    except socket.error:
+        print "%s: couldn't connect to cloud scheduler at %s on port %s."\
+               % (sys.argv[0], server_hostname, server_port)
+        print "Is the cloud scheduler running on port %s?" % server_port
+    except:
+        print "Unexpected error: ", sys.exc_info()[0], sys.exc_info()[1]
+        print "Is the cloud scheduler running on port %s?" % server_port
+
+
+if __name__ == "__main__":
+    sys.exit(main())

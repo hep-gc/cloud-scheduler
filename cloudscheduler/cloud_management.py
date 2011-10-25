@@ -1434,3 +1434,70 @@ class ResourcePool:
                 outputlist.append(']')
             outputlist.append('\n')
         return "".join(outputlist)
+
+    def shutdown_cluster_vm(self, clustername, vmid):
+        output = ""
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            vm = cluster.get_vm(vmid)
+            if vm:
+                # found the vm - shutdown
+                # move the vmdestroycmd thread into a better place and import so avilable here
+                thread = VMDestroyCmd(cluster, vm)
+                while thread.is_alive():
+                    time.sleep(1)
+                if not thread.is_alive():
+                    if thread.get_result() != 0:
+                        output = "Destroying VM %s failed. Leaving it for now." % thread.get_vm().id
+                    else:
+                        output = "VM %s has been Destroyed." % thread.get_vm().id
+                    thread.join()
+            else:
+                output = "Could not find VM with ID: %s on Cluster: %s." % (vmid, clustername)
+        else:
+            output = "Could not find a Cluster with name: %s." % clustername
+        return output
+
+    def shutdown_cluster_all(self, clustername):
+        output = ""
+        vmdesth = {}
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            for vm in cluster.vms:
+                th = VMDestroyCmd(cluster, vm)
+                desth[vm.id] = th
+            while len(vmdesth) > 0:
+                to_remove = []
+                for k, thread in vmdesth.iteritems():
+                    if not thread.is_alive():
+                        if thread.get_result() != 0:
+                            output += "Destroying VM %s failed. Leaving it for now.\n" % thread.get_vm().id
+                        else:
+                            output += "VM %s has been Destroyed.\n" % thread.get_vm().id
+                        thread.join()
+                        to_remove.append(k)
+                for k in to_remove:
+                    del vmdesth[k]
+        else:
+            output = "Could not find a Cluster with name: %s." % clustername
+        return output
+
+
+class VMDestroyCmd(threading.Thread):
+    """
+    VMCmd - passing shutdown and destroy requests to a separate thread 
+    """
+
+    def __init__(self, cluster, vm):
+        threading.Thread.__init__(self, name=self.__class__.__name__)
+        self.cluster = cluster
+        self.vm = vm
+        self.result = None
+    def run(self):
+        self.result = self.cluster.vm_destroy(self.vm)
+        if self.result != 0:
+            log.error("Failed to destroy vm %s" % self.vm.id)
+    def get_result(self):
+        return self.result
+    def get_vm(self):
+        return self.vm
