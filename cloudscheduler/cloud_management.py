@@ -1405,12 +1405,21 @@ class ResourcePool:
         return starting
 
     def get_all_vms(self):
-        "Returns a list of all the VMs in the system."""
+        """Returns a list of all the VMs in the system."""
         all_vms = []
         for cluster in self.resources:
             for vm in cluster.vms:
                 all_vms.append(vm)
         return all_vms
+
+    def get_user_vms(self, user):
+        """Returns a list of all VMs of a user."""
+        user_vms = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.user == user:
+                    user_vms.append(vm)
+        return user_vms
 
     def get_cloud_config_output(self):
         """Build up a string of the cloudscheduler configuration values."""

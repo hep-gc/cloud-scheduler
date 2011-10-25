@@ -13,6 +13,9 @@ import cloudscheduler.utilities as utilities
 import cloudscheduler.job_management as job_management
 import cloudscheduler.cloud_management as cloud_management
 
+from cloudscheduler.cluster_tools import VM
+from job_management import Job
+
 log = utilities.get_cloudscheduler_logger()
 
 class JobProxyRefresher(threading.Thread):
@@ -150,6 +153,7 @@ class VMProxyRefresher(threading.Thread):
             log.error(traceback.format_exc())
 
 
+
 class MyProxyProxyRefresher():
     """
     Utility class used to refresh a proxy using a MyProxy server.
@@ -213,4 +217,30 @@ class MyProxyProxyRefresher():
             return False
 
         return True
+    
+    def renew_proxy_meta(self, joborvm):
+        if joborvm is isinstance(Job):
+            if MyProxyProxyRefresher().renew_proxy(joborvm.get_x509userproxy(), joborvm.get_myproxy_creds_name(), joborvm.get_myproxy_server(), joborvm.get_myproxy_server_port()):
+                # Yay, proxy renewal worked! :-)
+                log.debug("Proxy for job %s renewed." % (joborvm.id))
+                # Don't forget to reset the proxy expiry time cache.
+                joborvm.reset_x509userproxy_expiry_time()
+            else:
+                log.error("Error renewing proxy for job %s" % (job.id))
+        elif: joborvm is isinstance(VM):
+            if self.renew_proxy(joborvm.get_proxy_file(), joborvm.get_myproxy_creds_name(), joborvm.get_myproxy_server(), joborvm.get_myproxy_server_port()):
+                # Yay, proxy renewal worked! :-)
+                log.debug("Proxy for VM %s renewed." % (joborvm.id))
+                # Don't forget to reset the proxy expiry time cache.
+                joborvm.reset_x509userproxy_expiry_time()
+            else:
+                log.error("Error renewing proxy for VM %s" % (joborvm.id))
+
+    def renew_job_proxy_user(self, job_pool, user):
+        for job in job_pool.job_container.get_jobs_for_user(user):
+            self.renew_proxy_meta(job)
+
+    def renew_vm_proxy_user(self, resource_pool, user):
+        for vm in resource_pool.get_user_vms():
+            self.renew_proxy_meta(vm)
 
