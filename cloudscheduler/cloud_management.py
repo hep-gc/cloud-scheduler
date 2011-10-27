@@ -337,6 +337,8 @@ class ResourcePool:
             return None
 
         for cluster in self.resources:
+            if not cluster.enabled:
+                continue
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
                 continue
@@ -390,6 +392,8 @@ class ResourcePool:
         else:
             clusters = self.resources
         for cluster in clusters:
+            if not cluster.enabled:
+                continue
             if cluster.__class__.__name__ == "NimbusCluster":
                 # If not valid image file to download
                 if imageloc == "":
@@ -533,6 +537,8 @@ class ResourcePool:
         potential_fit = False
 
         for cluster in self.resources:
+            if not cluster.enabled:
+                continue
             # If the cluster does not have the required CPU architecture
             if not (cpuarch in cluster.cpu_archs):
                 continue
@@ -568,6 +574,8 @@ class ResourcePool:
         else:
             clusters = self.filter_resources_by_names(targets)
         for cluster in clusters:
+            if not cluster.enabled:
+                continue
             if not (cpuarch in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
@@ -1490,6 +1498,21 @@ class ResourcePool:
         else:
             output = "Could not find a Cluster with name: %s." % clustername
         return output
+    
+    def remove_vm_no_shutdown(self, clustername, vmid):
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            vm = cluster.get_vm(vmid)
+            if vm:
+                with cluster.vms_lock:
+                    cluster.vms.remove(vm)
+                cluster.resource_return(vm)
+
+    def disable_cluster(self, clustername):
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            cluster.enabled = False
+
 
 
 class VMDestroyCmd(threading.Thread):
