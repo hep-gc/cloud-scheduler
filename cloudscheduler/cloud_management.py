@@ -1510,8 +1510,13 @@ class ResourcePool:
 
     def disable_cluster(self, clustername):
         cluster = self.get_cluster(clustername)
+        ret = ""
         if cluster:
             cluster.enabled = False
+            ret = "Cloud: %s disabled." % clustername
+        else:
+            ret = "Could not find cloud %t." % clustername
+        return ret
 
 
 
