@@ -116,18 +116,19 @@ class InfoServer(threading.Thread,):
                     output.append("Cluster named %s not found." % cluster_name)
                 return ''.join(output)
             def get_vm_info(self, cluster_name, vm_id):
-                output = "VM Info for VM id: %s\n" % vm_id
+                output = []
+                output.append("VM Info for VM id: %s\n" % vm_id)
                 cluster = cloud_resources.get_cluster(cluster_name)
                 vm = None
                 if cluster:
                     vm = cluster.get_vm(vm_id)
                 else:
-                    output += "Cluster %s not found.\n" % cluster_name
+                    output.append("Cluster %s not found.\n" % cluster_name)
                 if vm:
-                    output += vm.get_vm_info()
+                    output.append(vm.get_vm_info())
                 else:
-                    output += "VM with id: %s not found.\n" % vm_id
-                return output
+                    output.append("VM with id: %s not found.\n" % vm_id)
+                return ''.join(output)
             def get_json_vm(self, cluster_name, vm_id):
                 output = "{}"
                 cluster = cloud_resources.get_cluster(cluster_name)
@@ -155,47 +156,54 @@ class InfoServer(threading.Thread,):
                     return "You need to have Guppy installed to get developer " \
                            "information" 
             def get_newjobs(self):
+                output = []
                 jobs = job_pool.job_container.get_unscheduled_jobs()
-                output = Job.get_job_info_header()
+                output.append(Job.get_job_info_header())
                 for job in jobs:
-                    output += job.get_job_info()
-                return output
+                    output.append(job.get_job_info())
+                return ''.join(output)
             def get_schedjobs(self):
+                output = []
                 jobs = job_pool.job_container.get_scheduled_jobs()
-                output = Job.get_job_info_header()
+                output.append(Job.get_job_info_header())
                 for job in jobs:
-                    output += job.get_job_info()
-                return output
+                    output.append(job.get_job_info())
+                return ''.join(output)
             def get_highjobs(self):
+                output = []
                 jobs = job_pool.job_container.get_high_priority_jobs()
-                output = Job.get_job_info_header()
+                output.append(Job.get_job_info_header())
                 for job in jobs:
-                    output += job.get_job_info()
-                return output
+                    output.append(job.get_job_info())
+                return ''.join(output)
             def get_idlejobs(self):
+                output = []
                 jobs = job_pool.job_container.get_idle_jobs()
-                output = Job.get_job_info_header()
+                output.append(Job.get_job_info_header())
                 for job in jobs:
-                    output += job.get_job_info()
-                return output
+                    output.append(job.get_job_info())
+                return ''.join(output)
             def get_runningjobs(self):
+                output = []
                 jobs = job_pool.job_container.get_running_jobs()
-                output = Job.get_job_info_header()
+                output.append(Job.get_job_info_header())
                 for job in jobs:
-                    output += job.get_job_info()
-                return output
+                    output.append(job.get_job_info())
+                return ''.join(output)
             def get_completejobs(self):
+                output = []
                 jobs = job_pool.job_container.get_complete_jobs()
-                output = Job.get_job_info_header()
+                output.append(Job.get_job_info_header())
                 for job in jobs:
-                    output += job.get_job_info()
-                return output
+                    output.append(job.get_job_info())
+                return ''.join(output)
             def get_heldjobs(self):
+                output = []
                 jobs = job_pool.job_container.get_held_jobs()
-                output = Job.get_job_info_header()
+                output.append(Job.get_job_info_header())
                 for job in jobs:
-                    output += job.get_job_info()
-                return output
+                    output.append(job.get_job_info())
+                return ''.join(output)
             def get_job(self, jobid):
                 output = "Job not found."
                 job = job_pool.job_container.get_job_by_id(jobid)
@@ -209,27 +217,28 @@ class InfoServer(threading.Thread,):
             def get_json_jobpool(self):
                 return JobPoolJSONEncoder().encode(job_pool)
             def get_ips_munin(self):
-                output = ""
+                output = []
                 for cluster in cloud_resources.resources:
                     for vm in cluster.vms:
                         if re.search("(10|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.", vm.ipaddress):
                             continue
                         else:
-                            output += "[%s]\n\taddress %s\n" % (vm.hostname, vm.ipaddress)
-                return output
+                            output.append("[%s]\n\taddress %s\n" % (vm.hostname, vm.ipaddress))
+                return ''.join(output)
             def get_vm_startup_time(self):
-                output = ""
+                output = []
                 for cluster in cloud_resources.resources:
-                    output += "Cluster: %s " % cluster.name
+                    output.append("Cluster: %s " % cluster.name)
                     total_time = 0
                     for vm in cluster.vms:
                         pass
-                        output += "%d, " % (vm.startup_time if vm.startup_time != None else 0)
+                        output.append("%d, " % (vm.startup_time if vm.startup_time != None else 0))
                         total_time += (vm.startup_time if vm.startup_time != None else 0)
                     if len(cluster.vms) > 0:
-                        output += " Avg: %d " % (int(total_time) / len(cluster.vms))
-                return output
+                        output.append(" Avg: %d " % (int(total_time) / len(cluster.vms)))
+                return ''.join(output)
             def get_diff_types(self):
+                output = []
                 current_types = cloud_resources.vmtype_distribution()
                 desired_types = job_pool.job_type_distribution()
                 # Negative difference means will need to create that type
@@ -242,32 +251,38 @@ class InfoServer(threading.Thread,):
                 for type in desired_types.keys():
                     if type not in current_types.keys():
                         diff_types[type] = -desired_types[type]
-                output = "Diff Types dictionary\n"
+                output.append("Diff Types dictionary\n")
                 for key, value in diff_types.iteritems():
-                    output += "type: %s, dist: %f\n" % (key, value)
-                output += "Current Types (vms)\n"
+                    output.append("type: %s, dist: %f\n" % (key, value))
+                output.append("Current Types (vms)\n")
                 for key, value in current_types.iteritems():
-                    output += "type: %s, dist: %f\n" % (key, value)
-                output += "Desired Types (jobs)\n"
+                    output.append("type: %s, dist: %f\n" % (key, value))
+                output.append("Desired Types (jobs)\n")
                 for key, value in desired_types.iteritems():
-                    output += "type: %s, dist: %f\n" % (key, value)
-                return output
+                    output.append("type: %s, dist: %f\n" % (key, value)
+                return ''.join(output)
             def get_vm_job_run_times(self):
-                output = "Run Times of Jobs on VMs\n"
+                output = []
+                output.append("Run Times of Jobs on VMs\n")
                 for cluster in cloud_resources.resources:
                     for vm in cluster.vms:
-                        output += "%s : avg %f\n" % (vm.hostname, vm.job_run_times.average())
-                return output
+                        output.append("%s : avg %f\n" % (vm.hostname, vm.job_run_times.average()))
+                return ''.join(output)
             def get_cloud_config_values(self):
                 return cloud_resources.get_cloud_config_output()
             def check_shared_objs(self):
-                output = ""
-                output += "Scheduler Thread:\n" + scheduler.check_shared_objs() + "\n"
-                output += "Cleanup Thread:\n" + cleaner.check_shared_objs() + "\n"
-                output += "VMPoller Thread:\n" + vm_poller.check_shared_objs() + "\n"
-                output += "JobPoller Thread:\n" + job_poller.check_shared_objs() + "\n"
-                output += "MachinePoller Thread:\n" + machine_poller.check_shared_objs() + "\n"
-                return output
+                output = []
+                output.append("Scheduler Thread:\n" + scheduler.check_shared_objs())
+                output.append("\n")
+                output.append("Cleanup Thread:\n" + cleaner.check_shared_objs())
+                output.append("\n")
+                output.append("VMPoller Thread:\n" + vm_poller.check_shared_objs())
+                output.append("\n")
+                output.append("JobPoller Thread:\n" + job_poller.check_shared_objs())
+                output.append("\n")
+                output.append("MachinePoller Thread:\n" + machine_poller.check_shared_objs())
+                output.append("\n")
+                return ''.join(output)
 
         self.server.register_instance(externalFunctions())
 
