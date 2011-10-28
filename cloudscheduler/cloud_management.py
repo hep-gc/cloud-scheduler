@@ -1517,7 +1517,16 @@ class ResourcePool:
         else:
             ret = "Could not find cloud %t." % clustername
         return ret
-
+    
+    def enable_cluster(self, clustername):
+        cluster = self.get_cluster(clustername)
+        ret = ""
+        if cluster:
+            cluster.enabled = True
+            ret = "Cloud: %s enabled." % clustername
+        else:
+            ret = "Could not find cloud %t." % clustername
+        return ret
 
 
 class VMDestroyCmd(threading.Thread):
