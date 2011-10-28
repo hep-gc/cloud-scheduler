@@ -89,28 +89,32 @@ class InfoServer(threading.Thread,):
             def get_cloud_resources(self):
                 return cloud_resources.get_pool_info()
             def get_cluster_resources(self):
-                output = "Clusters in resource pool:\n"
+                output = []
+                output.append("Clusters in resource pool:\n")
                 for cluster in cloud_resources.resources:
-                    output += cluster.get_cluster_info_short()+"\n"
-                return output
+                    output.append(cluster.get_cluster_info_short())
+                    output.append("\n")
+                return ''.join(output)
             def get_cluster_vm_resources(self):
-                output = VM.get_vm_info_header()
+                output = []
+                output.append(VM.get_vm_info_header())
                 clusters = 0
                 vm_count = 0
                 for cluster in cloud_resources.resources:
                     clusters += 1
                     vm_count += len(cluster.vms)
-                    output += cluster.get_cluster_vms_info()
-                output += '\nTotal VMs: %i. Total Clouds: %i' % (vm_count, clusters)
-                return output
+                    output.append(cluster.get_cluster_vms_info())
+                output.append('\nTotal VMs: %i. Total Clouds: %i' % (vm_count, clusters))
+                return ''.join(output)
             def get_cluster_info(self, cluster_name):
-                output = "Cluster Info: %s\n" % cluster_name
+                output = []
+                output.append("Cluster Info: %s\n" % cluster_name)
                 cluster = cloud_resources.get_cluster(cluster_name)
                 if cluster:
-                    output += cluster.get_cluster_info_short()
+                    output.append(cluster.get_cluster_info_short())
                 else:
-                    output += "Cluster named %s not found." % cluster_name
-                return output
+                    output.append("Cluster named %s not found." % cluster_name)
+                return ''.join(output)
             def get_vm_info(self, cluster_name, vm_id):
                 output = "VM Info for VM id: %s\n" % vm_id
                 cluster = cloud_resources.get_cluster(cluster_name)
