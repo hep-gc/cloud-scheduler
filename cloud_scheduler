@@ -1371,7 +1371,10 @@ class Cleanup(threading.Thread):
                     try:
                         vmuser = re.search('(?<=Owner == ")\w+', vm['Start']).group(0)
                     except:
-                        log.warning("Failed to parse Start: (Owner=user) from vm.")
+                        if vm['Start']:
+                            log.warning("Failed to parse Start: (Owner=user) Start = %s." % vm['Start'])
+                        else:
+                            log.warning("Failed to parse Start: (Owner=user) from vm. No Start attrib.")
                         continue
 
                     userjobtypes = self.job_pool.job_container.get_unscheduled_user_jobs_by_type(vmuser)
