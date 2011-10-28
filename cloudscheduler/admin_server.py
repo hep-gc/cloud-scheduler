@@ -124,23 +124,6 @@ class AdminServer(threading.Thread,):
                 else:
                     output += "VM with id: %s not found.\n" % vm_id
                 return output
-            def get_json_vm(self, cluster_name, vm_id):
-                output = "{}"
-                cluster = cloud_resources.get_cluster(cluster_name)
-                vm = None
-                if cluster:
-                    vm = cluster.get_vm(vm_id)
-                    if vm:
-                        output = VMJSONEncoder().encode(vm)
-                return output
-            def get_json_cluster(self, cluster_name):
-                output = "{}"
-                cluster = cloud_resources.get_cluster(cluster_name)
-                if cluster:
-                    output = ClusterJSONEncoder().encode(cluster)
-                return output
-            def get_json_resource(self):
-                return ResourcePoolJSONEncoder().encode(cloud_resources)
             def get_developer_information(self):
                 try:
                     from guppy import hpy
@@ -150,69 +133,6 @@ class AdminServer(threading.Thread,):
                 except:
                     return "You need to have Guppy installed to get developer " \
                            "information" 
-            def get_newjobs(self):
-                jobs = job_pool.job_container.get_unscheduled_jobs()
-                output = Job.get_job_info_header()
-                for job in jobs:
-                    output += job.get_job_info()
-                return output
-            def get_schedjobs(self):
-                jobs = job_pool.job_container.get_scheduled_jobs()
-                output = Job.get_job_info_header()
-                for job in jobs:
-                    output += job.get_job_info()
-                return output
-            def get_highjobs(self):
-                jobs = job_pool.job_container.get_high_priority_jobs()
-                output = Job.get_job_info_header()
-                for job in jobs:
-                    output += job.get_job_info()
-                return output
-            def get_idlejobs(self):
-                jobs = job_pool.job_container.get_idle_jobs()
-                output = Job.get_job_info_header()
-                for job in jobs:
-                    output += job.get_job_info()
-                return output
-            def get_runningjobs(self):
-                jobs = job_pool.job_container.get_running_jobs()
-                output = Job.get_job_info_header()
-                for job in jobs:
-                    output += job.get_job_info()
-                return output
-            def get_completejobs(self):
-                jobs = job_pool.job_container.get_complete_jobs()
-                output = Job.get_job_info_header()
-                for job in jobs:
-                    output += job.get_job_info()
-                return output
-            def get_heldjobs(self):
-                jobs = job_pool.job_container.get_held_jobs()
-                output = Job.get_job_info_header()
-                for job in jobs:
-                    output += job.get_job_info()
-                return output
-            def get_job(self, jobid):
-                output = "Job not found."
-                job = job_pool.job_container.get_job_by_id(jobid)
-                if job != null:
-                    output = job_match.get_job_info_pretty()
-                return output
-            def get_json_job(self, jobid):
-                output = '{}'
-                job_match = job_pool.job_container.get_job_by_id(jobid)
-                return JobJSONEncoder().encode(job)
-            def get_json_jobpool(self):
-                return JobPoolJSONEncoder().encode(job_pool)
-            def get_ips_munin(self):
-                output = ""
-                for cluster in cloud_resources.resources:
-                    for vm in cluster.vms:
-                        if re.search("(10|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.", vm.ipaddress):
-                            continue
-                        else:
-                            output += "[%s]\n\taddress %s\n" % (vm.hostname, vm.ipaddress)
-                return output
             def get_vm_startup_time(self):
                 output = ""
                 for cluster in cloud_resources.resources:
@@ -225,37 +145,10 @@ class AdminServer(threading.Thread,):
                     if len(cluster.vms) > 0:
                         output += " Avg: %d " % (int(total_time) / len(cluster.vms))
                 return output
-            def get_diff_types(self):
-                current_types = cloud_resources.vmtype_distribution()
-                desired_types = job_pool.job_type_distribution()
-                # Negative difference means will need to create that type
-                diff_types = {}
-                for type in current_types.keys():
-                    if type in desired_types.keys():
-                        diff_types[type] = current_types[type] - desired_types[type]
-                    else:
-                        diff_types[type] = 1 # changed from 0 to handle users with multiple job types
-                for type in desired_types.keys():
-                    if type not in current_types.keys():
-                        diff_types[type] = -desired_types[type]
-                output = "Diff Types dictionary\n"
-                for key, value in diff_types.iteritems():
-                    output += "type: %s, dist: %f\n" % (key, value)
-                output += "Current Types (vms)\n"
-                for key, value in current_types.iteritems():
-                    output += "type: %s, dist: %f\n" % (key, value)
-                output += "Desired Types (jobs)\n"
-                for key, value in desired_types.iteritems():
-                    output += "type: %s, dist: %f\n" % (key, value)
-                return output
-            def get_vm_job_run_times(self):
-                output = "Run Times of Jobs on VMs\n"
-                for cluster in cloud_resources.resources:
-                    for vm in cluster.vms:
-                        output += "%s : avg %f\n" % (vm.hostname, vm.job_run_times.average())
-                return output
-            def get_cloud_config_values(self):
-                return cloud_resources.get_cloud_config_output()
+            def disable_cloud(self, cloudname):
+                return cloud_resources.disable_cluster(cloudname)
+
+
 
         self.server.register_instance(externalFunctions())
 
@@ -267,11 +160,11 @@ class AdminServer(threading.Thread,):
             try:
                 self.server.handle_request()
                 if self.done:
-                    log.debug("Killing info server...")
+                    log.debug("Killing admin server...")
                     self.server.socket.close()
                     break
             except socket.timeout:
-                log.warning("info server's socket timed out. Don't panic!")
+                log.warning("admin server's socket timed out. Don't panic!")
 
     def stop(self):
         self.done = True
