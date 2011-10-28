@@ -227,7 +227,7 @@ class MyProxyProxyRefresher():
                 joborvm.reset_x509userproxy_expiry_time()
             else:
                 log.error("Error renewing proxy for job %s" % (job.id))
-        elif: joborvm is isinstance(VM):
+        elif joborvm is isinstance(VM):
             if self.renew_proxy(joborvm.get_proxy_file(), joborvm.get_myproxy_creds_name(), joborvm.get_myproxy_server(), joborvm.get_myproxy_server_port()):
                 # Yay, proxy renewal worked! :-)
                 log.debug("Proxy for VM %s renewed." % (joborvm.id))
