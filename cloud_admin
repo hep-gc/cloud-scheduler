@@ -33,25 +33,20 @@ def main(argv=None):
     parser.add_option("-p", "--port", dest="port", metavar="PORT",
                       help="Pick a custom port to connect to Cloud Scheduler"
                            "information server")
-    parser.add_option("-a", "--all-cluster", action="store_true", 
-                      dest="all_cluster", default=False, 
-                      help="Get All clusters in Cloud Scheduler")
-    parser.add_option("-c", "--cluster", dest="cluster_name", metavar="NAME", 
+    parser.add_option("-a", "--all", action="store_true", 
+                      dest="all", default=False, 
+                      help="Apply Operation to All [VMs, Jobs, etc]")
+    parser.add_option("-k", "--kill-vm", dest="killvm", action="store_true", 
+                      default="False", help="Kill a VM, must specify cloud and VM ID.")
+    parser.add_option("-c", "--cloud", dest="cloud_name", metavar="NAME", 
                       help="Get Information on a cluster")
-    parser.add_option("-m", "--virtual-machines",action="store_true", 
-                      dest="vms", default=False, 
-                      help="Get all VMs in Cloud Scheduler")
     parser.add_option("-n", "--vm-info", dest="vm_id", metavar="ID", 
                       help="Get information on a virtual machine")
-
-    parser.add_option("-d", "--developer-information", action="store_true",
-                      dest="dev_info", default=False,
-                      help="Show developer information about cloud_scheduler")
-    parser.add_option("-q", "--job-queue", metavar="QUEUE",
-                      action="store", dest="job_queue",
-                      type="choice", choices=['all', 'new', 'sched', 'high', 'running', 'idle', 'held', 'complete'],
-                      help="Get Information about the job queues")
-
+    parser.add_option("-r", "--refresh-proxy", metavar="PROXYTYPE", action="store",
+                      dest="proxy_refresh", type="choice", choices=['vm','job'], help="Refresh Proxies for user")
+    parser.add_option("-u", "--user", dest="user", action="store", metavar="USER", help="User to perform operation on")
+    parser.add_option("-e", "--reconfig", action="store_true", default="False", help="Reload cloud_resources.conf")
+    
 
     (cli_options, args) = parser.parse_args()
 
