@@ -259,7 +259,7 @@ class InfoServer(threading.Thread,):
                     output.append("type: %s, dist: %f\n" % (key, value))
                 output.append("Desired Types (jobs)\n")
                 for key, value in desired_types.iteritems():
-                    output.append("type: %s, dist: %f\n" % (key, value)
+                    output.append("type: %s, dist: %f\n" % (key, value))
                 return ''.join(output)
             def get_vm_job_run_times(self):
                 output = []
