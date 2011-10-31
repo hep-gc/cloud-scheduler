@@ -32,14 +32,6 @@ from cluster_tools import VM
 from cloud_management import ResourcePool
 from job_management import Job
 from job_management import JobPool
-# JSON lib included in 2.6+
-if sys.version_info < (2, 6):
-    try:
-        import simplejson as json
-    except:
-        raise "Please install the simplejson lib for python 2.4 or 2.5"
-else:
-    import json
 
 log = None
 
@@ -86,67 +78,18 @@ class AdminServer(threading.Thread,):
         # Register an instance; all the methods of the instance are
         # published as XML-RPC methods
         class externalFunctions:
-            def get_cloud_resources(self):
-                return cloud_resources.get_pool_info()
-            def get_cluster_resources(self):
-                output = "Clusters in resource pool:\n"
-                for cluster in cloud_resources.resources:
-                    output += cluster.get_cluster_info_short()+"\n"
-                return output
-            def get_cluster_vm_resources(self):
-                output = VM.get_vm_info_header()
-                clusters = 0
-                vm_count = 0
-                for cluster in cloud_resources.resources:
-                    clusters += 1
-                    vm_count += len(cluster.vms)
-                    output += cluster.get_cluster_vms_info()
-                output += '\nTotal VMs: %i. Total Clouds: %i' % (vm_count, clusters)
-                return output
-            def get_cluster_info(self, cluster_name):
-                output = "Cluster Info: %s\n" % cluster_name
-                cluster = cloud_resources.get_cluster(cluster_name)
-                if cluster:
-                    output += cluster.get_cluster_info_short()
-                else:
-                    output += "Cluster named %s not found." % cluster_name
-                return output
-            def get_vm_info(self, cluster_name, vm_id):
-                output = "VM Info for VM id: %s\n" % vm_id
-                cluster = cloud_resources.get_cluster(cluster_name)
-                vm = None
-                if cluster:
-                    vm = cluster.get_vm(vm_id)
-                else:
-                    output += "Cluster %s not found.\n" % cluster_name
-                if vm:
-                    output += vm.get_vm_info()
-                else:
-                    output += "VM with id: %s not found.\n" % vm_id
-                return output
-            def get_developer_information(self):
-                try:
-                    from guppy import hpy
-                    h = hpy()
-                    heap = h.heap()
-                    return str(heap)
-                except:
-                    return "You need to have Guppy installed to get developer " \
-                           "information" 
-            def get_vm_startup_time(self):
-                output = ""
-                for cluster in cloud_resources.resources:
-                    output += "Cluster: %s " % cluster.name
-                    total_time = 0
-                    for vm in cluster.vms:
-                        pass
-                        output += "%d, " % (vm.startup_time if vm.startup_time != None else 0)
-                        total_time += (vm.startup_time if vm.startup_time != None else 0)
-                    if len(cluster.vms) > 0:
-                        output += " Avg: %d " % (int(total_time) / len(cluster.vms))
-                return output
             def disable_cloud(self, cloudname):
                 return cloud_resources.disable_cluster(cloudname)
+            def enable_cloud(self, cloudname):
+                return cloud_resources.enable_cluster(cloudname)
+            def delete_vm_entry(self, cloudname, vmid):
+                return cloud_resources.remove_vm_no_shutdown(clustername, vmid)
+            def delete_all_vm_entry_cloud(self, cloudname):
+                return cloud_resources.remove_all_vmcloud_no_shutdown(cloudname)
+            def shutdown_cluster_all(self, cloudname):
+                return cloud_resources.shutdown_cluster_all(cloudname)
+            def shutdown_vm(self, cloudname, vmid):
+                return cloud_resources.shutdown_cluster_vm(cloudname, vmid)
 
 
 
