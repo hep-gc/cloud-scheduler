@@ -32,6 +32,7 @@ from cluster_tools import VM
 from cloud_management import ResourcePool
 from job_management import Job
 from job_management import JobPool
+from proxy_refreshers import MyProxyProxyRefresher
 
 log = None
 
@@ -90,6 +91,13 @@ class AdminServer(threading.Thread,):
                 return cloud_resources.shutdown_cluster_all(cloudname)
             def shutdown_vm(self, cloudname, vmid):
                 return cloud_resources.shutdown_cluster_vm(cloudname, vmid)
+            def refresh_job_proxy_user(self, user):
+                return MyProxyProxyRefresher.renew_job_proxy_user(job_pool, user)
+            def refresh_vm_proxy_user(self, user):
+                return MyProxyProxyRefresher.renew_vm_proxy_user(job_pool, user)
+            def cloud_resources_reconfig(self):
+                return resource_pool.setup()
+
 
 
 
