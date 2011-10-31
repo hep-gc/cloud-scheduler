@@ -1508,6 +1508,14 @@ class ResourcePool:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
 
+    def remove_all_vmcloud_no_shutdown(self, clustername):
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            for vm in reversed(cluster.vms):
+                with cluster.vms_lock:
+                    cluster.vms.remove(vm)
+                cluster.resource_return(vm)
+
     def disable_cluster(self, clustername):
         cluster = self.get_cluster(clustername)
         ret = ""
