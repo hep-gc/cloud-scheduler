@@ -832,7 +832,7 @@ class Cleanup(threading.Thread):
             for type in desired_types.keys():
                 if type not in current_types.keys():
                     diff_types[type] = -desired_types[type]
-
+            log.debug("Diff Types: %s" % str(diff_types))
             del desired_types
             del current_types
             num_to_change = {}
