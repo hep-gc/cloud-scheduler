@@ -794,6 +794,12 @@ class ResourcePool:
                     log.error("Failed to parse out remote owner")
             else:
                 log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set - are the condor init scripts on the VM up-to-date?")
+                if vm.has_key('Start'):
+                    log.warning("VM Start attrib = %s" % vm['Start'])
+                else:
+                    log.warning("VM Missing a Start attrib.")
+                if not vm.has_key('VMType'):
+                    log.warning("This VM has no VMType key, It should not be used with cloudscheduler.")
         log.debug("VMs in machinelist: %s" % str(count))
         return count
 

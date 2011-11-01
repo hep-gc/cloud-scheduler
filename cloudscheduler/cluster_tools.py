@@ -284,10 +284,10 @@ class ICluster:
         self.cpu_archs = cpu_archs
         self.network_pools = networks
         self.vm_slots = vm_slots
-        self.max_slots = tuple(vm_slots)
+        self.max_slots = vm_slots
         self.cpu_cores = cpu_cores
         self.storageGB = storage
-        self.max_storageGB = tuple(storage)
+        self.max_storageGB = storage
         self.vms = [] # List of running VMs
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
