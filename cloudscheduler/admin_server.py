@@ -26,6 +26,7 @@ import re
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
+import cloudscheduler.utilities as utilities
 import cloudscheduler.config as config
 from cluster_tools import ICluster
 from cluster_tools import VM
@@ -97,6 +98,8 @@ class AdminServer(threading.Thread,):
                 return MyProxyProxyRefresher.renew_vm_proxy_user(job_pool, user)
             def cloud_resources_reconfig(self):
                 return resource_pool.setup()
+            def change_log_level(self, level):
+                log.setLevel(utilities.LEVELS[level])
 
 
 
