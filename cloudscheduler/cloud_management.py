@@ -1468,6 +1468,7 @@ class ResourcePool:
                 # found the vm - shutdown
                 # move the vmdestroycmd thread into a better place and import so avilable here
                 thread = VMDestroyCmd(cluster, vm)
+                thread.start()
                 while thread.is_alive():
                     time.sleep(1)
                 if not thread.is_alive():
@@ -1489,7 +1490,8 @@ class ResourcePool:
         if cluster:
             for vm in cluster.vms:
                 th = VMDestroyCmd(cluster, vm)
-                desth[vm.id] = th
+                vmdesth[vm.id] = th
+                th.start()
             while len(vmdesth) > 0:
                 to_remove = []
                 for k, thread in vmdesth.iteritems():

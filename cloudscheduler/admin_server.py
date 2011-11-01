@@ -97,9 +97,11 @@ class AdminServer(threading.Thread,):
             def refresh_vm_proxy_user(self, user):
                 return MyProxyProxyRefresher.renew_vm_proxy_user(job_pool, user)
             def cloud_resources_reconfig(self):
-                return cloud_resources.setup()
+                cloud_resources.setup()
+                return True
             def change_log_level(self, level):
-                return log.setLevel(utilities.LEVELS[level])
+                log.setLevel(utilities.LEVELS[level])
+                return True
 
 
 

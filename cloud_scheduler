@@ -652,7 +652,7 @@ class Scheduler(threading.Thread):
         return create_ret
 
     def need_vm(self, user, userjob):
-        #TODO: clean this mess
+        #TODO: clean this mess - or not looks like this function no longer being called.
         #vmtype = userjob.req_vmtype
         vmtype = userjob.uservmtype
         cores = userjob.req_cpucores

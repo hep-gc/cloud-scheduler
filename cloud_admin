@@ -75,12 +75,13 @@ def main(argv=None):
         s = xmlrpclib.ServerProxy("http://%s:%s" %
                                   (server_hostname, server_port))
         if cli_options.killvm:
-            print cli_options.killvm
             if cli_options.cloud_name:
                 if cli_options.vm_id:
-                    print s.shutdown_vm(cli_options.cloud_name, cli_options.vm_id)
+                    s.shutdown_vm(cli_options.cloud_name, cli_options.vm_id)
+                    print "Shutdown VM %s on %s cloud." % (cli_options.vm_id, cli_options.cloud_name)
                 elif cli_options.all:
-                    print s.shutdown_cluster_all(cli_options.cloud_name)
+                    s.shutdown_cluster_all(cli_options.cloud_name)
+                    print "Shutdown all VMs on %s cloud" % cli_options.cloud_name
                 else:
                     print "Must provide a -n [VM ID] or -a to kill all VMs on this cloud."
             else:
