@@ -348,6 +348,9 @@ class ICluster:
     # to the vms[] list)
     def num_vms(self):
         return len(self.vms)
+    def slot_fill_ratio(self):
+        """Return a ratio of how 'full' the cluster is based on used slots / total slots."""
+        return (self.max_slots - self.slots) / self.max_slots
     # Return a short form of cluster information
     def get_cluster_info_short(self):
         output = "Cluster: %s \n" % self.name
