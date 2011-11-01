@@ -824,14 +824,14 @@ class Cleanup(threading.Thread):
             desired_types = self.job_pool.job_type_distribution()
             # Negative difference means will need to create that type
             diff_types = {}
-            for type in current_types.keys():
-                if type in desired_types.keys():
-                    diff_types[type] = current_types[type] - desired_types[type]
+            for vmtype in current_types.keys():
+                if vmtype in desired_types.keys():
+                    diff_types[vmtype] = current_types[vmtype] - desired_types[vmtype]
                 else:
-                    diff_types[type] = 1 #changed from 0 to handle users with multiple job types
-            for type in desired_types.keys():
-                if type not in current_types.keys():
-                    diff_types[type] = -desired_types[type]
+                    diff_types[vmtype] = 1 #changed from 0 to handle users with multiple job types
+            for vmtype in desired_types.keys():
+                if vmtype not in current_types.keys():
+                    diff_types[vmtype] = -desired_types[vmtype]
             log.debug("Diff Types: %s" % str(diff_types))
             del desired_types
             del current_types
@@ -901,6 +901,8 @@ class Cleanup(threading.Thread):
                                 nummem += (mement / job.req_memory)
                             num_fit_cloud = nummem if nummem < num_fit_cloud else num_fit_cloud
                             num_fit += num_fit_cloud
+                            log.verbose("Can fit %i VMs on the %s cloud." % (num_fit_cloud, cloud.name))
+                        log.verbose("Can fit %i VMs total." % num_fit)
                     # Add the number that can fit to what it wants to change
                     can_boot = num_to_change[vmtype] + num_fit
                     excess = 0
