@@ -1262,7 +1262,8 @@ class ResourcePool:
                 log.debug("Successfuly sent condor_off to %s" % (machine_name))
             else:
                 log.debug("Failed to send condor_off to %s" % (machine_name))
-                log.debug("Reason: %s \n Error: %s" % (out, err))
+                log.debug("Reason: %s" % out) 
+                log.debug("Error: %s" % err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
             return (-1, "", "", "")
