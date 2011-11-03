@@ -1257,7 +1257,7 @@ class Cleanup(threading.Thread):
                         else:
                             num_start_to_destroy = registered_diff
                         successful_destroy = 0
-                        for start_vm in islice(starting_vms_of_type, num_start_to_destroy):
+                        for start_vm in islice(reversed(starting_vms_of_type), num_start_to_destroy):
                             # Since the machine could not retire make sure not to destroy the last VM of type
                             if vmtype in internal_vms.keys() and vmtype in sched_jobs.keys() and (internal_vms[vmtype] <= len(sched_jobs[vmtype])) and vmtype not in unsched_jobs.keys():
                                 # fewer or equal vms left that trying to shutdown
