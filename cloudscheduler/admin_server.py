@@ -85,7 +85,7 @@ class AdminServer(threading.Thread,):
             def enable_cloud(self, cloudname):
                 return cloud_resources.enable_cluster(cloudname)
             def delete_vm_entry(self, cloudname, vmid):
-                return cloud_resources.remove_vm_no_shutdown(clustername, vmid)
+                return cloud_resources.remove_vm_no_shutdown(cloudname, vmid)
             def delete_all_vm_entry_cloud(self, cloudname):
                 return cloud_resources.remove_all_vmcloud_no_shutdown(cloudname)
             def shutdown_cluster_all(self, cloudname):

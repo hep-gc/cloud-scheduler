@@ -92,10 +92,10 @@ def main(argv=None):
         if cli_options.remove:
             if cli_options.cloud_name:
                 if cli_options.vm_id:
-                    s.remove_vm_no_shutdown(cli_options.cloud_name, cli_options.vm_id)
+                    s.delete_vm_entry(cli_options.cloud_name, cli_options.vm_id)
                     print "Removing VM %s on %s cloud from Cloud Scheduler." % (cli_options.vm_id, cli_options.cloud_name)
                 elif cli_options.all:
-                    s.remove_all_vmcloud_no_shutdown(cli_options.cloud_name)
+                    s.delete_all_vm_entry_cloud(cli_options.cloud_name)
                     print "Removing all VMs on %s cloud from Cloud Scheduler." % cli_options.cloud_name
                 else:
                     print "Must provide a -n [VM ID] or -a to remove all VMs on this cloud."
@@ -114,8 +114,7 @@ def main(argv=None):
                 if cli_options.proxy_refresh.startswith('v'):
                     print "Refreshing VM proxies for user %s." % cli_options.user
                     s.refresh_vm_proxy_user(cli_options.user)
-                elif:
-                    cli_options.proxy_refresh.startswith('j'):
+                elif cli_options.proxy_refresh.startswith('j'):
                         print "Refreshing Job proxies for user %s." % cli_options.user
                         s.refresh_job_proxy_user(cli_options.user)
                 else:
