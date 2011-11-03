@@ -548,7 +548,12 @@ class NimbusCluster(ICluster):
         if vm_networkassoc == "":
             # No network specified, so just pick the first available one
             try:
-                vm_networkassoc = self.network_pools[0]
+                for netpool in self.net_slots.keys():
+                    if self.net_slots[netpool] > 0:
+                        vm_networkassoc = netpool
+                        break
+                if vm_networkassoc == "":
+                    vm_networkassoc = self.network_pools[0]
             except:
                 log.exception("No network pool available? Aborting vm creation.")
                 return self.ERROR
