@@ -1509,6 +1509,7 @@ class ResourcePool:
         return output
     
     def remove_vm_no_shutdown(self, clustername, vmid):
+        output = ""
         cluster = self.get_cluster(clustername)
         if cluster:
             vm = cluster.get_vm(vmid)
@@ -1516,14 +1517,25 @@ class ResourcePool:
                 with cluster.vms_lock:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
+                output = "Removed %s's VM %i from CloudScheduler." % (clustername, vmid)
+            else:
+                output = "Could not find that VM ID."
+        else:
+            output = "Could not find that Cloud name."
+        return output
 
     def remove_all_vmcloud_no_shutdown(self, clustername):
         cluster = self.get_cluster(clustername)
+        output = ""
         if cluster:
             for vm in reversed(cluster.vms):
                 with cluster.vms_lock:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
+            output = "Removed all VMs from %s." % clustername
+        else:
+            output = "Could not find that Cloud name."
+        return output
 
     def disable_cluster(self, clustername):
         cluster = self.get_cluster(clustername)
