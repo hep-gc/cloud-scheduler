@@ -818,7 +818,6 @@ class Cleanup(threading.Thread):
 
             # Balancing Resources
             # Figure how many VMs to add or remove of each type
-            current_types = {}
             current_types = self.resource_pool.vmtype_distribution()
             #desired_types = self.job_pool.job_type_distribution()
             desired_types = self.job_pool.job_type_distribution()
@@ -892,6 +891,12 @@ class Cleanup(threading.Thread):
                                     if unsched_jobs[vmtype][0].req_network in cloud.network_pools:
                                         num_fit_cloud = cloud.net_slots[unsched_jobs[vmtype][0].req_network]
                                         # IF no specified network do something
+                                    elif not unsched_jobs[vmtype][0].req_network:
+                                        # Need to get total slots on all network pools
+                                        total_netpool_slots = 0
+                                        for netpool in cloud.net_slots.keys():
+                                            total_netpool_slots += cloud.net_slots[netpool]
+                                        num_fit_cloud = total_netpool_slots
                             else:
                                 num_fit_cloud = cloud.vm_slots
                             numstore = int(cloud.storageGB / job.req_storage)
