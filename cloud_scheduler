@@ -1373,6 +1373,11 @@ class Cleanup(threading.Thread):
                 idletime = int(vm['MyCurrentTime']) - int(vm['EnteredCurrentState'])
                 if idletime > config.vm_idle_threshold:
                     internal_vm = self.resource_pool.find_vm_with_addr(vm['MyAddress'])
+                    if not internal_vm:
+                        internal_vm = self.resource_pool.find_vm_with_name(vm['Name'])
+                        if not internal_vm:
+                            log.warning("Could not locate %s with address %s in CS, maybe machinelist out-of-date of has not been matched yet?" % (vm['Name'],vm['MyAddress'] ))
+                            break
                     vmtype = vm['VMType']
                     vmuser = None
                     try:
