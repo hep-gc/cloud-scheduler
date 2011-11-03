@@ -163,7 +163,7 @@ class MyProxyProxyRefresher():
     # Returns True on sucess, False otherwise.
     def renew_proxy(self, proxy_file_path, myproxy_creds_name, myproxy_server, myproxy_server_port):
         if proxy_file_path == None:
-            log.error("Attemp to renew proxy for job with no proxy.  Aborting proxy renew operation.")
+            log.error("Attempt to renew proxy for job with no proxy.  Aborting proxy renew operation.")
             return False
 
         if myproxy_creds_name == None:
