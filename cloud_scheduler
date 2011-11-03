@@ -1377,7 +1377,7 @@ class Cleanup(threading.Thread):
                         internal_vm = self.resource_pool.find_vm_with_name(vm['Name'])
                         if not internal_vm:
                             log.warning("Could not locate %s with address %s in CS, maybe machinelist out-of-date of has not been matched yet?" % (vm['Name'],vm['MyAddress'] ))
-                            break
+                            continue
                     vmtype = vm['VMType']
                     vmuser = None
                     try:
