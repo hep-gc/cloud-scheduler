@@ -314,7 +314,8 @@ class VMJSONEncoder(json.JSONEncoder):
                 'cpuarch': vm.cpuarch, 'image': vm.image,
                 'memory': vm.memory, 'mementry': vm.mementry, 
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
-                'status': vm.status}
+                'status': vm.status, 'condoraddr': vm.condoraddr,
+                'condorname': vm.condorname}
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
