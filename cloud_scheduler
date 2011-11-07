@@ -1308,6 +1308,9 @@ class Cleanup(threading.Thread):
                                 log.warning("cluster lookup failed for vm %s" % bad_name_vm.id)
                         else:
                             log.error("Lookup of %s failed, does this vm still exist within CS?" % busy_vms[x]['Name'])
+                            bad_addr_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Name'])
+                            if bad_addr_vm:
+                                log.debug("Found it via name: it think it's address is %s" % bad_addr_vm.condoraddr)
             elif adjusted_val < 0:
                 if abs(adjusted_val) > len(retiring_vms_of_type):
                     adjusted_val = len(retiring_vms_of_type)
