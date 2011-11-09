@@ -834,114 +834,7 @@ class Cleanup(threading.Thread):
             log.debug("Diff Types: %s" % str(diff_types))
             del desired_types
             del current_types
-            num_to_change = {}
-            vm_count = self.resource_pool.vm_count()
-            for vmtype, val in diff_types.iteritems():
-                num_to_change[vmtype] = int(round(val * vm_count))
-            log.debug("Initial num to change: %s adjust for queued jobs." % str(num_to_change))
-            excess_diff = 0
-            positive_types = []
-            # check if there are fewer jobs in queue than trying to adjust VM count by
-            # this makes up the excess amount
-            for vmtype, val in num_to_change.iteritems():
-                if vmtype in required_vmtypes_dict.keys() and val < 0 and abs(val) > required_vmtypes_dict[vmtype]:
-                    excess_diff += abs(val) - required_vmtypes_dict[vmtype] #-1 # off by 1 ?
-                    num_to_change[vmtype] = -required_vmtypes_dict[vmtype]
-                elif val > 0:
-                    positive_types.append(vmtype)
-            del required_vmtypes_dict
-            # redistribute the excess back to the remaining types
-            if excess_diff > 0 and len(positive_types) > 0:
-                reduce_per_type = int(excess_diff / len(positive_types))
-                if reduce_per_type == 0 and len(positive_types) > 1:
-                    reduce_per_type = 1
-                    positive_types.pop()
-                for vmtype in positive_types:
-                    num_to_change[vmtype] -= reduce_per_type
-                    if num_to_change[vmtype] < 0:
-                        num_to_change[vmtype] = 0
-
-            # Postive num_to_change is how many CS going to try and shutdown
-            # Negative is how many it wants to start
-            log.debug("Midway num to change: %s adjusting for free resources." % str(num_to_change))
-            # TODO Check if there are free resources for that type and how many VMs 
-            # could fill those resources, re-adjust num_to_change accordingly
-            pos_change_types = []
-            for vmtype, val in num_to_change.iteritems():
-                if val > 0:
-                    pos_change_types.append(vmtype)
-            #unsched_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_type()
-            unsched_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
-            fits_by_type = {}
-            for vmtype in num_to_change.keys():
-                if vmtype in unsched_jobs.keys():
-                    job = unsched_jobs[vmtype][0]
-                    fitting = self.resource_pool.get_fitting_resources(job.req_network,  \
-                            job.req_cpuarch, job.req_memory, job.req_cpucores, \
-                            job.req_storage, job.req_ami, job.req_imageloc, job.target_clouds)
-                    fits_by_type[vmtype] = set(fitting)
-            for vmtype in num_to_change.keys():
-                if num_to_change[vmtype] < 0:
-                    num_fit = 0
-                    if vmtype in fits_by_type.keys():
-                        for cloud in fits_by_type[vmtype]:
-                            num_fit_cloud = 0
-                            if cloud.__class__.__name__ == "NimbusCluster":
-                                if vmtype in unsched_jobs.keys():
-                                    if unsched_jobs[vmtype][0].req_network in cloud.network_pools:
-                                        num_fit_cloud = cloud.net_slots[unsched_jobs[vmtype][0].req_network]
-                                        # IF no specified network do something
-                                    elif not unsched_jobs[vmtype][0].req_network:
-                                        # Need to get total slots on all network pools
-                                        total_netpool_slots = 0
-                                        for netpool in cloud.net_slots.keys():
-                                            total_netpool_slots += cloud.net_slots[netpool]
-                                        num_fit_cloud = total_netpool_slots
-                            else:
-                                num_fit_cloud = cloud.vm_slots
-                            numstore = int(cloud.storageGB / job.req_storage)
-                            num_fit_cloud = numstore if numstore < num_fit_cloud else num_fit_cloud
-                            nummem = 0
-                            for mement in cloud.memory:
-                                nummem += (mement / job.req_memory)
-                            num_fit_cloud = nummem if nummem < num_fit_cloud else num_fit_cloud
-                            num_fit += num_fit_cloud
-                            log.verbose("Can fit %i VMs on the %s cloud." % (num_fit_cloud, cloud.name))
-                        log.verbose("Can fit %i VMs total." % num_fit)
-                    # Add the number that can fit to what it wants to change
-                    can_boot = num_to_change[vmtype] + num_fit
-                    excess = 0
-                    if can_boot >= 0:
-                        # Room for all desired VMs with current resources
-                        # Don't need to shutdown others
-                        excess = num_to_change[vmtype]
-                        num_to_change[vmtype] = 0
-                    else:
-                        num_to_change[vmtype] = can_boot
-                        excess = num_fit
-                    if len(pos_change_types) > 0 and excess > 0:
-                        cantuse = set()
-                        preftypes = []
-                        for postype in pos_change_types:
-                            if postype in fits_by_type.keys() and vmtype in fits_by_type.keys():
-                                cu = fits_by_type[postype] - fits_by_type[vmtype]
-                                if len(cu) > 0:
-                                    preftypes.append(postype)
-                                    cantuse.update(cu)
-                        if len(cantuse) > 0:
-                            adjustby = excess / len(cantuse)
-                            if len(preftypes) > 0:
-                                for preftype in preftypes:
-                                    num_to_change[preftype] -= adjustby
-                                    if num_to_change[preftype] < 0:
-                                        num_to_change[preftype] = 0
-                        else:
-                            adjustby = excess / len(pos_change_types)
-                            for postype in pos_change_types:
-                                num_to_change[postype] -= adjustby
-                                if num_to_change[postype] < 0:
-                                        num_to_change[postype] = 0
-            log.debug("Final num to change: %s" % str(num_to_change))
+            num_to_change = self.clean_determine_num_to_change(diff_types, required_vmtypes_dict)
             log.verbose("Ready to balance via configured method")
             if config.graceful_shutdown:
                 if config.graceful_shutdown_method == 'hold':
@@ -957,6 +850,117 @@ class Cleanup(threading.Thread):
                 self.balance_hard_shutdown(machineList, self.resource_pool.prev_machine_list, num_to_change)
         else:
             log.debug("No Machines returned by Condor Collector Query")
+
+    def clean_determine_num_to_change(self, diff_types, required_vmtypes_dict):
+        num_to_change = {}
+        vm_count = self.resource_pool.vm_count()
+        for vmtype, val in diff_types.iteritems():
+            num_to_change[vmtype] = int(round(val * vm_count))
+        log.debug("Initial num to change: %s adjust for queued jobs." % str(num_to_change))
+        excess_diff = 0
+        positive_types = []
+        # check if there are fewer jobs in queue than trying to adjust VM count by
+        # this makes up the excess amount
+        for vmtype, val in num_to_change.iteritems():
+            if vmtype in required_vmtypes_dict.keys() and val < 0 and abs(val) > required_vmtypes_dict[vmtype]:
+                excess_diff += abs(val) - required_vmtypes_dict[vmtype] #-1 # off by 1 ?
+                num_to_change[vmtype] = -required_vmtypes_dict[vmtype]
+            elif val > 0:
+                positive_types.append(vmtype)
+        del required_vmtypes_dict
+        # redistribute the excess back to the remaining types
+        if excess_diff > 0 and len(positive_types) > 0:
+            reduce_per_type = int(excess_diff / len(positive_types))
+            if reduce_per_type == 0 and len(positive_types) > 1:
+                reduce_per_type = 1
+                positive_types.pop()
+            for vmtype in positive_types:
+                num_to_change[vmtype] -= reduce_per_type
+                if num_to_change[vmtype] < 0:
+                    num_to_change[vmtype] = 0
+
+        # Postive num_to_change is how many CS going to try and shutdown
+        # Negative is how many it wants to start
+        log.debug("Midway num to change: %s adjusting for free resources." % str(num_to_change))
+        # TODO Check if there are free resources for that type and how many VMs 
+        # could fill those resources, re-adjust num_to_change accordingly
+        pos_change_types = []
+        for vmtype, val in num_to_change.iteritems():
+            if val > 0:
+                pos_change_types.append(vmtype)
+        #unsched_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_type()
+        unsched_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
+        fits_by_type = {}
+        for vmtype in num_to_change.keys():
+            if vmtype in unsched_jobs.keys():
+                job = unsched_jobs[vmtype][0]
+                fitting = self.resource_pool.get_fitting_resources(job.req_network,  \
+                        job.req_cpuarch, job.req_memory, job.req_cpucores, \
+                        job.req_storage, job.req_ami, job.req_imageloc, job.target_clouds)
+                fits_by_type[vmtype] = set(fitting)
+        for vmtype in num_to_change.keys():
+            if num_to_change[vmtype] < 0:
+                num_fit = 0
+                if vmtype in fits_by_type.keys():
+                    for cloud in fits_by_type[vmtype]:
+                        num_fit_cloud = 0
+                        if cloud.__class__.__name__ == "NimbusCluster":
+                            if vmtype in unsched_jobs.keys():
+                                if unsched_jobs[vmtype][0].req_network in cloud.network_pools:
+                                    num_fit_cloud = cloud.net_slots[unsched_jobs[vmtype][0].req_network]
+                                    # IF no specified network do something
+                                elif not unsched_jobs[vmtype][0].req_network:
+                                    # Need to get total slots on all network pools
+                                    total_netpool_slots = 0
+                                    for netpool in cloud.net_slots.keys():
+                                        total_netpool_slots += cloud.net_slots[netpool]
+                                    num_fit_cloud = total_netpool_slots
+                        else:
+                            num_fit_cloud = cloud.vm_slots
+                        numstore = int(cloud.storageGB / job.req_storage)
+                        num_fit_cloud = numstore if numstore < num_fit_cloud else num_fit_cloud
+                        nummem = 0
+                        for mement in cloud.memory:
+                            nummem += (mement / job.req_memory)
+                        num_fit_cloud = nummem if nummem < num_fit_cloud else num_fit_cloud
+                        num_fit += num_fit_cloud
+                        log.verbose("Can fit %i VMs on the %s cloud." % (num_fit_cloud, cloud.name))
+                    log.verbose("Can fit %i VMs total." % num_fit)
+                # Add the number that can fit to what it wants to change
+                can_boot = num_to_change[vmtype] + num_fit
+                excess = 0
+                if can_boot >= 0:
+                    # Room for all desired VMs with current resources
+                    # Don't need to shutdown others
+                    excess = num_to_change[vmtype]
+                    num_to_change[vmtype] = 0
+                else:
+                    num_to_change[vmtype] = can_boot
+                    excess = num_fit
+                if len(pos_change_types) > 0 and excess > 0:
+                    cantuse = set()
+                    preftypes = []
+                    for postype in pos_change_types:
+                        if postype in fits_by_type.keys() and vmtype in fits_by_type.keys():
+                            cu = fits_by_type[postype] - fits_by_type[vmtype]
+                            if len(cu) > 0:
+                                preftypes.append(postype)
+                                cantuse.update(cu)
+                    if len(cantuse) > 0:
+                        adjustby = excess / len(cantuse)
+                        if len(preftypes) > 0:
+                            for preftype in preftypes:
+                                num_to_change[preftype] -= adjustby
+                                if num_to_change[preftype] < 0:
+                                    num_to_change[preftype] = 0
+                    else:
+                        adjustby = excess / len(pos_change_types)
+                        for postype in pos_change_types:
+                            num_to_change[postype] -= adjustby
+                            if num_to_change[postype] < 0:
+                                    num_to_change[postype] = 0
+        log.debug("Final num to change: %s" % str(num_to_change))
+        return num_to_change
 
     def clean_unneeded_vms(self):
         #req_vmtypes = self.job_pool.get_required_vmtypes()
