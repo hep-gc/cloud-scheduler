@@ -146,7 +146,7 @@ class JobContainer():
     # {type, [list of scheduled jobs]}
     # If prioritized i True, then the returned lists of jobs will be sorted by job.priority, high to low.
     @abstractmethod
-    def get_unscheduled_jobs_by_type(self, prioritized=False):
+    def get_scheduled_jobs_by_type(self, prioritized=False):
         pass
 
     # Get a list of all unscheduled jobs in the container, or [] if there are no unscheduled jobs.
