@@ -157,8 +157,8 @@ class VM:
         return "%-11s %-23s %-20s %-10s %-12s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "USER", "STATUS", "CLUSTER")
 
     def get_vm_info_pretty(self):
-        output = get_vm_info_header()
-        output += get_vm_info()
+        output = self.get_vm_info_header()
+        output += self.get_vm_info()
         return output
 
     def get_proxy_file(self):
