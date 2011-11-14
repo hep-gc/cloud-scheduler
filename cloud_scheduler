@@ -832,9 +832,16 @@ class Cleanup(threading.Thread):
                 if vmtype not in current_types.keys():
                     diff_types[vmtype] = -desired_types[vmtype]
             log.debug("Diff Types: %s" % str(diff_types))
-            del desired_types
-            del current_types
+
             num_to_change = self.clean_determine_num_to_change(diff_types, required_vmtypes_dict)
+
+            # TODO: recalculate diff_types based on the changes in num_to_change
+            next_diff_types = {}
+            
+            #       determine new num_to_change based on updated diff_types
+            #       compare the 2 num_to_change results and try to detect the flipflopping
+            #       adjust num_to_change to prevent flipflop
+
             log.verbose("Ready to balance via configured method")
             if config.graceful_shutdown:
                 if config.graceful_shutdown_method == 'hold':

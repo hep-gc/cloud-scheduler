@@ -853,9 +853,10 @@ class ResourcePool:
             count = count + len(cluster.vms)
         return count
 
-    def vmtype_slot_distribution(self):
+    def vmtype_slot_distribution(self, types=None):
         """VM Type Distribution."""
-        types = self.get_vmtypes_count_internal()
+        if types is None:
+            types = self.get_vmtypes_count_internal()
         count = Decimal(self.vm_count())
         if count == 0:
             return {}
@@ -956,6 +957,29 @@ class ResourcePool:
         results = {}
         for vmtype in types.keys():
             results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
+        return results
+
+    def vmtype_resource_usage_sim(self, vmcount):
+        """Count the resources used by each type of VM through a count of VMs instead of iterating over all VMs.
+        Will not be able to handle cases where VMs of the same type but different resource usages exist."""
+        # Locate a VM for each type in vmcount
+        types = {}
+        for vmusertype in vmcount.keys():
+            foundIt = False
+            for cluster in self.resources:
+                for vm in cluster.vms:
+                    if vm.uservmtype == vmusertype:
+                        foundIt = True
+                        types[vmusertype] = vm
+                        break
+                if foundIt:
+                    break
+            if not foundIt:
+                log.warning("Unable to find VM with type %s" % vmusertype)
+        results = {}
+        # Compute the resource usage based on given counts instead of checking every VM.
+        for vmusertype in types.keys():
+            result[vmusertype] = [vmcount[vmusertype]*types[vmusertype].memory, vmcount[vmusertype]*types[vmusertype].cpucores, vmcount[vmusertype]*types[vmusertype].storage]
         return results
 
     #def vm_slots_used(self):
