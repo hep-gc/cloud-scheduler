@@ -839,10 +839,33 @@ class Cleanup(threading.Thread):
 
             # TODO: recalculate diff_types based on the changes in num_to_change
             next_diff_types = {}
+            vmcount = self.resource_pool.get_vmtypes_count_internal()
+            for vmtype in vmcount.keys():
+                if vmtype in num_to_change.keys():
+                    vmcount[vmtype] += num_to_change[vmtype]
+            next_types = self.resource_pool.vmtype_distribution(vmcount)
+            for vmtype in next_types.keys():
+                if vmtype in desired_types.keys():
+                    next_diff_types[vmtype] = next_types[vmtype] - desired_types[vmtype]
+                else:
+                    next_diff_types[vmtype] = 0
+            for vmtype in desired_types.keys():
+                if vmtype not in current_types.keys():
+                    next_diff_types[vmtype] = -desired_types[vmtype]
+            log.debug("Next Diff Types: %s" % str(diff_types))
             
             #       determine new num_to_change based on updated diff_types
+            next_num_to_change = self.clean_determine_num_to_change(next_diff_types, required_vmtypes_dict)
             #       compare the 2 num_to_change results and try to detect the flipflopping
-            #       adjust num_to_change to prevent flipflop
+            log.debug("is a last adjustment needed to num to change?")
+            for vmtype in next_num_to_change.keys():
+                if vmtype in num_to_change.keys():
+                    if next_num_to_change[vmtype] < 0 and num_to_change[vmtype] > 0 \
+                    or next_num_to_change[vmtype] > 0 and num_to_change[vmtype] < 0:
+                        # Has fliped
+                        # adjust num_to_change to prevent flipflop
+                        num_to_change[vmtype] = 0
+            log.debug("Final(for real) num to change: %s" % str(num_to_change))
 
             log.verbose("Ready to balance via configured method")
             if config.graceful_shutdown:
