@@ -865,9 +865,12 @@ class ResourcePool:
             types[vmtype] *= count
         return types
 
-    def vmtype_mem_distribution(self):
+    def vmtype_mem_distribution(self, vmcount=None):
         """VM Type Memory Distribution."""
-        usage = self.vmtype_resource_usage()
+        if vmcount:
+            usgae = self.vmtype_resource_usage_sim(vmcount)
+        else:
+            usage = self.vmtype_resource_usage()
         types = {}
         mem_total = 0
         for vmtype in usage:
@@ -881,9 +884,12 @@ class ResourcePool:
             types[vmtype] *= mem_total
         return types
 
-    def vmtype_mem_cpu_distribution(self):
+    def vmtype_mem_cpu_distribution(self, vmcount=None):
         """VM Type Memory & CPU Distribution."""
-        usage = self.vmtype_resource_usage()
+        if vmcount:
+            usgae = self.vmtype_resource_usage_sim(vmcount)
+        else:
+            usage = self.vmtype_resource_usage()
         types = {}
         mem_cpu_total = 0
         for vmtype in usage:
@@ -898,9 +904,12 @@ class ResourcePool:
             types[vmtype] *= mem_cpu_total
         return types
 
-    def vmtype_mem_cpu_storage_distribution(self):
+    def vmtype_mem_cpu_storage_distribution(self, vmcount=None):
         """VM Type Memory & CPU & Storage Distribution."""
-        usage = self.vmtype_resource_usage()
+        if vmcount:
+            usgae = self.vmtype_resource_usage_sim(vmcount)
+        else:
+            usage = self.vmtype_resource_usage()
         types = {}
         vol_total = 0
         weight_all = config.cpu_distribution_weight * config.memory_distribution_weight * config.storage_distribution_weight
