@@ -380,7 +380,7 @@ class Scheduler(threading.Thread):
             if vmtype in desired_types.keys():
                 diff_types[vmtype] = current_types[vmtype] - desired_types[vmtype]
             else:
-                diff_types[vmtype] = 1 # changed from 0 to handle users with multiple job types
+                diff_types[vmtype] = 0 # changed from 0 to handle users with multiple job types, back to 0 from 1.
         for vmtype in desired_types.keys():
             if vmtype not in current_types.keys():
                 diff_types[vmtype] = -desired_types[vmtype]
@@ -827,7 +827,9 @@ class Cleanup(threading.Thread):
                 if vmtype in desired_types.keys():
                     diff_types[vmtype] = current_types[vmtype] - desired_types[vmtype]
                 else:
-                    diff_types[vmtype] = 1 #changed from 0 to handle users with multiple job types
+                    diff_types[vmtype] = 0 #changed from 0 to handle users with multiple job types
+                    # changed back to 0 from 1, users with multiple job types should use the _multi_dist option
+                    # which should better handle that case.
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     diff_types[vmtype] = -desired_types[vmtype]
