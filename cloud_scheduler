@@ -155,7 +155,7 @@ class VMPoller(threading.Thread):
                     #    continue
 
     def handle_bad_image(self, user, image):
-        log.info("User %s has job(s) with bad image location: %s - temporairly banning those jobs" % (user, image))
+        log.info("User %s has job(s) with bad image location: %s - temporarily banning those jobs" % (user, image))
         user_jobs = self.job_pool.job_container.get_jobs_for_user(user)
         jobs_to_hold = []
         HELD = 5
@@ -1283,11 +1283,32 @@ class Cleanup(threading.Thread):
                 if vmtype in internal_vms.keys() and internal_vms[vmtype] > len(tot_vms_of_type):
                     # There are Starting or Unregistered VMs of this type - may not want to Retire yet
                     registered_diff = internal_vms[vmtype] - len(tot_vms_of_type) - num_force
-                    # have registered_diff starting machines - shutdown those instead of running ones
+                    # have registered_diff starting/error machines - shutdown those instead of running ones
                     if registered_diff > 0:
                         #starting_vms_of_type = self.resource_pool.get_starting_of_type(vmtype)
                         starting_vms_of_type = self.resource_pool.get_starting_of_usertype(vmtype)
+                        error_vms_of_type = self.resource_pool.get_error_of_usertype(vmtype)
+                        num_error_to_destroy = 0
                         num_start_to_destroy = 0
+                        # Shutdown VMs in the error state first
+                        if registered_diff > adjusted_val:
+                            num_error_to_destroy = adjusted_val
+                        else:
+                            num_error_to_destroy = registered_diff
+                        successful_destroy = 0
+                        for start_vm in islice(reversed(error_vms_of_type), num_error_to_destroy):
+                            vm_in_cluster = self.resource_pool.get_cluster_with_vm(start_vm)
+                            if vm_in_cluster != None and vm_in_cluster in fitting_set:
+                                log.info("Shutting down error VM to try and speed up balancing")
+                                destroy_ret = vm_in_cluster.vm_destroy(start_vm)
+                                if destroy_ret == 0:
+                                    successful_destroy += 1
+                                elif destroy_ret != 0:
+                                    log.error("Failed to destroy vm %s" % start_vm.id)
+                        adjusted_val -= successful_destroy
+                        if adjusted_val <= 0:
+                            continue
+                        # See if still need to shutdown any and do the starting ones next
                         if registered_diff > adjusted_val:
                             num_start_to_destroy = adjusted_val
                         else:
