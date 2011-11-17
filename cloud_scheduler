@@ -502,8 +502,7 @@ class Scheduler(threading.Thread):
 
         # If no resource fits, continue to next job in user's list
         if good_resources[0] == None:
-            log.verbose("No resource to match job: %s" % job.id)
-            log.verbose("Leaving job unscheduled, moving to %s's next job" % user)
+            log.verbose("No resource to match job: %s Leaving job unscheduled." % job.id)
             return False
 
         create_ret = self.vm_creation(job, good_resources)
@@ -648,7 +647,7 @@ class Scheduler(threading.Thread):
         # If VM creation fails for user-job on all resources move to next user
         if create_ret != 0:
             log.debug("None of the resources could boot a vm for job %s. " % job.id + \
-                      "Leaving %s's job unscheduled, moving on to next job" % job.user)
+                      "Leaving %s's job unscheduled." % job.user)
         return create_ret
 
     def need_vm(self, user, userjob):
