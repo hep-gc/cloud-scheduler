@@ -1531,6 +1531,15 @@ class ResourcePool:
                         starting.append(vm)
         return starting
 
+    def get_error_of_usertype(self, vmtype):
+        """Get a list of the VMs in the Error state of the given usertype."""
+        error = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.uservmtype == vmtype:
+                    if vm.status == "Error":
+                        error.append(vm)
+        return error
     def get_all_vms(self):
         """Returns a list of all the VMs in the system."""
         all_vms = []
