@@ -344,23 +344,14 @@ class Scheduler(threading.Thread):
 
         # Destroy all VMs and finish
         remaining_vms = []
-        destroy_threads = []
+        threadfail = False
+        while not threadfail:
+            (remains, threadfail) = self.scheduler_full_shutdown()
+            remaining_vms.append(remains)
+        
+
         log.info("### Destroying all remaining VMs and exiting :-(")
-        for cluster in self.resource_pool.resources:
-            for vm in reversed(cluster.vms):
-                log.info("Destroying VM: %s" % vm.id)
-                vm.log()
-                destroy_threads.append(VMDestroyCmd(cluster, vm))
-                for thread in destroy_threads:
-                    thread.start()
-                for thread in destroy_threads:
-                    thread.join()
-                for thread in reversed(destroy_threads):
-                    destroy_ret = thread.get_result()
-                    if destroy_ret != 0:
-                        log.error("Destroying VM failed. Continuing anyway... check VM logs")
-                        remaining_vms.append(thread.get_vm())
-                    destroy_threads.remove(thread)
+
         #ENDFOR - Attempt to destroy each remaining VM in the system
 
         self.resource_pool.save_persistence()
@@ -371,6 +362,32 @@ class Scheduler(threading.Thread):
             for vm in remaining_vms:
                 log.error("VM: %s, ID: %s" % (vm.name, vm.id))
 
+    def scheduler_full_shutdown(self):
+        remaining_vms = []
+        threadfail = False
+        for cluster in self.resource_pool.resources:
+            destroy_threads = []
+            for vm in reversed(cluster.vms):
+                log.info("Destroying VM: %s" % vm.id)
+                vm.log()
+                destroy_threads.append(VMDestroyCmd(cluster, vm))
+                try:
+                    destroy_threads[-1].start()
+                except:
+                    log.error("Error starting thread, backing out of this one and trying to let rest finish.")
+                    destroy_threads.pop()
+                    threadfail = True
+                    break
+            for thread in destroy_threads:
+                thread.start()
+            for thread in destroy_threads:
+                thread.join()
+            for thread in destroy_threads:
+                destroy_ret = thread.get_result()
+                if destroy_ret != 0:
+                    log.error("Destroying VM failed. Continuing anyway... check VM logs")
+                    remaining_vms.append(thread.get_vm())
+        return (remaining_vms, threadfail)
     def scheduler_fair_share(self):
         ## Figure out distribution of VMs requested and available
         current_types = self.resource_pool.vmtype_distribution()
