@@ -351,15 +351,16 @@ class Scheduler(threading.Thread):
                 log.info("Destroying VM: %s" % vm.id)
                 vm.log()
                 destroy_threads.append(VMDestroyCmd(cluster, vm))
-        for thread in destroy_threads:
-            thread.start()
-        for thread in destroy_threads:
-            thread.join()
-        for thread in destroy_threads:
-            destroy_ret = thread.get_result()
-            if destroy_ret != 0:
-                log.error("Destroying VM failed. Continuing anyway... check VM logs")
-                remaining_vms.append(thread.get_vm())
+                for thread in destroy_threads:
+                    thread.start()
+                for thread in destroy_threads:
+                    thread.join()
+                for thread in reversed(destroy_threads):
+                    destroy_ret = thread.get_result()
+                    if destroy_ret != 0:
+                        log.error("Destroying VM failed. Continuing anyway... check VM logs")
+                        remaining_vms.append(thread.get_vm())
+                    destroy_threads.remove(thread)
         #ENDFOR - Attempt to destroy each remaining VM in the system
 
         self.resource_pool.save_persistence()
