@@ -379,8 +379,6 @@ class Scheduler(threading.Thread):
                     threadfail = True
                     break
             for thread in destroy_threads:
-                thread.start()
-            for thread in destroy_threads:
                 thread.join()
             for thread in destroy_threads:
                 destroy_ret = thread.get_result()
