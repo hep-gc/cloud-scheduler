@@ -1047,7 +1047,7 @@ class Cleanup(threading.Thread):
         for cluster in resources:
             for vm in cluster.vms:
                 foundvm = False
-                if vm.status == 'Running':
+                if vm.status == 'Running' and machineList:
                     for machine in machineList:
                         if utilities.match_host_with_condor_host(vm.hostname, machine['Name']):
                             if vm.condorname == None:
