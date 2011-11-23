@@ -344,10 +344,10 @@ class Scheduler(threading.Thread):
 
         # Destroy all VMs and finish
         remaining_vms = []
-        threadfail = False
-        while not threadfail:
+        threadfail = True
+        while threadfail:
             (remains, threadfail) = self.scheduler_full_shutdown()
-            remaining_vms.append(remains)
+            remaining_vms.extend(remains)
         
 
         log.info("### Destroying all remaining VMs and exiting :-(")
@@ -386,6 +386,7 @@ class Scheduler(threading.Thread):
                     log.error("Destroying VM failed. Continuing anyway... check VM logs")
                     remaining_vms.append(thread.get_vm())
         return (remaining_vms, threadfail)
+
     def scheduler_fair_share(self):
         ## Figure out distribution of VMs requested and available
         current_types = self.resource_pool.vmtype_distribution()
@@ -406,66 +407,66 @@ class Scheduler(threading.Thread):
                 log.error("Possible discrepency in diff_types detected.")
         ## Check failures to ban jobs on affected resources
         self.resource_pool.check_failures()
-
-        ## Schedule user jobs
-        # TODO: This should be less explicit in its reference to JobPool class parts.
-        #       Something like 'for job in self.job_pool.get_unsched_jobs()'
-        log.debug("Schedule any high priority jobs")
-        high_priority_jobs_by_users = self.job_pool.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
-        for user in high_priority_jobs_by_users.keys():
-            for job in high_priority_jobs_by_users[user]:
-
-                if job.job_status > self.RUNNING or job.banned or job.status == 'Scheduled':
-                    continue
-                if self.sched_resource_create_track(user, job):
-                    break
-        ## For starters we'll only schedule user jobs when there's no
-        ## High Priority jobs waiting to start
-        if len(high_priority_jobs_by_users) == 0:
-            #unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
-            users = self.job_pool.job_container.get_users()
-            #log.verbose("Attempt to schedule user jobs: %s" % (unscheduled_jobs_by_users)) # not helpful
-            #for user in unscheduled_jobs_by_users.keys():
-            for user in users:
-                # Attempt to schedule jobs in order of their appearance in user's job list
-                # (currently sorted by Job priority)
-                #for job in unscheduled_jobs_by_users[user]:
-                user_jobs = self.job_pool.job_container.get_unscheduled_user_jobs_by_type(user, prioritized=True)
-                for vmtype in user_jobs.keys():
-                    for job in user_jobs[vmtype]:
-
-                        if job.job_status >= self.RUNNING:
-                            log.verbose("Skipping job '%s' with status '%s'" % (job.id, job.job_status))
-                            continue
-                        elif job.status == job.SCHEDULED:
-                            log.verbose("Skipping previously scheduled job '%s'" % job.id)
-                            continue
-                        elif job.banned:
-                            log.verbose("Skipping banned job '%s'" % job.id)
-                            continue
+        if config.max_starting_vm < 0 or self.resource_pool.get_num_starting_vms() < config.max_starting_vm:
+            ## Schedule user jobs
+            # TODO: This should be less explicit in its reference to JobPool class parts.
+            #       Something like 'for job in self.job_pool.get_unsched_jobs()'
+            log.debug("Schedule any high priority jobs")
+            high_priority_jobs_by_users = self.job_pool.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
+            for user in high_priority_jobs_by_users.keys():
+                for job in high_priority_jobs_by_users[user]:
     
-                        log.verbose("Job '%s' not running or scheduled, trying to schedule it" % job.id)
+                    if job.job_status > self.RUNNING or job.banned or job.status == 'Scheduled':
+                        continue
+                    if self.sched_resource_create_track(user, job):
+                        break
+            ## For starters we'll only schedule user jobs when there's no
+            ## High Priority jobs waiting to start
+            if len(high_priority_jobs_by_users) == 0:
+                #unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
+                users = self.job_pool.job_container.get_users()
+                #log.verbose("Attempt to schedule user jobs: %s" % (unscheduled_jobs_by_users)) # not helpful
+                #for user in unscheduled_jobs_by_users.keys():
+                for user in users:
+                    # Attempt to schedule jobs in order of their appearance in user's job list
+                    # (currently sorted by Job priority)
+                    #for job in unscheduled_jobs_by_users[user]:
+                    user_jobs = self.job_pool.job_container.get_unscheduled_user_jobs_by_type(user, prioritized=True)
+                    for vmtype in user_jobs.keys():
+                        for job in user_jobs[vmtype]:
     
-                        # Check that type of VM for job is needed
-                        #if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
-                        if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
-                            if self.sched_resource_create_track(user, job):
-                                if job.job_per_core:
-                                    for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, \
-                                    job, (job.req_cpucores - 1)):
-    
-                                        job.status = job.statuses[1]
-                                break
+                            if job.job_status >= self.RUNNING:
+                                log.verbose("Skipping job '%s' with status '%s'" % (job.id, job.job_status))
+                                continue
+                            elif job.status == job.SCHEDULED:
+                                log.verbose("Skipping previously scheduled job '%s'" % job.id)
+                                continue
+                            elif job.banned:
+                                log.verbose("Skipping banned job '%s'" % job.id)
+                                continue
+        
+                            log.verbose("Job '%s' not running or scheduled, trying to schedule it" % job.id)
+        
+                            # Check that type of VM for job is needed
+                            #if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
+                            if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
+                                if self.sched_resource_create_track(user, job):
+                                    if job.job_per_core:
+                                        for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, \
+                                        job, (job.req_cpucores - 1)):
+        
+                                            job.status = job.statuses[1]
+                                    break
+                                else:
+                                    log.verbose("Failed to schedule job '%s' for user %s" % (job.id, user))
+                                    break # only try one per user's job types
                             else:
-                                log.verbose("Failed to schedule job '%s' for user %s" % (job.id, user))
-                                break # only try one per user's job types
-                        else:
-                            #log.verbose("User %s vmtype %s already has share" % (user, job.req_vmtype))
-                            log.verbose("User %s vmtype %s already has share" % (user, job.uservmtype))
-                            # This user already has their share
-                            break
-                    # ENDFOR - for jobs in user's unscheduled job set
-            #ENDFOR - Attempt to schedule each one job per user
+                                #log.verbose("User %s vmtype %s already has share" % (user, job.req_vmtype))
+                                log.verbose("User %s vmtype %s already has share" % (user, job.uservmtype))
+                                # This user already has their share
+                                break
+                        # ENDFOR - for jobs in user's unscheduled job set
+                #ENDFOR - Attempt to schedule each one job per user
 
     def sched_allow_over_allocation(self, diff_types, job):
         allow = False

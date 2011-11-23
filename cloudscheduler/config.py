@@ -76,6 +76,7 @@ vm_proxy_renewal_threshold = 60 * 60 # 60 minutes default
 vm_proxy_shutdown_threshold = 30 * 60 # 30 minutes default
 vm_connection_fail_threshold = 30 * 60 # 30 minutes default
 vm_idle_threshold = 5 * 60 # 5 minute default
+max_starting_vm = -1
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
@@ -167,6 +168,7 @@ def setup(path=None):
     global vm_proxy_shutdown_threshold
     global vm_connection_fail_threshold
     global vm_idle_threshold
+    global max_starting_vm
     global proxy_cache_dir
     global myproxy_logon_command
     global override_vmtype
@@ -547,6 +549,16 @@ def setup(path=None):
             vm_idle_threshold = config_file.getint("global", "vm_idle_threshold")
         except ValueError:
             print "Configuration file problem: vm_idle_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "max_starting_vm"):
+        try:
+            max_starting_vm = config_file.getint("global", "max_starting_vm")
+            if max_starting_vm < -1:
+                max_starting_vm = -1
+        except ValueError:
+            print "Configuration file problem: max_starting_vm must be an " \
                   "integer value."
             sys.exit(1)
 

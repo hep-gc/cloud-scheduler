@@ -659,7 +659,7 @@ class ResourcePool:
             (condor_out, condor_err) = sp.communicate(input=None)
         except:
             log.exception("Problem running %s, unexpected error" % string.join(condor_status, " "))
-            return None
+            return []
 
 
         machine_list = self._condor_status_to_machine_list(condor_out)
@@ -1520,6 +1520,14 @@ class ResourcePool:
                     if vm.status == "Starting":
                         starting.append(vm)
         return starting
+    
+    def get_num_starting_vms(self):
+        num_starting = 0
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.status == "Starting":
+                    num_starting += 1
+        return num_starting
 
     def get_starting_of_usertype(self, vmtype):
         """Get a list of the VMs in the Starting state of the given usertype."""
