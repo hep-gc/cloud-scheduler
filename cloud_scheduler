@@ -272,6 +272,8 @@ class MachinePoller(threading.Thread):
 
             self.resource_pool.prev_machine_list = self.resource_pool.machine_list
             self.resource_pool.machine_list = self.resource_pool.resource_query()
+            if len(self.resource_pool.machine_list) == 0 and len(self.resource_pool.prev_machine_list) != 0:
+                self.resource_pool.machine_list = self.resource_pool.prev_machine_list
             log.debug("Machine Poller waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
             while (not self.quit) and sleep_tics > 0:
