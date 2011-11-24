@@ -142,11 +142,14 @@ class VM:
           % (name, id, clusteraddr, image, memory))
 
     def log(self):
+        """Log the VM to the info level."""
         log.info("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype,  self.user, self.status, self.clusteraddr))
     def log_dbg(self):
+        """Log the VM to the debug level."""
         log.debug("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.user, self.status, self.clusteraddr))
 
     def get_vm_info(self):
+        """Formatted VM information for use with cloud_status."""
         output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.status[-8:])
         if self.override_status != None:
             output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.override_status[-12:])
@@ -154,55 +157,63 @@ class VM:
 
     @staticmethod
     def get_vm_info_header():
+        """Formatted header for use with cloud_status vm info output."""
         return "%-11s %-23s %-20s %-10s %-12s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "USER", "STATUS", "CLUSTER")
 
     def get_vm_info_pretty(self):
+        """Header + VM info formatted output."""
         output = get_vm_info_header()
         output += get_vm_info()
         return output
 
     def get_proxy_file(self):
+        """Return the proxy file associated with the VM or None."""
         if hasattr(self, "proxy_file"):
             return self.proxy_file
         else:
             return None
 
     def get_myproxy_creds_name(self):
+        """Return the MyProxy credentials name associated with the VM or None."""
         if hasattr(self, "myproxy_creds_name"):
             return self.myproxy_creds_name
         else:
             return None
 
     def get_myproxy_server(self):
+        """Return the MyProxy server associated with the VM or None."""
         if hasattr(self, "myproxy_server"):
             return self.myproxy_server
         else:
             return None
 
     def get_myproxy_server_port(self):
+        """Return the MyProxy server port associated with the VM or None."""
         if hasattr(self, "myproxy_server_port"):
             return self.myproxy_server_port
         else:
             return None
 
 
-    # Use this method to get the expiry time of the VM's user proxy, if any.
-    # Note that lazy initialization is done;  the expiry time will be extracted from the
-    # user proxy the first time the method is called and then it will be cached in the
-    # instance variable.
-    #
-    # Returns the expiry time as a datetime.datetime instance (UTC), or None if there is no
-    # user proxy associated with this VM.
     def get_x509userproxy_expiry_time(self):
+        """Use this method to get the expiry time of the VM's user proxy, if any.
+        Note that lazy initialization is done;  the expiry time will be extracted
+        from the user proxy the first time the method is called and then it will
+        be cached in the instance variable.
+
+        Returns the expiry time as a datetime.datetime instance (UTC), or None
+        if there is no user proxy associated with this VM.
+        """
         if (self.x509userproxy_expiry_time == None) and (self.get_proxy_file() != None):
             self.x509userproxy_expiry_time = get_cert_expiry_time(self.get_proxy_file())
         return self.x509userproxy_expiry_time
 
-    # Use this method to trigger an update of the proxy expiry time next time it is checked.
-    # For example, this must be called right after the proxy has been renewed.
-    # See get_x509userproxy_expiry_time for more info about how the proxy expiry time is
-    # cached in memory.
     def reset_x509userproxy_expiry_time(self):
+        """Use this method to trigger an update of the proxy expiry time next
+        time it is checked. For example, this must be called right after the
+        proxy has been renewed. See get_x509userproxy_expiry_time for more info
+        about how the proxy expiry time is cached in memory.
+        """
         self.x509userproxy_expiry_time = None
 
 

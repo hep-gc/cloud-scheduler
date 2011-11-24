@@ -158,10 +158,10 @@ class MyProxyProxyRefresher():
     """
     Utility class used to refresh a proxy using a MyProxy server.
     """
-    # This method will call the MyProxy commands to renew the credential for a given job.
-    # 
-    # Returns True on sucess, False otherwise.
     def renew_proxy(self, proxy_file_path, myproxy_creds_name, myproxy_server, myproxy_server_port):
+        """This method will call the MyProxy commands to renew the credential for a given job.
+        
+        Returns True on sucess, False otherwise."""
         if proxy_file_path == None:
             log.error("Attempt to renew proxy for job with no proxy.  Aborting proxy renew operation.")
             return False
@@ -219,6 +219,7 @@ class MyProxyProxyRefresher():
         return True
     
     def renew_proxy_meta(self, joborvm):
+        """Single function to accept a job or vm proxy to refresh."""
         if joborvm is isinstance(Job):
             if MyProxyProxyRefresher().renew_proxy(joborvm.get_x509userproxy(), joborvm.get_myproxy_creds_name(), joborvm.get_myproxy_server(), joborvm.get_myproxy_server_port()):
                 # Yay, proxy renewal worked! :-)
@@ -237,10 +238,12 @@ class MyProxyProxyRefresher():
                 log.error("Error renewing proxy for VM %s" % (joborvm.id))
 
     def renew_job_proxy_user(self, job_pool, user):
+        """Refresh all job proxies for a user."""
         for job in job_pool.job_container.get_jobs_for_user(user):
             self.renew_proxy_meta(job)
 
     def renew_vm_proxy_user(self, resource_pool, user):
+        """Refresh all VM proxies for a user."""
         for vm in resource_pool.get_user_vms():
             self.renew_proxy_meta(vm)
 
