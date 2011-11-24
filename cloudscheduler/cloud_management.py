@@ -1522,11 +1522,13 @@ class ResourcePool:
         return starting
     
     def get_num_starting_vms(self):
+        """Count the number of starting state VMs."""
         num_starting = 0
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.status == "Starting":
                     num_starting += 1
+        log.debug("There are %i Starting VMs, the max_starting_vm is %i." % (num_starting, config.max_starting_vm))
         return num_starting
 
     def get_starting_of_usertype(self, vmtype):
