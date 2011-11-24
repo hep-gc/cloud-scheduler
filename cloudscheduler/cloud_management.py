@@ -188,7 +188,8 @@ class ResourcePool:
                         for new_cluster in new_resources:
                             if new_cluster.name == updated_name:
 
-                                new_cluster.vms = sorted(old_cluster.vms, key=lambda vm: vm.status)
+                                new_cluster.vms = sorted(old_cluster.vms, key=lambda vm: vm.id)
+                                new_cluster.vms = sorted(new_cluster.vms, key=lambda vm: vm.status)
                                 while 1:
                                     if new_cluster.vms[0].status == "Error":
                                         new_cluster.vms.append(new_cluster.vms.pop(0))
