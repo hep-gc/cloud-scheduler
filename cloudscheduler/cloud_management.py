@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import json
+import time
 import shlex
 import string
 import logging
@@ -1004,6 +1005,18 @@ class ResourcePool:
                 #else:
                     #types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
         #return types
+    
+    def vm_slots_total(self):
+        count = 0
+        for cluster in self.resources:
+            count += cluster.max_slots
+        return count
+            
+    def vm_slots_available(self):
+        count = 0
+        for cluster in self.resources:
+            count += cluster.vm_slots
+        return count
 
     def vm_slots_used(self):
         """Figure out the actual number of 'slots' being used when some VMs are using multi-job settings."""

@@ -155,6 +155,7 @@ class Job:
         self.jobstarttime = JobStartDate
         self.banned = False
         self.ban_time = None
+        self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
 
         # Set the new job's status
         self.status = self.statuses[1]

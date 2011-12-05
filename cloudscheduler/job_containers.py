@@ -131,6 +131,11 @@ class JobContainer():
     @abstractmethod
     def get_scheduled_jobs(self):
         pass
+    
+    # Get a list of all scheduled jobs in the container sorted by their job.id, or [] if no unscheduled jobs.
+    @abstractmethod
+    def get_scheduled_jobs_sorted_by_id(self):
+        pass
 
     # Get a list of all scheduled jobs per user.
     # Returns dictionary where the items are:
@@ -152,6 +157,11 @@ class JobContainer():
     # Get a list of all unscheduled jobs in the container, or [] if there are no unscheduled jobs.
     @abstractmethod
     def get_unscheduled_jobs(self):
+        pass
+    
+    # Get a list of all unscheduled jobs in the container sorted by their job.id, or [] if no unscheduled jobs.
+    @abstractmethod
+    def get_unscheduled_jobs_sorted_by_id(self):
         pass
 
     # Get a list of all unscheduled jobs per user.
@@ -367,6 +377,12 @@ class HashTableJobContainer(JobContainer):
 
     def get_scheduled_jobs(self):
         return self.sched_jobs.values()
+    
+    def get_scheduled_jobs_sorted_by_id(self):
+        return_value = []
+        for jobid in sorted(self.sched_jobs.iteritems()):
+            return_value.append(jobid[1])
+        return return_value
 
     def get_scheduled_jobs_by_users(self, prioritized=False):
         with self.lock:
@@ -409,7 +425,13 @@ class HashTableJobContainer(JobContainer):
 
     def get_unscheduled_jobs(self):
         return self.new_jobs.values()
-
+    
+    def get_unscheduled_jobs_sorted_by_id(self):
+        return_value = []
+        for jobid in sorted(self.new_jobs.iteritems()):
+            return_value.append(jobid[1])
+        return return_value
+        
     def get_unscheduled_jobs_by_users(self, prioritized=False):
         with self.lock:
  

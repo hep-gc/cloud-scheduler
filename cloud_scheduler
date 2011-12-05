@@ -309,7 +309,11 @@ class Scheduler(threading.Thread):
         self.scheduling_interval = config.scheduler_interval
 
         if config.scheduling_algorithm.lower() == "fairshare":
+            log.debug("Using fairshare scheduling algorithm.")
             self.scheduling_method = self.scheduler_fair_share
+        elif config.scheduling_algorithm.lower() == "fifo":
+            log.debug("Using fifo scheduling algorithm.")
+            self.scheduling_method = self.scheduler_fifo
         else:
             log.debug("Cannot use %s scheduling, switching to fairshare" % config.scheduling_algorithm)
             self.scheduling_method = self.scheduler_fair_share
@@ -389,6 +393,54 @@ class Scheduler(threading.Thread):
                     remaining_vms.append(thread.get_vm())
         return (remaining_vms, threadfail)
 
+    def scheduler_fifo(self):
+        existing_jobs = self.job_pool.job_container.get_scheduled_jobs_sorted_by_id()
+        new_jobs = self.job_pool.job_container.get_unscheduled_jobs_sorted_by_id()
+        machine_list = self.resource_pool.machine_list
+        vm_slots = self.resource_pool.vm_slots_total()
+        vm_list = self.resource_pool.get_all_vms()
+        #look ahead n jobs, where n is the number of vm_slots or length of new_jobs, whichever is smaller
+        lookahead_jobs = [new_jobs[x] for x in xrange(vm_slots if vm_slots <= len(new_jobs) else len(new_jobs))]
+               
+        for job in new_jobs:
+            if(vm_slots > len(existing_jobs)):
+                if self.sched_resource_create_track(job.user, job):
+                    log.verbose("VM Created.")
+                else:
+                    log.verbose("VM could not be created, trying next job...")
+            else:
+                log.verbose("All VM Slots filled, not trying to schedule more jobs right now.")
+                break
+        #If there are no lookahead jobs, no reason to kill machines; let them die of natural causes
+        if len(lookahead_jobs):
+            for machine in machine_list:
+                #find the VM object that corresponds with the machine (actual Nimbus VM)
+                matching_vm = None
+                for vm in vm_list:
+                    if utilities.match_host_with_condor_host(vm.hostname, machine['Name']):
+                        matching_vm = vm
+                        break
+                #If no matching VM or a machine hasn't been assigned a job, we don't want to retire it yet. Same if already retired.
+                if not matching_vm or "JobId" not in machine or matching_vm.force_retire:
+                    continue
+                retire_machine = True
+                for job in lookahead_jobs:
+                    if matching_vm.uservmtype == job.uservmtype:
+                        if job.machine_reserved == "" or job.machine_reserved == machine["Name"]:
+                            retire_machine = False
+                            job.machine_reserved = machine["Name"]
+                            break
+                if not retire_machine:
+                    log.verbose("No need to retire machine with job:  %s" % machine["JobId"])
+                    continue
+                (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(machine["Name"], machine["MyAddress"])
+                if ret2 == 0 and ret22 == 0:
+                    log.debug("Set %s to die after completing current job: %s" % (machine["Name"],machine["JobId"]))
+                    matching_vm.force_retire = True
+                    matching_vm.override_status = 'Retiring'
+                else:
+                    log.debug("Failed to retire VM")
+        
     def scheduler_fair_share(self):
         ## Figure out distribution of VMs requested and available
         current_types = self.resource_pool.vmtype_distribution()
@@ -406,7 +458,7 @@ class Scheduler(threading.Thread):
 
         if len(diff_types) == 0:
             if len(self.job_pool.get_required_vmtypes()) != 0:
-                log.error("Possible discrepency in diff_types detected.")
+                log.error("Possible discrepancy in diff_types detected.")
         ## Check failures to ban jobs on affected resources
         self.resource_pool.check_failures()
         if config.max_starting_vm < 0 or self.resource_pool.get_num_starting_vms() < config.max_starting_vm:
@@ -534,7 +586,7 @@ class Scheduler(threading.Thread):
             job.banned = True
             job.ban_time = time.time()
             job.override_status = "TempBanned"
-            log.verbose("VM Creation failed - temporairly banning job %s" % job.id)
+            log.verbose("VM Creation failed - temporarily banning job %s" % job.id)
             return False
         else:
             if config.ban_tracking:
@@ -722,7 +774,16 @@ class Cleanup(threading.Thread):
         self.quit = False
         self.polling_interval = config.cleanup_interval
         self.destroy_threads = {}
-
+        
+        #Different scheduling algorithms require different balancing
+        if(config.scheduling_algorithm.lower() == "fifo"):
+            self.clean_balance_vms = self.clean_balance_vms_fifo
+        elif(config.scheduling_algorithm.lower() == "fairshare"):
+            self.clean_balance_vms = self.clean_balance_vms_fairshare
+        else:
+            log.error("Scheduling algorithm not recognized...fatal error")
+            self.quit = True
+            
     def stop(self):
         log.debug("Waiting for cleanup loop to end")
         self.quit = True
@@ -803,7 +864,12 @@ class Cleanup(threading.Thread):
             # failed to hold some of these jobs remove from container instead
             self.job_pool.job_container.remove_jobs(failedhold)
 
-    def clean_balance_vms(self):
+    def clean_balance_vms_fifo(self):
+        # This function overrides the fairshare balancing function.
+        # VM shutdowns are handled in the main scheduling function: scheduler_fifo()
+        pass
+
+    def clean_balance_vms_fairshare(self):
 
         # Count the number of jobs that require a certain VM type,
         # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
@@ -1255,7 +1321,6 @@ class Cleanup(threading.Thread):
             else:
                 self.job_pool.release_vmtype(vmtype)
         self.remove_idle_machines(machineList, num_to_change)
-
     def filter_fitting_resources(self, num_to_change):
         #vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_type()
         vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
