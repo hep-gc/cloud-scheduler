@@ -1143,6 +1143,14 @@ class Cleanup(threading.Thread):
                     if not foundvm:
                         if vm.override_status == 'Retiring':
                             retiredvms.append(vm)
+                        elif vm.condorname != None:
+                            log.debug("VM %s on Name %s has previously registered with condor but is now missing - caught mid stale refresh?" % (vm.id, vm.condorname))
+                            # As a temp hack I'm going to reset the last_state_change to give the VM the register time limit to come back
+                            # as well as reset the condorname to None
+                            vm.last_state_change = int(time.time())
+                            vm.condorname = None
+                            # Now the next time the cleanup thread runs if VM is not in list again it will be eligble to shutdown but only
+                            # if it has not re-registered after the condor_register_time_limit
                         else:
                             unregisteredvms.append(vm)
         return unregisteredvms, retiredvms
