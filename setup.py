@@ -15,7 +15,7 @@ import cloudscheduler.__version__ as version
 if not os.geteuid() == 0:
     config_files_dir = os.path.expanduser("~/.cloudscheduler/")
 else:
-    config_files_dir = "/etc/cloudscheduler"
+    config_files_dir = "/etc/cloudscheduler/"
 config_files = ["cloud_scheduler.conf", "cloud_resources.conf"]
 
 # check for preexisting config files
