@@ -1596,7 +1596,8 @@ class Cleanup(threading.Thread):
         """ Check if a vm has correct attributes to run a job."""
         vmjobmatch = False
         if vm.memory >= job.req_memory and vm.network in job.req_network and vm.cpuarch == job.req_cpuarch \
-            and vm.cpucores >= job.req_cpucores and vm.storage >= job.req_storage:
+            and vm.cpucores >= job.req_cpucores and vm.storage >= job.req_storage \
+            and (vm.image == job.req_imageloc or vm.image == job.req_ami):
             vmjobmatch = True
         return vmjobmatch
 
