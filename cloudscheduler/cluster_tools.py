@@ -401,7 +401,7 @@ class ICluster:
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
-    def vm_destroy(self, vm, return_resources=True):
+    def vm_destroy(self, vm, return_resources=True, reason=""):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_destroy'
 
@@ -701,7 +701,7 @@ class NimbusCluster(ICluster):
         return create_return
 
 
-    def vm_destroy(self, vm, return_resources=True, shutdown_first=True):
+    def vm_destroy(self, vm, return_resources=True, reason="", shutdown_first=True):
         """
         Shutdown, destroy and return resources of a VM to it's cluster
 
@@ -773,7 +773,7 @@ class NimbusCluster(ICluster):
         os.remove(vm_epr)
 
 
-        log.info("Destroyed vm %s on %s" % (vm.id, vm.clusteraddr))
+        log.info("Destroyed VM: %s Name: %s Reason: %s" % (vm.id, vm.hostname, reason))
 
         return destroy_return
 
@@ -805,8 +805,7 @@ class NimbusCluster(ICluster):
             #vm.hostname = self._extract_hostname(poll_out)
             new_status = self._extract_state(poll_out)
             if new_status == "Destroyed":
-                log.info("Discarding VM %s because Nimbus has destroyed it" % vm.id)
-                self.vm_destroy(vm, shutdown_first=False)
+                self.vm_destroy(vm, shutdown_first=False, reason="Nimbus has already destroyed VM")
                 vm.status = new_status
 
             elif new_status == "NoProxy":
@@ -1300,7 +1299,7 @@ class EC2Cluster(ICluster):
             self.resource_checkout(new_vm)
         except:
             log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-            self.vm_destroy(new_vm)
+            self.vm_destroy(new_vm, reason="Failed Resource checkout")
             return self.ERROR
 
         self.vms.append(new_vm)
@@ -1354,7 +1353,7 @@ class EC2Cluster(ICluster):
         return vm.status
 
 
-    def vm_destroy(self, vm, return_resources=True):
+    def vm_destroy(self, vm, return_resources=True, reason=""):
         """
         Shutdown, destroy and return resources of a VM to it's cluster
 
@@ -1362,7 +1361,7 @@ class EC2Cluster(ICluster):
         vm -- vm to shutdown and destroy
         return_resources -- if set to false, do not return resources from VM to cluster
         """
-        log.debug("Destroying vm with instance id %s" % vm.id)
+        log.info("Destroying VM: %s Name: %s Reason: %s" % (vm.id, vm.hostname, reason))
 
         try:
             connection = self._get_connection()
@@ -1378,10 +1377,10 @@ class EC2Cluster(ICluster):
         except IndexError:
             log.warning("%s already seem to be gone... removing anyway." % vm.id)
         except boto.exception.EC2ResponseError, e:
-            log.exception("Couldn't connect to cloud to destroy vm!")
+            log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
             return self.ERROR
         except:
-            log.exception("Unexpected error destroying vm!")
+            log.exception("Unexpected error destroying VM: !" % vm.id)
 
         # Delete references to this VM
         if return_resources:

@@ -202,13 +202,9 @@ class ResourcePool:
                                     try:
                                         new_cluster.resource_checkout(vm)
                                     except cluster_tools.NoResourcesError, e:
-                                        log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
-                                                    (vm.id, new_cluster.name, e.resource))
-                                        new_cluster.vm_destroy(vm, return_resources=False)
+                                        new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s on %s." % (e.resource, new_cluster.name))
                                     except:
-                                        log.exception("Unexpected error checking out resources. Killing %s on %s" %
-                                                      (vm.id, new_cluster.name))
-                                        new_cluster.vm_destroy(vm, return_resources=False)
+                                        new_cluster.vm_destroy(vm, return_resources=False, reason="Unexcepted error checking out resources.")
                                 self.resources.append(new_cluster)
 
         # Add new resources
@@ -225,7 +221,7 @@ class ResourcePool:
                                                           removed_cluster_name)
                     self.retired_resources.append(cluster)
                     for vm in cluster.vms:
-                            cluster.vm_destroy(vm, return_resources=False)
+                            cluster.vm_destroy(vm, return_resources=False, reason="%s has been removed from system." % cluster.name)
                     old_resources.remove(cluster)
 
         self.setup_lock.release()
@@ -1094,9 +1090,7 @@ class ResourcePool:
                 log.debug("Found VM %s" % vm.id)
                 vm_status = old_cluster.vm_poll(vm)
                 if vm_status == "Error":
-                    log.info("Found persisted VM %s from %s in an error state, destroying it." %
-                             (vm.id, old_cluster.name))
-                    old_cluster.vm_destroy(vm)
+                    old_cluster.vm_destroy(vm, reason="Persisted VM in Error state.")
                 elif vm_status == "Destroyed":
                     log.info("VM %s on %s no longer exists. Ignoring it." % (vm.id, old_cluster.name))
                 else:
@@ -1108,17 +1102,13 @@ class ResourcePool:
                             new_cluster.vms.append(vm)
                             log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
                         except cluster_tools.NoResourcesError, e:
-                            log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
-                                        (vm.id, new_cluster.name, e.resource))
-                            new_cluster.vm_destroy(vm, return_resources=False)
+                            new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s left on %s" %(e.resource, new_cluster.name))
                         except:
-                            log.exception("Unexpected error checking out resources. Killing %s on %s" %
-                                          (vm.id, new_cluster.name))
-                            new_cluster.vm_destroy(vm, return_resources=False)
+                            new_cluster.vm_destroy(vm, return_resources=False, reason="Unexpected error checking out resources.")
                     else:
                         log.info("%s doesn't seem to exist, so destroying vm %s." %
                                  (old_cluster.name, vm.id))
-                        old_cluster.vm_destroy(vm)
+                        old_cluster.vm_destroy(vm, reason="cloud %s no longer exists." % old_cluster.name)
 
 
     def track_failures(self, job, resources,  value):
@@ -1612,7 +1602,7 @@ class ResourcePool:
             if vm:
                 # found the vm - shutdown
                 # move the vmdestroycmd thread into a better place and import so avilable here
-                thread = VMDestroyCmd(cluster, vm)
+                thread = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
                 thread.start()
                 while thread.is_alive():
                     time.sleep(1)
@@ -1634,7 +1624,7 @@ class ResourcePool:
         cluster = self.get_cluster(clustername)
         if cluster:
             for vm in cluster.vms:
-                th = VMDestroyCmd(cluster, vm)
+                th = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
                 vmdesth[vm.id] = th
                 th.start()
             while len(vmdesth) > 0:
@@ -1708,13 +1698,14 @@ class VMDestroyCmd(threading.Thread):
     VMCmd - passing shutdown and destroy requests to a separate thread 
     """
 
-    def __init__(self, cluster, vm):
+    def __init__(self, cluster, vm, reason=""):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.cluster = cluster
         self.vm = vm
         self.result = None
+        self.reason = reason
     def run(self):
-        self.result = self.cluster.vm_destroy(self.vm)
+        self.result = self.cluster.vm_destroy(self.vm, reason=self.reason)
         if self.result != 0:
             log.error("Failed to destroy vm %s" % self.vm.id)
     def get_result(self):
