@@ -969,6 +969,7 @@ class Cleanup(threading.Thread):
 
     def clean_determine_num_to_change(self, diff_types, required_vmtypes_dict):
         num_to_change = {}
+        free_space_for_vmtype = {}
         vm_count = self.resource_pool.vm_count()
         for vmtype, val in diff_types.iteritems():
             num_to_change[vmtype] = int(round(val * vm_count))
@@ -1042,6 +1043,7 @@ class Cleanup(threading.Thread):
                         num_fit += num_fit_cloud
                         log.verbose("Can fit %i VMs on the %s cloud." % (num_fit_cloud, cloud.name))
                     log.verbose("Can fit %i VMs total." % num_fit)
+                    free_space_for_vmtype[vmtype] = True if num_fit > 0 else False
                 # Add the number that can fit to what it wants to change
                 can_boot = num_to_change[vmtype] + num_fit
                 excess = 0
@@ -1076,6 +1078,15 @@ class Cleanup(threading.Thread):
                             if num_to_change[postype] < 0:
                                     num_to_change[postype] = 0
         log.debug("Final num to change: %s" % str(num_to_change))
+        free_space = True
+        for vmtype in free_space_for_vmtype.keys():
+            if not free_space_for_vmtype[vmtype]:
+                free_space = False
+                break
+        if free_space:
+            log.debug("There is some free space in the cloud for requested VMs, not changing anything yet.")
+            for vmtype in num_to_change.keys():
+                num_to_change[vmtype] = 0
         return num_to_change
 
     def clean_unneeded_vms(self):
