@@ -986,7 +986,7 @@ class ResourcePool:
         results = {}
         # Compute the resource usage based on given counts instead of checking every VM.
         for vmusertype in types.keys():
-            result[vmusertype] = [vmcount[vmusertype]*types[vmusertype].memory, vmcount[vmusertype]*types[vmusertype].cpucores, vmcount[vmusertype]*types[vmusertype].storage]
+            results[vmusertype] = [vmcount[vmusertype]*types[vmusertype].memory, vmcount[vmusertype]*types[vmusertype].cpucores, vmcount[vmusertype]*types[vmusertype].storage]
         return results
 
     #def vm_slots_used(self):
