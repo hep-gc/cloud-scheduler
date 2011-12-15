@@ -905,7 +905,7 @@ class ResourcePool:
     def vmtype_mem_cpu_storage_distribution(self, vmcount=None):
         """VM Type Memory & CPU & Storage Distribution."""
         if vmcount:
-            usgae = self.vmtype_resource_usage_sim(vmcount)
+            usage = self.vmtype_resource_usage_sim(vmcount)
         else:
             usage = self.vmtype_resource_usage()
         types = {}
