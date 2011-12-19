@@ -48,7 +48,7 @@ class JobProxyRefresher(threading.Thread):
                 for job in jobs:
                     jobcertextime = job.get_x509userproxy_expiry_time()
                     if jobcertextime:
-                        log.debug("Proxy for job %s expires in %s" % (job.id, jobcertextime - datetime.datetime.utcnow()))
+                        log.verbose("Proxy for job %s expires in %s" % (job.id, jobcertextime - datetime.datetime.utcnow()))
                     if job.is_proxy_expired():
                         log.warning("Proxy for job %s is expired.  Skipping proxy renewal for this job." % (job.id))
                     elif job.needs_proxy_renewal():
@@ -135,7 +135,7 @@ class VMProxyRefresher(threading.Thread):
                             # credentials.
                             log.debug("Not renewing proxy for VM %s because missing MyProxy info." % (vm.id))
                     else:
-                        log.debug("No need to renew proxy for VM %s" % (vm.id))
+                        log.verbose("No need to renew proxy for VM %s" % (vm.id))
 
                 # Lets record the current time and then log how much time the cycle took.
                 cycle_end_ts = datetime.datetime.today()
