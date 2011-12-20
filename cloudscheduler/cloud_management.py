@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import json
+import time
 import shlex
 import string
 import logging
@@ -188,18 +189,22 @@ class ResourcePool:
                         for new_cluster in new_resources:
                             if new_cluster.name == updated_name:
 
-                                new_cluster.vms = old_cluster.vms
+                                new_cluster.vms = sorted(old_cluster.vms, key=lambda vm: vm.id)
+                                new_cluster.vms = sorted(new_cluster.vms, key=lambda vm: vm.status)
+                                while 1:
+                                    if new_cluster.vms[0].status == "Error":
+                                        new_cluster.vms.append(new_cluster.vms.pop(0))
+                                    else:
+                                        break
+                                new_cluster.vms.reverse()
+                                
                                 for vm in reversed(new_cluster.vms):
                                     try:
                                         new_cluster.resource_checkout(vm)
                                     except cluster_tools.NoResourcesError, e:
-                                        log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
-                                                    (vm.id, new_cluster.name, e.resource))
-                                        new_cluster.vm_destroy(vm, return_resources=False)
+                                        new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s on %s." % (e.resource, new_cluster.name))
                                     except:
-                                        log.exception("Unexpected error checking out resources. Killing %s on %s" %
-                                                      (vm.id, new_cluster.name))
-                                        new_cluster.vm_destroy(vm, return_resources=False)
+                                        new_cluster.vm_destroy(vm, return_resources=False, reason="Unexcepted error checking out resources.")
                                 self.resources.append(new_cluster)
 
         # Add new resources
@@ -216,7 +221,7 @@ class ResourcePool:
                                                           removed_cluster_name)
                     self.retired_resources.append(cluster)
                     for vm in cluster.vms:
-                            cluster.vm_destroy(vm, return_resources=False)
+                            cluster.vm_destroy(vm, return_resources=False, reason="%s has been removed from system." % cluster.name)
                     old_resources.remove(cluster)
 
         self.setup_lock.release()
@@ -257,7 +262,7 @@ class ResourcePool:
                     netslots = net_slots,
                     )
 
-        elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus":
+        elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
             return cluster_tools.EC2Cluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
@@ -337,6 +342,8 @@ class ResourcePool:
             return None
 
         for cluster in self.resources:
+            if not cluster.enabled:
+                continue
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
                 continue
@@ -390,6 +397,8 @@ class ResourcePool:
         else:
             clusters = self.resources
         for cluster in clusters:
+            if not cluster.enabled:
+                continue
             if cluster.__class__.__name__ == "NimbusCluster":
                 # If not valid image file to download
                 if imageloc == "":
@@ -488,6 +497,7 @@ class ResourcePool:
         if len(fitting_clusters) == 1:
             log.verbose("Only one cluster fits parameters. Returning that cluster.")
             return (fitting_clusters[0], None)
+        log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
 
         # Set the most-balanced and next-most-balanced initial values
         # Note: mostbal_cluster stands for "most balanced cluster"
@@ -495,25 +505,25 @@ class ResourcePool:
         cluster1 = fitting_clusters.pop()
         cluster2 = fitting_clusters.pop()
 
-        if (cluster1.num_vms() < cluster2.num_vms()):
+        if (cluster1.slot_fill_ratio() < cluster2.slot_fill_ratio()):
             mostbal_cluster = cluster1
             nextbal_cluster = cluster2
         else:
             mostbal_cluster = cluster2
             nextbal_cluster = cluster1
 
-        mostbal_vms = mostbal_cluster.num_vms()
-        nextbal_vms = nextbal_cluster.num_vms()
+        mostbal_vms = mostbal_cluster.slot_fill_ratio()
+        nextbal_vms = nextbal_cluster.slot_fill_ratio()
 
         # Iterate through fitting clusters to check for most and next balanced clusters. (LINEAR search)
         for cluster in fitting_clusters:
             # If considered cluster has fewer running VMs, set it as the most balanced cluster
-            if (cluster.num_vms() < mostbal_vms):
+            if (cluster.slot_fill_ratio() < mostbal_vms):
                 mostbal_cluster = cluster
-                mostbal_vms = cluster.num_vms()
-            elif (cluster.num_vms() < nextbal_vms):
+                mostbal_vms = cluster.slot_fill_ratio()
+            elif (cluster.slot_fill_ratio() < nextbal_vms):
                 nextbal_cluster = cluster
-                nextbal_vms = cluster.num_vms()
+                nextbal_vms = cluster.slot_fill_ratio()
 
         # Return the most balanced cluster after considering all fitting clusters.
         return (mostbal_cluster, nextbal_cluster)
@@ -533,6 +543,8 @@ class ResourcePool:
         potential_fit = False
 
         for cluster in self.resources:
+            if not cluster.enabled:
+                continue
             # If the cluster does not have the required CPU architecture
             if not (cpuarch in cluster.cpu_archs):
                 continue
@@ -568,6 +580,8 @@ class ResourcePool:
         else:
             clusters = self.filter_resources_by_names(targets)
         for cluster in clusters:
+            if not cluster.enabled:
+                continue
             if not (cpuarch in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
@@ -643,7 +657,7 @@ class ResourcePool:
             (condor_out, condor_err) = sp.communicate(input=None)
         except:
             log.exception("Problem running %s, unexpected error" % string.join(condor_status, " "))
-            return None
+            return []
 
 
         machine_list = self._condor_status_to_machine_list(condor_out)
@@ -785,6 +799,12 @@ class ResourcePool:
                     log.error("Failed to parse out remote owner")
             else:
                 log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set - are the condor init scripts on the VM up-to-date?")
+                if vm.has_key('Start'):
+                    log.warning("VM Start attrib = %s" % vm['Start'])
+                else:
+                    log.warning("VM Missing a Start attrib.")
+                if not vm.has_key('VMType'):
+                    log.warning("This VM has no VMType key, It should not be used with cloudscheduler.")
         log.debug("VMs in machinelist: %s" % str(count))
         return count
 
@@ -831,9 +851,10 @@ class ResourcePool:
             count = count + len(cluster.vms)
         return count
 
-    def vmtype_slot_distribution(self):
+    def vmtype_slot_distribution(self, types=None):
         """VM Type Distribution."""
-        types = self.get_vmtypes_count_internal()
+        if types is None:
+            types = self.get_vmtypes_count_internal()
         count = Decimal(self.vm_count())
         if count == 0:
             return {}
@@ -842,9 +863,12 @@ class ResourcePool:
             types[vmtype] *= count
         return types
 
-    def vmtype_mem_distribution(self):
+    def vmtype_mem_distribution(self, vmcount=None):
         """VM Type Memory Distribution."""
-        usage = self.vmtype_resource_usage()
+        if vmcount:
+            usage = self.vmtype_resource_usage_sim(vmcount)
+        else:
+            usage = self.vmtype_resource_usage()
         types = {}
         mem_total = 0
         for vmtype in usage:
@@ -858,9 +882,12 @@ class ResourcePool:
             types[vmtype] *= mem_total
         return types
 
-    def vmtype_mem_cpu_distribution(self):
+    def vmtype_mem_cpu_distribution(self, vmcount=None):
         """VM Type Memory & CPU Distribution."""
-        usage = self.vmtype_resource_usage()
+        if vmcount:
+            usage = self.vmtype_resource_usage_sim(vmcount)
+        else:
+            usage = self.vmtype_resource_usage()
         types = {}
         mem_cpu_total = 0
         for vmtype in usage:
@@ -875,9 +902,12 @@ class ResourcePool:
             types[vmtype] *= mem_cpu_total
         return types
 
-    def vmtype_mem_cpu_storage_distribution(self):
+    def vmtype_mem_cpu_storage_distribution(self, vmcount=None):
         """VM Type Memory & CPU & Storage Distribution."""
-        usage = self.vmtype_resource_usage()
+        if vmcount:
+            usage = self.vmtype_resource_usage_sim(vmcount)
+        else:
+            usage = self.vmtype_resource_usage()
         types = {}
         vol_total = 0
         weight_all = config.cpu_distribution_weight * config.memory_distribution_weight * config.storage_distribution_weight
@@ -936,6 +966,29 @@ class ResourcePool:
             results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
         return results
 
+    def vmtype_resource_usage_sim(self, vmcount):
+        """Count the resources used by each type of VM through a count of VMs instead of iterating over all VMs.
+        Will not be able to handle cases where VMs of the same type but different resource usages exist."""
+        # Locate a VM for each type in vmcount
+        types = {}
+        for vmusertype in vmcount.keys():
+            foundIt = False
+            for cluster in self.resources:
+                for vm in cluster.vms:
+                    if vm.uservmtype == vmusertype:
+                        foundIt = True
+                        types[vmusertype] = vm
+                        break
+                if foundIt:
+                    break
+            if not foundIt:
+                log.warning("Unable to find VM with type %s" % vmusertype)
+        results = {}
+        # Compute the resource usage based on given counts instead of checking every VM.
+        for vmusertype in types.keys():
+            results[vmusertype] = [vmcount[vmusertype]*types[vmusertype].memory, vmcount[vmusertype]*types[vmusertype].cpucores, vmcount[vmusertype]*types[vmusertype].storage]
+        return results
+
     #def vm_slots_used(self):
         #types = {}
         #for cluster in self.resources:
@@ -948,6 +1001,18 @@ class ResourcePool:
                 #else:
                     #types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
         #return types
+    
+    def vm_slots_total(self):
+        count = 0
+        for cluster in self.resources:
+            count += cluster.max_slots
+        return count
+            
+    def vm_slots_available(self):
+        count = 0
+        for cluster in self.resources:
+            count += cluster.vm_slots
+        return count
 
     def vm_slots_used(self):
         """Figure out the actual number of 'slots' being used when some VMs are using multi-job settings."""
@@ -981,16 +1046,17 @@ class ResourcePool:
         """
         save_persistence - pickle the resources list to the persistence file
         """
-        try:
-            persistence_file = open(config.persistence_file, "wb")
-            pickle.dump(self.resources, persistence_file)
-            persistence_file.close()
-        except IOError, e:
-
-            log.error("Couldn't write persistence file to %s! \"%s\"" % 
-                      (config.persistence_file, e.strerror))
-        except:
-            log.exception("Unknown problem saving persistence file!")
+        with self.setup_lock:
+            try:
+                persistence_file = open(config.persistence_file, "wb")
+                pickle.dump(self.resources, persistence_file)
+                persistence_file.close()
+            except IOError, e:
+    
+                log.error("Couldn't write persistence file to %s! \"%s\"" % 
+                          (config.persistence_file, e.strerror))
+            except:
+                log.exception("Unknown problem saving persistence file!")
 
     def load_persistence(self):
         """
@@ -1024,9 +1090,7 @@ class ResourcePool:
                 log.debug("Found VM %s" % vm.id)
                 vm_status = old_cluster.vm_poll(vm)
                 if vm_status == "Error":
-                    log.info("Found persisted VM %s from %s in an error state, destroying it." %
-                             (vm.id, old_cluster.name))
-                    old_cluster.vm_destroy(vm)
+                    old_cluster.vm_destroy(vm, reason="Persisted VM in Error state.")
                 elif vm_status == "Destroyed":
                     log.info("VM %s on %s no longer exists. Ignoring it." % (vm.id, old_cluster.name))
                 else:
@@ -1038,17 +1102,13 @@ class ResourcePool:
                             new_cluster.vms.append(vm)
                             log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
                         except cluster_tools.NoResourcesError, e:
-                            log.warning("Shutting down vm %s on %s, because you no longer have enough %s" %
-                                        (vm.id, new_cluster.name, e.resource))
-                            new_cluster.vm_destroy(vm, return_resources=False)
+                            new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s left on %s" %(e.resource, new_cluster.name))
                         except:
-                            log.exception("Unexpected error checking out resources. Killing %s on %s" %
-                                          (vm.id, new_cluster.name))
-                            new_cluster.vm_destroy(vm, return_resources=False)
+                            new_cluster.vm_destroy(vm, return_resources=False, reason="Unexpected error checking out resources.")
                     else:
                         log.info("%s doesn't seem to exist, so destroying vm %s." %
                                  (old_cluster.name, vm.id))
-                        old_cluster.vm_destroy(vm)
+                        old_cluster.vm_destroy(vm, reason="cloud %s no longer exists." % old_cluster.name)
 
 
     def track_failures(self, job, resources,  value):
@@ -1244,10 +1304,11 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret1 = 0
             if sp1.returncode == 0 and ret1 == 0:
-                log.debug("Successfuly sent condor_off to %s" % (machine_name))
+                log.debug("Successfuly sent condor_off startd to %s" % (machine_name))
             else:
-                log.debug("Failed to send condor_off to %s" % (machine_name))
-                log.debug("Reason: %s \n Error: %s" % (out, err))
+                log.debug("Failed to send condor_off startd to %s" % (machine_name))
+                log.debug("Reason: %s" % out) 
+                log.debug("Error: %s" % err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
             return (-1, "", "", "")
@@ -1264,9 +1325,9 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret2 = 0
             if sp2.returncode == 0 and ret2 == 0:
-                log.debug("Successfuly sent condor_off to %s" % (machine_name))
+                log.debug("Successfuly sent condor_off master to %s" % (machine_name))
             else:
-                log.debug("Failed to send condor_off to %s" % (machine_name))
+                log.debug("Failed to send condor_off master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
@@ -1287,8 +1348,11 @@ class ResourcePool:
             the return code indicating success of failure to condor_on
         """
         cmd = '%s -subsystem startd -name "%s"' % (config.condor_on_command, machine_name)
+        cmd2 = '%s -addr "%s" -startd' % (config.condor_on_command, machine_addr)
+        cmd3 = '%s -addr "%s" -master' % (config.condor_on_command, machine_addr)
         args = []
-        
+        args2 = []
+        args3 = []
         if config.cloudscheduler_ssh_key:
             args.append(config.ssh_path)
             args.append('-i')
@@ -1296,29 +1360,96 @@ class ResourcePool:
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
             args.append(central_address)
             args.append(cmd)
+
+            args2.append(config.ssh_path)
+            args2.append('-i')
+            args2.append(config.cloudscheduler_ssh_key)
+            args2.append(central_address)
+            args2.append(cmd2)
+            
+            args3.append(config.ssh_path)
+            args3.append('-i')
+            args3.append(config.cloudscheduler_ssh_key)
+            args3.append(central_address)
+            args3.append(cmd3)
         else:
             args.append(config.condor_on_command)
             args.append('-subsystem')
             args.append('startd')
             args.append('-name')
             args.append(machine_name)
+
+            args2.append(config.condor_off_command)
+            args2.append('-addr')
+            args2.append(machine_addr)
+            args2.append('-subsystem')
+            args2.append('startd')
+
+            args3.append(config.condor_off_command)
+            args3.append('-addr')
+            args3.append(machine_addr)
+            args3.append('-subsystem')
+            args3.append('master')
+        # try to turn on master first
         try:
-            sp = subprocess.Popen(args, shell=False,
+            sp1 = subprocess.Popen(args3, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if not utilities.check_popen_timeout(sp):
-                (out, err) = sp.communicate(input=None)
-            if sp.returncode == 0:
-                log.debug("Successfuly sent condor_on to %s" % (machine_name))
+            if not utilities.check_popen_timeout(sp1):
+                (out, err) = sp1.communicate(input=None)
+            ret1 = -1
+            if out.startswith("Sent"):
+                ret1 = 0
+            if sp1.returncode == 0 and ret1 == 0:
+                log.debug("Successfuly sent condor_off startd to %s" % (machine_name))
             else:
-                log.debug("Failed to send condor_on to %s" % (machine_name))
-                log.debug("Reason: %s \n Error: %s" % (out, err))
-            return sp.returncode
+                log.debug("Failed to send condor_off startd to %s" % (machine_name))
+                log.debug("Reason: %s" % out) 
+                log.debug("Error: %s" % err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "")
+            return (-1, "", "", "")
         except:
-            log.exception("Problem running %s, unexpected error" % string.join(args, " "))
-            return (-1, "")
+            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            return (-1, "", "", "")
+        # Now send the startd on
+        try:
+            sp2 = subprocess.Popen(args2, shell=False,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if not utilities.check_popen_timeout(sp2):
+                (out, err) = sp2.communicate(input=None)
+            ret2 = -1
+            if out.startswith("Sent"):
+                ret2 = 0
+            if sp2.returncode == 0 and ret2 == 0:
+                log.debug("Successfuly sent condor_off master to %s" % (machine_name))
+            else:
+                log.debug("Failed to send condor_off master to %s" % (machine_name))
+                log.debug("Reason: %s \n Error: %s" % (out, err))
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            return (-1, "", "", "")
+        except:
+            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            print args
+            return (-1, "", "", "")
+        return (sp1.returncode, ret1, sp2.returncode, ret2)
+        #try:
+            #sp = subprocess.Popen(args, shell=False,
+                                  #stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #if not utilities.check_popen_timeout(sp):
+                #(out, err) = sp.communicate(input=None)
+            #if sp.returncode == 0:
+                #log.debug("Successfuly sent condor_on to %s" % (machine_name))
+            #else:
+                #log.debug("Failed to send condor_on to %s" % (machine_name))
+                #log.debug("Reason: %s \n Error: %s" % (out, err))
+            #return sp.returncode
+        #except OSError, e:
+            #log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            #return (-1, "")
+        #except:
+            #log.exception("Problem running %s, unexpected error" % string.join(args, " "))
+            #return (-1, "")
 
     def find_vm_with_name(self, condor_name):
         """Find a VM in cloudscheduler with the given condor machine name(hostname)."""
@@ -1393,6 +1524,16 @@ class ResourcePool:
                     if vm.status == "Starting":
                         starting.append(vm)
         return starting
+    
+    def get_num_starting_vms(self):
+        """Count the number of starting state VMs."""
+        num_starting = 0
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.status == "Starting":
+                    num_starting += 1
+        log.debug("There are %i Starting VMs, the max_starting_vm is %i." % (num_starting, config.max_starting_vm))
+        return num_starting
 
     def get_starting_of_usertype(self, vmtype):
         """Get a list of the VMs in the Starting state of the given usertype."""
@@ -1404,13 +1545,31 @@ class ResourcePool:
                         starting.append(vm)
         return starting
 
+    def get_error_of_usertype(self, vmtype):
+        """Get a list of the VMs in the Error state of the given usertype."""
+        error = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.uservmtype == vmtype:
+                    if vm.status == "Error":
+                        error.append(vm)
+        return error
     def get_all_vms(self):
-        "Returns a list of all the VMs in the system."""
+        """Returns a list of all the VMs in the system."""
         all_vms = []
         for cluster in self.resources:
             for vm in cluster.vms:
                 all_vms.append(vm)
         return all_vms
+
+    def get_user_vms(self, user):
+        """Returns a list of all VMs of a user."""
+        user_vms = []
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.user == user:
+                    user_vms.append(vm)
+        return user_vms
 
     def get_cloud_config_output(self):
         """Build up a string of the cloudscheduler configuration values."""
@@ -1434,3 +1593,122 @@ class ResourcePool:
                 outputlist.append(']')
             outputlist.append('\n')
         return "".join(outputlist)
+
+    def shutdown_cluster_vm(self, clustername, vmid):
+        output = ""
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            vm = cluster.get_vm(vmid)
+            if vm:
+                # found the vm - shutdown
+                # move the vmdestroycmd thread into a better place and import so avilable here
+                thread = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
+                thread.start()
+                while thread.is_alive():
+                    time.sleep(1)
+                if not thread.is_alive():
+                    if thread.get_result() != 0:
+                        output = "Destroying VM %s failed. Leaving it for now." % thread.get_vm().id
+                    else:
+                        output = "VM %s has been Destroyed." % thread.get_vm().id
+                    thread.join()
+            else:
+                output = "Could not find VM with ID: %s on Cluster: %s." % (vmid, clustername)
+        else:
+            output = "Could not find a Cluster with name: %s." % clustername
+        return output
+
+    def shutdown_cluster_all(self, clustername):
+        output = ""
+        vmdesth = {}
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            for vm in cluster.vms:
+                th = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
+                vmdesth[vm.id] = th
+                th.start()
+            while len(vmdesth) > 0:
+                to_remove = []
+                for k, thread in vmdesth.iteritems():
+                    if not thread.is_alive():
+                        if thread.get_result() != 0:
+                            output += "Destroying VM %s failed. Leaving it for now.\n" % thread.get_vm().id
+                        else:
+                            output += "VM %s has been Destroyed.\n" % thread.get_vm().id
+                        thread.join()
+                        to_remove.append(k)
+                for k in to_remove:
+                    del vmdesth[k]
+        else:
+            output = "Could not find a Cluster with name: %s." % clustername
+        return output
+    
+    def remove_vm_no_shutdown(self, clustername, vmid):
+        output = ""
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            vm = cluster.get_vm(vmid)
+            if vm:
+                with cluster.vms_lock:
+                    cluster.vms.remove(vm)
+                cluster.resource_return(vm)
+                output = "Removed %s's VM %i from CloudScheduler." % (clustername, vmid)
+            else:
+                output = "Could not find that VM ID."
+        else:
+            output = "Could not find that Cloud name."
+        return output
+
+    def remove_all_vmcloud_no_shutdown(self, clustername):
+        cluster = self.get_cluster(clustername)
+        output = ""
+        if cluster:
+            for vm in reversed(cluster.vms):
+                with cluster.vms_lock:
+                    cluster.vms.remove(vm)
+                cluster.resource_return(vm)
+            output = "Removed all VMs from %s." % clustername
+        else:
+            output = "Could not find that Cloud name."
+        return output
+
+    def disable_cluster(self, clustername):
+        cluster = self.get_cluster(clustername)
+        ret = ""
+        if cluster:
+            cluster.enabled = False
+            ret = "Cloud: %s disabled." % clustername
+        else:
+            ret = "Could not find cloud %t." % clustername
+        return ret
+    
+    def enable_cluster(self, clustername):
+        cluster = self.get_cluster(clustername)
+        ret = ""
+        if cluster:
+            cluster.enabled = True
+            ret = "Cloud: %s enabled." % clustername
+        else:
+            ret = "Could not find cloud %t." % clustername
+        return ret
+
+
+class VMDestroyCmd(threading.Thread):
+    """
+    VMCmd - passing shutdown and destroy requests to a separate thread 
+    """
+
+    def __init__(self, cluster, vm, reason=""):
+        threading.Thread.__init__(self, name=self.__class__.__name__)
+        self.cluster = cluster
+        self.vm = vm
+        self.result = None
+        self.reason = reason
+    def run(self):
+        self.result = self.cluster.vm_destroy(self.vm, reason=self.reason)
+        if self.result != 0:
+            log.error("Failed to destroy vm %s" % self.vm.id)
+    def get_result(self):
+        return self.result
+    def get_vm(self):
+        return self.vm

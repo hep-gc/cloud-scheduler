@@ -28,7 +28,7 @@ ssh_path = "/usr/bin/ssh"
 openssl_path = "/usr/bin/openssl"
 condor_host = "localhost"
 condor_host_on_vm = ""
-condor_context_file = ""
+condor_context_file = "/etc/condor/central_manager"
 vm_lifetime = 10080
 cert_file = ""
 key_file = ""
@@ -41,6 +41,7 @@ cloud_resource_config = None
 image_attach_device = "sda"
 scratch_attach_device = "sdb"
 info_server_port = 8111
+admin_server_port = 8112
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
 job_ban_timeout = 60*60 # 1 hour default
@@ -75,6 +76,7 @@ vm_proxy_renewal_threshold = 60 * 60 # 60 minutes default
 vm_proxy_shutdown_threshold = 30 * 60 # 30 minutes default
 vm_connection_fail_threshold = 30 * 60 # 30 minutes default
 vm_idle_threshold = 5 * 60 # 5 minute default
+max_starting_vm = -1
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
@@ -131,6 +133,7 @@ def setup(path=None):
     global image_attach_device
     global scratch_attach_device
     global info_server_port
+    global admin_server_port
     global workspace_path
     global persistence_file
     global job_ban_timeout
@@ -165,6 +168,7 @@ def setup(path=None):
     global vm_proxy_shutdown_threshold
     global vm_connection_fail_threshold
     global vm_idle_threshold
+    global max_starting_vm
     global proxy_cache_dir
     global myproxy_logon_command
     global override_vmtype
@@ -310,6 +314,14 @@ def setup(path=None):
             info_server_port = config_file.getint("global", "info_server_port")
         except ValueError:
             print "Configuration file problem: info_server_port must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "admin_server_port"):
+        try:
+            info_server_port = config_file.getint("global", "admin_server_port")
+        except ValueError:
+            print "Configuration file problem: admin_server_port must be an " \
                   "integer value."
             sys.exit(1)
 
@@ -537,6 +549,16 @@ def setup(path=None):
             vm_idle_threshold = config_file.getint("global", "vm_idle_threshold")
         except ValueError:
             print "Configuration file problem: vm_idle_threshold must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "max_starting_vm"):
+        try:
+            max_starting_vm = config_file.getint("global", "max_starting_vm")
+            if max_starting_vm < -1:
+                max_starting_vm = -1
+        except ValueError:
+            print "Configuration file problem: max_starting_vm must be an " \
                   "integer value."
             sys.exit(1)
 

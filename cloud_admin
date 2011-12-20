@@ -1,0 +1,134 @@
+#!/usr/bin/env python
+# vim: set expandtab ts=4 sw=4:
+
+# Copyright (C) 2009 University of Victoria
+# You may distribute under the terms of either the GNU General Public
+# License or the Apache v2 License, as specified in the README file.
+
+# cloud_status - tool to display information about cloud scheduler
+# 
+import xmlrpclib
+import sys
+import socket
+from optparse import OptionParser
+import logging
+import platform
+
+import cloudscheduler.utilities as utilities 
+log = utilities.get_cloudscheduler_logger()
+
+import cloudscheduler.cloud_management as cloud_management
+import cloudscheduler.config as config
+
+def main(argv=None):
+
+    # Parse command line options
+    parser = OptionParser()
+    parser.add_option("-f", "--config-file", dest="config_file", metavar="FILE",
+                      help="Designate a Cloud Sceduler config file")
+    parser.add_option("-s", "--server-hostname", dest="server_hostname",
+                      metavar="HOSTNAME",
+                      help="Pick a specific machine's Cloud Scheduler"
+                           "information server")
+    parser.add_option("-P", "--port", dest="port", metavar="PORT",
+                      help="Pick a custom port to connect to Cloud Scheduler"
+                           "information server")
+    parser.add_option("-a", "--all", action="store_true", 
+                      dest="all", default=False, 
+                      help="Apply Operation to All [VMs, Jobs, etc]")
+    parser.add_option("-k", "--kill-vm", dest="killvm", action="store_true", 
+                      default=False, help="Kill a VM, must specify cloud and VM ID.")
+    parser.add_option("-c", "--cloud", dest="cloud_name", metavar="NAME", 
+                      help="Cloud name for operation.")
+    parser.add_option("-n", "--vm-id", dest="vm_id", metavar="ID", 
+                      help="The VM ID of VM for operation.")
+    parser.add_option("-p", "--refresh-proxy", metavar="PROXYTYPE", action="store",
+                      dest="proxy_refresh", type="choice", choices=['vm','job'], help="Refresh Proxies for user")
+    parser.add_option("-u", "--user", dest="user", action="store", metavar="USER", help="User to perform operation on")
+    parser.add_option("-r", "--reconfig", dest="reconfig", action="store_true", default=False, help="Reload cloud_resources.conf")
+    parser.add_option("-l", "--log-level", dest="log_level", action="store", type="choice", choices=['VERBOSE', 'DEBUG', 'WARNING', 'ERROR', 'INFO', 'CRITICAL'], help="Change the logging level")
+    parser.add_option("-e", "--enable", dest="enable", action="store", metavar="NAME", help="Enable cloud NAME")
+    parser.add_option("-d", "--disable", dest="disable", action="store", metavar="NAME", help="Disable cloud NAME")
+    parser.add_option("-m", "--remove", dest="remove", action="store_true", help="Remove a VM from the Cloudscheduler. Requires -c name, and -n id or -a all.")
+    
+
+    (cli_options, args) = parser.parse_args()
+
+    # Initialize config
+    if cli_options.config_file:
+        config.setup(cli_options.config_file)
+    else:
+        config.setup()
+
+
+    # Get port to connect to info server.
+    #   Precedence: -p argument, then from config module
+    if cli_options.port:
+        server_port = cli_options.port
+    else:
+        server_port = config.admin_server_port
+
+    if cli_options.server_hostname:
+        server_hostname = cli_options.server_hostname
+    else:
+        server_hostname = platform.node()
+
+    # Connect to info server
+    try:
+        s = xmlrpclib.ServerProxy("http://%s:%s" %
+                                  (server_hostname, server_port))
+        if cli_options.killvm:
+            if cli_options.cloud_name:
+                if cli_options.vm_id:
+                    print s.shutdown_vm(cli_options.cloud_name, cli_options.vm_id)
+                elif cli_options.all:
+                    print s.shutdown_cluster_all(cli_options.cloud_name)
+                else:
+                    print "Must provide a -n [VM ID] or -a to kill all VMs on this cloud."
+            else:
+                print "Must Provide the cloud name to kill VMs on and the VM ID or all flag."
+        if cli_options.remove:
+            if cli_options.cloud_name:
+                if cli_options.vm_id:
+                    print s.delete_vm_entry(cli_options.cloud_name, cli_options.vm_id)
+                elif cli_options.all:
+                    print s.delete_all_vm_entry_cloud(cli_options.cloud_name)
+                else:
+                    print "Must provide a -n [VM ID] or -a to remove all VMs on this cloud."
+            else:
+                print "Must Provide the cloud name to remove VMs on and the VM ID or all flag."
+        elif cli_options.enable:
+            print s.enable_cloud(cli_options.enable)
+        elif cli_options.disable:
+            print s.disable_cloud(cli_options.disable)
+        elif cli_options.reconfig:
+            print s.cloud_resources_reconfig()
+        elif cli_options.log_level:
+            print s.change_log_level(cli_options.log_level)
+        elif cli_options.proxy_refresh:
+            if cli_options.user:
+                if cli_options.proxy_refresh.startswith('v'):
+                    print "Refreshing VM proxies for user %s." % cli_options.user
+                    s.refresh_vm_proxy_user(cli_options.user)
+                elif cli_options.proxy_refresh.startswith('j'):
+                        print "Refreshing Job proxies for user %s." % cli_options.user
+                        s.refresh_job_proxy_user(cli_options.user)
+                else:
+                    print "Unsupported Proxy type, enter 'job' or 'vm'."
+            else:
+                print "Must Specify a user with -u or --user."
+        else:
+            print "Run cloud_admin -h for help."
+
+
+    except socket.error:
+        print "%s: couldn't connect to cloud scheduler at %s on port %s."\
+               % (sys.argv[0], server_hostname, server_port)
+        print "Is the cloud scheduler running on port %s?" % server_port
+    except:
+        print "Unexpected error: ", sys.exc_info()[0], sys.exc_info()[1]
+        print "Is the cloud scheduler running on port %s?" % server_port
+
+
+if __name__ == "__main__":
+    sys.exit(main())

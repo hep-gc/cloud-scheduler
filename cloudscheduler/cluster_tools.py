@@ -142,11 +142,14 @@ class VM:
           % (name, id, clusteraddr, image, memory))
 
     def log(self):
+        """Log the VM to the info level."""
         log.info("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype,  self.user, self.status, self.clusteraddr))
     def log_dbg(self):
+        """Log the VM to the debug level."""
         log.debug("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.user, self.status, self.clusteraddr))
 
     def get_vm_info(self):
+        """Formatted VM information for use with cloud_status."""
         output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.status[-8:])
         if self.override_status != None:
             output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.override_status[-12:])
@@ -154,55 +157,63 @@ class VM:
 
     @staticmethod
     def get_vm_info_header():
+        """Formatted header for use with cloud_status vm info output."""
         return "%-11s %-23s %-20s %-10s %-12s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "USER", "STATUS", "CLUSTER")
 
     def get_vm_info_pretty(self):
+        """Header + VM info formatted output."""
         output = get_vm_info_header()
         output += get_vm_info()
         return output
 
     def get_proxy_file(self):
+        """Return the proxy file associated with the VM or None."""
         if hasattr(self, "proxy_file"):
             return self.proxy_file
         else:
             return None
 
     def get_myproxy_creds_name(self):
+        """Return the MyProxy credentials name associated with the VM or None."""
         if hasattr(self, "myproxy_creds_name"):
             return self.myproxy_creds_name
         else:
             return None
 
     def get_myproxy_server(self):
+        """Return the MyProxy server associated with the VM or None."""
         if hasattr(self, "myproxy_server"):
             return self.myproxy_server
         else:
             return None
 
     def get_myproxy_server_port(self):
+        """Return the MyProxy server port associated with the VM or None."""
         if hasattr(self, "myproxy_server_port"):
             return self.myproxy_server_port
         else:
             return None
 
 
-    # Use this method to get the expiry time of the VM's user proxy, if any.
-    # Note that lazy initialization is done;  the expiry time will be extracted from the
-    # user proxy the first time the method is called and then it will be cached in the
-    # instance variable.
-    #
-    # Returns the expiry time as a datetime.datetime instance (UTC), or None if there is no
-    # user proxy associated with this VM.
     def get_x509userproxy_expiry_time(self):
+        """Use this method to get the expiry time of the VM's user proxy, if any.
+        Note that lazy initialization is done;  the expiry time will be extracted
+        from the user proxy the first time the method is called and then it will
+        be cached in the instance variable.
+
+        Returns the expiry time as a datetime.datetime instance (UTC), or None
+        if there is no user proxy associated with this VM.
+        """
         if (self.x509userproxy_expiry_time == None) and (self.get_proxy_file() != None):
             self.x509userproxy_expiry_time = get_cert_expiry_time(self.get_proxy_file())
         return self.x509userproxy_expiry_time
 
-    # Use this method to trigger an update of the proxy expiry time next time it is checked.
-    # For example, this must be called right after the proxy has been renewed.
-    # See get_x509userproxy_expiry_time for more info about how the proxy expiry time is
-    # cached in memory.
     def reset_x509userproxy_expiry_time(self):
+        """Use this method to trigger an update of the proxy expiry time next
+        time it is checked. For example, this must be called right after the
+        proxy has been renewed. See get_x509userproxy_expiry_time for more info
+        about how the proxy expiry time is cached in memory.
+        """
         self.x509userproxy_expiry_time = None
 
 
@@ -227,7 +238,7 @@ class VM:
             return False
         td = expiry_time - datetime.datetime.utcnow()
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_renewal_threshold))
+        log.verbose("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_renewal_threshold))
         return td_in_seconds < config.vm_proxy_renewal_threshold
 
     # This method will test if a VM needs to be shutdown before proxy expiry, according
@@ -284,12 +295,14 @@ class ICluster:
         self.cpu_archs = cpu_archs
         self.network_pools = networks
         self.vm_slots = vm_slots
+        self.max_slots = vm_slots
         self.cpu_cores = cpu_cores
         self.storageGB = storage
-        self.max_storageGB = (storage)
+        self.max_storageGB = storage
         self.vms = [] # List of running VMs
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
+        self.enabled = True
 
         self.setup_logging()
         log.info("New cluster %s created" % self.name)
@@ -346,11 +359,14 @@ class ICluster:
     # to the vms[] list)
     def num_vms(self):
         return len(self.vms)
+    def slot_fill_ratio(self):
+        """Return a ratio of how 'full' the cluster is based on used slots / total slots."""
+        return (self.max_slots - self.vm_slots) / self.max_slots
     # Return a short form of cluster information
     def get_cluster_info_short(self):
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE")
-        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "ENABLED")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.enabled)
         return output
     # Return information about running VMs on Cluster
     def get_cluster_vms_info(self):
@@ -385,7 +401,7 @@ class ICluster:
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
-    def vm_destroy(self, vm, return_resources=True):
+    def vm_destroy(self, vm, return_resources=True, reason=""):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_destroy'
 
@@ -543,7 +559,12 @@ class NimbusCluster(ICluster):
         if vm_networkassoc == "":
             # No network specified, so just pick the first available one
             try:
-                vm_networkassoc = self.network_pools[0]
+                for netpool in self.net_slots.keys():
+                    if self.net_slots[netpool] > 0:
+                        vm_networkassoc = netpool
+                        break
+                if vm_networkassoc == "":
+                    vm_networkassoc = self.network_pools[0]
             except:
                 log.exception("No network pool available? Aborting vm creation.")
                 return self.ERROR
@@ -617,7 +638,15 @@ class NimbusCluster(ICluster):
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
             if err_type == 'NoProxy' or err_type == 'ExpiredProxy':
                 create_return = -1
-            elif err_type == 'NoSlotsInNetwork' or err_type =='NotEnoughMemory':
+            elif err_type == 'NoSlotsInNetwork':
+                with self.res_lock:
+                    if vm_networkassoc in self.net_slots.keys():
+                        self.net_slots[vm_networkassoc] = 0 # no slots remaining
+                create_return = -2
+            elif err_type =='NotEnoughMemory':
+                with self.res_lock:
+                    index = self.find_mementry(vm_mem)
+                    self.memory[index] = vm_mem - 1 # may still be memory, but just not enough for this vm
                 create_return = -2
 
             return create_return
@@ -680,7 +709,7 @@ class NimbusCluster(ICluster):
         return create_return
 
 
-    def vm_destroy(self, vm, return_resources=True, shutdown_first=True):
+    def vm_destroy(self, vm, return_resources=True, reason="", shutdown_first=True):
         """
         Shutdown, destroy and return resources of a VM to it's cluster
 
@@ -752,7 +781,7 @@ class NimbusCluster(ICluster):
         os.remove(vm_epr)
 
 
-        log.info("Destroyed vm %s on %s" % (vm.id, vm.clusteraddr))
+        log.info("Destroyed VM: %s Name: %s Reason: %s" % (vm.id, vm.hostname, reason))
 
         return destroy_return
 
@@ -784,8 +813,7 @@ class NimbusCluster(ICluster):
             #vm.hostname = self._extract_hostname(poll_out)
             new_status = self._extract_state(poll_out)
             if new_status == "Destroyed":
-                log.info("Discarding VM %s because Nimbus has destroyed it" % vm.id)
-                self.vm_destroy(vm, shutdown_first=False)
+                self.vm_destroy(vm, shutdown_first=False, reason="Nimbus has already destroyed VM")
                 vm.status = new_status
 
             elif new_status == "NoProxy":
@@ -979,7 +1007,7 @@ class NimbusCluster(ICluster):
         """
 
         # Check if you have no proxy
-        no_proxy = re.search("Defective credential detected.*not found", output)
+        no_proxy = re.search("Defective credential detected.", output)
         if no_proxy:
             return "NoProxy"
 
@@ -989,12 +1017,12 @@ class NimbusCluster(ICluster):
             return "ExpiredProxy"
 
         # Check if out of network slots
-        out_of_slots = re.search("Resource request denied: Error creating*network*not currently available", output)
+        out_of_slots = re.search("Resource request denied: Error creating workspace.s.. network", output)
         if out_of_slots:
             return "NoSlotsInNetwork"
 
         # Check if out of memory
-        out_of_memory = re.search("Resource request denied: Error creating*based on memory", output)
+        out_of_memory = re.search("Resource request denied: Error creating workspace.s.. based on memory", output)
         if out_of_memory:
             return "NotEnoughMemory"
 
@@ -1032,7 +1060,7 @@ class NimbusCluster(ICluster):
         with self.res_lock:
             remaining_net_slots = self.net_slots[vm.network] - 1
             if remaining_net_slots < 0:
-                raise NoResourceError("net_slots: " + vm.network)
+                raise NoResourcesError("net_slots: " + vm.network)
             ICluster.resource_checkout(self, vm)
             self.net_slots[vm.network] = remaining_net_slots
 
@@ -1104,6 +1132,24 @@ class EC2Cluster(ICluster):
 
             log.error("OpenNebula support isn't ready yet.")
             raise NotImplementedError
+
+        elif self.cloud_type == "OpenStack":
+            try:
+                region = boto.ec2.regioninfo.RegionInfo(name=self.name,
+                                                 endpoint=self.network_address)
+                connection = boto.connect_ec2(
+                                   aws_access_key_id=self.access_key_id,
+                                   aws_secret_access_key=self.secret_access_key,
+                                   is_secure=False,
+                                   region=region,
+                                   port=8773,
+                                   path="/services/Cloud",
+                                   )
+                log.debug("Created a connection to OpenStack (%s)" % self.name)
+
+            except boto.exception.EC2ResponseError, e:
+                log.error("Couldn't connect to OpenStack because: %s" %
+                            e.error_message)
         else:
             log.error("EC2Cluster don't know how to handle a %s cluster." %
                                                                self.cloud_type)
@@ -1261,7 +1307,7 @@ class EC2Cluster(ICluster):
             self.resource_checkout(new_vm)
         except:
             log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-            self.vm_destroy(new_vm)
+            self.vm_destroy(new_vm, reason="Failed Resource checkout")
             return self.ERROR
 
         self.vms.append(new_vm)
@@ -1315,7 +1361,7 @@ class EC2Cluster(ICluster):
         return vm.status
 
 
-    def vm_destroy(self, vm, return_resources=True):
+    def vm_destroy(self, vm, return_resources=True, reason=""):
         """
         Shutdown, destroy and return resources of a VM to it's cluster
 
@@ -1323,7 +1369,7 @@ class EC2Cluster(ICluster):
         vm -- vm to shutdown and destroy
         return_resources -- if set to false, do not return resources from VM to cluster
         """
-        log.debug("Destroying vm with instance id %s" % vm.id)
+        log.info("Destroying VM: %s Name: %s Reason: %s" % (vm.id, vm.hostname, reason))
 
         try:
             connection = self._get_connection()
@@ -1339,10 +1385,10 @@ class EC2Cluster(ICluster):
         except IndexError:
             log.warning("%s already seem to be gone... removing anyway." % vm.id)
         except boto.exception.EC2ResponseError, e:
-            log.exception("Couldn't connect to cloud to destroy vm!")
+            log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
             return self.ERROR
         except:
-            log.exception("Unexpected error destroying vm!")
+            log.exception("Unexpected error destroying VM: !" % vm.id)
 
         # Delete references to this VM
         if return_resources:
