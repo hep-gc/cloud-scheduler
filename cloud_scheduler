@@ -1225,7 +1225,7 @@ class Cleanup(threading.Thread):
 
     def remove_idle_machines(self, machineList, to_remove):
         for vmtype, count in to_remove.iteritems():
-            log.debug("Attemping to remove %i VMs of type %s" % (count, vmtype))
+            log.debug("Attempting to remove %i VMs of type %s" % (count, vmtype))
             criteria = {'VMType': vmtype.split(':')[1], 'State': 'Unclaimed', 'Activity': 'Idle'}
             unused_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
             num_to_shutdown = 0
