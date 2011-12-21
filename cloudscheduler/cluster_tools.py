@@ -534,6 +534,10 @@ class NimbusCluster(ICluster):
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
         self.net_slots = netslots
+        total_pool_slots = 0
+        for pool in self.net_slots.keys():
+            total_pool_slots += self.net_slots[pool]
+        self.max_slots = total_pool_slots
 
     def get_cluster_info_short(self):
         output = "Cluster: %s \n" % self.name
@@ -1073,6 +1077,12 @@ class NimbusCluster(ICluster):
             self.net_slots[vm.network] += 1
             ICluster.resource_return(self, vm)
 
+    def slot_fill_ratio(self):
+        """Return a ratio of how 'full' the cluster is based on used slots / total slots."""
+        remaining_total_slots = 0
+        for pool in self.net_slots.keys():
+            remaining_total_slots += self.net_slots[pool]
+        return (self.max_slots - self.remaining_total_slots) / self.max_slots
 
 class EC2Cluster(ICluster):
 
