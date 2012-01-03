@@ -1082,7 +1082,7 @@ class NimbusCluster(ICluster):
         remaining_total_slots = 0
         for pool in self.net_slots.keys():
             remaining_total_slots += self.net_slots[pool]
-        return (self.max_slots - self.remaining_total_slots) / self.max_slots
+        return (self.max_slots - remaining_total_slots) / self.max_slots
 
 class EC2Cluster(ICluster):
 
