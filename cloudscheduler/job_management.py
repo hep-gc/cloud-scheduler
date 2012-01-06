@@ -631,7 +631,7 @@ class JobPool:
             return
 
         # Filter out any jobs in an error status (from the given job list)
-        for job in query_jobs:
+        for job in reversed(query_jobs):
             if job.job_status >= self.ERROR or job.job_status == self.REMOVED or job.job_status == self.COMPLETE:
                 query_jobs.remove(job)
 
