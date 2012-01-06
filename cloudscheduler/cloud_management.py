@@ -1652,11 +1652,11 @@ class ResourcePool:
                 with cluster.vms_lock:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
-                output = "Removed %s's VM %i from CloudScheduler." % (clustername, vmid)
+                output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
             else:
                 output = "Could not find that VM ID."
         else:
-            output = "Could not find that Cloud name."
+            output = "Could not find Cloud %s." % clustername
         return output
 
     def remove_all_vmcloud_no_shutdown(self, clustername):
@@ -1669,7 +1669,7 @@ class ResourcePool:
                 cluster.resource_return(vm)
             output = "Removed all VMs from %s." % clustername
         else:
-            output = "Could not find that Cloud name."
+            output = "Could not find Cloud %s." % clustername
         return output
 
     def disable_cluster(self, clustername):
@@ -1679,7 +1679,7 @@ class ResourcePool:
             cluster.enabled = False
             ret = "Cloud: %s disabled." % clustername
         else:
-            ret = "Could not find cloud %t." % clustername
+            ret = "Could not find cloud %s." % clustername
         return ret
     
     def enable_cluster(self, clustername):
@@ -1689,7 +1689,7 @@ class ResourcePool:
             cluster.enabled = True
             ret = "Cloud: %s enabled." % clustername
         else:
-            ret = "Could not find cloud %t." % clustername
+            ret = "Could not find cloud %s." % clustername
         return ret
 
 
