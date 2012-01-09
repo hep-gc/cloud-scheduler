@@ -1003,12 +1003,14 @@ class ResourcePool:
         #return types
     
     def vm_slots_total(self):
+        """Provides a count of the vm slots across all clusters in the system."""
         count = 0
         for cluster in self.resources:
             count += cluster.max_slots
         return count
             
     def vm_slots_available(self):
+        """Provides a count of all available vm slots across all clusters in the system."""
         count = 0
         for cluster in self.resources:
             count += cluster.vm_slots
@@ -1595,6 +1597,7 @@ class ResourcePool:
         return "".join(outputlist)
 
     def shutdown_cluster_vm(self, clustername, vmid):
+        """Manually shutdown a VM, for use by cloud_admin."""
         output = ""
         cluster = self.get_cluster(clustername)
         if cluster:
@@ -1619,6 +1622,7 @@ class ResourcePool:
         return output
 
     def shutdown_cluster_all(self, clustername):
+        """Manually shutdown all VMs on a cluster, for use by cloud_admin."""
         output = ""
         vmdesth = {}
         cluster = self.get_cluster(clustername)
@@ -1644,6 +1648,7 @@ class ResourcePool:
         return output
     
     def remove_vm_no_shutdown(self, clustername, vmid):
+        """Remove a VM entry from Cloudscheduler without issuing a shutdown to the cluster, for use by cloud_admin."""
         output = ""
         cluster = self.get_cluster(clustername)
         if cluster:
@@ -1660,6 +1665,7 @@ class ResourcePool:
         return output
 
     def remove_all_vmcloud_no_shutdown(self, clustername):
+        """Remove all VM entries from a cluster without issuing shutdowns to the IaaS, for use by cloud_admin."""
         cluster = self.get_cluster(clustername)
         output = ""
         if cluster:
@@ -1673,6 +1679,7 @@ class ResourcePool:
         return output
 
     def disable_cluster(self, clustername):
+        """Toggles the enabled flag for a cluster, for use by cloud_admin."""
         cluster = self.get_cluster(clustername)
         ret = ""
         if cluster:
@@ -1683,6 +1690,7 @@ class ResourcePool:
         return ret
     
     def enable_cluster(self, clustername):
+        """Toggles the enabled flag for a cluster, for use by cloud_admin."""
         cluster = self.get_cluster(clustername)
         ret = ""
         if cluster:

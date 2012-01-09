@@ -217,22 +217,24 @@ class VM:
         self.x509userproxy_expiry_time = None
 
 
-    # This method will test if a VM's user proxy is expired.
-    #
-    # Returns True if the proxy is expired, False otherwise.
     def is_proxy_expired(self):
+        """Test if a VM's user proxy is expired.
+
+        Returns True if the proxy is expired, False otherwise.
+        """
         expiry_time = self.get_x509userproxy_expiry_time()
         if expiry_time == None:
             return False
         return expiry_time <= datetime.datetime.utcnow()
 
 
-    # This method will test if a VM's user proxy needs to be refreshed, according
-    # the VM proxy refresh threshold found in the cloud scheduler configuration.
-    #
-    # Returns True if the proxy needs to be refreshed, or False otherwise (or if
-    # the VM has no user proxy associated with it).
     def needs_proxy_renewal(self):
+        """Test if a VM's user proxy needs to be refreshed, according
+        the VM proxy refresh threshold found in the cloud scheduler configuration.
+
+        Returns: True if the proxy needs to be refreshed, or 
+                 False otherwise (or if the VM has no user proxy associated with it).
+        """
         expiry_time = self.get_x509userproxy_expiry_time()
         if expiry_time == None:
             return False
@@ -241,12 +243,13 @@ class VM:
         log.verbose("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_renewal_threshold))
         return td_in_seconds < config.vm_proxy_renewal_threshold
 
-    # This method will test if a VM needs to be shutdown before proxy expiry, according
-    # the VM proxy shutdown threshold found in the cloud scheduler configuration.
-    #
-    # Returns True if the VM needs to be shutdown, or False otherwise (or if
-    # the VM has no user proxy associated with it).
     def needs_proxy_shutdown(self):
+        """This method will test if a VM needs to be shutdown before proxy expiry, according
+        the VM proxy shutdown threshold found in the cloud scheduler configuration.
+
+        Returns: True if the VM needs to be shutdown
+                 False otherwise (or if the VM has no user proxy associated with it).
+        """
         expiry_time = self.get_x509userproxy_expiry_time()
         if expiry_time == None:
             return False
@@ -255,10 +258,11 @@ class VM:
         log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_shutdown_threshold))
         return td_in_seconds < config.vm_proxy_shutdown_threshold
 
-    # The following method will return the environment that should
-    # be used when executing subprocesses.  This is needed for setting
-    # the user's x509 proxy for example.
     def get_env(self):
+        """The following method will return the environment that should
+        be used when executing subprocesses.  This is needed for setting
+        the user's x509 proxy for example.
+        """
         env = None
         if self.get_proxy_file() != None:
             env = {'X509_USER_PROXY':self.get_proxy_file()}
@@ -308,23 +312,26 @@ class ICluster:
         log.info("New cluster %s created" % self.name)
 
     def __getstate__(self):
+        """Override to work with pickle module."""
         state = self.__dict__.copy()
         del state['vms_lock']
         del state['res_lock']
         return state
 
     def __setstate__(self, state):
+        """Override to work with pickle module."""
         self.__dict__ = state
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
 
     def setup_logging(self):
+        """Fetch the global log object."""
         global log
         log = logging.getLogger("cloudscheduler")
 
 
-    # Print cluster information
     def log_cluster(self):
+        """Print cluster information to the log."""
         log.info("-" * 30 +
             "Name:\t\t%s\n"        % self.name +
             "Address:\t%s\n"       % self.network_address +
@@ -337,14 +344,14 @@ class ICluster:
             "Network Pools:\t%s\n" % string.join(self.network_pools, ", ") +
             "-" * 30)
 
-    # Print a short form of cluster information
     def log(self):
+        """Print a short form of cluster information to the log."""
         log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
           % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
           self.memory))
 
-    # Print the cluster 'vms' list (via VM print)
     def log_vms(self):
+        """Print the cluster 'vms' list (via VM print)."""
         if len(self.vms) == 0:
             log.info("CLUSTER %s has no running VMs..." % (self.name))
         else:
@@ -355,21 +362,25 @@ class ICluster:
 
     ## Support methods
 
-    # Returns the number of VMs running on the cluster (in accordance
-    # to the vms[] list)
     def num_vms(self):
+        """Returns the number of VMs running on the cluster (in accordance
+        to the vms[] list)
+        """
         return len(self.vms)
+
     def slot_fill_ratio(self):
         """Return a ratio of how 'full' the cluster is based on used slots / total slots."""
         return (self.max_slots - self.vm_slots) / self.max_slots
-    # Return a short form of cluster information
+
     def get_cluster_info_short(self):
+        """Return a short form of cluster information."""
         output = "Cluster: %s \n" % self.name
         output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "ENABLED")
         output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.enabled)
         return output
-    # Return information about running VMs on Cluster
+
     def get_cluster_vms_info(self):
+        """Return information about running VMs on Cluster as a string."""
         if len(self.vms) == 0:
             return ""
         else:
@@ -377,8 +388,9 @@ class ICluster:
             for vm in self.vms:
                 output += "%s %-15s\n" % (vm.get_vm_info()[:-1], self.name)
             return output
-    # Get VM with id
+
     def get_vm(self, vm_id):
+        """Get VM object with id value."""
         for vm in self.vms:
             if vm_id == vm.id:
                 return vm
@@ -412,15 +424,16 @@ class ICluster:
 
     ## Private VM methods
 
-    # Finds a memory entry in the Cluster's 'memory' list which supports the
-    # requested amount of memory for the VM. If multiple memory entries fit
-    # the request, returns the first suitable entry. Returns an exact fit if
-    # one exists.
-    # Parameters: memory - the memory required for VM creation
-    # Return: The index of the first fitting entry in the Cluster's 'memory'
-    #         list.
-    #         If no fitting memory entries are found, returns -1 (error!)
     def find_mementry(self, memory):
+        """Finds a memory entry in the Cluster's 'memory' list which supports the
+        requested amount of memory for the VM. If multiple memory entries fit
+        the request, returns the first suitable entry. Returns an exact fit if
+        one exists.
+        Parameters: memory - the memory required for VM creation
+        Return: The index of the first fitting entry in the Cluster's 'memory'
+        list.
+        If no fitting memory entries are found, returns -1 (error!)
+        """
         # Check for exact fit
         if (memory in self.memory):
             return self.memory.index(memory)
@@ -434,6 +447,10 @@ class ICluster:
         return(-1)
 
     def find_potential_mementry(self, memory):
+        """Check if a cluster contains a memory entry with adequate space for given memory value.
+        Returns: True if a valid memory entry is found
+                 False otherwise
+        """
         potential_fit = False
         for i in range(len(self.max_mem)):
             if self.max_mem[i] >= memory:
@@ -472,11 +489,12 @@ class ICluster:
             self.storageGB = remaining_storage
             self.memory[vm.mementry] = remaining_memory
 
-    # Returns the resources taken by the passed in VM to the Cluster's internal
-    # storage.
-    # Parameters: (as for checkout() )
-    # Notes: (as for checkout)
     def resource_return(self, vm):
+        """Returns the resources taken by the passed in VM to the Cluster's internal
+        storage.
+        Parameters: (as for checkout() )
+        Notes: (as for checkout)
+        """
         log.info("Returning resources used by VM %s to Cluster %s" % (vm.id, self.name))
         with self.res_lock:
             self.vm_slots += 1
@@ -540,6 +558,7 @@ class NimbusCluster(ICluster):
         self.max_slots = total_pool_slots
 
     def get_cluster_info_short(self):
+        """Returns formatted cluster information for use by cloud_status, Overloaded from baseclass to use net_slots."""
         output = "Cluster: %s \n" % self.name
         output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE")
         output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB)
@@ -548,8 +567,9 @@ class NimbusCluster(ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
             job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
-
+        """Attempt to boot up a new VM on the cluster."""
         def _remove_files(files):
+            """Private function to clean up temporary files created during the create process."""
             for file in files:
                 try:
                     if file:
@@ -853,18 +873,19 @@ class NimbusCluster(ICluster):
 
     ## NimbusCluster private methods
 
-    # As above, a function to encapsulate command execution via Popen.
-    # vm_execwait executes the given cmd list, waits for the process to finish,
-    # and returns the return code of the process. STDOUT and STDERR are stored
-    # in given parameters.
-    # Parameters:
-    #    (cmd as above)
-    # Returns:
-    #    ret   - The return value of the executed command
-    #    out   - The STDOUT of the executed command
-    #    err   - The STDERR of the executed command
-    # The return of this function is a 3-tuple
     def vm_execwait(self, cmd, env=None):
+        """As above, a function to encapsulate command execution via Popen.
+        vm_execwait executes the given cmd list, waits for the process to finish,
+        and returns the return code of the process. STDOUT and STDERR are stored
+        in given parameters.
+        Parameters:
+        (cmd as above)
+        Returns:
+            ret   - The return value of the executed command
+            out   - The STDOUT of the executed command
+            err   - The STDERR of the executed command
+        The return of this function is a 3-tuple
+        """
         out = ""
         err = ""
         try:
@@ -907,9 +928,12 @@ class NimbusCluster(ICluster):
             log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
             return -1
 
-    # The following _factory methods take the given parameters and return a list
-    # representing the corresponding workspace command.
     def vmcreate_factory(self, epr_file, metadata_file, request_file, optional_file=None):
+        """Takes the given paraments and creates a list representing a workspace command
+        used by Nimbus.
+        
+        Return: list
+        """
 
         ws_list = [config.workspace_path,
            "-z", "none",
@@ -929,14 +953,17 @@ class NimbusCluster(ICluster):
         return ws_list
 
     def vmdestroy_factory(self, epr_file):
+        """Create a workspace destroy command formatted list of arguments."""
         ws_list = [config.workspace_path, "-e", epr_file, "--destroy"]
         return ws_list
 
     def vmshutdown_factory(self, epr_file):
+        """Create a workspace shutdown command formatted list of arguments."""
         ws_list = [config.workspace_path, "-e", epr_file, "--shutdown"]
         return ws_list
 
     def vmpoll_factory(self, epr_file):
+        """Create a workspace poll(rpquery) command formatted list of arguments."""
         ws_list = [config.workspace_path, "-e", epr_file, "--rpquery"]
         return ws_list
 
@@ -1068,11 +1095,12 @@ class NimbusCluster(ICluster):
             ICluster.resource_checkout(self, vm)
             self.net_slots[vm.network] = remaining_net_slots
 
-    # Returns the resources taken by the passed in VM to the Cluster's internal
-    # storage.
-    # Parameters: (as for checkout() )
-    # Notes: (as for checkout)
     def resource_return(self, vm):
+        """Returns the resources taken by the passed in VM to the Cluster's internal
+        storage.
+        Parameters: (as for checkout() )
+        Notes: (as for checkout)
+        """
         with self.res_lock:
             self.net_slots[vm.network] += 1
             ICluster.resource_return(self, vm)
@@ -1197,6 +1225,7 @@ class EC2Cluster(ICluster):
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
                   job_per_core=False):
+        """Attempt to boot a new VM on the cluster."""
 
         log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
 
@@ -1326,6 +1355,7 @@ class EC2Cluster(ICluster):
 
 
     def vm_poll(self, vm):
+        """Query the cloud service for information regarding a VM."""
         try:
             log.verbose("Polling vm with instance id %s" % vm.id)
             connection = self._get_connection()
