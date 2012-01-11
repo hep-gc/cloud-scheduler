@@ -155,6 +155,8 @@ class VMPoller(threading.Thread):
                     #    continue
 
     def handle_bad_image(self, user, image):
+        """Respond to image url with a failed Http response, will attempt to 
+        condor_hold those jobs so they will not be considered for scheduling."""
         log.info("User %s has job(s) with bad image location: %s - temporarily banning those jobs" % (user, image))
         user_jobs = self.job_pool.job_container.get_jobs_for_user(user)
         jobs_to_hold = []
@@ -169,6 +171,8 @@ class VMPoller(threading.Thread):
         self.job_pool.hold_jobSOAP(jobs_to_hold)
 
     def check_destroy_threads(self):
+        """Checks the  VM destroy thread list for threads that have finished
+        execution and cleans them up."""
         to_remove = []
         for k, thread in self.destroy_threads.iteritems():
             if not thread.is_alive():
@@ -179,12 +183,17 @@ class VMPoller(threading.Thread):
         for key in to_remove:
             del self.destroy_threads[key]
     def check_destroy(self, cluster, vm):
+        """Checks the destroy thread list to make sure the VM to be shutdown is not
+        already in the process of being destroyed."""
         found = False
         if "".join([cluster.name, vm.id]) in self.destroy_threads.keys():
             found = True
         return found
 
     def check_shared_objs(self):
+        """Debuging output check for cloud_status to help make sure the shared
+        references to the resource pool and job pool instances are the same across
+        threads."""
         output = ""
         output += "Resource Pool: " + str(self.resource_pool) + "\n"
         output += "Job Pool: " + str(self.job_pool) + "\n"
@@ -245,6 +254,9 @@ class JobPoller(threading.Thread):
             log.error(traceback.format_exc())
 
     def check_shared_objs(self):
+        """Debuging output check for cloud_status to help make sure the shared
+        references to the resource pool and job pool instances are the same across
+        threads."""
         output = ""
         output += "Job Pool: " + str(self.job_pool) + "\n"
         return output
@@ -283,6 +295,9 @@ class MachinePoller(threading.Thread):
         log.debug("Exiting machine polling thread")
 
     def check_shared_objs(self):
+        """Debuging output check for cloud_status to help make sure the shared
+        references to the resource pool and job pool instances are the same across
+        threads."""
         output = ""
         output += "Resource Pool: " + str(self.resource_pool) + "\n"
         return output
@@ -755,6 +770,9 @@ class Scheduler(threading.Thread):
         return len(jobs_like_this) > len(vms_like_this)
 
     def check_shared_objs(self):
+        """Debuging output check for cloud_status to help make sure the shared
+        references to the resource pool and job pool instances are the same across
+        threads."""
         output = ""
         output += "Resource Pool: " + str(self.resource_pool) + "\n"
         output += "Job Pool: " + str(self.job_pool) + "\n"
@@ -1612,6 +1630,9 @@ class Cleanup(threading.Thread):
         return vmjobmatch
 
     def check_shared_objs(self):
+        """Debuging output check for cloud_status to help make sure the shared
+        references to the resource pool and job pool instances are the same across
+        threads."""
         output = ""
         output += "Resource Pool: " + str(self.resource_pool) + "\n"
         output += "Job Pool: " + str(self.job_pool) + "\n"
