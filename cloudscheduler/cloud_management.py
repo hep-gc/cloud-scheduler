@@ -1465,6 +1465,8 @@ class ResourcePool:
                     break
             if foundIt:
                 break
+        if not foundIt:
+            log.debug("Could not find a VM with name: %s" % condor_name)
         return vm_match
 
     def find_cluster_with_vm(self, condor_name):
