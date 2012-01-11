@@ -819,7 +819,9 @@ class NimbusCluster(ICluster):
 
         Note: If VM does not appear to be running any longer, it will be destroyed.
         """
+        # Retire not actually bad, just don't want that state overwritten
         bad_status = ("Destroyed", "NoProxy", "ExpiredProxy")
+        special_status = ("Retiring", "TempBanned", "HeldBadReqs", "HTTPFail")
         # Create an epr for our poll command
         vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
 
@@ -856,7 +858,7 @@ class NimbusCluster(ICluster):
                 vm.last_state_change = int(time.time())
                 vm.status = new_status
 
-            elif vm.override_status != None and new_status not in bad_status:
+            elif vm.override_status != None and new_status not in bad_status and vm.override_status not in special_status:
                 vm.override_status = None
                 vm.errorconnect = None
 
