@@ -384,6 +384,7 @@ class Scheduler(threading.Thread):
                 log.error("VM: %s, ID: %s" % (vm.name, vm.id))
 
     def scheduler_full_shutdown(self):
+        """Shutdown all VMs in the system and exit gracefully."""
         remaining_vms = []
         threadfail = False
         for cluster in self.resource_pool.resources:
@@ -409,6 +410,7 @@ class Scheduler(threading.Thread):
         return (remaining_vms, threadfail)
 
     def scheduler_fifo(self):
+        """Approximate First In First Out scheduling of jobs based on Condor Job ID."""
         existing_jobs = self.job_pool.job_container.get_scheduled_jobs_sorted_by_id()
         new_jobs = self.job_pool.job_container.get_unscheduled_jobs_sorted_by_id()
         machine_list = self.resource_pool.machine_list
@@ -457,6 +459,9 @@ class Scheduler(threading.Thread):
                     log.debug("Failed to retire VM")
         
     def scheduler_fair_share(self):
+        """Fair User Sharing algorithm.
+        Fairness based on configured resource distribution.
+        """
         ## Figure out distribution of VMs requested and available
         current_types = self.resource_pool.vmtype_distribution()
         desired_types = self.job_pool.job_type_distribution()
@@ -538,6 +543,10 @@ class Scheduler(threading.Thread):
                 #ENDFOR - Attempt to schedule each one job per user
 
     def sched_allow_over_allocation(self, diff_types, job):
+        """Determine if a VM request is allowed to have more than that users fairshare.
+        Handles cases where a user does not have their fairshare but there are no possible
+        resources to give them to increase that share, this will allow other users to
+        continue to use other remaining resources that the underallocated user is unable to use."""
         allow = False
         #retiring = self.resource_pool.retiring_vms_of_type(job.req_vmtype)
         retiring = self.resource_pool.retiring_vms_of_usertype(job.uservmtype)
@@ -577,6 +586,9 @@ class Scheduler(threading.Thread):
         return allow
 
     def sched_resource_create_track(self, user, job):
+        """Helper function to select the cloud to boot a VM on and then attempt
+        to create that VM. Optional failure/error tracking.
+        """
         # Find resources that match the job's requirements
         (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
@@ -613,6 +625,7 @@ class Scheduler(threading.Thread):
         return True
 
     def vm_creation(self, job, good_resources):
+        """Helper function for performaing the creation calls to IaaS clouds."""
         # Create an optional customization metadata file
         log.verbose("Preparing to create vm for job '%s'." % job.id)
         customizations = []
@@ -739,6 +752,8 @@ class Scheduler(threading.Thread):
         return create_ret
 
     def need_vm(self, user, userjob):
+        """Checks if a VM is needed or not - handles cases of multicore VMs registering with
+        multiple condor slots."""
         #TODO: clean this mess - or not looks like this function no longer being called.
         #vmtype = userjob.req_vmtype
         vmtype = userjob.uservmtype
@@ -863,6 +878,10 @@ class Cleanup(threading.Thread):
         log.debug("Exiting cleanup thread")
 
     def clean_invalid_jobs(self):
+        """Checks all unscheduled jobs to ensure there is a cloud that can
+        support their requirements.
+        Attempts to condor_hold jobs that match no clouds.
+        """
         bad_jobs = []
         cloud_names = []
         for cloud in self.resource_pool.resources:
@@ -885,12 +904,12 @@ class Cleanup(threading.Thread):
             self.job_pool.job_container.remove_jobs(failedhold)
 
     def clean_balance_vms_fifo(self):
-        # This function overrides the fairshare balancing function.
+        """This function overrides the fairshare balancing function."""
         # VM shutdowns are handled in the main scheduling function: scheduler_fifo()
         pass
 
     def clean_balance_vms_fairshare(self):
-
+        """Primary balancing function for the fairshare scheduling algorithm."""
         # Count the number of jobs that require a certain VM type,
         # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
         log.debug("Gathering required VM types.")
@@ -988,6 +1007,8 @@ class Cleanup(threading.Thread):
             log.debug("No Machines returned by Condor Collector Query")
 
     def clean_determine_num_to_change(self, diff_types, required_vmtypes_dict):
+        """Attempts to calculate the number of VMs of each type that CS wants to 
+        start or shutdown in order to achieve a balanced resource distribution."""
         num_to_change = {}
         free_space_for_vmtype = {}
         vm_count = self.resource_pool.vm_count()
@@ -1110,6 +1131,8 @@ class Cleanup(threading.Thread):
         return num_to_change
 
     def clean_unneeded_vms(self):
+        """Looks for VMs that are no longer required by the remaining jobs and 
+        performs a shutdown on them."""
         #req_vmtypes = self.job_pool.get_required_vmtypes()
         req_vmtypes = self.job_pool.get_required_uservmtypes()
         for cluster in self.resource_pool.resources:
@@ -1125,6 +1148,9 @@ class Cleanup(threading.Thread):
                     #    log.error("(cleanup) - Destroying VM failed in attempt to clear uneeded VM. Leaving VM.")
 
     def clean_scheduled_unscheduled(self):
+        """Moves any running jobs into the scheduled state.
+        If there are more Scheduled jobs than VMs of that type will Unschedule
+        the difference so more VMs can be booted."""
         # We need the setup lock to ensure that we don't set jobs to
         # unscheduled during a reconfig.
         with self.resource_pool.setup_lock:
@@ -1152,6 +1178,8 @@ class Cleanup(threading.Thread):
                         job_req_count[job.uservmtype] -= 1
 
     def clean_check_diff_vms_machines(self, machineList, retired=False):
+        """Determines the difference between the results from condor_status
+        and CS' internal representation of VMs."""
         unregisteredvms = []
         retiredvms = []
         resources = []
@@ -1186,6 +1214,7 @@ class Cleanup(threading.Thread):
         return unregisteredvms, retiredvms
 
     def clean_kill_unregistered_vms(self, unregisteredvms, retired = False):
+        """Checks to see if an unregistered VM is eligible for shutdown."""
         to_kill = []
         for vm in unregisteredvms:
             if vm.last_state_change == -1:
@@ -1214,6 +1243,7 @@ class Cleanup(threading.Thread):
                     break
 
     def clean_retired_vms(self, retiredvms, retired = False):
+        """Shuts down VMs that have finished Retiring."""
         for machine in retiredvms:
             killedIt = False
             resources = []
@@ -1232,6 +1262,7 @@ class Cleanup(threading.Thread):
                     break
 
     def clean_match_jobs_clouds(self):
+        """Determines which cloud a job is running on."""
         scheduled_jobs = self.job_pool.job_container.get_scheduled_jobs()
         for job in scheduled_jobs:
             if job.job_status == self.RUNNING and job.running_cloud == "" \
@@ -1242,6 +1273,7 @@ class Cleanup(threading.Thread):
                     job.running_vm = vm_match
 
     def remove_idle_machines(self, machineList, to_remove):
+        """Checks for idle machines to shutdown that are no longer required."""
         for vmtype, count in to_remove.iteritems():
             log.debug("Attempting to remove %i VMs of type %s" % (count, vmtype))
             criteria = {'VMType': vmtype.split(':')[1], 'State': 'Unclaimed', 'Activity': 'Idle'}
@@ -1308,6 +1340,8 @@ class Cleanup(threading.Thread):
                     log.debug("Unable to find Condor Machine %s in VM list" % unused_vms_of_type[x]['Name'])
 
     def balance_hard_shutdown(self, machineList, prevMachineList, num_to_change):
+        """One of the balancing options for fairshare scheduling. Performs
+        shutdowns without waiting for the current job to finish."""
         # Compare current Machine List with Previous
         # Looking for machines that have changed jobs since last check
         # and are of a type that has an higher than wanted distribution
@@ -1348,6 +1382,9 @@ class Cleanup(threading.Thread):
 
     # Deprecated
     def graceful_shutdown_condor_hold(self, diff_types, machineList, num_to_change):
+        """One of the old balancing methods for fairshare scheduling. Attempts to hold a 
+        users' idle jobs so that no more will start running thus allowing machines to
+        enter an idle state and be shutdown. This method is not recommended."""
         log.debug("Balancing via condor_hold.")
         log.warning("This method is deprecated, change graceful_shutdown_method in the config.")
         for vmtype in diff_types.keys():
@@ -1357,6 +1394,7 @@ class Cleanup(threading.Thread):
                 self.job_pool.release_vmtype(vmtype)
         self.remove_idle_machines(machineList, num_to_change)
     def filter_fitting_resources(self, num_to_change):
+        """Finds the clusters that are capable of booting VMs for a type of job."""
         #vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_type()
         vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
         
@@ -1371,6 +1409,7 @@ class Cleanup(threading.Thread):
         return set(fitting_clusters)
 
     def want_to_balance(self, num_to_change):
+        """Checks is balancing is necessary."""
         balance = False
         for key, val in num_to_change.iteritems():
             if num_to_change[key] < 0:
@@ -1379,6 +1418,9 @@ class Cleanup(threading.Thread):
         return balance
 
     def graceful_shutdown_condor_off(self, machineList, num_to_change):
+        """Suggested method for balancing in the fairshare scheduling method.
+        makes use of condor_off to put machines into a Retiring state so they will not
+        accept new jobs once their current job finishes execution."""
         log.debug("Balancing via condor_off, machines will be shutdown once finished current job.")
         fitting_set = self.filter_fitting_resources(num_to_change)
         internal_vms = self.resource_pool.get_vmtypes_count_internal()
@@ -1500,6 +1542,9 @@ class Cleanup(threading.Thread):
                         log.debug("Unable to turn condor on on machine %s" % retiring_vms_of_type[x].condorname)
 
     def clean_retire_near_lifetime(self):
+        """Forces a VM to retire that is nearing it's maximum lifetime. This is 
+        done to prevent a job's execution from being interupted by Nimbus shutting
+        down the VM at the maximum lifetime."""
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 # check job_run_times average run time against the vm lifetime
@@ -1515,12 +1560,15 @@ class Cleanup(threading.Thread):
                                 log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
 
     def check_destroy(self, cluster, vm):
+        """Make sure there is not already a destroy VM thread for this particular
+        cluster and VM."""
         found = False
         if "".join([cluster.name, vm.id]) in self.destroy_threads.keys():
             found = True
         return found
 
     def check_destroy_threads(self):
+        """See if any of the destroy request threads have finished."""
         to_remove = []
         for k, thread in self.destroy_threads.iteritems():
             if not thread.is_alive():
@@ -1532,6 +1580,9 @@ class Cleanup(threading.Thread):
             del self.destroy_threads[key]
 
     def check_vm_proxy_shutdown_threshold(self):
+        """For VMs with a proxy, if they have not been able to renew said proxy
+        by the threshold they will be shutdown to prevent that VM from entering
+        an ExpiredProxy state."""
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 if vm.needs_proxy_shutdown():
@@ -1541,6 +1592,9 @@ class Cleanup(threading.Thread):
                         self.destroy_threads["".join([cluster.name, vm.id])] = th
 
     def clean_verify_vm_job_reqs(self):
+        """Attempts to handle cases where a user has entered incorrect values for
+        the VM and requirements causing machines and jobs to be Idle even though it 
+        appears that there are VMs that should be able to run the job."""
         criteria = {'State': 'Unclaimed', 'Activity': 'Idle'}
         idle_vms = self.resource_pool.find_in_where(self.resource_pool.machine_list, criteria)
         to_shutdown = []
@@ -1685,7 +1739,7 @@ class GetClouds(threading.Thread):
 ## Functions
 ##
 def main():
-
+    """Main Function of CS, sets up all the required threads."""
     # Create a parser and process commandline arguments
     version_str = "Cloud Scheduler " + version.version
     parser = OptionParser(version=version_str)
@@ -1877,6 +1931,7 @@ def main():
 
 
 def term_handler(signal, handler):
+    """Custom SIGTERM handler."""
     log.info("Recieved SIGTERM signal")
     sys.exit()
 
@@ -1902,9 +1957,8 @@ def make_banned_job_fileload_handler(resource_pool):
 
     return reload_ban_handler
 
-# Sets the command-line options for a passed in OptionParser object (via optparse)
 def set_options(parser):
-
+    """Sets the command-line options for a passed in OptionParser object (via optparse)."""
     # Option attributes: action, type, dest, help. See optparse documentation.
     # Defaults: action=store, type=string, dest=[name of the option] help=none
     parser.add_option("-f", "--config-file", dest="config_file",
@@ -1920,6 +1974,7 @@ def set_options(parser):
                            "information is obtained")
 
 def get_cloud_scheduler_config_output():
+    """Returns the cloud_scheduler's configuration key values."""
     outputlist = []
     for attr in dir(config):
         if not attr.startswith('_'):
