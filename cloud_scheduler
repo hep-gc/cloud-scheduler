@@ -1428,6 +1428,8 @@ class Cleanup(threading.Thread):
         sched_jobs = self.job_pool.job_container.get_scheduled_jobs_by_usertype()
         unsched_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
         for vmtype, val in num_to_change.iteritems():
+            if val == 0:
+                continue # nothing to do here
             #retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
             retiring_vms_of_type = self.resource_pool.retiring_vms_of_usertype(vmtype)
             num_force = 0
