@@ -129,6 +129,7 @@ class VM:
         self.override_status = None
         self.job_per_core = job_per_core
         self.force_retire = False
+        self.failed_retire = False
         self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
         self.x509userproxy_expiry_time = None
 

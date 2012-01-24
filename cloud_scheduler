@@ -1533,7 +1533,7 @@ class Cleanup(threading.Thread):
                 if abs(adjusted_val) > len(retiring_vms_of_type):
                     adjusted_val = len(retiring_vms_of_type)
                 for x in range(0, abs(adjusted_val)):
-                    if retiring_vms_of_type[x].force_retire:
+                    if retiring_vms_of_type[x].force_retire or retiring_vms_of_type[x].failed_retire:
                         continue
 
                     ret = self.resource_pool.do_condor_on(retiring_vms_of_type[x].condorname, retiring_vms_of_type[x].condoraddr)
@@ -1542,6 +1542,7 @@ class Cleanup(threading.Thread):
                         retiring_vms_of_type[x].override_status = None
                     else:
                         log.debug("Unable to turn condor on on machine %s" % retiring_vms_of_type[x].condorname)
+                        retiring_vms_of_type[x].failed_retire = True
 
     def clean_retire_near_lifetime(self):
         """Forces a VM to retire that is nearing it's maximum lifetime. This is 
