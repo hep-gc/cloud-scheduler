@@ -1313,10 +1313,10 @@ class ResourcePool:
                 log.debug("Error: %s" % err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         # Now send the master off
         try:
             sp2 = subprocess.Popen(args3, shell=False,
@@ -1333,11 +1333,11 @@ class ResourcePool:
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
             print args
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
 
     def do_condor_on(self, machine_name, machine_addr):
@@ -1350,11 +1350,13 @@ class ResourcePool:
             the return code indicating success of failure to condor_on
         """
         cmd = '%s -subsystem startd -name "%s"' % (config.condor_on_command, machine_name)
+        cmd4 = '%s -subsystem master -name "%s"' % (config.condor_on_command, machine_name)
         cmd2 = '%s -addr "%s" -startd' % (config.condor_on_command, machine_addr)
         cmd3 = '%s -addr "%s" -master' % (config.condor_on_command, machine_addr)
         args = []
         args2 = []
         args3 = []
+        args4 = []
         if config.cloudscheduler_ssh_key:
             args.append(config.ssh_path)
             args.append('-i')
@@ -1362,6 +1364,11 @@ class ResourcePool:
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
             args.append(central_address)
             args.append(cmd)
+            args4.append(config.ssh_path)
+            args4.append('-i')
+            args4.append(config.cloudscheduler_ssh_key)
+            args4.append(central_address)
+            args4.append(cmd4)
 
             args2.append(config.ssh_path)
             args2.append('-i')
@@ -1380,21 +1387,26 @@ class ResourcePool:
             args.append('startd')
             args.append('-name')
             args.append(machine_name)
+            args4.append(config.condor_on_command)
+            args4.append('-name')
+            args4.append(machine_name)
+            args4.append('-subsystem')
+            args4.append('master')
 
-            args2.append(config.condor_off_command)
+            args2.append(config.condor_on_command)
             args2.append('-addr')
             args2.append(machine_addr)
             args2.append('-subsystem')
             args2.append('startd')
 
-            args3.append(config.condor_off_command)
+            args3.append(config.condor_on_command)
             args3.append('-addr')
             args3.append(machine_addr)
             args3.append('-subsystem')
             args3.append('master')
         # try to turn on master first
         try:
-            sp1 = subprocess.Popen(args3, shell=False,
+            sp1 = subprocess.Popen(args4, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if not utilities.check_popen_timeout(sp1):
                 (out, err) = sp1.communicate(input=None)
@@ -1402,20 +1414,20 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret1 = 0
             if sp1.returncode == 0 and ret1 == 0:
-                log.debug("Successfuly sent condor_off startd to %s" % (machine_name))
+                log.debug("Successfuly sent condor_on startd to %s" % (machine_name))
             else:
-                log.debug("Failed to send condor_off startd to %s" % (machine_name))
+                log.debug("Failed to send condor_on startd to %s" % (machine_name))
                 log.debug("Reason: %s" % out) 
                 log.debug("Error: %s" % err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         # Now send the startd on
         try:
-            sp2 = subprocess.Popen(args2, shell=False,
+            sp2 = subprocess.Popen(args, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if not utilities.check_popen_timeout(sp2):
                 (out, err) = sp2.communicate(input=None)
@@ -1423,17 +1435,17 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret2 = 0
             if sp2.returncode == 0 and ret2 == 0:
-                log.debug("Successfuly sent condor_off master to %s" % (machine_name))
+                log.debug("Successfuly sent condor_on master to %s" % (machine_name))
             else:
-                log.debug("Failed to send condor_off master to %s" % (machine_name))
+                log.debug("Failed to send condor_on master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
             print args
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
         #try:
             #sp = subprocess.Popen(args, shell=False,
