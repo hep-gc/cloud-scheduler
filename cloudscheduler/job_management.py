@@ -1077,7 +1077,7 @@ class JobPool:
         failed = []
         for job in jobs:
             try:
-                job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, None, False, False)
+                job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, "CloudSchedulerRelease", False, False)
                 if job_ret.code != "SUCCESS":
                     failed.append(job)
             except URLError, e:
