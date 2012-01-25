@@ -290,13 +290,14 @@ class ICluster:
     """
 
     def __init__(self, name="Dummy Cluster", host="localhost",
-                 cloud_type="Dummy", memory=[], cpu_archs=[], networks=[],
+                 cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
         self.memory = memory
         self.max_mem = tuple(memory)
+        self.max_vm_mem = max_vm_mem
         self.cpu_archs = cpu_archs
         self.network_pools = networks
         self.vm_slots = vm_slots
@@ -540,7 +541,7 @@ class NimbusCluster(ICluster):
     }
 
     def __init__(self, name="Dummy Cluster", host="localhost", port="8443",
-                 cloud_type="Dummy", memory=[], cpu_archs=[], networks=[],
+                 cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
                  netslots={}):
@@ -1199,7 +1200,7 @@ class EC2Cluster(ICluster):
 
 
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
-                 memory=[], cpu_archs=[], networks=[], vm_slots=0,
+                 memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None):
 

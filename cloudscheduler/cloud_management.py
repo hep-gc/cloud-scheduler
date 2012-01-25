@@ -238,6 +238,7 @@ class ResourcePool:
             if not enabled:
                 return None
         cloud_type = get_or_none(config, cluster, "cloud_type")
+        max_vm_mem = get_or_none(config, cluster, "max_vm_mem")
         if cloud_type == "Nimbus":
             nets = splitnstrip(",", get_or_none(config, cluster, "networks"))
             if len(nets) > 1:
@@ -254,6 +255,7 @@ class ResourcePool:
                     port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks = nets,
                     vm_slots = total_slots,
@@ -267,6 +269,7 @@ class ResourcePool:
                     host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
