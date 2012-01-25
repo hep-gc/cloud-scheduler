@@ -525,6 +525,8 @@ class HashTableJobContainer(JobContainer):
         with self.lock:
             job = self.get_job_by_id(jobid)
         if job != None:
+            if job.job_status != status and job.override_status != None:
+                job.override_status = None
             job.job_status = status
             job.remote_host = remote
             job.servertime = int(servertime)
