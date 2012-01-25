@@ -548,7 +548,7 @@ class NimbusCluster(ICluster):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
-                         memory=memory, cpu_archs=cpu_archs, networks=networks,
+                         memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage,)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
@@ -1206,7 +1206,7 @@ class EC2Cluster(ICluster):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
-                         memory=memory, cpu_archs=cpu_archs, networks=networks,
+                         memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage,)
 

@@ -239,6 +239,8 @@ class ResourcePool:
                 return None
         cloud_type = get_or_none(config, cluster, "cloud_type")
         max_vm_mem = get_or_none(config, cluster, "max_vm_mem")
+        max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
+
         if cloud_type == "Nimbus":
             nets = splitnstrip(",", get_or_none(config, cluster, "networks"))
             if len(nets) > 1:
@@ -255,7 +257,7 @@ class ResourcePool:
                     port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
-                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
+                    max_vm_mem = max_vm_mem,
                     cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks = nets,
                     vm_slots = total_slots,
@@ -358,6 +360,9 @@ class ResourcePool:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.net_slots[network] <= 0:
                 continue
+            # If request exceeds the max vm memory on cluster
+            if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
+                continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
                 continue
@@ -433,6 +438,9 @@ class ResourcePool:
             # If the cluster does not have the required CPU architecture
             if (cpuarch not in cluster.cpu_archs):
                 log.verbose("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
+                continue
+            # If request exceeds the max vm memory on cluster
+            if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
@@ -554,6 +562,9 @@ class ResourcePool:
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
                 continue
+            # If request exceeds the max vm memory on cluster
+            if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
+                continue
             if not cluster.find_potential_mementry(memory):
                 continue
             # Cluster meets network and cpu reqs and may have enough memory
@@ -589,6 +600,9 @@ class ResourcePool:
                 continue
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
+                continue
+            # If request exceeds the max vm memory on cluster
+            if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
             if not cluster.find_potential_mementry(memory):
                 continue
