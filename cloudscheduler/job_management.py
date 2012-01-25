@@ -1052,7 +1052,7 @@ class JobPool:
         failed = []
         for job in jobs:
             try:
-                job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, None, False, False, True)
+                job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, "CloudSchedulerHold", False, False, True)
                 if job_ret.code != "SUCCESS":
                     failed.append(job)
             except URLError, e:
