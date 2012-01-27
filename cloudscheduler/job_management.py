@@ -158,6 +158,7 @@ class Job:
         self.jobstarttime = JobStartDate
         self.banned = False
         self.ban_time = None
+        self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
 
         # Set the new job's status
         self.status = self.statuses[1]
@@ -636,7 +637,7 @@ class JobPool:
             return
 
         # Filter out any jobs in an error status (from the given job list)
-        for job in query_jobs:
+        for job in reversed(query_jobs):
             if job.job_status >= self.ERROR or job.job_status == self.REMOVED or job.job_status == self.COMPLETE:
                 query_jobs.remove(job)
 
@@ -1057,7 +1058,7 @@ class JobPool:
         failed = []
         for job in jobs:
             try:
-                job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, None, False, False, True)
+                job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, "CloudSchedulerHold", False, False, True)
                 if job_ret.code != "SUCCESS":
                     failed.append(job)
             except URLError, e:
@@ -1082,7 +1083,7 @@ class JobPool:
         failed = []
         for job in jobs:
             try:
-                job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, None, False, False)
+                job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, "CloudSchedulerRelease", False, False)
                 if job_ret.code != "SUCCESS":
                     failed.append(job)
             except URLError, e:
