@@ -1075,8 +1075,11 @@ class Cleanup(threading.Thread):
                                     num_fit_cloud = total_netpool_slots
                         else:
                             num_fit_cloud = cloud.vm_slots
-                        numstore = int(cloud.storageGB / job.req_storage)
-                        num_fit_cloud = numstore if numstore < num_fit_cloud else num_fit_cloud
+                        if job.req_storage == 0:
+                            numstore = -1
+                        else:
+                            numstore = int(cloud.storageGB / job.req_storage)
+                        num_fit_cloud = numstore if numstore < num_fit_cloud and numstore != -1 else num_fit_cloud
                         nummem = 0
                         for mement in cloud.memory:
                             nummem += (mement / job.req_memory)
