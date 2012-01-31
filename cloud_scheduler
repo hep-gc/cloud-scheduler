@@ -510,16 +510,16 @@ class Scheduler(threading.Thread):
                         for job in user_jobs[vmtype]:
     
                             if job.job_status >= self.RUNNING:
-                                log.verbose("Skipping job '%s' with status '%s'" % (job.id, job.job_status))
+                                log.verbose("Skipping %s job '%s' with status '%s'" % (job.uservmtype, job.id, job.job_status))
                                 continue
                             elif job.status == job.SCHEDULED:
-                                log.verbose("Skipping previously scheduled job '%s'" % job.id)
+                                log.verbose("Skipping %s previously scheduled job '%s'" % (job.uservmtype, job.id))
                                 continue
                             elif job.banned:
-                                log.verbose("Skipping banned job '%s'" % job.id)
+                                log.verbose("Skipping %s.banned job '%s'" % (job.uservmtype, job.id))
                                 continue
         
-                            log.verbose("Job '%s' not running or scheduled, trying to schedule it" % job.id)
+                            log.verbose("Job '%s' Type: %s not running or scheduled, trying to schedule it" % (job.id, job.uservmtype))
         
                             # Check that type of VM for job is needed
                             #if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
@@ -532,7 +532,7 @@ class Scheduler(threading.Thread):
                                             job.status = job.statuses[1]
                                     break
                                 else:
-                                    log.verbose("Failed to schedule job '%s' for user %s" % (job.id, user))
+                                    log.verbose("Failed to schedule %s job '%s' for user %s" % (job.uservmtype, job.id, user))
                                     break # only try one per user's job types
                             else:
                                 #log.verbose("User %s vmtype %s already has share" % (user, job.req_vmtype))
