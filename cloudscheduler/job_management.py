@@ -671,7 +671,7 @@ class JobPool:
 
         # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
         for job in query_jobs:
-            if job.high_priority == 0:
+            if job.high_priority == 0 or  not config.high_priority_job_support:
                 self.add_new_job(job)
             else:
                 self.add_high_job(job)
