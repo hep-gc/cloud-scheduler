@@ -1167,7 +1167,7 @@ class EC2Cluster(ICluster):
                 log.debug("Created a connection to Eucalyptus (%s)" % self.name)
 
             except boto.exception.EC2ResponseError, e:
-                log.error("Couldn't connect to Amazon EC2 because: %s" %
+                log.error("Couldn't connect to Eucalyptus EC2 because: %s" %
                                                                e.error_message)
 
         elif self.cloud_type == "OpenNebula":
