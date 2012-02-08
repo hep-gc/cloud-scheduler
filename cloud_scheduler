@@ -479,6 +479,7 @@ class Scheduler(threading.Thread):
         if len(diff_types) == 0:
             if len(self.job_pool.get_required_vmtypes()) != 0:
                 log.error("Possible discrepancy in diff_types detected.")
+
         ## Check failures to ban jobs on affected resources
         self.resource_pool.check_failures()
         if config.max_starting_vm < 0 or self.resource_pool.get_num_starting_vms() < config.max_starting_vm:
@@ -534,10 +535,16 @@ class Scheduler(threading.Thread):
                                 else:
                                     log.verbose("Failed to schedule %s job '%s' for user %s" % (job.uservmtype, job.id, user))
                                     break # only try one per user's job types
-                            else:
+                            elif job.uservmtype in diff_types.keys():
                                 #log.verbose("User %s vmtype %s already has share" % (user, job.req_vmtype))
                                 log.verbose("User %s vmtype %s already has share" % (user, job.uservmtype))
                                 # This user already has their share
+                                break
+                            elif job.uservmtype not in diff_types.keys():
+                                log.verbose("User %s vmtype %s not being considered for scheduling" % (user, job.uservmtype))
+                                break
+                            else:
+                                log.verbose("User %s vmtype %s not being scheduled. Exceptional case, report" % (user, job.uservmtype))
                                 break
                         # ENDFOR - for jobs in user's unscheduled job set
                 #ENDFOR - Attempt to schedule each one job per user
