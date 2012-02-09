@@ -315,6 +315,7 @@ class Scheduler(threading.Thread):
     COMPLETE = 4
     HELD     = 5
     ERROR    = 6
+    CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
 
     def __init__(self, resource_pool, job_pool):
         threading.Thread.__init__(self, name=self.__class__.__name__)
@@ -511,7 +512,7 @@ class Scheduler(threading.Thread):
                         for job in user_jobs[vmtype]:
     
                             if job.job_status >= self.RUNNING:
-                                log.verbose("Skipping %s job '%s' with status '%s'" % (job.uservmtype, job.id, job.job_status))
+                                log.verbose("Skipping %s job '%s' with status '%s'" % (job.uservmtype, job.id, CONDOR_STATUS(job.job_status)))
                                 continue
                             elif job.status == job.SCHEDULED:
                                 log.verbose("Skipping %s previously scheduled job '%s'" % (job.uservmtype, job.id))
