@@ -680,7 +680,7 @@ class NimbusCluster(ICluster):
         log.debug("Nimbus create command executed.")
 
         log.debug("Deleting temporary Nimbus Metadata files")
-        #_remove_files(nimbus_files)
+        _remove_files(nimbus_files)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
