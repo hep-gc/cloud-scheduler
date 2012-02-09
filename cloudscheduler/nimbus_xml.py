@@ -343,22 +343,22 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
         ncpu_el.appendChild(exactncpu_el)
         exactncpu_txt = doc.createTextNode(str(vm_cores))
         exactncpu_el.appendChild(exactncpu_txt)
-
-    #--lvl 2
-    storage_el = doc.createElementNS(root_nmspc, "Storage")
-    rsrcallocation_el.appendChild(storage_el)
-    #---lvl 3
-    entry_el = doc.createElementNS(root_nmspc, "entry")
-    storage_el.appendChild(entry_el)
-    #----lvl 4
-    partitionname_el = doc.createElementNS(root_nmspc, "partitionName")
-    entry_el.appendChild(partitionname_el)
-    #----lvl 4
-    diskspace_el = doc.createElementNS(jsdl_nmspc, "jsdl:IndividualDiskSpace")
-    entry_el.appendChild(diskspace_el)
-    #-----lvl 5
-    exactdisk_el = doc.createElementNS(jsdl_nmspc, "jsdl:Exact")
-    diskspace_el.appendChild(exactdisk_el)
+    if vm_storage and vm_storage > 0:
+        #--lvl 2
+        storage_el = doc.createElementNS(root_nmspc, "Storage")
+        rsrcallocation_el.appendChild(storage_el)
+        #---lvl 3
+        entry_el = doc.createElementNS(root_nmspc, "entry")
+        storage_el.appendChild(entry_el)
+        #----lvl 4
+        partitionname_el = doc.createElementNS(root_nmspc, "partitionName")
+        entry_el.appendChild(partitionname_el)
+        #----lvl 4
+        diskspace_el = doc.createElementNS(jsdl_nmspc, "jsdl:IndividualDiskSpace")
+        entry_el.appendChild(diskspace_el)
+        #-----lvl 5
+        exactdisk_el = doc.createElementNS(jsdl_nmspc, "jsdl:Exact")
+        diskspace_el.appendChild(exactdisk_el)
 
     #-lvl 1
     nodenumber_el = doc.createElementNS(root_nmspc, "NodeNumber")
@@ -407,7 +407,7 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
 
 
 
-def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
+def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_blankspace=True):
     """ Creates and returns a Nimbus workspace metadata XML string."""
 
     # Namespace variables for populating the xml file
@@ -509,15 +509,16 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation):
     #----lvl 4
     permissions_el = doc.createElementNS(def_nmspc, "def:permissions")
     rootVBD_el.appendChild(permissions_el)
-    #---lvl 3
-    blankspacePartition_el = doc.createElementNS(def_nmspc, "def:blankspacePartition")
-    diskCollection_el.appendChild(blankspacePartition_el)
-    #----lvl 4
-    partitionName_el = doc.createElementNS(def_nmspc, "def:partitionName")
-    blankspacePartition_el.appendChild(partitionName_el)
-    #----lvl 4
-    mountAsPartition_el = doc.createElementNS(def_nmspc, "def:mountAs")
-    blankspacePartition_el.appendChild(mountAsPartition_el)
+    if vm_blankspace:
+        #---lvl 3
+        blankspacePartition_el = doc.createElementNS(def_nmspc, "def:blankspacePartition")
+        diskCollection_el.appendChild(blankspacePartition_el)
+        #----lvl 4
+        partitionName_el = doc.createElementNS(def_nmspc, "def:partitionName")
+        blankspacePartition_el.appendChild(partitionName_el)
+        #----lvl 4
+        mountAsPartition_el = doc.createElementNS(def_nmspc, "def:mountAs")
+        blankspacePartition_el.appendChild(mountAsPartition_el)
 
 
     ##

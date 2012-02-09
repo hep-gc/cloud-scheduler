@@ -597,7 +597,7 @@ class NimbusCluster(ICluster):
 
         # Create a workspace metadata xml file
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
-                vm_cpuarch, vm_image)
+                vm_cpuarch, vm_image, vm_storage > 0)
 
         # Create a deployment request file
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(config.vm_lifetime, \
@@ -680,7 +680,7 @@ class NimbusCluster(ICluster):
         log.debug("Nimbus create command executed.")
 
         log.debug("Deleting temporary Nimbus Metadata files")
-        _remove_files(nimbus_files)
+        #_remove_files(nimbus_files)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
         # subtracted from
