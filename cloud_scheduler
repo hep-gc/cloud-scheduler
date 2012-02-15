@@ -512,7 +512,7 @@ class Scheduler(threading.Thread):
                         for job in user_jobs[vmtype]:
     
                             if job.job_status >= self.RUNNING:
-                                log.verbose("Skipping %s job '%s' with status '%s'" % (job.uservmtype, job.id, self.CONDOR_STATUS(job.job_status)))
+                                log.verbose("Skipping %s job '%s' with status '%s'" % (job.uservmtype, job.id, self.CONDOR_STATUS[job.job_status]))
                                 continue
                             elif job.status == job.SCHEDULED:
                                 log.verbose("Skipping %s previously scheduled job '%s'" % (job.uservmtype, job.id))
