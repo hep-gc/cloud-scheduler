@@ -291,7 +291,7 @@ class ICluster:
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0):
+                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen'):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
@@ -309,6 +309,7 @@ class ICluster:
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
         self.enabled = True
+        self.hypervisor = hypervisor
 
         self.setup_logging()
         log.info("New cluster %s created" % self.name)
@@ -544,13 +545,13 @@ class NimbusCluster(ICluster):
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 netslots={}):
+                 netslots={}, hypervisor='xen'):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage,)
+                         storage=storage, hypervisor=hypervisor)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
         self.net_slots = netslots
@@ -1202,13 +1203,14 @@ class EC2Cluster(ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
-                 access_key_id=None, secret_access_key=None, security_group=None):
+                 access_key_id=None, secret_access_key=None, security_group=None,
+                 hypervisor='xen'):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage,)
+                         storage=storage, hypervisor=hypervisor)
 
         if not security_group:
             security_group = "default"
