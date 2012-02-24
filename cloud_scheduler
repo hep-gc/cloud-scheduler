@@ -1135,7 +1135,7 @@ class Cleanup(threading.Thread):
                             num_to_change[postype] -= adjustby
                             if num_to_change[postype] < 0:
                                     num_to_change[postype] = 0
-        log.debug("Final num to change: %s" % str(num_to_change))
+        log.debug("End num to change: %s" % str(num_to_change))
         free_space = True
         for vmtype in free_space_for_vmtype.keys():
             if not free_space_for_vmtype[vmtype]:
