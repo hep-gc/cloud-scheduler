@@ -373,7 +373,7 @@ class ICluster:
 
     def slot_fill_ratio(self):
         """Return a ratio of how 'full' the cluster is based on used slots / total slots."""
-        return (self.max_slots - self.vm_slots) / self.max_slots
+        return (self.max_slots - self.vm_slots) / float(self.max_slots)
 
     def get_cluster_info_short(self):
         """Return a short form of cluster information."""
@@ -1115,7 +1115,7 @@ class NimbusCluster(ICluster):
         remaining_total_slots = 0
         for pool in self.net_slots.keys():
             remaining_total_slots += self.net_slots[pool]
-        return (self.max_slots - remaining_total_slots) / self.max_slots
+        return (self.max_slots - remaining_total_slots) / float(self.max_slots)
 
 class EC2Cluster(ICluster):
 
