@@ -485,8 +485,6 @@ class Scheduler(threading.Thread):
         self.resource_pool.check_failures()
         if config.max_starting_vm < 0 or self.resource_pool.get_num_starting_vms() < config.max_starting_vm:
             ## Schedule user jobs
-            # TODO: This should be less explicit in its reference to JobPool class parts.
-            #       Something like 'for job in self.job_pool.get_unsched_jobs()'
             log.debug("Schedule any high priority jobs")
             high_priority_jobs_by_users = self.job_pool.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
             for user in high_priority_jobs_by_users.keys():
@@ -501,7 +499,6 @@ class Scheduler(threading.Thread):
             if len(high_priority_jobs_by_users) == 0:
                 #unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
                 users = self.job_pool.job_container.get_users()
-                #log.verbose("Attempt to schedule user jobs: %s" % (unscheduled_jobs_by_users)) # not helpful
                 #for user in unscheduled_jobs_by_users.keys():
                 for user in users:
                     # Attempt to schedule jobs in order of their appearance in user's job list
