@@ -49,6 +49,7 @@ except:
 import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_cert_expiry_time
+from cloudscheduler.utilities import splitnstrip
 import job_containers
 from decimal import *
 
@@ -86,7 +87,7 @@ class Job:
              Iwd=None, SUBMIT_x509userproxy=None,
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", ServerTime=0, JobStartDate=0, **kwargs):
+             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen", **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -156,6 +157,7 @@ class Job:
         self.banned = False
         self.ban_time = None
         self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
+        self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
 
         # Set the new job's status
         self.status = self.statuses[1]
@@ -597,6 +599,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "JobStartDate")
                 _add_if_exists(xml_job, job_dictionary, "Iwd")
                 _add_if_exists(xml_job, job_dictionary, "SUBMIT_x509userproxy")
+                _add_if_exists(xml_job, job_dictionary, "VMHypervisor")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")

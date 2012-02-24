@@ -391,7 +391,7 @@ class ResourcePool:
 
 
     def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[],
-                              hypervisor='xen'):
+                              hypervisor=['xen']):
         """get a list of Clusters that fit the given VM/Job requirements.
         
         Keywords: (as for get_resource methods)
@@ -418,7 +418,7 @@ class ResourcePool:
         for cluster in clusters:
             if not cluster.enabled:
                 continue
-            if cluster.hypervisor != hypervisor:
+            if cluster.hypervisor not in hypervisor:
                 log.verbose("get_fitting_resources - Wrong hypervisor on %s" % cluster.name)
                 continue
             if cluster.__class__.__name__ == "NimbusCluster":
@@ -478,7 +478,7 @@ class ResourcePool:
         return fitting_clusters
 
 
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[]):
+    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[], hypervisor=['xen']):
         """
         Returns a resource that fits given requirements and fits some balance
         criteria between clusters (for example, lowest current load or most free
@@ -511,7 +511,7 @@ class ResourcePool:
 
         """
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets)
+        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets, hypervisor)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
@@ -553,7 +553,7 @@ class ResourcePool:
         # Return the most balanced cluster after considering all fitting clusters.
         return (mostbal_cluster, nextbal_cluster)
 
-    def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor='xen'):
+    def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
         """
         Check that a cluster will be able to meet the static requirements.
         Keywords:
@@ -571,7 +571,7 @@ class ResourcePool:
         for cluster in self.resources:
             if not cluster.enabled:
                 continue
-            if cluster.hypervisor != hypervisor:
+            if cluster.hypervisor not in hypervisor:
                 continue
             # If the cluster does not have the required CPU architecture
             if not (cpuarch in cluster.cpu_archs):
@@ -592,7 +592,7 @@ class ResourcePool:
         return potential_fit
 
     def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[],
-                                        hypervisor='xen'):
+                                        hypervisor=['xen']):
         """
         Determines which clouds could start a VM with the given requirements.
         
@@ -614,7 +614,7 @@ class ResourcePool:
         for cluster in clusters:
             if not cluster.enabled:
                 continue
-            if cluster.hypervisor != hypervisor:
+            if cluster.hypervisor not in hypervisor:
                 continue
             if not (cpuarch in cluster.cpu_archs):
                 continue
