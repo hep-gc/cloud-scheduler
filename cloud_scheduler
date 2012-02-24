@@ -707,13 +707,22 @@ class Scheduler(threading.Thread):
 
             #TODO: unify this
             if resource.__class__.__name__ == "NimbusCluster":
+                imageloc = job.req_imageloc
+                if len(job.req_hypervisor) > 1:
+                    if resource.hypervisor in job.req_hypervisor:
+                        if imageloc.endswith('/'):
+                            imageloc = ''.join([imageloc, resource.hypervisor])
+                        else:
+                            imageloc = ''.join([imageloc, '/', resource.hypervisor])
+                        pass
+                    pass
 
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
                         'vm_networkassoc':job.req_network,
                         'vm_cpuarch':job.req_cpuarch,
-                        'vm_image':job.req_imageloc,
+                        'vm_image':imageloc,
                         'vm_mem':job.req_memory,
                         'vm_cores':job.req_cpucores,
                         'vm_storage':job.req_storage,
