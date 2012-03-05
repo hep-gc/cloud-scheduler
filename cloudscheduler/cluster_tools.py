@@ -699,10 +699,14 @@ class NimbusCluster(ICluster):
             vm_id = re.search("Workspace created: id (\d*)", create_out).group(1)
         except:
             log.error("Couldn't find workspace id for new VM")
+            create_return = -3
+            return create_return
         try:
             vm_ip = re.search("IP address: (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", create_out).group(1)
         except:
             log.error("Couldn't find the ip address for new VM")
+            create_return = -3
+            return create_return
 
         # Get the first part of the hostname given to the VM
         vm_hostname = self._extract_hostname(create_out)
