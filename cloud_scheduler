@@ -970,7 +970,7 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     diff_types[vmtype] = -desired_types[vmtype]
-            log.debug("Diff Types: %s" % str(diff_types))
+            log.info("Diff Types: %s" % str(diff_types))
 
             num_to_change = self.clean_determine_num_to_change(diff_types, required_vmtypes_dict)
 
@@ -989,7 +989,7 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     next_diff_types[vmtype] = -desired_types[vmtype]
-            log.debug("Next Diff Types: %s" % str(diff_types))
+            log.info("Next Diff Types: %s" % str(diff_types))
             
             #       determine new num_to_change based on updated diff_types
             next_num_to_change = self.clean_determine_num_to_change(next_diff_types, required_vmtypes_dict)
@@ -1002,7 +1002,7 @@ class Cleanup(threading.Thread):
                         # Has fliped
                         # adjust num_to_change to prevent flipflop
                         num_to_change[vmtype] = 0
-            log.debug("Final(for real) num to change: %s" % str(num_to_change))
+            log.info("Final(for real) num to change: %s" % str(num_to_change))
 
             log.verbose("Ready to balance via configured method")
             if config.graceful_shutdown:
