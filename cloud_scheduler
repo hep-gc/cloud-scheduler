@@ -528,7 +528,7 @@ class Scheduler(threading.Thread):
                                         for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, \
                                         job, (job.req_cpucores - 1)):
         
-                                            job.status = job.statuses[1]
+                                            job.status = job.statuses[0]
                                     break
                                 else:
                                     log.verbose("Failed to schedule %s job '%s' for user %s" % (job.uservmtype, job.id, user))
