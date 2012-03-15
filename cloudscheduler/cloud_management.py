@@ -522,7 +522,7 @@ class ResourcePool:
         if len(fitting_clusters) == 1:
             log.verbose("Only one cluster fits parameters. Returning that cluster.")
             return (fitting_clusters[0], None)
-        log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
+        #log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
 
         # Set the most-balanced and next-most-balanced initial values
         # Note: mostbal_cluster stands for "most balanced cluster"
@@ -1343,7 +1343,7 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret1 = 0
             if sp1.returncode == 0 and ret1 == 0:
-                log.debug("Successfuly sent condor_off startd to %s" % (machine_name))
+                log.verbose("Successfuly sent condor_off startd to %s" % (machine_name))
             else:
                 log.debug("Failed to send condor_off startd to %s" % (machine_name))
                 log.debug("Reason: %s" % out) 
@@ -1364,7 +1364,7 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret2 = 0
             if sp2.returncode == 0 and ret2 == 0:
-                log.debug("Successfuly sent condor_off master to %s" % (machine_name))
+                log.verbose("Successfuly sent condor_off master to %s" % (machine_name))
             else:
                 log.debug("Failed to send condor_off master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
@@ -1451,7 +1451,7 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret1 = 0
             if sp1.returncode == 0 and ret1 == 0:
-                log.debug("Successfuly sent condor_on startd to %s" % (machine_name))
+                log.verbose("Successfuly sent condor_on startd to %s" % (machine_name))
             else:
                 log.debug("Failed to send condor_on startd to %s" % (machine_name))
                 log.debug("Reason: %s" % out) 
@@ -1472,7 +1472,7 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret2 = 0
             if sp2.returncode == 0 and ret2 == 0:
-                log.debug("Successfuly sent condor_on master to %s" % (machine_name))
+                log.verbose("Successfuly sent condor_on master to %s" % (machine_name))
             else:
                 log.debug("Failed to send condor_on master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))

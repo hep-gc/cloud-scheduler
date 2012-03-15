@@ -260,7 +260,7 @@ class Job:
         if self.spool_dir and self.original_x509userproxy:
             proxy += self.spool_dir + "/"
 
-        log.debug("spool: %s orig: %s x509prox: %s" % (self.spool_dir, self.original_x509userproxy, self.x509userproxy))
+        log.verbose("spool: %s orig: %s x509prox: %s" % (self.spool_dir, self.original_x509userproxy, self.x509userproxy))
 
         if self.x509userproxy == None:
             proxy = None
@@ -454,12 +454,12 @@ class JobPool:
             return None
 
         # Create the condor_jobs list to store jobs
-        log.debug("Parsing Condor job data from schedd")
+        #log.verbose("Parsing Condor job data from schedd")
         condor_jobs = self._condor_job_xml_to_job_list(job_ads)
         del job_ads
         # When querying finishes successfully, reset last query timestamp
         self.last_query = datetime.datetime.now()
-        log.debug("Done parsing jobs from Condor Schedd SOAP (%d job(s) parsed)" % len(condor_jobs))
+        #log.verbose("Done parsing jobs from Condor Schedd SOAP (%d job(s) parsed)" % len(condor_jobs))
 
         # Return condor_jobs list
         return condor_jobs
@@ -678,12 +678,12 @@ class JobPool:
                 self.add_new_job(job)
             else:
                 self.add_high_job(job)
-            log.verbose("Job %s added to unscheduled jobs list" % job.id)
+            #log.verbose("Job %s added to unscheduled jobs list" % job.id)
         del query_jobs
 
 
         # Update job status of all the non-new jobs
-        log.debug("Updating job status of %d jobs" % (len(jobs_to_update)))
+        log.verbose("Updating job status of %d jobs" % (len(jobs_to_update)))
         for job in jobs_to_update:
             self.update_job_status(job)
         del jobs_to_update
@@ -867,7 +867,7 @@ class JobPool:
                 type_desired[vmtype] = 1 * config.high_priority_job_weight
         num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
         if num_users == 0:
-            log.debug("All users held, completed, or banned")
+            log.verbose("All users held, completed, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
@@ -911,7 +911,7 @@ class JobPool:
                 type_desired[vmtype] = 1 * config.high_priority_job_weight
         num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
         if num_users == 0:
-            log.debug("All users held, completed, or banned")
+            log.verbose("All users held, completed, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
@@ -968,7 +968,7 @@ class JobPool:
         if num_users != 0:
             num_users = Decimal('1.0') / num_users
         else:
-            log.debug("All users' jobs held, complete, or banned")
+            log.verbose("All users' jobs held, complete, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] *= num_users
@@ -1026,7 +1026,7 @@ class JobPool:
         if num_users != 0:
             num_users = Decimal('1.0') / num_users
         else:
-            log.debug("All users' jobs held, complete, or banned")
+            log.verbose("All users' jobs held, complete, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] *= num_users
@@ -1183,11 +1183,11 @@ class JobPool:
         req_re = "(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
         match = re.search(req_re, requirements)
         if match:
-            log.debug("parse_classAd_requirements - VMType parsed from "
+            log.verbose("parse_classAd_requirements - VMType parsed from "
               + "Requirements string: %s" % match.group('vm_type'))
             return match.group('vm_type')
         else:
-            log.debug("parse_classAd_requirements - No VMType specified. Returning None.")
+            log.verbose("parse_classAd_requirements - No VMType specified. Returning None.")
             return None
 
     ## Log methods

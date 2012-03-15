@@ -44,7 +44,7 @@ class JobProxyRefresher(threading.Thread):
                 cycle_start_ts = datetime.datetime.today()
 
                 jobs = self.job_pool.job_container.get_all_jobs()
-                log.debug("Refreshing job user proxies. [%d proxies to process]" % (len(jobs)))
+                log.verbose("Refreshing job user proxies. [%d proxies to process]" % (len(jobs)))
                 for job in jobs:
                     jobcertextime = job.get_x509userproxy_expiry_time()
                     if jobcertextime:
@@ -53,10 +53,10 @@ class JobProxyRefresher(threading.Thread):
                         log.warning("Proxy for job %s is expired.  Skipping proxy renewal for this job." % (job.id))
                     elif job.needs_proxy_renewal():
                         if job.get_myproxy_creds_name() != None:
-                            log.debug("Renewing proxy %s for job %s" % (job.get_x509userproxy(), job.id))
+                            log.verbose("Renewing proxy %s for job %s" % (job.get_x509userproxy(), job.id))
                             if MyProxyProxyRefresher().renew_proxy(job.get_x509userproxy(), job.get_myproxy_creds_name(), job.get_myproxy_server(), job.get_myproxy_server_port()):
                                 # Yay, proxy renewal worked! :-)
-                                log.debug("Proxy for job %s renewed." % (job.id))
+                                log.verbose("Proxy for job %s renewed." % (job.id))
                                 # Don't forget to reset the proxy expiry time cache.
                                 job.reset_x509userproxy_expiry_time()
                             else:
@@ -68,7 +68,7 @@ class JobProxyRefresher(threading.Thread):
                             # credentials.
                             log.debug("Not renewing proxy for job %s because missing MyProxy info." % (job.id))
                     else:
-                        log.debug("No need to renew proxy for job %s" % (job.id))
+                        log.verbose("No need to renew proxy for job %s" % (job.id))
 
                 # Lets record the current time and then log how much time the cycle took.
                 cycle_end_ts = datetime.datetime.today()
@@ -80,7 +80,7 @@ class JobProxyRefresher(threading.Thread):
                     time.sleep(1)
                     sleep_tics -= 1
 
-            log.debug("Exiting JobProxyRefresher thread")
+            log.info("Exiting JobProxyRefresher thread")
         except:
             log.error("Error in JobProxyRefresher thread.")
             log.error(traceback.format_exc())
@@ -111,11 +111,11 @@ class VMProxyRefresher(threading.Thread):
                 cycle_start_ts = datetime.datetime.today()
 
                 vms = self.cloud_resources.get_all_vms()
-                log.debug("Refreshing VM proxies. [%d proxies to process]" % (len(vms)))
+                log.verbose("Refreshing VM proxies. [%d proxies to process]" % (len(vms)))
                 for vm in vms:
                     vmcertextime = vm.get_x509userproxy_expiry_time()
                     if vmcertextime:
-                        log.debug("Proxy for VM %s expires in %s" % (vm.id, vmcertextime - datetime.datetime.utcnow()))
+                        log.verbose("Proxy for VM %s expires in %s" % (vm.id, vmcertextime - datetime.datetime.utcnow()))
                     if vm.is_proxy_expired():
                         log.warning("Proxy for VM %s is expired.  Skipping proxy renewal for this VM." % (vm.id))
                     elif vm.needs_proxy_renewal():
@@ -123,7 +123,7 @@ class VMProxyRefresher(threading.Thread):
                             log.debug("Renewing proxy %s for VM %s" % (vm.get_proxy_file(), vm.id))
                             if MyProxyProxyRefresher().renew_proxy(vm.get_proxy_file(), vm.get_myproxy_creds_name(), vm.get_myproxy_server(), vm.get_myproxy_server_port()):
                                 # Yay, proxy renewal worked! :-)
-                                log.debug("Proxy for VM %s renewed." % (vm.id))
+                                log.verbose("Proxy for VM %s renewed." % (vm.id))
                                 # Don't forget to reset the proxy expiry time cache.
                                 vm.reset_x509userproxy_expiry_time()
                             else:
@@ -147,7 +147,7 @@ class VMProxyRefresher(threading.Thread):
                     time.sleep(1)
                     sleep_tics -= 1
 
-            log.debug("Exiting VMProxyRefresher thread")
+            log.info("Exiting VMProxyRefresher thread")
         except:
             log.error("Error in VMProxyRefresher thread.")
             log.error(traceback.format_exc())
@@ -223,7 +223,7 @@ class MyProxyProxyRefresher():
         if joborvm is isinstance(Job):
             if MyProxyProxyRefresher().renew_proxy(joborvm.get_x509userproxy(), joborvm.get_myproxy_creds_name(), joborvm.get_myproxy_server(), joborvm.get_myproxy_server_port()):
                 # Yay, proxy renewal worked! :-)
-                log.debug("Proxy for job %s renewed." % (joborvm.id))
+                log.verbose("Proxy for job %s renewed." % (joborvm.id))
                 # Don't forget to reset the proxy expiry time cache.
                 joborvm.reset_x509userproxy_expiry_time()
             else:
@@ -231,7 +231,7 @@ class MyProxyProxyRefresher():
         elif joborvm is isinstance(VM):
             if self.renew_proxy(joborvm.get_proxy_file(), joborvm.get_myproxy_creds_name(), joborvm.get_myproxy_server(), joborvm.get_myproxy_server_port()):
                 # Yay, proxy renewal worked! :-)
-                log.debug("Proxy for VM %s renewed." % (joborvm.id))
+                log.verbose("Proxy for VM %s renewed." % (joborvm.id))
                 # Don't forget to reset the proxy expiry time cache.
                 joborvm.reset_x509userproxy_expiry_time()
             else:

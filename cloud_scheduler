@@ -1099,8 +1099,8 @@ class Cleanup(threading.Thread):
                             nummem += (mement / job.req_memory)
                         num_fit_cloud = nummem if nummem < num_fit_cloud else num_fit_cloud
                         num_fit += num_fit_cloud
-                        log.verbose("Can fit %i VMs on the %s cloud." % (num_fit_cloud, cloud.name))
-                    log.verbose("Can fit %i VMs total." % num_fit)
+                        #log.verbose("Can fit %i VMs on the %s cloud." % (num_fit_cloud, cloud.name))
+                    #log.verbose("Can fit %i VMs total." % num_fit)
                     free_space_for_vmtype[vmtype] = True if num_fit > 0 else False
                 # Add the number that can fit to what it wants to change
                 can_boot = num_to_change[vmtype] + num_fit
@@ -1477,7 +1477,7 @@ class Cleanup(threading.Thread):
                         for start_vm in islice(reversed(error_vms_of_type), num_error_to_destroy):
                             vm_in_cluster = self.resource_pool.get_cluster_with_vm(start_vm)
                             if vm_in_cluster != None and vm_in_cluster in fitting_set:
-                                log.info("Shutting down error VM to try and speed up balancing")
+                                #log.info("Shutting down error VM to try and speed up balancing")
                                 destroy_ret = vm_in_cluster.vm_destroy(start_vm, reason="Trying to speed up balancing by shutting down Error state VM.")
                                 if destroy_ret == 0:
                                     successful_destroy += 1
