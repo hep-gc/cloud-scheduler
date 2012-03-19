@@ -270,6 +270,16 @@ class InfoServer(threading.Thread,):
                 return ''.join(output)
             def get_cloud_config_values(self):
                 return cloud_resources.get_cloud_config_output()
+            def get_total_vms(self):
+                return str(cloud_resources.vm_count())
+            def get_total_vms_cloud(self, cluster_name):
+                output = []
+                cluster = cloud_resources.get_cluster(cluster_name)
+                if cluster:
+                    output.append(str(cluster.num_vms()))
+                else:
+                    output.append("Cluster named %s not found." % cluster_name)
+                return ''.join(output)
             def check_shared_objs(self):
                 output = []
                 output.append("Scheduler Thread:\n" + scheduler.check_shared_objs())

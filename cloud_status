@@ -63,6 +63,8 @@ def main(argv=None):
                       default=False, help="Display Average Run time of Jobs on VMs")
     parser.add_option("-l", "--cloud-conf", dest='cloud_conf', action="store_true",
                       default=False, help='Display the cloud_resources config')
+    parser.add_option("-o", "--total-vms", dest="totals", action="store_true", default=False,
+                      help="Output the total VMs in CloudScheduler or on a cloud(-c)")
 
     (cli_options, args) = parser.parse_args()
 
@@ -146,6 +148,10 @@ def main(argv=None):
             print s.get_vm_job_run_times()
         elif cli_options.cloud_conf:
             print s.get_cloud_config_values()
+        elif cli_options.totals and cli_options.cluster_name:
+            print s.get_total_vms_cloud(cli_options.cluster_name)
+        elif cli_options.totals:
+            print s.get_total_vms()
         else:
             print s.get_cloud_resources()
 
