@@ -98,13 +98,13 @@ class AdminServer(threading.Thread,):
                 return MyProxyProxyRefresher.renew_vm_proxy_user(job_pool, user)
             def cloud_resources_reconfig(self):
                 cloud_resources.setup()
-                return True
+                return ""
             def change_log_level(self, level):
                 log.setLevel(utilities.LEVELS[level])
-                return True
+                return ""
             def perform_quick_shutdown(self):
                 scheduler.quick_exit()
-                return True
+                return ""
 
 
 
