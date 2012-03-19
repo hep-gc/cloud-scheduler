@@ -322,6 +322,7 @@ class Scheduler(threading.Thread):
         self.resource_pool = resource_pool
         self.job_pool      = job_pool
         self.quit          = False
+        self.quick_exit    = False
         self.scheduling_interval = config.scheduler_interval
 
         if config.scheduling_algorithm.lower() == "fairshare":
@@ -337,6 +338,10 @@ class Scheduler(threading.Thread):
     def stop(self):
         log.debug("Waiting for scheduling loop to end")
         self.quit = True
+    
+    def quick_exit(self):
+        log.debug("Toggle quick exit flag to not skip VM Shutdown.")
+        self.quick_exit = not self.quick_exit
 
     def run(self):
         log.info("Starting job scheduling...")
@@ -364,25 +369,24 @@ class Scheduler(threading.Thread):
         # Exit the scheduling thread - clean up VMs and exit
         log.debug("Exiting scheduler thread")
 
-        # Destroy all VMs and finish
-        remaining_vms = []
-        threadfail = True
-        while threadfail:
-            (remains, threadfail) = self.scheduler_full_shutdown()
-            remaining_vms.extend(remains)
-        
+        if not self.quick_exit:
+            # Destroy all VMs and finish
+            log.info("### Destroying all remaining VMs and exiting :-(")
+            remaining_vms = []
+            threadfail = True
+            while threadfail:
+                (remains, threadfail) = self.scheduler_full_shutdown()
+                remaining_vms.extend(remains)
+            # Print list of VMs cloud scheduler failed to destroy before exit.
+            if (remaining_vms != []):
+                log.error("The following VMs could not be destroyed properly:")
+                for vm in remaining_vms:
+                    log.error("VM: %s, ID: %s" % (vm.name, vm.id))
 
-        log.info("### Destroying all remaining VMs and exiting :-(")
-
-        #ENDFOR - Attempt to destroy each remaining VM in the system
-
+    
         self.resource_pool.save_persistence()
 
-        # Print list of VMs cloud scheduler failed to destroy before exit.
-        if (remaining_vms != []):
-            log.error("The following VMs could not be destroyed properly:")
-            for vm in remaining_vms:
-                log.error("VM: %s, ID: %s" % (vm.name, vm.id))
+
 
     def scheduler_full_shutdown(self):
         """Shutdown all VMs in the system and exit gracefully."""
@@ -1686,6 +1690,9 @@ class Cleanup(threading.Thread):
                 log.debug("Failed to hold %i jobs" % len(failedhold))
 
         for vm in to_shutdown:
+            #check for vm.keep_alive
+            if not (int(time.time()) - vm.idle_start > vm.keep_alive):
+                continue
             cluster = self.resource_pool.get_cluster_with_vm(vm)
             if cluster:
                 #log.info("VM %s on cluster %s shutting down - cannot run any idle jobs for it's vmtype." % (vm.id, cluster.name))
@@ -1902,8 +1909,12 @@ def main():
     signal.signal(signal.SIGUSR1, reconfig_handler)
 
     # Set SIGUSR2 (reload_ban) handler
-    reload_ban_handler = make_banned_job_fileload_handler(cloud_resources)
-    signal.signal(signal.SIGUSR2, reload_ban_handler)
+    #reload_ban_handler = make_banned_job_fileload_handler(cloud_resources)
+    #signal.signal(signal.SIGUSR2, reload_ban_handler)
+
+    # Set SIGUSR2 (quick_exit) handler
+    quick_exit_handler = make_quick_exit_handler(scheduler)
+    signal.signal(signal.SIGUSR2, quick_exit_handler)
 
     # Start all the threads
     for thread in info_threads:
@@ -1977,6 +1988,18 @@ def make_banned_job_fileload_handler(resource_pool):
         resource_pool.load_banned_job_resource()
 
     return reload_ban_handler
+
+
+def make_quick_exit_fileload_handler(scheduler):
+    """
+    make_quick_exit_handler - make a signal handler that can enable a quick exit
+                              of CloudScheduler
+    """
+    def quick_exit_handler(signal, handler):
+        log.info("Recieved SIGUSR2 (quick_exit) signal, Setting quick exit flag...")
+        scheduler.quick_exit()
+
+    return quick_exit_handler
 
 def set_options(parser):
     """Sets the command-line options for a passed in OptionParser object (via optparse)."""

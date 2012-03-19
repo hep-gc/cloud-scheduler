@@ -50,6 +50,7 @@ def main(argv=None):
     parser.add_option("-e", "--enable", dest="enable", action="store", metavar="NAME", help="Enable cloud NAME")
     parser.add_option("-d", "--disable", dest="disable", action="store", metavar="NAME", help="Disable cloud NAME")
     parser.add_option("-m", "--remove", dest="remove", action="store_true", help="Remove a VM from the Cloudscheduler. Requires -c name, and -n id or -a all.")
+    parser.add_option("-q", "--quick-exit", dest="quick", action="store_true", default=False, help="Toggle the quick shutdown flag of CS.")
     
 
     (cli_options, args) = parser.parse_args()
@@ -117,6 +118,8 @@ def main(argv=None):
                     print "Unsupported Proxy type, enter 'job' or 'vm'."
             else:
                 print "Must Specify a user with -u or --user."
+        elif cli_options.quick:
+            s.perform_quick_shutdown()
         else:
             print "Run cloud_admin -h for help."
 
