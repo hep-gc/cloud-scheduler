@@ -1990,7 +1990,7 @@ def make_banned_job_fileload_handler(resource_pool):
     return reload_ban_handler
 
 
-def make_quick_exit_fileload_handler(scheduler):
+def make_quick_exit_handler(scheduler):
     """
     make_quick_exit_handler - make a signal handler that can enable a quick exit
                               of CloudScheduler
