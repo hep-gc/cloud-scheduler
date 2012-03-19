@@ -99,7 +99,7 @@ def main(argv=None):
             print s.get_vm_info(cli_options.cluster_name, cli_options.vm_id)
         elif cli_options.vm_id and not cli_options.cluster_name:
             print "Please provide -c cluster_name with vm ID"
-        elif not cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
+        elif not cli_options.json and cli_options.cluster_name and not cli_options.vm_id and not cli_options.totals:
             print s.get_cluster_info(cli_options.cluster_name)
         elif cli_options.json and cli_options.all_cluster:
             print s.get_json_resource()
