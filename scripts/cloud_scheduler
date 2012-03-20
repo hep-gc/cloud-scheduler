@@ -78,6 +78,13 @@ forcekill () {
     fi
 }
 
+quickstop () {
+    if [ -f $PIDFILE]; then
+        echo -n $"Setting Quick Exit Flag for $SERVICE:"
+        /bin/kill -s SIGUSR2 `cat $PIDFILE`
+        stop()
+}
+
 reconfig () {
     if [ -f $PIDFILE ]; then
         echo -n $"Reconfiguring $SERVICE:"
