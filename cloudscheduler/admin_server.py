@@ -103,7 +103,7 @@ class AdminServer(threading.Thread,):
                 log.setLevel(utilities.LEVELS[level])
                 return ""
             def perform_quick_shutdown(self):
-                scheduler.quick_exit()
+                scheduler.toggle_quick_exit()
                 return ""
 
 

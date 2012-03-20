@@ -339,7 +339,7 @@ class Scheduler(threading.Thread):
         log.debug("Waiting for scheduling loop to end")
         self.quit = True
     
-    def quick_exit(self):
+    def toggle_quick_exit(self):
         log.debug("Toggle quick exit flag to not skip VM Shutdown.")
         self.quick_exit = not self.quick_exit
 
@@ -368,7 +368,6 @@ class Scheduler(threading.Thread):
 
         # Exit the scheduling thread - clean up VMs and exit
         log.debug("Exiting scheduler thread")
-
         if not self.quick_exit:
             # Destroy all VMs and finish
             log.info("### Destroying all remaining VMs and exiting :-(")
@@ -383,7 +382,6 @@ class Scheduler(threading.Thread):
                 for vm in remaining_vms:
                     log.error("VM: %s, ID: %s" % (vm.name, vm.id))
 
-    
         self.resource_pool.save_persistence()
 
 
@@ -1997,7 +1995,7 @@ def make_quick_exit_handler(scheduler):
     """
     def quick_exit_handler(signal, handler):
         log.info("Recieved SIGUSR2 (quick_exit) signal, Setting quick exit flag...")
-        scheduler.quick_exit()
+        scheduler.toggle_quick_exit()
 
     return quick_exit_handler
 

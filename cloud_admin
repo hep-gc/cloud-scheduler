@@ -120,6 +120,7 @@ def main(argv=None):
                 print "Must Specify a user with -u or --user."
         elif cli_options.quick:
             s.perform_quick_shutdown()
+            print "Toggled Quick shutdown flag."
         else:
             print "Run cloud_admin -h for help."
 
