@@ -293,6 +293,27 @@ class InfoServer(threading.Thread,):
                 output.append("MachinePoller Thread:\n" + machine_poller.check_shared_objs())
                 output.append("\n")
                 return ''.join(output)
+            def get_vm_stats(self, cluster_name=""):
+                vms = []
+                if cluster_name:
+                    cluster = cloud_resources.get_cluster(cluster_name)
+                    if not cluster:
+                        return "Could not find cloud: %s - check cloud_status for list of available clouds" % cluster_name
+                    vms.extend(cluster.vms)
+                else:
+                    for cluster in cloud_resources.resources:
+                        vms.extend(cluster.vms)
+                state_count = {'Running':0, 'Starting':0, 'Error':0, 'Retiring':0, 'ExpiredProxy':0, 'NoProxy':0, 'ConnectionRefused':0}
+                for vm in vms:
+                    if vm.override_status:
+                        state_count[vm.override_status] += 1
+                    else:
+                        state_count[vm.status] += 1
+                output = []
+                for state, count in state_count.iteritems():
+                    if count > 0:
+                        output.extend([str(count), ' ', state, ','])
+                return ''.join(output)
 
         self.server.register_instance(externalFunctions())
 
