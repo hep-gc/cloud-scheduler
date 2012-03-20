@@ -491,7 +491,7 @@ class HashTableJobContainer(JobContainer):
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
 
-            log.verbose("(OUT) get_high_priority_jobs_by_users")
+            #log.verbose("(OUT) get_high_priority_jobs_by_users")
 
             return return_value
 
@@ -514,7 +514,7 @@ class HashTableJobContainer(JobContainer):
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
 
-            log.verbose("(OUT) get_unscheduled_high_priority_jobs_by_users")
+            #log.verbose("(OUT) get_unscheduled_high_priority_jobs_by_users")
 
             return return_value
 
@@ -525,6 +525,8 @@ class HashTableJobContainer(JobContainer):
         with self.lock:
             job = self.get_job_by_id(jobid)
         if job != None:
+            if job.job_status != status and job.override_status != None:
+                job.override_status = None
             job.job_status = status
             job.remote_host = remote
             job.servertime = int(servertime)
@@ -545,7 +547,7 @@ class HashTableJobContainer(JobContainer):
                 job.set_status("Scheduled")
                 self.sched_jobs[jobid] = job
                 del self.new_jobs[jobid]
-                log.verbose('Job %s marked as scheduled in the job container' % (jobid))
+                #log.verbose('Job %s marked as scheduled in the job container' % (jobid))
                 return True
             else:
                 return False
@@ -558,7 +560,7 @@ class HashTableJobContainer(JobContainer):
                 job.set_status("Unscheduled")
                 self.new_jobs[jobid] = job
                 del self.sched_jobs[jobid]
-                log.verbose('Job %s marked as unscheduled in the job container' % (jobid))
+                #log.verbose('Job %s marked as unscheduled in the job container' % (jobid))
                 return True
             else:
                 return False

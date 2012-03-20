@@ -49,6 +49,7 @@ except:
 import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_cert_expiry_time
+from cloudscheduler.utilities import splitnstrip
 import job_containers
 from decimal import *
 
@@ -86,7 +87,7 @@ class Job:
              Iwd=None, SUBMIT_x509userproxy=None,
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", ServerTime=0, JobStartDate=0, **kwargs):
+             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen", **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -156,6 +157,7 @@ class Job:
         self.banned = False
         self.ban_time = None
         self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
+        self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
 
         # Set the new job's status
         self.status = self.statuses[1]
@@ -258,7 +260,7 @@ class Job:
         if self.spool_dir and self.original_x509userproxy:
             proxy += self.spool_dir + "/"
 
-        log.debug("spool: %s orig: %s x509prox: %s" % (self.spool_dir, self.original_x509userproxy, self.x509userproxy))
+        log.verbose("spool: %s orig: %s x509prox: %s" % (self.spool_dir, self.original_x509userproxy, self.x509userproxy))
 
         if self.x509userproxy == None:
             proxy = None
@@ -452,12 +454,12 @@ class JobPool:
             return None
 
         # Create the condor_jobs list to store jobs
-        log.debug("Parsing Condor job data from schedd")
+        #log.verbose("Parsing Condor job data from schedd")
         condor_jobs = self._condor_job_xml_to_job_list(job_ads)
         del job_ads
         # When querying finishes successfully, reset last query timestamp
         self.last_query = datetime.datetime.now()
-        log.debug("Done parsing jobs from Condor Schedd SOAP (%d job(s) parsed)" % len(condor_jobs))
+        #log.verbose("Done parsing jobs from Condor Schedd SOAP (%d job(s) parsed)" % len(condor_jobs))
 
         # Return condor_jobs list
         return condor_jobs
@@ -597,6 +599,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "JobStartDate")
                 _add_if_exists(xml_job, job_dictionary, "Iwd")
                 _add_if_exists(xml_job, job_dictionary, "SUBMIT_x509userproxy")
+                _add_if_exists(xml_job, job_dictionary, "VMHypervisor")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -631,7 +634,7 @@ class JobPool:
             return
 
         # Filter out any jobs in an error status (from the given job list)
-        for job in query_jobs:
+        for job in reversed(query_jobs):
             if job.job_status >= self.ERROR or job.job_status == self.REMOVED or job.job_status == self.COMPLETE:
                 query_jobs.remove(job)
 
@@ -671,16 +674,16 @@ class JobPool:
 
         # Add all jobs remaining in jobs list to the Unscheduled job set (new_jobs)
         for job in query_jobs:
-            if job.high_priority == 0:
+            if job.high_priority == 0 or  not config.high_priority_job_support:
                 self.add_new_job(job)
             else:
                 self.add_high_job(job)
-            log.verbose("Job %s added to unscheduled jobs list" % job.id)
+            #log.verbose("Job %s added to unscheduled jobs list" % job.id)
         del query_jobs
 
 
         # Update job status of all the non-new jobs
-        log.debug("Updating job status of %d jobs" % (len(jobs_to_update)))
+        log.verbose("Updating job status of %d jobs" % (len(jobs_to_update)))
         for job in jobs_to_update:
             self.update_job_status(job)
         del jobs_to_update
@@ -864,7 +867,7 @@ class JobPool:
                 type_desired[vmtype] = 1 * config.high_priority_job_weight
         num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
         if num_users == 0:
-            log.debug("All users held, completed, or banned")
+            log.verbose("All users held, completed, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
@@ -908,7 +911,7 @@ class JobPool:
                 type_desired[vmtype] = 1 * config.high_priority_job_weight
         num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
         if num_users == 0:
-            log.debug("All users held, completed, or banned")
+            log.verbose("All users held, completed, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
@@ -965,7 +968,7 @@ class JobPool:
         if num_users != 0:
             num_users = Decimal('1.0') / num_users
         else:
-            log.debug("All users' jobs held, complete, or banned")
+            log.verbose("All users' jobs held, complete, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] *= num_users
@@ -1023,7 +1026,7 @@ class JobPool:
         if num_users != 0:
             num_users = Decimal('1.0') / num_users
         else:
-            log.debug("All users' jobs held, complete, or banned")
+            log.verbose("All users' jobs held, complete, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] *= num_users
@@ -1052,7 +1055,7 @@ class JobPool:
         failed = []
         for job in jobs:
             try:
-                job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, None, False, False, True)
+                job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, "CloudSchedulerHold", False, False, True)
                 if job_ret.code != "SUCCESS":
                     failed.append(job)
             except URLError, e:
@@ -1077,7 +1080,7 @@ class JobPool:
         failed = []
         for job in jobs:
             try:
-                job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, None, False, False)
+                job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, "CloudSchedulerRelease", False, False)
                 if job_ret.code != "SUCCESS":
                     failed.append(job)
             except URLError, e:
@@ -1180,11 +1183,11 @@ class JobPool:
         req_re = "(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
         match = re.search(req_re, requirements)
         if match:
-            log.debug("parse_classAd_requirements - VMType parsed from "
+            log.verbose("parse_classAd_requirements - VMType parsed from "
               + "Requirements string: %s" % match.group('vm_type'))
             return match.group('vm_type')
         else:
-            log.debug("parse_classAd_requirements - No VMType specified. Returning None.")
+            log.verbose("parse_classAd_requirements - No VMType specified. Returning None.")
             return None
 
     ## Log methods

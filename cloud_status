@@ -63,8 +63,10 @@ def main(argv=None):
                       default=False, help="Display Average Run time of Jobs on VMs")
     parser.add_option("-l", "--cloud-conf", dest='cloud_conf', action="store_true",
                       default=False, help='Display the cloud_resources config')
-    parser.add_option("-o", "--check_shared", dest="check_shared",
-                      action="store_true", default=False, help="print shared object debug info")
+    parser.add_option("-o", "--total-vms", dest="totals", action="store_true", default=False,
+                      help="Output the total VMs in CloudScheduler or on a cloud(-c)")
+    parser.add_option("-u", "--vm-status", dest="status", action="store_true", default=False,
+                      help="Condensed VM Status information, use -c to limit to single cloud.")
 
     (cli_options, args) = parser.parse_args()
 
@@ -95,11 +97,16 @@ def main(argv=None):
             print s.get_cluster_resources()
         elif cli_options.vms:
             print s.get_cluster_vm_resources()
+        elif cli_options.status:
+            if cli_options.cluster_name:
+                print s.get_vm_stats(cli_options.cluster_name)
+            else:
+                print s.get_vm_stats()
         elif not cli_options.json and cli_options.vm_id and cli_options.cluster_name:
             print s.get_vm_info(cli_options.cluster_name, cli_options.vm_id)
         elif cli_options.vm_id and not cli_options.cluster_name:
             print "Please provide -c cluster_name with vm ID"
-        elif not cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
+        elif not cli_options.json and cli_options.cluster_name and not cli_options.vm_id and not cli_options.totals:
             print s.get_cluster_info(cli_options.cluster_name)
         elif cli_options.json and cli_options.all_cluster:
             print s.get_json_resource()
@@ -148,8 +155,10 @@ def main(argv=None):
             print s.get_vm_job_run_times()
         elif cli_options.cloud_conf:
             print s.get_cloud_config_values()
-        elif cli_options.check_shared:
-            print s.check_shared_objs()
+        elif cli_options.totals and cli_options.cluster_name:
+            print s.get_total_vms_cloud(cli_options.cluster_name)
+        elif cli_options.totals:
+            print s.get_total_vms()
         else:
             print s.get_cloud_resources()
 

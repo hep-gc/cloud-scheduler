@@ -238,6 +238,17 @@ class ResourcePool:
             if not enabled:
                 return None
         cloud_type = get_or_none(config, cluster, "cloud_type")
+        max_vm_mem = get_or_none(config, cluster, "max_vm_mem")
+        max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
+        hypervisor = get_or_none(config, cluster, "hypervisor")
+        if hypervisor == None:
+            hypervisor = 'xen'
+        else:
+            hypervisor = hypervisor.lower()
+            if hypervisor != 'xen' or hypervisor != 'kvm':
+                log.error("%s hypervisor not supported." % hypervisor)
+                return None
+
         if cloud_type == "Nimbus":
             nets = splitnstrip(",", get_or_none(config, cluster, "networks"))
             if len(nets) > 1:
@@ -254,12 +265,14 @@ class ResourcePool:
                     port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem,
                     cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks = nets,
                     vm_slots = total_slots,
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
                     netslots = net_slots,
+                    hypervisor = hypervisor,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -267,6 +280,7 @@ class ResourcePool:
                     host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
@@ -275,6 +289,7 @@ class ResourcePool:
                     access_key_id = get_or_none(config, cluster, "access_key_id"),
                     secret_access_key = get_or_none(config, cluster, "secret_access_key"),
                     security_group = get_or_none(config, cluster, "security_group"),
+                    hypervisor = hypervisor,
                     )
 
         else:
@@ -355,6 +370,9 @@ class ResourcePool:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.net_slots[network] <= 0:
                 continue
+            # If request exceeds the max vm memory on cluster
+            if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
+                continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
                 continue
@@ -372,7 +390,8 @@ class ResourcePool:
         return None
 
 
-    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[]):
+    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[],
+                              hypervisor=['xen']):
         """get a list of Clusters that fit the given VM/Job requirements.
         
         Keywords: (as for get_resource methods)
@@ -398,6 +417,9 @@ class ResourcePool:
             clusters = self.resources
         for cluster in clusters:
             if not cluster.enabled:
+                continue
+            if cluster.hypervisor not in hypervisor:
+                log.verbose("get_fitting_resources - Wrong hypervisor on %s" % cluster.name)
                 continue
             if cluster.__class__.__name__ == "NimbusCluster":
                 # If not valid image file to download
@@ -431,6 +453,9 @@ class ResourcePool:
             if (cpuarch not in cluster.cpu_archs):
                 log.verbose("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
                 continue
+            # If request exceeds the max vm memory on cluster
+            if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
+                continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
                 log.verbose("get_fitting_resources - No available memory entry in %s" % cluster.name)
@@ -453,7 +478,7 @@ class ResourcePool:
         return fitting_clusters
 
 
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[]):
+    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[], hypervisor=['xen']):
         """
         Returns a resource that fits given requirements and fits some balance
         criteria between clusters (for example, lowest current load or most free
@@ -486,7 +511,7 @@ class ResourcePool:
 
         """
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets)
+        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets, hypervisor)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
@@ -497,7 +522,7 @@ class ResourcePool:
         if len(fitting_clusters) == 1:
             log.verbose("Only one cluster fits parameters. Returning that cluster.")
             return (fitting_clusters[0], None)
-        log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
+        #log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
 
         # Set the most-balanced and next-most-balanced initial values
         # Note: mostbal_cluster stands for "most balanced cluster"
@@ -528,7 +553,7 @@ class ResourcePool:
         # Return the most balanced cluster after considering all fitting clusters.
         return (mostbal_cluster, nextbal_cluster)
 
-    def resourcePF(self, network, cpuarch, memory=0, disk=0):
+    def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
         """
         Check that a cluster will be able to meet the static requirements.
         Keywords:
@@ -536,6 +561,7 @@ class ResourcePool:
            cpuarch  - the cpu architecture that the VM must run on
            memory   - minimum memory required on cloud
            disk     - minimum storage space required on cloud
+           hypervisor - type of hypervisor used by cloud
         Return: True if cluster is found that fits VM requirments
                 Otherwise, returns False
 
@@ -545,11 +571,16 @@ class ResourcePool:
         for cluster in self.resources:
             if not cluster.enabled:
                 continue
+            if cluster.hypervisor not in hypervisor:
+                continue
             # If the cluster does not have the required CPU architecture
             if not (cpuarch in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
+                continue
+            # If request exceeds the max vm memory on cluster
+            if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
             if not cluster.find_potential_mementry(memory):
                 continue
@@ -560,7 +591,8 @@ class ResourcePool:
         # If no clusters are found (no clusters can host the required VM)
         return potential_fit
 
-    def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[]):
+    def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[],
+                                        hypervisor=['xen']):
         """
         Determines which clouds could start a VM with the given requirements.
         
@@ -582,10 +614,15 @@ class ResourcePool:
         for cluster in clusters:
             if not cluster.enabled:
                 continue
+            if cluster.hypervisor not in hypervisor:
+                continue
             if not (cpuarch in cluster.cpu_archs):
                 continue
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
+                continue
+            # If request exceeds the max vm memory on cluster
+            if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
             if not cluster.find_potential_mementry(memory):
                 continue
@@ -1003,12 +1040,14 @@ class ResourcePool:
         #return types
     
     def vm_slots_total(self):
+        """Provides a count of the vm slots across all clusters in the system."""
         count = 0
         for cluster in self.resources:
             count += cluster.max_slots
         return count
             
     def vm_slots_available(self):
+        """Provides a count of all available vm slots across all clusters in the system."""
         count = 0
         for cluster in self.resources:
             count += cluster.vm_slots
@@ -1304,17 +1343,17 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret1 = 0
             if sp1.returncode == 0 and ret1 == 0:
-                log.debug("Successfuly sent condor_off startd to %s" % (machine_name))
+                log.verbose("Successfuly sent condor_off startd to %s" % (machine_name))
             else:
                 log.debug("Failed to send condor_off startd to %s" % (machine_name))
                 log.debug("Reason: %s" % out) 
                 log.debug("Error: %s" % err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         # Now send the master off
         try:
             sp2 = subprocess.Popen(args3, shell=False,
@@ -1325,17 +1364,17 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret2 = 0
             if sp2.returncode == 0 and ret2 == 0:
-                log.debug("Successfuly sent condor_off master to %s" % (machine_name))
+                log.verbose("Successfuly sent condor_off master to %s" % (machine_name))
             else:
                 log.debug("Failed to send condor_off master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
             print args
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
 
     def do_condor_on(self, machine_name, machine_addr):
@@ -1348,11 +1387,13 @@ class ResourcePool:
             the return code indicating success of failure to condor_on
         """
         cmd = '%s -subsystem startd -name "%s"' % (config.condor_on_command, machine_name)
+        cmd4 = '%s -subsystem master -name "%s"' % (config.condor_on_command, machine_name)
         cmd2 = '%s -addr "%s" -startd' % (config.condor_on_command, machine_addr)
         cmd3 = '%s -addr "%s" -master' % (config.condor_on_command, machine_addr)
         args = []
         args2 = []
         args3 = []
+        args4 = []
         if config.cloudscheduler_ssh_key:
             args.append(config.ssh_path)
             args.append('-i')
@@ -1360,6 +1401,11 @@ class ResourcePool:
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
             args.append(central_address)
             args.append(cmd)
+            args4.append(config.ssh_path)
+            args4.append('-i')
+            args4.append(config.cloudscheduler_ssh_key)
+            args4.append(central_address)
+            args4.append(cmd4)
 
             args2.append(config.ssh_path)
             args2.append('-i')
@@ -1378,21 +1424,26 @@ class ResourcePool:
             args.append('startd')
             args.append('-name')
             args.append(machine_name)
+            args4.append(config.condor_on_command)
+            args4.append('-name')
+            args4.append(machine_name)
+            args4.append('-subsystem')
+            args4.append('master')
 
-            args2.append(config.condor_off_command)
+            args2.append(config.condor_on_command)
             args2.append('-addr')
             args2.append(machine_addr)
             args2.append('-subsystem')
             args2.append('startd')
 
-            args3.append(config.condor_off_command)
+            args3.append(config.condor_on_command)
             args3.append('-addr')
             args3.append(machine_addr)
             args3.append('-subsystem')
             args3.append('master')
         # try to turn on master first
         try:
-            sp1 = subprocess.Popen(args3, shell=False,
+            sp1 = subprocess.Popen(args4, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if not utilities.check_popen_timeout(sp1):
                 (out, err) = sp1.communicate(input=None)
@@ -1400,20 +1451,20 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret1 = 0
             if sp1.returncode == 0 and ret1 == 0:
-                log.debug("Successfuly sent condor_off startd to %s" % (machine_name))
+                log.verbose("Successfuly sent condor_on startd to %s" % (machine_name))
             else:
-                log.debug("Failed to send condor_off startd to %s" % (machine_name))
+                log.debug("Failed to send condor_on startd to %s" % (machine_name))
                 log.debug("Reason: %s" % out) 
                 log.debug("Error: %s" % err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         # Now send the startd on
         try:
-            sp2 = subprocess.Popen(args2, shell=False,
+            sp2 = subprocess.Popen(args, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if not utilities.check_popen_timeout(sp2):
                 (out, err) = sp2.communicate(input=None)
@@ -1421,17 +1472,17 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret2 = 0
             if sp2.returncode == 0 and ret2 == 0:
-                log.debug("Successfuly sent condor_off master to %s" % (machine_name))
+                log.verbose("Successfuly sent condor_on master to %s" % (machine_name))
             else:
-                log.debug("Failed to send condor_off master to %s" % (machine_name))
+                log.debug("Failed to send condor_on master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % string.join(args, " "))
             print args
-            return (-1, "", "", "")
+            return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
         #try:
             #sp = subprocess.Popen(args, shell=False,
@@ -1463,6 +1514,8 @@ class ResourcePool:
                     break
             if foundIt:
                 break
+        if not foundIt:
+            log.debug("Could not find a VM with name: %s" % condor_name)
         return vm_match
 
     def find_cluster_with_vm(self, condor_name):
@@ -1595,6 +1648,7 @@ class ResourcePool:
         return "".join(outputlist)
 
     def shutdown_cluster_vm(self, clustername, vmid):
+        """Manually shutdown a VM, for use by cloud_admin."""
         output = ""
         cluster = self.get_cluster(clustername)
         if cluster:
@@ -1619,6 +1673,7 @@ class ResourcePool:
         return output
 
     def shutdown_cluster_all(self, clustername):
+        """Manually shutdown all VMs on a cluster, for use by cloud_admin."""
         output = ""
         vmdesth = {}
         cluster = self.get_cluster(clustername)
@@ -1644,6 +1699,7 @@ class ResourcePool:
         return output
     
     def remove_vm_no_shutdown(self, clustername, vmid):
+        """Remove a VM entry from Cloudscheduler without issuing a shutdown to the cluster, for use by cloud_admin."""
         output = ""
         cluster = self.get_cluster(clustername)
         if cluster:
@@ -1660,6 +1716,7 @@ class ResourcePool:
         return output
 
     def remove_all_vmcloud_no_shutdown(self, clustername):
+        """Remove all VM entries from a cluster without issuing shutdowns to the IaaS, for use by cloud_admin."""
         cluster = self.get_cluster(clustername)
         output = ""
         if cluster:
@@ -1673,6 +1730,7 @@ class ResourcePool:
         return output
 
     def disable_cluster(self, clustername):
+        """Toggles the enabled flag for a cluster, for use by cloud_admin."""
         cluster = self.get_cluster(clustername)
         ret = ""
         if cluster:
@@ -1683,6 +1741,7 @@ class ResourcePool:
         return ret
     
     def enable_cluster(self, clustername):
+        """Toggles the enabled flag for a cluster, for use by cloud_admin."""
         cluster = self.get_cluster(clustername)
         ret = ""
         if cluster:
