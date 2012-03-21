@@ -569,7 +569,8 @@ class NimbusCluster(ICluster):
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
-            job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
+            job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, 
+            myproxy_server_port=None, job_per_core=False, proxy_non_boot=False):
         """Attempt to boot up a new VM on the cluster."""
         def _remove_files(files):
             """Private function to clean up temporary files created during the create process."""
@@ -653,7 +654,7 @@ class NimbusCluster(ICluster):
 
         # Execute the workspace create command: returns immediately.
         env = None;
-        if vm_proxy_file_path != None:
+        if vm_proxy_file_path != None and not proxy_non_boot:
             env = {'X509_USER_PROXY':vm_proxy_file_path}
             log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (vm_proxy_file_path))
 
