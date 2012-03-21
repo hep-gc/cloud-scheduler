@@ -81,7 +81,7 @@ class Job:
              VMName=config.default_VMName, VMLoc=config.default_VMLoc, 
              VMAMI={"default": config.default_VMAMI}, VMMem=config.default_VMMem, 
              VMCPUCores=config.default_VMCPUCores, VMStorage=config.default_VMStorage, 
-             VMKeepAlive=1, VMHighPriority=0, RemoteHost=None,
+             VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              Iwd=None, SUBMIT_x509userproxy=None,
