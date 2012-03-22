@@ -637,7 +637,7 @@ class NimbusCluster(ICluster):
 
         # Create cached copy of job proxy to be used by VM for startup and shutdown.
         vm_proxy_file_path = None
-        if job_proxy_file_path:
+        if job_proxy_file_path and not proxy_non_boot:
             try:
                 vm_proxy_file_path = self._cache_proxy(job_proxy_file_path)
                 log.debug("Cached proxy to '%s'" % vm_proxy_file_path)
@@ -1083,7 +1083,6 @@ class NimbusCluster(ICluster):
         os.close(tmp_proxy_file)
 
         shutil.copy2(proxy_file_path, tmp_proxy_file_path)
-
 
         return tmp_proxy_file_path
 

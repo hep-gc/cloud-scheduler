@@ -159,7 +159,7 @@ class Job:
         self.ban_time = None
         self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
         self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
-        self.proxy_non_boot = VMProxyNonBoot
+        self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
 
         # Set the new job's status
         self.status = self.statuses[1]
