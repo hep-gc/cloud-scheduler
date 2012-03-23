@@ -660,6 +660,10 @@ class NimbusCluster(ICluster):
 
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
         if (create_return != 0):
+            if create_out == "" or create_out == None:
+                create_out = "No Output returned."
+            if create_err == "" or create_err == None:
+                create_err = "No Error output returned."
             log.warning("Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
             _remove_files(nimbus_files + [vm_proxy_file_path])
             err_type = self._extract_create_error(create_err)
@@ -786,6 +790,10 @@ class NimbusCluster(ICluster):
             if "Destroyed" == self._extract_state(destroy_error):
                 log.debug("VM %s seems to have already been destroyed." % vm.id)
             else:
+                if destroy_out == "" or destroy_out == None:
+                    destroy_out = "No Output returned."
+                if destroy_error == "" or destroy_error == None:
+                    destroy_error = "No Error output returned."
                 log.warning("VM %s was not correctly destroyed: %s %s" % (vm.id, destroy_out, destroy_error))
                 vm.status = "Error"
                 os.remove(vm_epr)
@@ -872,6 +880,10 @@ class NimbusCluster(ICluster):
 
             # If there was some other error we're not aware of (temporary network problem, etc...)
             elif (poll_return != 0):
+                if poll_out == "" or poll_out == None:
+                    poll_out = "No Output returned."
+                if poll_err == "" or poll_err == None:
+                    poll_err = "No Error output returned."
                 log.warning("There was a problem polling VM %s: %s %s" % (vm.id, poll_out, poll_err))
 
         # Tidy up and return
