@@ -272,7 +272,7 @@ def ws_optional(custom_tasks):
 
     return doc.toxml(encoding="utf-8")
 
-def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_nodes, vm_cores=None):
+def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_nodes, vm_cores=1):
     """
     Creates and returns a Nimbus deployment request file
 
@@ -332,17 +332,15 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
     #---lvl 3
     exactmem_el = doc.createElementNS(jsdl_nmspc, "jsdl:Exact")
     memory_el.appendChild(exactmem_el)
+    #--lvl 2
+    ncpu_el = doc.createElementNS(jsdl_nmspc, "jsdl:IndividualCPUCount")
+    rsrcallocation_el.appendChild(ncpu_el)
+    #---lvl 3
+    exactncpu_el = doc.createElementNS(jsdl_nmspc, "jsdl:Exact")
+    ncpu_el.appendChild(exactncpu_el)
+    exactncpu_txt = doc.createTextNode(str(vm_cores))
+    exactncpu_el.appendChild(exactncpu_txt)
 
-    # Optional CPU Cores option
-    if vm_cores and vm_cores > 1:
-        #--lvl 2
-        ncpu_el = doc.createElementNS(jsdl_nmspc, "jsdl:IndividualCPUCount")
-        rsrcallocation_el.appendChild(ncpu_el)
-        #---lvl 3
-        exactncpu_el = doc.createElementNS(jsdl_nmspc, "jsdl:Exact")
-        ncpu_el.appendChild(exactncpu_el)
-        exactncpu_txt = doc.createTextNode(str(vm_cores))
-        exactncpu_el.appendChild(exactncpu_txt)
     if vm_storage and vm_storage > 0:
         #--lvl 2
         storage_el = doc.createElementNS(root_nmspc, "Storage")
