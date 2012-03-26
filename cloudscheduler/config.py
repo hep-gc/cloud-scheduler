@@ -92,6 +92,7 @@ default_VMCPUCores= 1
 default_VMStorage= 1
 default_VMInstanceType= ""
 default_VMMaximumPrice= 0
+default_VMProxyNonBoot = False
 
 log_level = "INFO"
 log_location = None
@@ -183,6 +184,7 @@ def setup(path=None):
     global default_VMStorage
     global default_VMInstanceType
     global default_VMMaximumPrice
+    global default_VMProxyNonBoot
 
     global log_level
     global log_location
@@ -378,16 +380,31 @@ def setup(path=None):
             sys.exit(1)
 
     if config_file.has_option("global", "ban_tracking"):
-        ban_tracking = config_file.getboolean("global", "ban_tracking")
+        try:
+            ban_tracking = config_file.getboolean("global", "ban_tracking")
+        except ValueError:
+            print "Configuration file problem: ban_tracking must be an " \
+                  "boolean value."
+            sys.exit(1)
 
     if config_file.has_option("global", "graceful_shutdown"):
-        graceful_shutdown = config_file.getboolean("global", "graceful_shutdown")
+        try:
+            graceful_shutdown = config_file.getboolean("global", "graceful_shutdown")
+        except ValueError:
+            print "Configuration file problem: graceful_shutdown must be an " \
+                  "boolean value."
+            sys.exit(1)
 
     if config_file.has_option("global", "graceful_shutdown_method"):
         graceful_shutdown_method = config_file.get("global", "graceful_shutdown_method")
 
     if config_file.has_option("global", "retire_before_lifetime"):
-        retire_before_lifetime = config_file.getboolean("global", "retire_before_lifetime")
+        try:
+            retire_before_lifetime = config_file.getboolean("global", "retire_before_lifetime")
+        except ValueError:
+            print "Configuration file problem: retire_before_lifetime must be an " \
+                  "boolean value."
+            sys.exit(1)
 
     if config_file.has_option("global", "retire_before_lifetime_factor"):
         try:
@@ -401,8 +418,13 @@ def setup(path=None):
             sys.exit(1)
 
     if config_file.has_option("global", "getclouds"):
-        getclouds = config_file.getboolean("global", "getclouds")
-        
+        try:
+            getclouds = config_file.getboolean("global", "getclouds")
+        except ValueError:
+            print "Configuration file problem: getclouds must be an " \
+                  "boolean value."
+            sys.exit(1)
+
     if config_file.has_option("global", "scheduling_metric"):
         scheduling_metric = config_file.get("global", "scheduling_metric")
 
@@ -446,7 +468,12 @@ def setup(path=None):
         scheduling_algorithm = config_file.get("global", "scheduling_algorithm")
 
     if config_file.has_option("global", "high_priority_job_support"):
-        high_priority_job_support = config_file.getboolean("global", "high_priority_job_support")
+        try:
+            high_priority_job_support = config_file.getboolean("global", "high_priority_job_support")
+        except ValueError:
+            print "Configuration file problem: high_priority_job_support must be an " \
+                  "boolean value."
+            sys.exit(1)
 
     if config_file.has_option("global", "high_priority_job_weight"):
         try:
@@ -569,7 +596,11 @@ def setup(path=None):
         myproxy_logon_command = config_file.get("global", "myproxy_logon_command")
 
     if config_file.has_option("global", "override_vmtype"):
-        override_vmtype = config_file.getboolean("global", "override_vmtype")
+        try:
+            override_vmtype = config_file.getboolean("global", "override_vmtype")
+        except ValueError:
+            print "Configuration file problem: override_vmtype must be a" \
+                  " Boolean value."
 
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")
@@ -578,7 +609,11 @@ def setup(path=None):
         log_location = os.path.expanduser(config_file.get("logging", "log_location"))
 
     if config_file.has_option("logging", "log_stdout"):
-        log_stdout = config_file.getboolean("logging", "log_stdout")
+        try:
+            log_stdout = config_file.getboolean("logging", "log_stdout")
+        except ValueError:
+            print "Configuration file problem: log_stdout must be a" \
+                  " Boolean value."
 
     if config_file.has_option("logging", "log_max_size"):
         try:
@@ -644,6 +679,13 @@ def setup(path=None):
             print "Configuration file problem: default_VMMaximumPrice must be an " \
                   "integer value."
             sys.exit(1)
+
+    if config_file.has_option("job", "default_VMProxyNonBoot"):
+        try:
+            default_VMProxyNonBoot = config_file.getboolean("global", "default_VMProxyNonBoot")
+        except ValueError:
+            print "Configuration file problem: default_VMProxyNonBoot must be a" \
+                  " Boolean value."
 
     # Derived options
     if condor_host_on_vm:

@@ -81,13 +81,14 @@ class Job:
              VMName=config.default_VMName, VMLoc=config.default_VMLoc, 
              VMAMI={"default": config.default_VMAMI}, VMMem=config.default_VMMem, 
              VMCPUCores=config.default_VMCPUCores, VMStorage=config.default_VMStorage, 
-             VMKeepAlive=1, VMHighPriority=0, RemoteHost=None,
+             VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              Iwd=None, SUBMIT_x509userproxy=None,
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen", **kwargs):
+             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
+             VMProxyNonBoot=config.default_VMProxyNonBoot, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -158,6 +159,7 @@ class Job:
         self.ban_time = None
         self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
         self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
+        self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
 
         # Set the new job's status
         self.status = self.statuses[1]
@@ -600,6 +602,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "Iwd")
                 _add_if_exists(xml_job, job_dictionary, "SUBMIT_x509userproxy")
                 _add_if_exists(xml_job, job_dictionary, "VMHypervisor")
+                _add_if_exists(xml_job, job_dictionary, "VMProxyNonBoot")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")

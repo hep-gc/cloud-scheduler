@@ -734,7 +734,8 @@ class Scheduler(threading.Thread):
                         'myproxy_creds_name':job.get_myproxy_creds_name(), 
                         'myproxy_server':job.get_myproxy_server(),
                         'myproxy_server_port':job.get_myproxy_server_port(),
-                        'job_per_core':job.job_per_core}
+                        'job_per_core':job.job_per_core,
+                        'proxy_non_boot':job.proxy_non_boot}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "EC2Cluster":
                 args = {'vm_name':job.req_image,
@@ -1689,7 +1690,7 @@ class Cleanup(threading.Thread):
 
         for vm in to_shutdown:
             #check for vm.keep_alive
-            if not (int(time.time()) - vm.idle_start > vm.keep_alive):
+            if vm.idle_start and not (int(time.time()) - vm.idle_start > vm.keep_alive):
                 continue
             cluster = self.resource_pool.get_cluster_with_vm(vm)
             if cluster:

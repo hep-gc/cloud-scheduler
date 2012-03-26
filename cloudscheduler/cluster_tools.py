@@ -569,7 +569,8 @@ class NimbusCluster(ICluster):
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
-            job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
+            job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, 
+            myproxy_server_port=None, job_per_core=False, proxy_non_boot=False):
         """Attempt to boot up a new VM on the cluster."""
         def _remove_files(files):
             """Private function to clean up temporary files created during the create process."""
@@ -636,7 +637,7 @@ class NimbusCluster(ICluster):
 
         # Create cached copy of job proxy to be used by VM for startup and shutdown.
         vm_proxy_file_path = None
-        if job_proxy_file_path:
+        if job_proxy_file_path and not proxy_non_boot:
             try:
                 vm_proxy_file_path = self._cache_proxy(job_proxy_file_path)
                 log.debug("Cached proxy to '%s'" % vm_proxy_file_path)
@@ -653,12 +654,16 @@ class NimbusCluster(ICluster):
 
         # Execute the workspace create command: returns immediately.
         env = None;
-        if vm_proxy_file_path != None:
+        if vm_proxy_file_path != None and not proxy_non_boot:
             env = {'X509_USER_PROXY':vm_proxy_file_path}
             log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (vm_proxy_file_path))
 
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
         if (create_return != 0):
+            if create_out == "" or create_out == None:
+                create_out = "No Output returned."
+            if create_err == "" or create_err == None:
+                create_err = "No Error output returned."
             log.warning("Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
             _remove_files(nimbus_files + [vm_proxy_file_path])
             err_type = self._extract_create_error(create_err)
@@ -785,6 +790,10 @@ class NimbusCluster(ICluster):
             if "Destroyed" == self._extract_state(destroy_error):
                 log.debug("VM %s seems to have already been destroyed." % vm.id)
             else:
+                if destroy_out == "" or destroy_out == None:
+                    destroy_out = "No Output returned."
+                if destroy_error == "" or destroy_error == None:
+                    destroy_error = "No Error output returned."
                 log.warning("VM %s was not correctly destroyed: %s %s" % (vm.id, destroy_out, destroy_error))
                 vm.status = "Error"
                 os.remove(vm_epr)
@@ -871,6 +880,10 @@ class NimbusCluster(ICluster):
 
             # If there was some other error we're not aware of (temporary network problem, etc...)
             elif (poll_return != 0):
+                if poll_out == "" or poll_out == None:
+                    poll_out = "No Output returned."
+                if poll_err == "" or poll_err == None:
+                    poll_err = "No Error output returned."
                 log.warning("There was a problem polling VM %s: %s %s" % (vm.id, poll_out, poll_err))
 
         # Tidy up and return
@@ -1082,7 +1095,6 @@ class NimbusCluster(ICluster):
         os.close(tmp_proxy_file)
 
         shutil.copy2(proxy_file_path, tmp_proxy_file_path)
-
 
         return tmp_proxy_file_path
 
