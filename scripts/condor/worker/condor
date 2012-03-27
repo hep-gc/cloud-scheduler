@@ -318,7 +318,7 @@ replace_or_append() {
 	grep -e ^$replace_this $on_this_file >/dev/null 2>&1
 	REPLACE=$?
 	if [ $REPLACE -eq 0 ]; then
-		sed -i "s/^$replace_this.*/$with_this/" $on_this_file
+		sed -i "s/^$replace_this[ =].*/$with_this/" $on_this_file
 	else
 		echo $with_this >> $on_this_file
 	fi
