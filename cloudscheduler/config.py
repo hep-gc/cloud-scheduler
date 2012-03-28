@@ -77,6 +77,7 @@ vm_proxy_shutdown_threshold = 30 * 60 # 30 minutes default
 vm_connection_fail_threshold = 30 * 60 # 30 minutes default
 vm_idle_threshold = 5 * 60 # 5 minute default
 max_starting_vm = -1
+max_destroy_threads = 10
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
@@ -586,6 +587,16 @@ def setup(path=None):
                 max_starting_vm = -1
         except ValueError:
             print "Configuration file problem: max_starting_vm must be an " \
+                  "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "max_destroy_threads"):
+        try:
+            max_destroy_threads = config_file.getint("global", "max_destroy_threads")
+            if max_destroy_threads <= 0:
+                max_destroy_threads = 1
+        except ValueError:
+            print "Configuration file problem: max_destroy_threads must be an " \
                   "integer value."
             sys.exit(1)
 

@@ -395,7 +395,11 @@ class Scheduler(threading.Thread):
             for vm in reversed(cluster.vms):
                 log.info("Destroying VM: %s" % vm.id)
                 vm.log()
-                destroy_threads.append(VMDestroyCmd(cluster, vm, reason="Full shutdown in progress."))
+                if len(destroy_threads) < config.max_destroy_threads:
+                    destroy_threads.append(VMDestroyCmd(cluster, vm, reason="Full shutdown in progress."))
+                else:
+                    threadfail = True
+                    break
                 try:
                     destroy_threads[-1].start()
                 except:
@@ -1584,11 +1588,14 @@ class Cleanup(threading.Thread):
 
     def check_destroy(self, cluster, vm):
         """Make sure there is not already a destroy VM thread for this particular
-        cluster and VM."""
+        cluster and VM, and that the number of destroy threads has not exceeded the max."""
+        overlimit = False
+        if len(self.destroy_threads) >= config.max_destroy_threads:
+            overlimit = True
         found = False
         if "".join([cluster.name, vm.id]) in self.destroy_threads.keys():
             found = True
-        return found
+        return found or overlimit
 
     def check_destroy_threads(self):
         """See if any of the destroy request threads have finished."""
