@@ -82,7 +82,7 @@ quickstop () {
     if [ -f $PIDFILE]; then
         echo -n $"Setting Quick Exit Flag for $SERVICE:"
         /bin/kill -s SIGUSR2 `cat $PIDFILE`
-        stop()
+        stop
 }
 
 reconfig () {
@@ -128,7 +128,7 @@ case "$1" in
         start
         ;;
     *)
-        echo $"Usage: $0 {start|stop|restart|status|reconfig|forcekill}"
+        echo $"Usage: $0 {start|stop|restart|status|reconfig|forcekill|quickstop}"
         exit 3
         ;;
 esac
