@@ -290,6 +290,7 @@ class ResourcePool:
                     secret_access_key = get_or_none(config, cluster, "secret_access_key"),
                     security_group = get_or_none(config, cluster, "security_group"),
                     hypervisor = hypervisor,
+                    key_name = get_or_none(config, cluster, "key_name"),
                     )
 
         else:

@@ -1220,7 +1220,7 @@ class EC2Cluster(ICluster):
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 hypervisor='xen'):
+                 hypervisor='xen', key_name=None):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -1239,6 +1239,7 @@ class EC2Cluster(ICluster):
 
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
+        self.key_name = key_name
 
         connection = self._get_connection()
 
@@ -1302,7 +1303,7 @@ class EC2Cluster(ICluster):
             if image:
                 if maximum_price is 0: # don't request a spot instance
                     try:
-                        reservation = image.run(1,1,
+                        reservation = image.run(1,1, key_name=self.key_name,
                                                 addressing_type=addressing_type,
                                                 user_data=user_data,
                                                 security_groups=self.security_groups,
@@ -1319,6 +1320,7 @@ class EC2Cluster(ICluster):
                         reservation = connection.request_spot_instances(
                                                   price_in_dollars,
                                                   image.id,
+                                                  key_name=self.key_name,
                                                   user_data=user_data,
                                                   addressing_type=addressing_type,
                                                   security_groups=self.security_groups,
