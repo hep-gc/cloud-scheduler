@@ -44,6 +44,7 @@ info_server_port = 8111
 admin_server_port = 8112
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
+user_limit_file = None
 job_ban_timeout = 60*60 # 1 hour default
 ban_tracking = False
 ban_file = "/var/run/cloudscheduler.banned"
@@ -138,6 +139,7 @@ def setup(path=None):
     global admin_server_port
     global workspace_path
     global persistence_file
+    global user_limit_file
     global job_ban_timeout
     global ban_tracking
     global ban_file
@@ -333,6 +335,9 @@ def setup(path=None):
 
     if config_file.has_option("global", "persistence_file"):
         persistence_file = config_file.get("global", "persistence_file")
+
+    if config_file.has_option("global", "user_limit_file"):
+        user_limit_file = config_file.get("global", "user_limit_file")
 
     if config_file.has_option("global", "job_ban_timeout"):
         try:

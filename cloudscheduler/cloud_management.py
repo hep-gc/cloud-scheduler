@@ -90,6 +90,7 @@ class ResourcePool:
         self.config_file = os.path.expanduser(config_file)
         self.ban_lock = threading.Lock()
         self.banned_job_resource = {}
+        self.user_vm_limits = {}
         self.failures = {}
         self.setup_lock = threading.Lock()
         self.setup_queued = False
@@ -118,6 +119,9 @@ class ResourcePool:
             self.vmtype_distribution = self.vmtype_slot_distribution
 
         self.setup()
+
+        if config.user_limit_file:
+            self.load_user_limits(condor.user_limit_file)
         if config.ban_tracking:
             self.load_banned_job_resource()
         self.load_persistence()
@@ -1275,6 +1279,27 @@ class ResourcePool:
                                 if foundit:
                                     break
             self.banned_job_resource = updated_ban
+
+    def load_user_limits(self, path=None):
+            limit_file = None
+            try:
+                log.info("Loading user VM Limits file.")
+                ban_file = open(path, "r")
+            except IOError, e:
+                log.debug("No user vm limit file to load. No Limits set.")
+                return {}
+            except:
+                log.exception("Unknown problem opening user limit file!")
+                return {}
+            user_limits = {}
+            try:
+                if not no_bans:
+                    user_limits = json.loads(limit_file.read(), encoding='ascii')
+                    limit_file.close()
+            except:
+                log.exception("Unknown problem opening user limit file!")
+                return {}
+            return user_limits
 
     def do_condor_off(self, machine_name, machine_addr):
         """Perform a condor_off on an execute node.
