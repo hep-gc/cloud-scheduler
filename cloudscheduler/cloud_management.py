@@ -119,9 +119,9 @@ class ResourcePool:
             self.vmtype_distribution = self.vmtype_slot_distribution
 
         self.setup()
-
+        
         if config.user_limit_file:
-            self.load_user_limits(condor.user_limit_file)
+            self.user_vm_limits = self.load_user_limits(config.user_limit_file)
         if config.ban_tracking:
             self.load_banned_job_resource()
         self.load_persistence()
@@ -1293,7 +1293,7 @@ class ResourcePool:
             limit_file = None
             try:
                 log.info("Loading user VM Limits file.")
-                ban_file = open(path, "r")
+                limit_file = open(path, "r")
             except IOError, e:
                 log.debug("No user vm limit file to load. No Limits set.")
                 return {}
@@ -1302,9 +1302,8 @@ class ResourcePool:
                 return {}
             user_limits = {}
             try:
-                if not no_bans:
-                    user_limits = json.loads(limit_file.read(), encoding='ascii')
-                    limit_file.close()
+                user_limits = json.loads(limit_file.read(), encoding='ascii')
+                limit_file.close()
             except:
                 log.exception("Unknown problem opening user limit file!")
                 return {}
