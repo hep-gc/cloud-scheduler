@@ -886,6 +886,15 @@ class ResourcePool:
                     types[vm.uservmtype] = 1
         return types
 
+    def get_vm_count_user(self, user):
+        """Get a count of the number of VMs for specified user."""
+        count = 0
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.user == user:
+                    count += 1
+        return count
+
     def vm_count(self):
         """Count of VMs in the system."""
         count = 0
@@ -1777,6 +1786,16 @@ class ResourcePool:
             ret = "Could not find cloud %s." % clustername
         return ret
 
+    def user_at_limit(self, user):
+        """Check if a user has met their throttled limit."""
+        count = self.get_vm_count_user(user)
+        limit = False
+        if user in self.user_vm_limits:
+            if count < self.user_vm_limits[user]:
+                pass
+            else:
+                limit = True
+        return limit
 
 class VMDestroyCmd(threading.Thread):
     """
