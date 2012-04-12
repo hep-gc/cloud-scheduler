@@ -483,6 +483,47 @@ class Scheduler(threading.Thread):
             if vmtype not in current_types.keys():
                 diff_types[vmtype] = -desired_types[vmtype]
 
+        # With user limiting will need to reset any users that are at their limits
+        # so they will not interfere with scheduling
+        # will need to redistribute negatives to the non-limited users
+        limited_users = []
+        for vmusertype in diff_types.keys():
+            user = vmusertype.split(':')[0]
+            if self.resource_pool.user_at_limit(user):
+                # This user at their limit alter their diff_types
+                if vmusertype not in limited_users:
+                    limited_users.append(vmusertype)
+        neg_total = 0
+        for usertype in limited_users:
+            if diff_types[usertype] < 0:
+                neg_total += diff_types[usertype]
+        splitby = len(diff_types) - len(limited_users)
+        adjustby = 0
+        if splitby > 0:
+            adjustby = neg_total / splitby
+        elif splitby == 0:
+            log.debug("All users are limited.")
+        else:
+            log.error("More user vmtypes limited than what's in diff types, something weird here.")
+
+        for usertype in diff_types.keys():
+            if usertype not in limited_users:
+                diff_types[usertype] += adjustby # the 'extra' will be negative so add it
+
+                    # Would normally be trying to boot VMs for this user need to give their share to others 
+                    # so they won't get blocked out by the limited user.
+                    
+                    ## Need to figure out the total to redistribute before doing so and find all limited users
+                    ## otherwise might give some to a user that is also limited
+                    
+                    #ways = len(diff_types) - len(limited_users)
+                    #if ways > 0:
+                        #extra = diff_types[vmusertype] / ways
+                        #for usertype in diff_types.keys():
+                            #if usertype not in limited_users:
+                                #diff_types[usertype] += extra # the 'extra' will be negative so add it adjust other shares
+                    #diff_types[vmusertype] = 0
+
         if len(diff_types) == 0:
             if len(self.job_pool.get_required_vmtypes()) != 0:
                 log.error("Possible discrepancy in diff_types detected.")
@@ -507,6 +548,9 @@ class Scheduler(threading.Thread):
                 users = self.job_pool.job_container.get_users()
                 #for user in unscheduled_jobs_by_users.keys():
                 for user in users:
+                    if self.resource_pool.user_at_limit(user):
+                        log.debug("User: %s is at their VM limit - skipping." % user)
+                        continue
                     # Attempt to schedule jobs in order of their appearance in user's job list
                     # (currently sorted by Job priority)
                     #for job in unscheduled_jobs_by_users[user]:
@@ -977,7 +1021,7 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     diff_types[vmtype] = -desired_types[vmtype]
-            log.info("Diff Types: %s" % str(diff_types))
+            log.debug("Diff Types: %s" % str(diff_types))
 
             num_to_change = self.clean_determine_num_to_change(diff_types, required_vmtypes_dict)
 
@@ -996,12 +1040,12 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     next_diff_types[vmtype] = -desired_types[vmtype]
-            log.info("Next Diff Types: %s" % str(diff_types))
+            log.debug("Next Diff Types: %s" % str(diff_types))
             
             #       determine new num_to_change based on updated diff_types
             next_num_to_change = self.clean_determine_num_to_change(next_diff_types, required_vmtypes_dict)
             #       compare the 2 num_to_change results and try to detect the flipflopping
-            log.debug("is a last adjustment needed to num to change?")
+            log.verbose("is a last adjustment needed to num to change?")
             for vmtype in next_num_to_change.keys():
                 if vmtype in num_to_change.keys():
                     if next_num_to_change[vmtype] < 0 and num_to_change[vmtype] > 0 \
