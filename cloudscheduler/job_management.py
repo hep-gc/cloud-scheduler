@@ -162,7 +162,10 @@ class Job:
         self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
 
         # Set the new job's status
-        self.status = self.statuses[1]
+        if self.job_status == 2:
+            self.status = self.statuses[0]
+        else:
+            self.status = self.statuses[1]
         self.override_status = None
 
         global log
