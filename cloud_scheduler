@@ -1021,8 +1021,35 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     diff_types[vmtype] = -desired_types[vmtype]
-            log.debug("Diff Types: %s" % str(diff_types))
+            log.debug("Diff Types Before Limits: %s" % str(diff_types))
 
+            # With user limiting will need to reset any users that are at their limits
+            # so they will not interfere with scheduling
+            # will need to redistribute negatives to the non-limited users
+            limited_users = []
+            for vmusertype in diff_types.keys():
+                user = vmusertype.split(':')[0]
+                if self.resource_pool.user_at_limit(user):
+                    # This user at their limit alter their diff_types
+                    if vmusertype not in limited_users:
+                        limited_users.append(vmusertype)
+            neg_total = 0
+            for usertype in limited_users:
+                if diff_types[usertype] < 0:
+                    neg_total += diff_types[usertype]
+            splitby = len(diff_types) - len(limited_users)
+            adjustby = 0
+            if splitby > 0:
+                adjustby = neg_total / splitby
+            elif splitby == 0:
+                log.debug("All users are limited.")
+            else:
+                log.error("More user vmtypes limited than what's in diff types, something weird here.")
+    
+            for usertype in diff_types.keys():
+                if usertype not in limited_users:
+                    diff_types[usertype] += adjustby # the 'extra' will be negative so add it
+            log.debug("Diff Types After Limits: %s" % str(diff_types))
             num_to_change = self.clean_determine_num_to_change(diff_types, required_vmtypes_dict)
 
             # TODO: recalculate diff_types based on the changes in num_to_change
