@@ -1042,7 +1042,7 @@ class Cleanup(threading.Thread):
             if splitby > 0:
                 adjustby = neg_total / splitby
             elif splitby == 0:
-                log.debug("All users are limited.")
+                log.verbose("All users are limited.")
             else:
                 log.error("More user vmtypes limited than what's in diff types, something weird here.")
     
@@ -1052,7 +1052,6 @@ class Cleanup(threading.Thread):
             log.debug("Diff Types After Limits: %s" % str(diff_types))
             num_to_change = self.clean_determine_num_to_change(diff_types, required_vmtypes_dict)
 
-            # TODO: recalculate diff_types based on the changes in num_to_change
             next_diff_types = {}
             vmcount = self.resource_pool.get_vmtypes_count_internal()
             for vmtype in vmcount.keys():
@@ -1072,7 +1071,6 @@ class Cleanup(threading.Thread):
             #       determine new num_to_change based on updated diff_types
             next_num_to_change = self.clean_determine_num_to_change(next_diff_types, required_vmtypes_dict)
             #       compare the 2 num_to_change results and try to detect the flipflopping
-            log.verbose("is a last adjustment needed to num to change?")
             for vmtype in next_num_to_change.keys():
                 if vmtype in num_to_change.keys():
                     if next_num_to_change[vmtype] < 0 and num_to_change[vmtype] > 0 \
@@ -1080,6 +1078,37 @@ class Cleanup(threading.Thread):
                         # Has fliped
                         # adjust num_to_change to prevent flipflop
                         num_to_change[vmtype] = 0
+            
+            log.debug("Pre-User-Throttling values: %s" % str(num_to_change))
+            # Make sure not going to retire too many machines if some are throttled
+            adjust_num_total = 0
+            total_pos_num = 0
+            for uservmtype in num_to_change.keys():
+                user = uservmtype.split(':')[0]
+                if user in self.resource_pool.user_vm_limits.keys():
+                    if num_to_change[uservmtype] < 0:
+                        if self.resource_pool.get_vm_count_user(user) + abs(num_to_change[uservmtype]) > self.resource_pool.user_vm_limits[user]:
+                            diff_limit = self.resource_pool.user_vm_limits[user] - self.resource_pool.get_vm_count_user(user)
+                            adjust_num = abs(num_to_change[uservmtype]) - diff_limit
+                            adjust_num_total += adjust_num
+                    elif num_to_change[uservmtype] > 0:
+                        total_pos_num += 1
+            max_adjust_per_pos = 0
+            while adjust_num_total > 0:
+                if total_pos_num > 0:
+                    max_adjust_per_pos = adjust_num_total / total_pos_num
+                    for uservmtype in num_to_change.keys():
+                        if num_to_change[uservmtype] > 0:
+                            if num_to_change[uservmtype] < max_adjust_per_pos:
+                                adjust_num_total -= num_to_change[uservmtype]
+                                num_to_change[uservmtype] = 0
+                                total_pos_num -= 1
+                            else:
+                                adjust_num_total -= max_adjust_per_pos
+                                num_to_change[uservmtype] -= max_adjust_per_pos
+                else:
+                    break
+
             log.info("Final(for real) num to change: %s" % str(num_to_change))
 
             log.verbose("Ready to balance via configured method")
