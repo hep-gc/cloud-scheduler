@@ -88,7 +88,8 @@ class Job:
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
              TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
-             VMProxyNonBoot=config.default_VMProxyNonBoot, **kwargs):
+             VMProxyNonBoot=config.default_VMProxyNonBoot,
+             VMImageProxyFile=None, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -160,6 +161,7 @@ class Job:
         self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
         self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
         self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
+        self.vmimage_proxy_file = VMImageProxyFile
 
         # Set the new job's status
         if self.job_status == 2:
@@ -606,6 +608,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "SUBMIT_x509userproxy")
                 _add_if_exists(xml_job, job_dictionary, "VMHypervisor")
                 _add_if_exists(xml_job, job_dictionary, "VMProxyNonBoot")
+                _add_if_exists(xml_job, job_dictionary, "VMImageProxyFile")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")

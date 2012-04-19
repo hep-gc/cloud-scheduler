@@ -570,7 +570,8 @@ class NimbusCluster(ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
             vm_image, vm_mem, vm_cores, vm_storage, customization=None, vm_keepalive=0,
             job_proxy_file_path=None, myproxy_creds_name=None, myproxy_server=None, 
-            myproxy_server_port=None, job_per_core=False, proxy_non_boot=False):
+            myproxy_server_port=None, job_per_core=False, proxy_non_boot=False,
+            vmimage_proxy_file=None):
         """Attempt to boot up a new VM on the cluster."""
         def _remove_files(files):
             """Private function to clean up temporary files created during the create process."""
@@ -615,10 +616,20 @@ class NimbusCluster(ICluster):
             job_proxy = None
 
 
-        if customization or job_proxy:
+        if customization or job_proxy or vmimage_proxy_file:
             image_scheme = urlparse(vm_image).scheme
             if image_scheme == "https":
-                _job_proxy = job_proxy
+                if vmimage_proxy_file:
+                    try:
+                        with open(vmimage_proxy_file) as proxy:
+                            vmimage_proxy = proxy.read()
+                    except:
+                        if vmimage_proxy_file:
+                            log.exception("Couldn't open '%s', continuing without user's vmimage proxy" % (vmimage_proxy_file))
+                        vmimage_proxy = None
+                    _job_proxy = vmimage_proxy
+                else:
+                    _job_proxy = job_proxy
             else:
                 _job_proxy = None
             vm_optional = nimbus_xml.ws_optional_factory(custom_tasks=customization, credential=_job_proxy)
