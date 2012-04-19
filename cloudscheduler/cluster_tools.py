@@ -679,7 +679,7 @@ class NimbusCluster(ICluster):
             _remove_files(nimbus_files + [vm_proxy_file_path])
             err_type = self._extract_create_error(create_err)
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
-            if err_type == 'NoProxy' or err_type == 'ExpiredProxy':
+            if err_type == 'NoProxy' or err_type == 'ExpiredProxy' or err_type == 'NotAuthorized':
                 create_return = -1
             elif err_type == 'NoSlotsInNetwork':
                 with self.res_lock:
@@ -1058,6 +1058,10 @@ class NimbusCluster(ICluster):
         connect_refused = re.search("Connection refused", output)
         if connect_refused:
             return "ConnectionRefused"
+
+        not_authorized = re.search("not authorized to use operation", output)
+        if not_authorized:
+            return "NotAuthorized"
 
         return "Error"
 
