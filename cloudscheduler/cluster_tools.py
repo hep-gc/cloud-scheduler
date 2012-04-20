@@ -1127,7 +1127,7 @@ class NimbusCluster(ICluster):
         with self.res_lock:
             remaining_net_slots = self.net_slots[vm.network] - 1
             if remaining_net_slots < 0:
-                raise NoResourcesError("net_slots: " + vm.network)
+                raise NoResourcesError("net_slots: %s" % vm.network)
             ICluster.resource_checkout(self, vm)
             self.net_slots[vm.network] = remaining_net_slots
 
