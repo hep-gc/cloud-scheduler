@@ -1777,15 +1777,15 @@ class Cleanup(threading.Thread):
 
                     if not potentialVM:
                         # shutdown this one
-                        log.info("Going to shutdown vm %s, no jobs appear to be able to run there" % internal_vm.id)
+                        log.verbose("Going to shutdown vm %s, no jobs appear to be able to run there" % internal_vm.id)
                         to_shutdown.append(internal_vm)
                     else:
                         if schedjob_to_hold:
                             to_hold.add(schedjob_to_hold)
-                            log.info("job %s looks like it should be to able to run on an idle machine but is not, will hold it." % schedjob_to_hold.id)
+                            log.debug("job %s looks like it should be to able to run on an idle machine but is not, will hold it." % schedjob_to_hold.id)
                         if unschedjob_to_hold:
                             to_hold.add(unschedjob_to_hold)
-                            log.info("job %s looks like it should be to able to run on an idle machine but is not, will hold it." % unschedjob_to_hold.id)
+                            log.debug("job %s looks like it should be to able to run on an idle machine but is not, will hold it." % unschedjob_to_hold.id)
                         # even weirder state - idle vm with a job that should run on it but is not - try checking the full requirements or just hold the job?
             except Exception as e:
                 log.warning("Exception: %s" % str(e))
@@ -1798,7 +1798,7 @@ class Cleanup(threading.Thread):
 
         for vm in to_shutdown:
             #check for vm.keep_alive
-            if vm.idle_start and not (int(time.time()) - vm.idle_start > vm.keep_alive):
+            if vm.keep_alive > 0 and vm.idle_start and not (int(time.time()) - vm.idle_start > vm.keep_alive):
                 continue
             cluster = self.resource_pool.get_cluster_with_vm(vm)
             if cluster:
