@@ -896,7 +896,7 @@ class Cleanup(threading.Thread):
 
         while not self.quit:
             log.debug("Syncing job queues")
-
+            self.check_destroy_threads()
             # Check through new jobs for running jobs and move to sched
             self.clean_scheduled_unscheduled()
             # Check the scheduled Jobs to see which running jobs are on what cloud
