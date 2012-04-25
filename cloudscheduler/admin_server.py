@@ -105,6 +105,11 @@ class AdminServer(threading.Thread,):
             def perform_quick_shutdown(self):
                 scheduler.toggle_quick_exit()
                 return ""
+            def list_user_limits(self):
+                return str(cloud_resources.user_vm_limits)
+            def user_limit_reload(self):
+                cloud_resources.user_vm_limits = cloud_resources.load_user_limits(config.user_limit_file)
+                return True if len(cloud_resources.user_vm_limits) > 0 else False
 
 
 
