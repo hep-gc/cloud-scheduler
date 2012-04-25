@@ -957,6 +957,16 @@ class Cleanup(threading.Thread):
                 bad_jobs.append(job)
                 log.debug("No cluster fits job %s ignoring" % job.id)
                 continue
+            if job.req_memory > 0:
+                if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch, memory=job.req_memory):
+                    bad_jobs.append(job)
+                    log.debug("No cluster fits job %s ignoring" % job.id)
+                    continue
+            if job.req_storage > 0:
+                if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch, disk=job.req_storage):
+                    bad_jobs.append(job)
+                    log.debug("No cluster fits job %s ignoring" % job.id)
+                    continue
             if job.target_clouds:
                 if not set(job.target_clouds).intersection(set(cloud_names)):
                     bad_jobs.append(job)
