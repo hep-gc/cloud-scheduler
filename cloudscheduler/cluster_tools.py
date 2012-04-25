@@ -543,7 +543,7 @@ class NimbusCluster(ICluster):
 
     def __init__(self, name="Dummy Cluster", host="localhost", port="8443",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0,
+                 vm_slots=0, cpu_cores=0, storage=0, max_vm_storage=-1,
                  access_key_id=None, secret_access_key=None, security_group=None,
                  netslots={}, hypervisor='xen'):
 
@@ -559,6 +559,7 @@ class NimbusCluster(ICluster):
         for pool in self.net_slots.keys():
             total_pool_slots += self.net_slots[pool]
         self.max_slots = total_pool_slots
+        self.max_vm_storage = max_vm_storage
 
     def get_cluster_info_short(self):
         """Returns formatted cluster information for use by cloud_status, Overloaded from baseclass to use net_slots."""

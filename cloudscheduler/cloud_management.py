@@ -275,6 +275,7 @@ class ResourcePool:
                     vm_slots = total_slots,
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
+                    max_vm_storage = int(get_or_none(config, cluster, "max_vm_storage")),
                     netslots = net_slots,
                     hypervisor = hypervisor,
                     )
@@ -387,6 +388,8 @@ class ResourcePool:
             # If the cluster does not have sufficient storage capacity
             if (storage > cluster.storageGB):
                 continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
+                continue
 
             # Return the cluster as an available resource (meets all job reqs)
             return cluster
@@ -442,6 +445,8 @@ class ResourcePool:
                 if imageloc in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[imageloc]:
                         continue
+                if cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
+                    continue
             elif cluster.__class__.__name__ == "EC2Cluster":
                 # If no valid ami to boot from
                 if ami == "":
@@ -589,6 +594,8 @@ class ResourcePool:
                 continue
             if not cluster.find_potential_mementry(memory):
                 continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
+                continue
             # Cluster meets network and cpu reqs and may have enough memory
             potential_fit = True
             break
@@ -632,6 +639,8 @@ class ResourcePool:
             if not cluster.find_potential_mementry(memory):
                 continue
             if disk > cluster.max_storageGB:
+                continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
                 continue
             fitting.append(cluster)
         return fitting
