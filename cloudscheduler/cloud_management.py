@@ -178,6 +178,8 @@ class ResourcePool:
             with cluster.res_lock:
                 cluster.vm_slots = 0
                 cluster.memory = []
+                if cluster.__class__.__name__ == "NimbusCluster":
+                    cluster.net_slots = {}
             old_resources.append(cluster)
             self.resources.remove(cluster)
 
