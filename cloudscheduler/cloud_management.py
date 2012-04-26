@@ -246,6 +246,8 @@ class ResourcePool:
         cloud_type = get_or_none(config, cluster, "cloud_type")
         max_vm_mem = get_or_none(config, cluster, "max_vm_mem")
         max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
+        max_vm_storage = get_or_none(config, cluster, "max_vm_storage")
+        max_vm_storage = int(max_vm_storage) if max_vm_storage != None else -1
         hypervisor = get_or_none(config, cluster, "hypervisor")
         if hypervisor == None:
             hypervisor = 'xen'
@@ -277,7 +279,7 @@ class ResourcePool:
                     vm_slots = total_slots,
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
-                    max_vm_storage = int(get_or_none(config, cluster, "max_vm_storage")),
+                    max_vm_storage = max_vm_storage,
                     netslots = net_slots,
                     hypervisor = hypervisor,
                     )
