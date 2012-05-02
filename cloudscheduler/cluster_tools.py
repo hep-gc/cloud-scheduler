@@ -768,6 +768,9 @@ class NimbusCluster(ICluster):
 
         # Create an epr for workspace.sh
         vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
+        if vm.clusteraddr != self.network_address:
+            log.error("Attempting to destroy a VM on wrong cluster - vm belongs to %s, but this is %s. Abort" % (vm.clusteraddr, self.networ_address))
+            return -1
 
         if shutdown_first:
             # Create the workspace command with shutdown option
