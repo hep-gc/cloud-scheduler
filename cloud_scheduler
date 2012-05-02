@@ -1349,6 +1349,20 @@ class Cleanup(threading.Thread):
                             unregisteredvms.append(vm)
         return unregisteredvms, retiredvms
 
+    def clean_check_vms_extra_machines(self, machineList):
+        
+        missing_vms = []
+        for machine in machineList:
+            vm = self.resource_pool.find_vm_with_name(machine['Name'])
+            if not vm:
+                vm = self.resource_pool.find_vm_with_addr(machine['MyAddress'])
+            if not vm:
+                missing_vms.append(machine)
+        # List of mismatched entries complete, do what with ?
+            
+
+
+
     def clean_kill_unregistered_vms(self, unregisteredvms, retired = False):
         """Checks to see if an unregistered VM is eligible for shutdown."""
         to_kill = []
