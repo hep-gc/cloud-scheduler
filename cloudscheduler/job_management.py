@@ -25,6 +25,7 @@
 ## IMPORTS
 ##
 from __future__ import with_statement
+import os
 import re
 import sys
 import shlex
@@ -332,6 +333,23 @@ class Job:
         """A method that will compare a job's requirements listed below with another job to see if they all match."""
         return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network and self.user == job.user
 
+    def get_vmimage_proxy_file_path(self):
+        proxypath = []
+        if self.spool_dir and self.vmimage_proxy_file:
+            proxypath.append(self.spool_dir)
+            if self.vmimage_proxy_file.startswith('/'):
+                proxypath.append(self.vmimage_proxy_file)
+            else:
+                proxypath.append('/')
+                proxypath.append(self.vmimage_proxy_file)
+        proxyfilepath = ''.join(proxypath)
+        if not os.path.isfile(proxyfilepath):
+            log.debug("Could not locate the proxy file at %s. Trying alternate location." % proxyfilepath)
+            proxyfilepath = self.vmimage_proxy_file
+            if not os.path.isfile(proxyfilepath):
+                log.debug("Could not locate the proxy file at %s." % self.vmimage_proxy_file)
+                proxyfilepath = ''
+        return proxyfilepath
 
 class JobPool:
     """ A pool of all jobs read from the job scheduler. Stores all jobs until they
