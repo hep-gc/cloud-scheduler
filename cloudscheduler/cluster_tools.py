@@ -625,7 +625,7 @@ class NimbusCluster(ICluster):
                             vmimage_proxy = proxy.read()
                     except:
                         if vmimage_proxy_file:
-                            log.exception("Couldn't open '%s', Backing out of VM Creation." % (vmimage_proxy_file_path))
+                            log.exception("Couldn't open '%s' path for %s, Backing out of VM Creation." % (vmimage_proxy_file_path, vmimage_proxy_file))
                             return -1 # Temp Ban job
                     _job_proxy = vmimage_proxy
                 else:
