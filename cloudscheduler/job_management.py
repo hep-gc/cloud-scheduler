@@ -1080,13 +1080,15 @@ class JobPool:
 
             Returns a list of any job that fails to Hold.
         """
-        log.debug("Holding Jobs via Condor SOAP API")
+        log.debug("Holding %i Jobs via Condor SOAP API" % len(jobs))
         failed = []
         for job in jobs:
             try:
                 job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, "CloudSchedulerHold", False, False, True)
                 if job_ret.code != "SUCCESS":
                     failed.append(job)
+                else:
+                    log.debug("Held %s 's job %s. " % (job.user, job.id))
             except URLError, e:
                 log.error("There was a problem connecting to the "
                       "Condor scheduler web service (%s) for the following "
