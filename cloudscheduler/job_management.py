@@ -335,6 +335,7 @@ class Job:
 
     def get_vmimage_proxy_file_path(self):
         proxypath = []
+        proxyfilepath= ''
         if self.spool_dir and self.vmimage_proxy_file:
             proxypath.append(self.spool_dir)
             if self.vmimage_proxy_file.startswith('/'):
@@ -342,13 +343,14 @@ class Job:
             else:
                 proxypath.append('/')
                 proxypath.append(self.vmimage_proxy_file)
-        proxyfilepath = ''.join(proxypath)
-        if not os.path.isfile(proxyfilepath):
-            log.debug("Could not locate the proxy file at %s. Trying alternate location." % proxyfilepath)
-            proxyfilepath = self.vmimage_proxy_file
+            
+            proxyfilepath = ''.join(proxypath)
             if not os.path.isfile(proxyfilepath):
-                log.debug("Could not locate the proxy file at %s." % self.vmimage_proxy_file)
-                proxyfilepath = ''
+                log.debug("Could not locate the proxy file at %s. Trying alternate location." % proxyfilepath)
+                proxyfilepath = self.vmimage_proxy_file
+                if not os.path.isfile(proxyfilepath):
+                    log.debug("Could not locate the proxy file at %s." % self.vmimage_proxy_file)
+                    proxyfilepath = ''
         return proxyfilepath
 
 class JobPool:
