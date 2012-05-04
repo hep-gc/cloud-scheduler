@@ -51,7 +51,7 @@ def main(argv=None):
     parser.add_option("-q", "--job-queue", metavar="QUEUE",
                       action="store", dest="job_queue",
                       type="choice", choices=['all', 'new', 'sched', 'high', 'running', 'idle', 'held', 'complete'],
-                      help="Get Information about the job queues")
+                      help="Get Information about the job queues. [all, new, sched, high, running, idle, held, complete]")
     parser.add_option("-i", "--ip-address", default=False, action="store_true",
                       dest="ips",
                       help="output ip information for munin monitoring")
