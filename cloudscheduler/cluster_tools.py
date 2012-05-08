@@ -151,9 +151,9 @@ class VM:
 
     def get_vm_info(self):
         """Formatted VM information for use with cloud_status."""
-        output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.status[-8:])
+        output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id, self.hostname, self.vmtype, self.user, self.status)
         if self.override_status != None:
-            output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id[-11:], self.hostname[-23:], self.vmtype[-10:], self.user[-10:], self.override_status[-12:])
+            output = "%-11s %-23s %-20s %-10s %-12s\n" % (self.id, self.hostname, self.vmtype, self.user, self.override_status)
         return output
 
     @staticmethod
