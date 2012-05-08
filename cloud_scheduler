@@ -752,7 +752,7 @@ class Scheduler(threading.Thread):
         log.verbose("Finished customizations for job '%s'" % job.id)
         for resource in good_resources:
             # Print details of the resource selected
-            log.debug("Booting VM for job %s on %s:" % (job.id, resource.name))
+            log.debug("Booting VM for job %s on: %s" % (job.id, resource.name))
             resource.log()
 
             #TODO: unify this
