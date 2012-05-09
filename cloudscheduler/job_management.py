@@ -1082,7 +1082,7 @@ class JobPool:
         jobs = self.job_container.get_all_jobs()
         limits = {}
         for job in jobs:
-            if job.usertype_limit:
+            if job.usertype_limit > -1:
                 limits[job.uservmtype] = job.usertype_limit
         return limits
 

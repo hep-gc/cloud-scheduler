@@ -1811,7 +1811,7 @@ class ResourcePool:
         """Check if a vmusertype has met it's limit."""
         atLimit = False
         counts = self.get_vmtypes_count_internal()
-        if uservmtype in counts.keys() and not (counts[uservmtype] < limit):
+        if limit != -1 and uservmtype in counts.keys() and not (counts[uservmtype] < limit):
             atLimit = True
         return atLimit
 
