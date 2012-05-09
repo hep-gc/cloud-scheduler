@@ -1074,7 +1074,7 @@ class Cleanup(threading.Thread):
                 if vmtype in desired_types.keys():
                     next_diff_types[vmtype] = next_types[vmtype] - desired_types[vmtype]
                 else:
-                    next_diff_types[vmtype] = 0
+                    next_diff_types[vmtype] = 1 # probably smart to set this to 1 as well to match above
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     next_diff_types[vmtype] = -desired_types[vmtype]
