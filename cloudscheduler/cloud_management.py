@@ -1803,11 +1803,18 @@ class ResourcePool:
         count = self.get_vm_count_user(user)
         limit = False
         if user in self.user_vm_limits:
-            if count < self.user_vm_limits[user]:
-                pass
-            else:
+            if not (count < self.user_vm_limits[user]):
                 limit = True
         return limit
+
+    def uservmtype_at_limit(self, uservmtype, limit):
+        """Check if a vmusertype has met it's limit."""
+        atLimit = False
+        counts = self.get_vmtypes_count_internal()
+        if uservmtype in counts.keys() and not (counts[uservmtype] < limit):
+            atLimit = True
+        return atLimit
+
 
 class VMDestroyCmd(threading.Thread):
     """

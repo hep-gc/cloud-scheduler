@@ -487,12 +487,16 @@ class Scheduler(threading.Thread):
         # so they will not interfere with scheduling
         # will need to redistribute negatives to the non-limited users
         limited_users = []
+        userjoblimits = self.job_pool.get_usertype_limits()
         for vmusertype in diff_types.keys():
             user = vmusertype.split(':')[0]
             if self.resource_pool.user_at_limit(user):
-                # This user at their limit alter their diff_types
                 if vmusertype not in limited_users:
                     limited_users.append(vmusertype)
+            if vmusertype in userjoblimits.keys():
+                if self.resource_pool.uservmtype_at_limit(vmusertype, userjoblimits[vmusertype]):
+                    if vmusertype not in limited_users:
+                        limited_users.append(vmusertype)
         neg_total = 0
         for usertype in limited_users:
             if diff_types[usertype] < 0:
@@ -509,20 +513,6 @@ class Scheduler(threading.Thread):
         for usertype in diff_types.keys():
             if usertype not in limited_users:
                 diff_types[usertype] += adjustby # the 'extra' will be negative so add it
-
-                    # Would normally be trying to boot VMs for this user need to give their share to others 
-                    # so they won't get blocked out by the limited user.
-                    
-                    ## Need to figure out the total to redistribute before doing so and find all limited users
-                    ## otherwise might give some to a user that is also limited
-                    
-                    #ways = len(diff_types) - len(limited_users)
-                    #if ways > 0:
-                        #extra = diff_types[vmusertype] / ways
-                        #for usertype in diff_types.keys():
-                            #if usertype not in limited_users:
-                                #diff_types[usertype] += extra # the 'extra' will be negative so add it adjust other shares
-                    #diff_types[vmusertype] = 0
 
         if len(diff_types) == 0:
             if len(self.job_pool.get_required_vmtypes()) != 0:
@@ -556,6 +546,10 @@ class Scheduler(threading.Thread):
                     #for job in unscheduled_jobs_by_users[user]:
                     user_jobs = self.job_pool.job_container.get_unscheduled_user_jobs_by_type(user, prioritized=True)
                     for vmtype in user_jobs.keys():
+                        vmusertype = ''.join([user,':',vmtype])
+                        if vmusertype in userjoblimits.keys() and self.resource_pool.uservmtype_at_limit(vmusertype, userjoblimits[vmusertype]):
+                            log.debug("User: %s 's vmtype: %s is at their Limit - skipping." % (user, vmtype))
+                            continue
                         for job in user_jobs[vmtype]:
     
                             if job.job_status >= self.RUNNING:
@@ -1039,6 +1033,7 @@ class Cleanup(threading.Thread):
             # With user limiting will need to reset any users that are at their limits
             # so they will not interfere with scheduling
             # will need to redistribute negatives to the non-limited users
+            userjoblimits = self.job_pool.get_usertype_limits()
             limited_users = []
             for vmusertype in diff_types.keys():
                 user = vmusertype.split(':')[0]
@@ -1046,6 +1041,10 @@ class Cleanup(threading.Thread):
                     # This user at their limit alter their diff_types
                     if vmusertype not in limited_users:
                         limited_users.append(vmusertype)
+                if vmusertype in userjoblimits.keys():
+                    if self.resource_pool.uservmtype_at_limit(vmusertype, userjoblimits[vmusertype]):
+                        if vmusertype not in limited_users:
+                            limited_users.append(vmusertype)
             neg_total = 0
             for usertype in limited_users:
                 if diff_types[usertype] < 0:

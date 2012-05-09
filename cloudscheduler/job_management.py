@@ -90,7 +90,7 @@ class Job:
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
              TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
              VMProxyNonBoot=config.default_VMProxyNonBoot,
-             VMImageProxyFile=None, **kwargs):
+             VMImageProxyFile=None, VMTypeLimit=-1, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -163,6 +163,7 @@ class Job:
         self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
         self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
         self.vmimage_proxy_file = VMImageProxyFile
+        self.usertype_limit = int(VMTypeLimit)
 
         # Set the new job's status
         if self.job_status == 2:
@@ -182,7 +183,7 @@ class Job:
         except:
             log.error("Failed to parse TargetClouds - use a comma separated list")
 
-        log.verbose("New Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
+        log.verbose("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
           % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
 
     def __repr__(self):
@@ -629,6 +630,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMHypervisor")
                 _add_if_exists(xml_job, job_dictionary, "VMProxyNonBoot")
                 _add_if_exists(xml_job, job_dictionary, "VMImageProxyFile")
+                _add_if_exists(xml_job, job_dictionary, "VMTypeLimit")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -1071,6 +1073,18 @@ class JobPool:
         return jobs
 
 
+    def get_usertype_limits(self):
+        """
+        get_usertype_limits - get a dict of all the usertype limits in the job pool
+
+        returns a dict of uservmtypes with their limits
+        """
+        jobs = self.job_container.get_all_jobs()
+        limits = {}
+        for job in jobs:
+            if job.usertype_limit:
+                limits[job.uservmtype] = job.usertype_limit
+        return limits
 
 
     # Attempts to place a list of jobs into a Hold Status to prevent running
