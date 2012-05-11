@@ -54,7 +54,7 @@ class JobProxyRefresher(threading.Thread):
                     elif job.needs_proxy_renewal():
                         if job.get_myproxy_creds_name() != None:
                             log.verbose("Renewing proxy %s for job %s" % (job.get_x509userproxy(), job.id))
-                            if MyProxyProxyRefresher().renew_proxy(job.get_x509userproxy(), job.get_myproxy_creds_name(), job.get_myproxy_server(), job.get_myproxy_server_port()):
+                            if MyProxyProxyRefresher().renew_proxy(job.get_x509userproxy(), job.get_myproxy_creds_name(), job.get_myproxy_server(), job.get_myproxy_server_port(), job.get_renew_time()):
                                 # Yay, proxy renewal worked! :-)
                                 log.verbose("Proxy for job %s renewed." % (job.id))
                                 # Don't forget to reset the proxy expiry time cache.
@@ -121,7 +121,7 @@ class VMProxyRefresher(threading.Thread):
                     elif vm.needs_proxy_renewal():
                         if vm.get_myproxy_creds_name() != None:
                             log.debug("Renewing proxy %s for VM %s" % (vm.get_proxy_file(), vm.id))
-                            if MyProxyProxyRefresher().renew_proxy(vm.get_proxy_file(), vm.get_myproxy_creds_name(), vm.get_myproxy_server(), vm.get_myproxy_server_port()):
+                            if MyProxyProxyRefresher().renew_proxy(vm.get_proxy_file(), vm.get_myproxy_creds_name(), vm.get_myproxy_server(), vm.get_myproxy_server_port(), vm.get_renew_time()):
                                 # Yay, proxy renewal worked! :-)
                                 log.verbose("Proxy for VM %s renewed." % (vm.id))
                                 # Don't forget to reset the proxy expiry time cache.
@@ -158,7 +158,7 @@ class MyProxyProxyRefresher():
     """
     Utility class used to refresh a proxy using a MyProxy server.
     """
-    def renew_proxy(self, proxy_file_path, myproxy_creds_name, myproxy_server, myproxy_server_port):
+    def renew_proxy(self, proxy_file_path, myproxy_creds_name, myproxy_server, myproxy_server_port, renew_time):
         """This method will call the MyProxy commands to renew the credential for a given job.
         
         Returns True on sucess, False otherwise."""
@@ -198,7 +198,7 @@ class MyProxyProxyRefresher():
         try:
             (new_proxy_file, new_proxy_file_path) = tempfile.mkstemp(suffix='.csRenewedProxy')
             os.close(new_proxy_file)
-            myproxy_logon_cmd = '%s -s %s -p %s -k "%s" -a %s -o %s -d -v' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path)
+            myproxy_logon_cmd = '%s -s %s -p %s -k "%s" -a %s -o %s -t %s -d -v' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path, renew_time)
             cmd_args = shlex.split(myproxy_logon_cmd)
             log.debug('Invoking myproxy-logon command to refresh proxy %s ...' % (proxy_file_path))
             myproxy_logon_process = subprocess.Popen(cmd_args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -85,7 +85,7 @@ class Job:
              VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
-             Iwd=None, SUBMIT_x509userproxy=None,
+             Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
              VMInstanceType=config.default_VMInstanceType, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
              TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
@@ -151,6 +151,7 @@ class Job:
         self.original_x509userproxy = SUBMIT_x509userproxy
         self.spool_dir = Iwd
         self.x509userproxy_expiry_time = None
+        self.proxy_renew_time = CSMyProxyRenewalTime
         self.job_per_core = VMJobPerCore in ['true', "True", True]
         self.remote_host = RemoteHost
         self.running_cloud = ""
@@ -247,6 +248,10 @@ class Job:
     def get_myproxy_creds_name(self):
         """Returns the username to use with myproxy for job."""
         return self.myproxy_creds_name
+
+    def get_renew_time(self):
+        """Return the MyProxy proxy renewal time associated with this Job."""
+        return self.proxy_renew_time
 
     def set_myproxy_server(self, v):
         """Set the address of the myproxy server for job."""
@@ -618,6 +623,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyCredsName")
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyServer")
                 _add_if_exists(xml_job, job_dictionary, "CSMyProxyServerPort")
+                _add_if_exists(xml_job, job_dictionary, "CSMyProxyRenewalTime")
                 _add_if_exists(xml_job, job_dictionary, "x509userproxysubject")
                 _add_if_exists(xml_job, job_dictionary, "x509userproxy")
                 _add_if_exists(xml_job, job_dictionary, "VMHighPriority")

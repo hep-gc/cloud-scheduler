@@ -66,7 +66,8 @@ class VM:
             cloudtype="", network="public", cpuarch="x86",
             image="", memory=0, mementry=0,
             cpucores=0, storage=0, keep_alive=0, spot_id="",
-            proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, job_per_core=False):
+            proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, 
+            myproxy_renew_time="12", job_per_core=False):
         """
         Constructor
 
@@ -126,6 +127,7 @@ class VM:
         self.myproxy_creds_name = myproxy_creds_name
         self.myproxy_server = myproxy_server
         self.myproxy_server_port = myproxy_server_port
+        self.myproxy_renew_time = myproxy_renew_time
         self.override_status = None
         self.job_per_core = job_per_core
         self.force_retire = False
@@ -195,6 +197,9 @@ class VM:
         else:
             return None
 
+    def get_renew_time(self):
+        """Return the MyProxy proxy renewal time associated with the VM."""
+        return self.myproxy_renew_time
 
     def get_x509userproxy_expiry_time(self):
         """Use this method to get the expiry time of the VM's user proxy, if any.
