@@ -683,7 +683,7 @@ class Scheduler(threading.Thread):
             customizations.append((config.condor_host, config.condor_context_file))
 
         # local modifications are changes made to the VM's condor_config.local modifications file
-        local_modifications = ""
+        local_modifications = 'CSManagedVM = True\n'
 
         if config.override_vmtype:
             local_modifications += "VMType = %s\n" % job.req_vmtype
@@ -915,6 +915,8 @@ class Cleanup(threading.Thread):
                 log.debug("Clearing all un-needed VMs from the system")
                 self.clean_unneeded_vms()
                 machineList = self.resource_pool.machine_list
+                ## See if any stray entries in condor_status
+                self.clean_check_vms_extra_machines(machineList)
                 #if machineList:
                 # Make sure VMs have registered with Condor
                 # Check if any retiring VMs have Retired
@@ -1350,16 +1352,18 @@ class Cleanup(threading.Thread):
         return unregisteredvms, retiredvms
 
     def clean_check_vms_extra_machines(self, machineList):
-        
+        """Figure out which entries in condor_status are missing from CS."""        
         missing_vms = []
         for machine in machineList:
-            vm = self.resource_pool.find_vm_with_name(machine['Name'])
-            if not vm:
-                vm = self.resource_pool.find_vm_with_addr(machine['MyAddress'])
-            if not vm:
-                missing_vms.append(machine)
-        # List of mismatched entries complete, do what with ?
-            
+            if machine.has_key('CSManagedVM'):
+                print 'CSManagedVM true'
+                vm = self.resource_pool.find_vm_with_name(machine['Name'])
+                if not vm:
+                    vm = self.resource_pool.find_vm_with_addr(machine['MyAddress'])
+                if not vm:
+                    missing_vms.append(machine)
+        # List of mismatched entries complete, do what with?
+        return missing_vms
 
 
 
