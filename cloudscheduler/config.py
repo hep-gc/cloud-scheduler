@@ -56,6 +56,7 @@ graceful_shutdown = False
 graceful_shutdown_method = "off"
 retire_before_lifetime = False
 retire_before_lifetime_factor = 1.5
+retire_missing_vms = False
 getclouds = False
 scheduling_metric = "slot"
 scheduling_algorithm = "fairshare"
@@ -151,6 +152,7 @@ def setup(path=None):
     global graceful_shutdown_method
     global retire_before_lifetime
     global retire_before_lifetime_factor
+    global retire_missing_vms
     global getclouds
     global scheduling_metric
     global scheduling_algorithm
@@ -421,6 +423,14 @@ def setup(path=None):
         except ValueError:
             print "Configuration file problem: retire_before_lifetime_factor must be a " \
                   "float value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "retire_missing_vms"):
+        try:
+            retire_missing_vms = config_file.getboolean("global", "retire_missing_vms")
+        except ValueError:
+            print "Configuration file problem: retire_missing_vms must be an " \
+                  "boolean value."
             sys.exit(1)
 
     if config_file.has_option("global", "getclouds"):

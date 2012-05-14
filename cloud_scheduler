@@ -684,6 +684,7 @@ class Scheduler(threading.Thread):
 
         # local modifications are changes made to the VM's condor_config.local modifications file
         local_modifications = 'CSManagedVM = True\n'
+        local_modifications += 'STARTD_ATTRS = COLLECTOR_HOST_STRING VMType CSManagedVM\n'
 
         if config.override_vmtype:
             local_modifications += "VMType = %s\n" % job.req_vmtype
@@ -1354,18 +1355,26 @@ class Cleanup(threading.Thread):
     def clean_check_vms_extra_machines(self, machineList):
         """Figure out which entries in condor_status are missing from CS."""        
         missing_vms = []
+        non_cs_vms = []
         for machine in machineList:
             if machine.has_key('CSManagedVM'):
-                print 'CSManagedVM true'
                 vm = self.resource_pool.find_vm_with_name(machine['Name'])
                 if not vm:
                     vm = self.resource_pool.find_vm_with_addr(machine['MyAddress'])
                 if not vm:
                     missing_vms.append(machine)
-        # List of mismatched entries complete, do what with?
-        return missing_vms
-
-
+            else:
+                # This Machine not owned by CS
+                non_cs_vms.append(machine)
+        # Update the resource_pools sets of missing / non cs VMs
+        for machine in missing_vms:
+            log.warning("VM %s Could not be located within CS, may be lost." % machine['Name'])
+            self.resource_pool.missing_vm_condor_machines.add(machine)
+            if config.retire_missing_vms:
+                if machine['Activity'] != 'Retiring':
+                    self.resource_pool.do_condor_off(machine['Name'], machine['MyAddress'])
+        for machine in non_cs_vms:
+            self.resource_pool.non_cs_condor_machines.add(machine)
 
     def clean_kill_unregistered_vms(self, unregisteredvms, retired = False):
         """Checks to see if an unregistered VM is eligible for shutdown."""

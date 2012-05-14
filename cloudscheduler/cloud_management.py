@@ -94,6 +94,8 @@ class ResourcePool:
         self.failures = {}
         self.setup_lock = threading.Lock()
         self.setup_queued = False
+        self.non_cs_condor_machines = set()
+        self.missing_vm_condor_machines = set()
 
         if not condor_query_type:
             condor_query_type = config.condor_retrieval_method
