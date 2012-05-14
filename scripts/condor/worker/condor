@@ -385,11 +385,11 @@ setup_on_ec2() {
 	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
 
 	# Eucalyptus can give us just a private IP
-	public_ip=`curl -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
+	public_ip=`curl -m 10 -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
 	test $public_ip != "0.0.0.0" > /dev/null 2>&1
 	HAS_PUBLIC_IP=$?
 
-	curl -s http://$EC2_METADATA/ >/dev/null 2>&1
+	curl -m 10 -s http://$EC2_METADATA/ >/dev/null 2>&1
 	IS_EC2=$?
 	if [ $IS_EC2 -eq 0 ] ; then
 
