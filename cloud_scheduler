@@ -1092,7 +1092,7 @@ class Cleanup(threading.Thread):
                     or next_num_to_change[vmtype] > 0 and num_to_change[vmtype] < 0:
                         # Has fliped
                         # adjust num_to_change to prevent flipflop
-                        num_to_change[vmtype] = 0
+                        num_to_change[vmtype] = num_to_change[vmtype] + next_num_to_change[vmtype]
             
             log.debug("Pre-User-Throttling values: %s" % str(num_to_change))
             # Make sure not going to retire too many machines if some are throttled
