@@ -1369,12 +1369,12 @@ class Cleanup(threading.Thread):
         # Update the resource_pools sets of missing / non cs VMs
         for machine in missing_vms:
             log.warning("VM %s Could not be located within CS, may be lost." % machine['Name'])
-            self.resource_pool.missing_vm_condor_machines.add(machine)
+            self.resource_pool.missing_vm_condor_machines.add(machine['Name'])
             if config.retire_missing_vms:
                 if machine['Activity'] != 'Retiring':
                     self.resource_pool.do_condor_off(machine['Name'], machine['MyAddress'])
         for machine in non_cs_vms:
-            self.resource_pool.non_cs_condor_machines.add(machine)
+            self.resource_pool.non_cs_condor_machines.add(machine['Name'])
 
     def clean_kill_unregistered_vms(self, unregisteredvms, retired = False):
         """Checks to see if an unregistered VM is eligible for shutdown."""
