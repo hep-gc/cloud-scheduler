@@ -62,7 +62,7 @@ class VM:
     """
 
     def __init__(self, name="", id="", vmtype="", user="",
-            hostname="", ipaddress="", clusteraddr="",
+            hostname="", ipaddress="", clusteraddr="", clusterport="",
             cloudtype="", network="public", cpuarch="x86",
             image="", memory=0, mementry=0,
             cpucores=0, storage=0, keep_alive=0, spot_id="",
@@ -82,6 +82,7 @@ class VM:
         condorname   - (str) The name of the VM as it's registered with Condor
         condoraddr   - (str) The Address of the VM as it's registered with Condor
         clusteraddr  - (str) The address of the cluster hosting the VM
+        clusterport  - (str) The port of the cluster hosting the VM
         cloudtype    - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
         network      - (str) The network association the VM uses
         cpuarch      - (str) The required CPU architecture of the VM
@@ -106,6 +107,7 @@ class VM:
         self.condorname = None
         self.condoraddr = None
         self.clusteraddr = clusteraddr
+        self.clusterport = clusterport
         self.cloudtype = cloudtype
         self.network = network
         self.cpuarch = cpuarch
@@ -740,7 +742,7 @@ class NimbusCluster(ICluster):
         # Create a VM object to represent the newly created VM
         new_vm = VM(name = vm_name, id = vm_id, vmtype = vm_type, user = vm_user,
             hostname = vm_hostname, ipaddress = vm_ip, 
-            clusteraddr = self.network_address,
+            clusteraddr = self.network_address, clusterport = self.port,
             cloudtype = self.cloud_type,network = vm_networkassoc,
             cpuarch = vm_cpuarch, image = vm_image,
             memory = vm_mem, mementry = vm_mementry, cpucores = vm_cores,
@@ -772,7 +774,7 @@ class NimbusCluster(ICluster):
         """
 
         # Create an epr for workspace.sh
-        vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
+        vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr, vm.clusterport)
         if vm.clusteraddr != self.network_address:
             log.error("Attempting to destroy a VM on wrong cluster - vm belongs to %s, but this is %s. Abort" % (vm.clusteraddr, self.networ_address))
             return -1
@@ -858,7 +860,7 @@ class NimbusCluster(ICluster):
         bad_status = ("Destroyed", "NoProxy", "ExpiredProxy")
         special_status = ("Retiring", "TempBanned", "HeldBadReqs", "HTTPFail")
         # Create an epr for our poll command
-        vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr)
+        vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr, vm.clusterport)
 
         # Create workspace poll command
         ws_cmd = self.vmpoll_factory(vm_epr)

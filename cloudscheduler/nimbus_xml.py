@@ -45,7 +45,7 @@ def format_storage(storage_gb):
     """
     return str(int(storage_gb) * 1024)
 
-def ws_epr_factory(workspace_id, nimbus_hostname):
+def ws_epr_factory(workspace_id, nimbus_hostname, nimbus_port=8443):
     """
     Creates and returns a Nimbus epr file
 
@@ -61,11 +61,11 @@ def ws_epr_factory(workspace_id, nimbus_hostname):
 
     (xml_out, file_name) = tempfile.mkstemp()
 
-    epr_xml = ws_epr(workspace_id, nimbus_hostname)
+    epr_xml = ws_epr(workspace_id, nimbus_hostname, nimbus_port)
 
     if epr_xml != None:
 
-        os.write(xml_out, ws_epr(workspace_id, nimbus_hostname))
+        os.write(xml_out, ws_epr(workspace_id, nimbus_hostname, nimbus_port))
         os.close(xml_out)
 
         # Return the filename of the created metadata file
@@ -74,16 +74,17 @@ def ws_epr_factory(workspace_id, nimbus_hostname):
         return none
 
 
-def ws_epr(workspace_id, nimbus_hostname):
+def ws_epr(workspace_id, nimbus_hostname, nimbus_port=8443):
     """
     Creates and returns a Nimbus VM epr
 
     Arguments:
     workspace_id -- The id of the workspace
     nimbus_hostname -- The hostname of the Nimbus service
+    nimbus_port -- the port of the Nimbus service
 
     Example:
-    ws_epr(42, "your.nimbus.tld")
+    ws_epr(42, "your.nimbus.tld", 8443)
 
     This would return:
 
@@ -128,7 +129,7 @@ def ws_epr(workspace_id, nimbus_hostname):
     workspace_epr.appendChild(address)
 
     # Add the content to the Address element
-    nimbus_url = "https://%s:8443/wsrf/services/WorkspaceService" % nimbus_hostname
+    nimbus_url = "https://%s:%s/wsrf/services/WorkspaceService" % (nimbus_hostname, nimbus_port)
     address_content = doc.createTextNode(nimbus_url)
     address.appendChild(address_content)
 
