@@ -1071,7 +1071,7 @@ class Cleanup(threading.Thread):
             vmcount = self.resource_pool.get_vmtypes_count_internal()
             for vmtype in vmcount.keys():
                 if vmtype in num_to_change.keys():
-                    vmcount[vmtype] += num_to_change[vmtype]
+                    vmcount[vmtype] += -num_to_change[vmtype]
             next_types = self.resource_pool.vmtype_distribution(vmcount)
             for vmtype in next_types.keys():
                 if vmtype in desired_types.keys():
@@ -1081,7 +1081,7 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     next_diff_types[vmtype] = -desired_types[vmtype]
-            log.debug("Next Diff Types: %s" % str(diff_types))
+            log.debug("Next Diff Types: %s" % str(next_diff_types))
             
             #       determine new num_to_change based on updated diff_types
             next_num_to_change = self.clean_determine_num_to_change(next_diff_types, required_vmtypes_dict)
