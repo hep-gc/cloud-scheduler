@@ -1555,6 +1555,8 @@ class ResourcePool:
         """Find a VM in cloudscheduler with the given condor machine name(hostname)."""
         foundIt = False
         vm_match = None
+        if len(condor_name.split('@')) > 1:
+            condor_name = condor_name.split('@')[1]
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.condorname == condor_name:
