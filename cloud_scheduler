@@ -1361,9 +1361,9 @@ class Cleanup(threading.Thread):
             else:
                 # This Machine not owned by CS
                 non_cs_vms.append(machine)
-        # Update the resource_pools sets of missing / non cs VMs
+        # Update the resource_pools sets of missing / non cs VMs - this is ignoring slot@ currently
         for machine in missing_vms:
-            log.warning("VM %s Could not be located within CS, may be lost." % machine['Name'])
+            log.verbose("VM %s Could not be located within CS, may be lost." % machine['Name'])
             self.resource_pool.missing_vm_condor_machines.add(machine['Name'])
             if config.retire_missing_vms:
                 if machine['Activity'] != 'Retiring':
@@ -1471,7 +1471,7 @@ class Cleanup(threading.Thread):
                             slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
                             all_slots_idle = True
                             for slot in slots_of_machine:
-                                if slot['State'] != 'Unclaimed' and slot['Activity'] != 'Idle':
+                                if slot['State'] != 'Unclaimed' or slot['Activity'] != 'Idle':
                                     all_slots_idle = False
                             if not all_slots_idle:
                                 log.debug("VM %s Still has non-idle slots." % unused_vms_of_type[x]['Name'])
@@ -1776,6 +1776,17 @@ class Cleanup(threading.Thread):
                         if not internal_vm:
                             log.warning("Could not locate %s with address %s in CS, maybe machinelist out-of-date of has not been matched yet?" % (vm['Name'],vm['MyAddress'] ))
                             continue
+                    # Verify that all slots of this VM are idle
+                    is_part_of_machine = {'Machine': vm.hostname}
+                    slots_of_machine = self.resource_pool.find_in_where(self.resource_pool.machine_list, is_part_of_machine)
+                    all_slots_idle = True
+                    for slot in slots_of_machine:
+                        if slot['State'] != 'Unclaimed' or slot['Activity'] != 'Idle' or (int(vm['MyCurrentTime']) - int(vm['EnteredCurrentState']) > config.vm_idle_threshold):
+                            all_slots_idle = False
+                    if not all_slots_idle:
+                        log.debug("VM %s Still has non-idle slots." % vm['Name'])
+                        continue
+
                     vmtype = vm['VMType']
                     vmuser = None
                     try:
