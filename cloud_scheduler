@@ -891,9 +891,9 @@ class Cleanup(threading.Thread):
         prevMachineList = []
 
         while not self.quit:
-            log.debug("Syncing job queues")
             self.check_destroy_threads()
             # Check through new jobs for running jobs and move to sched
+            log.verbose("Syncing job queues")
             self.clean_scheduled_unscheduled()
             # Check the scheduled Jobs to see which running jobs are on what cloud
             self.clean_match_jobs_clouds()
@@ -911,9 +911,9 @@ class Cleanup(threading.Thread):
                 ## Check that jobs are valid for the clusters available
                 self.clean_invalid_jobs()
                 ## Clear all un-needed VMs from the system
-                log.debug("Attempting to balance VMs")
+                log.verbose("Attempting to balance VMs")
                 self.clean_balance_vms()
-                log.debug("Clearing all un-needed VMs from the system")
+                log.verbose("Clearing all un-needed VMs from the system")
                 self.clean_unneeded_vms()
                 machineList = self.resource_pool.machine_list
                 ## See if any stray entries in condor_status
@@ -933,13 +933,13 @@ class Cleanup(threading.Thread):
                 # Check for Idle machines that cannot run any jobs
                 self.clean_verify_vm_job_reqs()
 
-            log.debug("Cleanup waiting %ds..." % self.polling_interval)
+            log.verbose("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
 
-        log.debug("Exiting cleanup thread")
+        log.info("Exiting cleanup thread")
 
     def clean_invalid_jobs(self):
         """Checks all unscheduled jobs to ensure there is a cloud that can
@@ -986,7 +986,7 @@ class Cleanup(threading.Thread):
         """Primary balancing function for the fairshare scheduling algorithm."""
         # Count the number of jobs that require a certain VM type,
         # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
-        log.debug("Gathering required VM types.")
+        log.verbose("Gathering required VM types.")
         #required_vmtypes = self.job_pool.get_required_vmtypes()
         required_vmtypes = self.job_pool.get_required_uservmtypes()
 
@@ -999,7 +999,7 @@ class Cleanup(threading.Thread):
             if self.job_pool.last_query:
                 #available_vmtypes_dict = self.resource_pool.get_vmtypes_count(machineList)
                 available_vmtypes_dict = self.resource_pool.get_uservmtypes_count(machineList)
-                log.debug("Removing excess VMs from the system.")
+                log.verbose("Removing excess VMs from the system.")
                 to_remove = {}
                 for vmtype, count in available_vmtypes_dict.iteritems():
                     if vmtype in required_vmtypes_dict.keys():
@@ -1417,7 +1417,6 @@ class Cleanup(threading.Thread):
             for cluster in resources:
                 for vm in cluster.vms:
                     if vm == machine:
-                        #log.info("Shutting down VM: %s that has finished Retiring" % (vm.id))
                         cluster.vm_destroy(machine, return_resources=(not retired), reason="VM Finished Retiring.")
                         killedIt = True
                         break
