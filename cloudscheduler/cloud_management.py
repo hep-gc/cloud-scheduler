@@ -32,6 +32,7 @@ from urllib2 import URLError
 from decimal import *
 from lxml import etree
 from StringIO import StringIO
+from collections import defaultdict
 
 try:
     import cPickle as pickle
@@ -818,13 +819,10 @@ class ResourcePool:
         
         Uses the dict-list structure returned by SOAP/local query
         """
-        count = {}
+        count = defaultdict(int)
         for vm in machineList:
             if vm.has_key('VMType'):
-                if vm['VMType'] not in count:
-                    count[vm['VMType']] = 1
-                else:
-                    count[vm['VMType']] += 1
+                count[vm['VMType']] += 1
         return count
 
     def get_uservmtypes_count(self, machineList):
@@ -833,25 +831,19 @@ class ResourcePool:
         Keywords:
             machineList - the parsed struct returned from condor of execute nodes
         """
-        count = {}
+        count = defaultdict(int)
         for vm in machineList:
             if vm.has_key('VMType') and vm.has_key('Start'):
                 userexp = re.search('(?<=Owner == ")\w+', vm['Start'])
                 if userexp:
                     user = userexp.group(0)
                     vmusertype = ':'.join([user, vm['VMType']])
-                    if vmusertype not in count:
-                        count[vmusertype] = 1
-                    else:
-                        count[vmusertype] += 1
+                    count[vmusertype] += 1
             elif vm.has_key('VMType') and vm.has_key('RemoteOwner'):
                 try:
                     user = vm['RemoteOwner'].split('@')[0]
                     vmusertype = ':'.join([user, vm['VMType']])
-                    if vmusertype not in count:
-                        count[vmusertype] = 1
-                    else:
-                        count[vmusertype] += 1
+                    count[vmusertype] += 1
                 except:
                     log.error("Failed to parse out remote owner")
             else:
@@ -892,13 +884,10 @@ class ResourcePool:
 
     def get_vmtypes_count_internal(self):
         """Get a dictionary of uservmtypes of VMs the scheduler is currently tracking."""
-        types = {}
+        types = defaultdict(int)
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.uservmtype in types:
-                    types[vm.uservmtype] += 1
-                else:
-                    types[vm.uservmtype] = 1
+                types[vm.uservmtype] += 1
         return types
 
     def get_vm_count_user(self, user):
@@ -1019,14 +1008,10 @@ class ResourcePool:
         Counts up how much/many of each resource (RAM, Cores, Storage)
         are being used by each type of VM
         """
-        types = {}
+        types = defaultdict(list)
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.uservmtype in types.keys():
-                    types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
-                else:
-                    types[vm.uservmtype] = []
-                    types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
+                types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
         results = {}
         for vmtype in types.keys():
             results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
@@ -1084,11 +1069,9 @@ class ResourcePool:
 
     def vm_slots_used(self):
         """Figure out the actual number of 'slots' being used when some VMs are using multi-job settings."""
-        types = {}
+        types = defaultdict(list)
         for cluster in self.resources:
             for vm in cluster.vms:
-                if not types.has_key(vm.uservmtype):
-                    types[vm.uservmtype] = []
                 if hasattr(vm, "job_per_core") and vm.job_per_core:
                     for core in range(vm.cpucores):
                         types[vm.uservmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})

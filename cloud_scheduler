@@ -37,6 +37,7 @@ import logging.handlers
 from itertools import islice
 from optparse import OptionParser
 from decimal import *
+from collections import defaultdict
 
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
@@ -478,7 +479,7 @@ class Scheduler(threading.Thread):
             if vmtype in desired_types.keys():
                 diff_types[vmtype] = current_types[vmtype] - desired_types[vmtype]
             else:
-                diff_types[vmtype] = 0 # changed from 0 to handle users with multiple job types, back to 0 from 1.
+                diff_types[vmtype] = 1 # changed from 0 to handle users with multiple job types, back to 0 from 1.
         for vmtype in desired_types.keys():
             if vmtype not in current_types.keys():
                 diff_types[vmtype] = -desired_types[vmtype]
@@ -1070,14 +1071,13 @@ class Cleanup(threading.Thread):
             next_diff_types = {}
             vmcount = self.resource_pool.get_vmtypes_count_internal()
             for vmtype in vmcount.keys():
-                if vmtype in num_to_change.keys():
-                    vmcount[vmtype] += -num_to_change[vmtype]
+                vmcount[vmtype] += -num_to_change[vmtype]
             next_types = self.resource_pool.vmtype_distribution(vmcount)
             for vmtype in next_types.keys():
                 if vmtype in desired_types.keys():
                     next_diff_types[vmtype] = next_types[vmtype] - desired_types[vmtype]
                 else:
-                    next_diff_types[vmtype] = 1 # probably smart to set this to 1 as well to match above
+                    next_diff_types[vmtype] = 1  #probably smart to set this to 1 as well to match above
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     next_diff_types[vmtype] = -desired_types[vmtype]
@@ -1299,16 +1299,11 @@ class Cleanup(threading.Thread):
                             self.job_pool.schedule(job)
                     
                 vms = self.resource_pool.get_vmtypes_count_internal()
-                job_req_count = {}
+                job_req_count = defaultdict(int)
                 for job in self.job_pool.job_container.get_scheduled_jobs():
                     if job.job_status <= self.RUNNING: # Ignore held, complete, etc
-                        #if job.req_vmtype in job_req_count:
-                        if job.uservmtype in job_req_count:
-                            #job_req_count[job.req_vmtype] += 1
-                            job_req_count[job.uservmtype] += 1
-                        else:
-                            #job_req_count[job.req_vmtype] = 1
-                            job_req_count[job.uservmtype] = 1
+                        #job_req_count[job.req_vmtype] += 1
+                        job_req_count[job.uservmtype] += 1
                 for job in self.job_pool.job_container.get_scheduled_jobs():
                     #if job.job_status == self.IDLE and (job.req_vmtype not in vms.keys() or (vms[job.req_vmtype] < job_req_count[job.req_vmtype])):
                     if job.job_status == self.IDLE and (job.uservmtype not in vms.keys() or (vms[job.uservmtype] < job_req_count[job.uservmtype])):

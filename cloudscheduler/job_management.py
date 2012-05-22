@@ -36,6 +36,7 @@ import threading
 import subprocess
 from urllib2 import URLError
 from StringIO import StringIO
+from collections import defaultdict
 try:
     from lxml import etree
 except:
@@ -838,12 +839,9 @@ class JobPool:
             required_vmtypes - (dictionary, string key, int value)
 
         """
-        required_vmtypes = {}
+        required_vmtypes = defaultdict(int)
         for job in self.job_container.get_all_jobs():
-            if job.req_vmtype not in required_vmtypes and job.job_status <= self.RUNNING \
-               and not job.banned:
-                required_vmtypes[job.req_vmtype] = 1
-            elif job.job_status <= self.RUNNING and not job.banned:
+            if job.job_status <= self.RUNNING and not job.banned:
                 required_vmtypes[job.req_vmtype] += 1
         log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
@@ -855,12 +853,9 @@ class JobPool:
         Returns:
             required_vmtypes - (dictionary, string key, int value) A dict of required VM types
         """
-        required_vmtypes = {}
+        required_vmtypes = defaultdict(int)
         for job in self.job_container.get_all_jobs():
-            if job.uservmtype not in required_vmtypes and job.job_status <= self.RUNNING \
-               and not job.banned:
-                required_vmtypes[job.uservmtype] = 1
-            elif job.job_status <= self.RUNNING and not job.banned:
+            if job.job_status <= self.RUNNING and not job.banned:
                 required_vmtypes[job.uservmtype] += 1
         log.debug("get_required_vm_usertypes_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
@@ -872,7 +867,7 @@ class JobPool:
         in whatever order they appear in (or priority).
         """
 
-        type_desired = {}
+        type_desired = defaultdict(int)
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
         held_user_adjust = 0
@@ -885,10 +880,7 @@ class JobPool:
             if vmtype == None:
                 held_user_adjust -= 1 #This user is completely held
                 break
-            if vmtype in type_desired.keys():
-                type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
-            else:
-                type_desired[vmtype] = 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+            type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
         for user in high_priority_jobs_by_users.keys():
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
@@ -898,10 +890,7 @@ class JobPool:
             if vmtype == None:
                 held_user_adjust -= 1 # this user is completely held
                 break
-            if vmtype in type_desired.keys():
-                type_desired[vmtype] += 1 * config.high_priority_job_weight
-            else:
-                type_desired[vmtype] = 1 * config.high_priority_job_weight
+            type_desired[vmtype] += 1 * config.high_priority_job_weight
         num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
         if num_users == 0:
             log.verbose("All users held, completed, or banned")
@@ -916,7 +905,7 @@ class JobPool:
         The 'normal' distribution treats a user who has submitted multiple vmtypes
         in whatever order they appear in (or priority).
         """
-        type_desired = {}
+        type_desired = defaultdict(int)
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized = True)
         high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
         held_user_adjust = 0
@@ -929,10 +918,7 @@ class JobPool:
             if vmtype == None:
                 held_user_adjust -= 1 #This user is completely held
                 continue
-            if vmtype in type_desired.keys():
-                type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
-            else:
-                type_desired[vmtype] = 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
+            type_desired[vmtype] += 1 * (1 / Decimal(config.high_priority_job_weight) if high_priority_jobs_by_users else 1)
         for user in high_priority_jobs_by_users.keys():
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
@@ -942,10 +928,7 @@ class JobPool:
             if vmtype == None:
                 held_user_adjust -= 1 # this user is completely held
                 continue
-            if vmtype in type_desired.keys():
-                type_desired[vmtype] += 1 * config.high_priority_job_weight
-            else:
-                type_desired[vmtype] = 1 * config.high_priority_job_weight
+            type_desired[vmtype] += 1 * config.high_priority_job_weight
         num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
         if num_users == 0:
             log.verbose("All users held, completed, or banned")
