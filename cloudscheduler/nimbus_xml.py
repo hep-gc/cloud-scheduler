@@ -379,12 +379,12 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
 
     exactmem_txt = doc.createTextNode(str(vm_mem))
     exactmem_el.appendChild(exactmem_txt)
+    if vm_storage and vm_storage > 0:
+        partitionname_txt = doc.createTextNode(PARTITION_NAME)
+        partitionname_el.appendChild(partitionname_txt)
 
-    partitionname_txt = doc.createTextNode(PARTITION_NAME)
-    partitionname_el.appendChild(partitionname_txt)
-
-    exactdisk_txt = doc.createTextNode(format_storage(vm_storage))
-    exactdisk_el.appendChild(exactdisk_txt)
+        exactdisk_txt = doc.createTextNode(format_storage(vm_storage))
+        exactdisk_el.appendChild(exactdisk_txt)
 
     nodenumber_txt = doc.createTextNode(str(vm_nodes))
     nodenumber_el.appendChild(nodenumber_txt)
@@ -556,11 +556,12 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, 
     permissions_txt = doc.createTextNode(VM_PERMISSIONS)
     permissions_el.appendChild(permissions_txt)
 
-    partitionName_txt = doc.createTextNode(PARTITION_NAME)
-    partitionName_el.appendChild(partitionName_txt)
+    if vm_blankspace:
+        partitionName_txt = doc.createTextNode(PARTITION_NAME)
+        partitionName_el.appendChild(partitionName_txt)
 
-    mountAsPartition_txt = doc.createTextNode(config.scratch_attach_device)
-    mountAsPartition_el.appendChild(mountAsPartition_txt)
+        mountAsPartition_txt = doc.createTextNode(config.scratch_attach_device)
+        mountAsPartition_el.appendChild(mountAsPartition_txt)
 
     ## Create output file. Write xml. Close file.
     (xml_out, file_name) = tempfile.mkstemp()
