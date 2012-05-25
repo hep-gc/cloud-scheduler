@@ -256,7 +256,7 @@ class ResourcePool:
             hypervisor = 'xen'
         else:
             hypervisor = hypervisor.lower()
-            if hypervisor != 'xen' or hypervisor != 'kvm':
+            if hypervisor != 'xen' and hypervisor != 'kvm':
                 log.error("%s hypervisor not supported." % hypervisor)
                 return None
 
