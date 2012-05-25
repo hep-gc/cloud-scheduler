@@ -128,8 +128,15 @@ case "$1" in
         stop
         start
         ;;
+    quickstop)
+        quickstop
+        ;;
+    quickrestart)
+        quickstop
+        start
+        ;;
     *)
-        echo $"Usage: $0 {start|stop|restart|status|reconfig|forcekill|quickstop}"
+        echo $"Usage: $0 {start|stop|restart|status|reconfig|forcekill|quickstop|quickrestart}"
         exit 3
         ;;
 esac
