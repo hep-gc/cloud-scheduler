@@ -91,16 +91,16 @@ class VMPoller(threading.Thread):
         poll_all_machines - internal function to poll all running VMs,
                             and then update their status
         """
-        log.debug("Polling all running VMs...")
+        log.verbose("Polling all running VMs...")
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 now = int(time.time())
 
                 if vm.lastpoll and (vm.status == "Starting" and now - vm.lastpoll < self.starting_poll_interval):
-                    log.debug("Skipped polling %s, which has status %s" % (vm.id, vm.status))
+                    log.verbose("Skipped polling %s, which has status %s" % (vm.id, vm.status))
                     continue
                 elif vm.lastpoll and (vm.status == "Running" and now - vm.lastpoll < self.running_poll_interval):
-                    log.debug("Skipped polling %s, which has status %s" % (vm.id, vm.status))
+                    log.verbose("Skipped polling %s, which has status %s" % (vm.id, vm.status))
                     continue
 
                 ret_state = cluster.vm_poll(vm)
@@ -144,7 +144,7 @@ class VMPoller(threading.Thread):
                             found = True
                             break
                     if not found:
-                        log.info("VM %s on %s in error state. Destroying..." % (vm.id, vm.clusteraddr))
+                        #log.info("VM %s on %s in error state. Destroying..." % (vm.id, vm.clusteraddr))
                         # Destroy the VM
                         if not self.check_destroy(cluster, vm):
                             dt = VMDestroyCmd(cluster, vm, reason="VM is in an Error state.")
@@ -158,7 +158,7 @@ class VMPoller(threading.Thread):
     def handle_bad_image(self, user, image):
         """Respond to image url with a failed Http response, will attempt to 
         condor_hold those jobs so they will not be considered for scheduling."""
-        log.info("User %s has job(s) with bad image location: %s - temporarily banning those jobs" % (user, image))
+        log.info("User %s has job(s) with bad image location: %s - temporarily banning/holding those jobs" % (user, image))
         user_jobs = self.job_pool.job_container.get_jobs_for_user(user)
         jobs_to_hold = []
         HELD = 5
@@ -191,15 +191,6 @@ class VMPoller(threading.Thread):
             found = True
         return found
 
-    def check_shared_objs(self):
-        """Debuging output check for cloud_status to help make sure the shared
-        references to the resource pool and job pool instances are the same across
-        threads."""
-        output = ""
-        output += "Resource Pool: " + str(self.resource_pool) + "\n"
-        output += "Job Pool: " + str(self.job_pool) + "\n"
-        return output
-
 class JobPoller(threading.Thread):
     """
     JobPoller - Polls the Condor schedd for job status, and new jobs
@@ -221,7 +212,7 @@ class JobPoller(threading.Thread):
             prev_req_vmtypes = []
             new_req_vmtypes = []
             while not self.quit:
-                log.debug("Polling job scheduler")
+                log.verbose("Polling job scheduler")
 
                 ## Query the job pool to get new unscheduled jobs
                 # Populates the 'jobs' and 'scheduled_jobs' lists appropriately
@@ -250,17 +241,9 @@ class JobPoller(threading.Thread):
                     time.sleep(1)
                     sleep_tics -= 1
 
-            log.debug("Exiting job polling thread")
+            log.info("Exiting job polling thread")
         except:
             log.error(traceback.format_exc())
-
-    def check_shared_objs(self):
-        """Debuging output check for cloud_status to help make sure the shared
-        references to the resource pool and job pool instances are the same across
-        threads."""
-        output = ""
-        output += "Job Pool: " + str(self.job_pool) + "\n"
-        return output
 
 class MachinePoller(threading.Thread):
     """
@@ -281,27 +264,19 @@ class MachinePoller(threading.Thread):
         log.info("Starting machine polling...")
 
         while not self.quit:
-            log.debug("Polling machine scheduler")
+            log.verbose("Polling machine scheduler")
 
             self.resource_pool.prev_machine_list = self.resource_pool.machine_list
             self.resource_pool.machine_list = self.resource_pool.resource_query()
             if len(self.resource_pool.machine_list) == 0 and len(self.resource_pool.prev_machine_list) != 0:
                 self.resource_pool.machine_list = self.resource_pool.prev_machine_list
-            log.debug("Machine Poller waiting %ds..." % self.polling_interval)
+            log.verbose("Machine Poller waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
 
-        log.debug("Exiting machine polling thread")
-
-    def check_shared_objs(self):
-        """Debuging output check for cloud_status to help make sure the shared
-        references to the resource pool and job pool instances are the same across
-        threads."""
-        output = ""
-        output += "Resource Pool: " + str(self.resource_pool) + "\n"
-        return output
+        log.info("Exiting machine polling thread")
 
 class Scheduler(threading.Thread):
     """
@@ -523,7 +498,7 @@ class Scheduler(threading.Thread):
         self.resource_pool.check_failures()
         if config.max_starting_vm < 0 or self.resource_pool.get_num_starting_vms() < config.max_starting_vm:
             ## Schedule user jobs
-            log.debug("Schedule any high priority jobs")
+            log.verbose("Schedule any high priority jobs")
             high_priority_jobs_by_users = self.job_pool.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized = True)
             for user in high_priority_jobs_by_users.keys():
                 for job in high_priority_jobs_by_users[user]:
@@ -741,7 +716,7 @@ class Scheduler(threading.Thread):
         # This is to prevent a VM started by a user being recycled to run jobs from another user.
         if job.user != None:
             start_requirement = 'START=(Owner == "%s")\n' % (job.user)
-            log.debug("Adding START requirement to match resource's original owner:\n%s" % start_requirement)
+            log.verbose("Adding START requirement to match resource's original owner:\n%s" % start_requirement)
             local_modifications += start_requirement
 
         customizations.append((local_modifications, '/etc/condor/condor_config.local.modifications'))
@@ -846,15 +821,6 @@ class Scheduler(threading.Thread):
                 vms_like_this.append(vm)
 
         return len(jobs_like_this) > len(vms_like_this)
-
-    def check_shared_objs(self):
-        """Debuging output check for cloud_status to help make sure the shared
-        references to the resource pool and job pool instances are the same across
-        threads."""
-        output = ""
-        output += "Resource Pool: " + str(self.resource_pool) + "\n"
-        output += "Job Pool: " + str(self.job_pool) + "\n"
-        return output
 
 class Cleanup(threading.Thread):
     """
@@ -1010,7 +976,7 @@ class Cleanup(threading.Thread):
                     else:
                         to_remove[vmtype] = count
                 del available_vmtypes_dict
-                log.debug("Will try to remove: %s" % str(to_remove))
+                log.verbose("Will try to remove: %s" % str(to_remove))
                 # Go over the types and find idle machines to remove
                 self.remove_idle_machines(machineList, to_remove)
 
@@ -1513,7 +1479,7 @@ class Cleanup(threading.Thread):
         # Looking for machines that have changed jobs since last check
         # and are of a type that has an higher than wanted distribution
         # based on diff_types
-        log.debug("Balancing via hard shutdown of VMs - any running jobs will be rescheduled by condor.")
+        log.verbose("Balancing via hard shutdown of VMs - any running jobs will be rescheduled by condor.")
         vm_matches = []
         vm_starting = []
         changed = self.resource_pool.machine_jobs_changed(machineList, prevMachineList)
@@ -1543,16 +1509,13 @@ class Cleanup(threading.Thread):
                     th = VMDestroyCmd(cluster, vm, reason="Rebalancing VMType %s." % vm.vmtype)
                     th.start()
                     self.destroy_threads["".join([cluster.name, vm.id])] = th
-            #destroy_ret = cluster.vm_destroy(vm)
-            #if destroy_ret != 0:
-            #    log.error("Destroying VM failed in attempt to redistribute VMs. Leaving VM.")
 
     # Deprecated
     def graceful_shutdown_condor_hold(self, diff_types, machineList, num_to_change):
         """One of the old balancing methods for fairshare scheduling. Attempts to hold a 
         users' idle jobs so that no more will start running thus allowing machines to
         enter an idle state and be shutdown. This method is not recommended."""
-        log.debug("Balancing via condor_hold.")
+        log.verbose("Balancing via condor_hold.")
         log.warning("This method is deprecated, change graceful_shutdown_method in the config.")
         for vmtype in diff_types.keys():
             if diff_types[vmtype] > Decimal('0.1'):
@@ -1588,7 +1551,7 @@ class Cleanup(threading.Thread):
         """Suggested method for balancing in the fairshare scheduling method.
         makes use of condor_off to put machines into a Retiring state so they will not
         accept new jobs once their current job finishes execution."""
-        log.debug("Balancing via condor_off, machines will be shutdown once finished current job.")
+        log.verbose("Balancing via condor_off, machines will be shutdown once finished current job.")
         fitting_set = self.filter_fitting_resources(num_to_change)
         internal_vms = self.resource_pool.get_vmtypes_count_internal()
         #sched_jobs = self.job_pool.job_container.get_scheduled_jobs_by_type()
@@ -1872,15 +1835,6 @@ class Cleanup(threading.Thread):
             and vm.uservmtype == job.uservmtype:
             vmjobmatch = True
         return vmjobmatch
-
-    def check_shared_objs(self):
-        """Debuging output check for cloud_status to help make sure the shared
-        references to the resource pool and job pool instances are the same across
-        threads."""
-        output = ""
-        output += "Resource Pool: " + str(self.resource_pool) + "\n"
-        output += "Job Pool: " + str(self.job_pool) + "\n"
-        return output
 
 class GetClouds(threading.Thread):
     """
