@@ -587,7 +587,7 @@ class Scheduler(threading.Thread):
                 if userjob and userjob.uservmtype in diff_types.keys() and diff_types[userjob.uservmtype] <= 0:
                     (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(userjob.req_network, \
                         userjob.req_cpuarch, userjob.req_memory, userjob.req_cpucores, userjob.req_storage, \
-                        userjob.req_ami, userjob.req_imageloc, userjob.target_clouds)
+                        userjob.req_ami, userjob.req_imageloc, userjob.target_clouds. userjob.req_hypervisor)
                     good_resources = [pri_rsrc]
                     if sec_rsrc and pri_rsrc != sec_rsrc:
                         good_resources.append(sec_rsrc)
@@ -600,7 +600,7 @@ class Scheduler(threading.Thread):
             if over_allocate:
                 (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
                         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
-                        job.req_ami, job.req_imageloc, job.target_clouds)
+                        job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor)
                 good_resources = [pri_rsrc]
                 if sec_rsrc and pri_rsrc != sec_rsrc:
                     good_resources.append(sec_rsrc)
@@ -617,7 +617,7 @@ class Scheduler(threading.Thread):
         # Find resources that match the job's requirements
         (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
-        job.req_ami, job.req_imageloc, job.target_clouds)
+        job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor)
         
         good_resources = [pri_rsrc]
         if sec_rsrc and pri_rsrc != sec_rsrc:
