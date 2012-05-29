@@ -64,6 +64,7 @@ class ResourcePool:
     ## Instance variables
     resources = []
     machine_list = []
+    master_list = []
     retired_resources = []
     config_file = ""
 
@@ -749,6 +750,27 @@ class ResourcePool:
                       % (config.condor_collector_url))
             return []
 
+    def master_resource_query_local(self):
+        """
+        master_resource_query_local -- does a Query to the condor collector about master daemons
+
+        Returns a list of dictionaries with information about the machines masters
+        registered with condor.
+        """
+        log.debug("Querying Condor Collector with %s" % config.condor_status_master_command)
+
+        master_list = []
+        try:
+            condor_status = shlex.split(config.condor_status_master_command)
+            sp = subprocess.Popen(condor_status, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_status, " "))
+            return []
+
+        master_list = self._condor_status_to_machine_list(condor_out)
+        return master_list
 
     @staticmethod
     def _condor_status_to_machine_list(condor_status_output):
@@ -1307,7 +1329,7 @@ class ResourcePool:
                 return {}
             return user_limits
 
-    def do_condor_off(self, machine_name, machine_addr):
+    def do_condor_off(self, machine_name, machine_addr, master_addr):
         """Perform a condor_off on an execute node.
 
         Executes multiple commands to condor in order to peacefully stop the start deamon
@@ -1320,8 +1342,8 @@ class ResourcePool:
             a 3 tuple of the returncodes from the 2 commands used and a return code
         """
         cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
-        cmd2 = '%s -peaceful -addr "%s" -startd' % (config.condor_off_command, machine_addr)
-        cmd3 = '%s -peaceful -addr "%s" -master' % (config.condor_off_command, machine_addr)
+        cmd2 = '%s -peaceful -addr "%s" -subsystem startd' % (config.condor_off_command, machine_addr)
+        cmd3 = '%s -peaceful -addr "%s" -subsystem master' % (config.condor_off_command, master_addr)
         args = []
         args2 = []
         args3 = []
@@ -1362,7 +1384,7 @@ class ResourcePool:
             args3.append(config.condor_off_command)
             args3.append('-peaceful')
             args3.append('-addr')
-            args3.append(machine_addr)
+            args3.append(master_addr)
             args3.append('-subsystem')
             args3.append('master')
         # Send condor_off to startd first

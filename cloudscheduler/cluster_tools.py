@@ -106,6 +106,7 @@ class VM:
         self.ipaddress = ipaddress
         self.condorname = None
         self.condoraddr = None
+        self.condormasteraddr = None
         self.clusteraddr = clusteraddr
         self.clusterport = clusterport
         self.cloudtype = cloudtype

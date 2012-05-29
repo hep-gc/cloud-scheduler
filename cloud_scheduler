@@ -268,6 +268,7 @@ class MachinePoller(threading.Thread):
 
             self.resource_pool.prev_machine_list = self.resource_pool.machine_list
             self.resource_pool.machine_list = self.resource_pool.resource_query()
+            self.resource_pool.master_list = self.resource_pool.master_resource_query_local()
             if len(self.resource_pool.machine_list) == 0 and len(self.resource_pool.prev_machine_list) != 0:
                 self.resource_pool.machine_list = self.resource_pool.prev_machine_list
             log.verbose("Machine Poller waiting %ds..." % self.polling_interval)
@@ -433,7 +434,7 @@ class Scheduler(threading.Thread):
                 if not retire_machine:
                     log.verbose("No need to retire machine with job:  %s" % machine["JobId"])
                     continue
-                (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(machine["Name"], machine["MyAddress"])
+                (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(machine["Machine"], machine['MyAddress'], mataching_vm.condormasteraddr)
                 if ret2 == 0 and ret22 == 0:
                     log.debug("Set %s to die after completing current job: %s" % (machine["Name"],machine["JobId"]))
                     matching_vm.force_retire = True
@@ -587,7 +588,7 @@ class Scheduler(threading.Thread):
                 if userjob and userjob.uservmtype in diff_types.keys() and diff_types[userjob.uservmtype] <= 0:
                     (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(userjob.req_network, \
                         userjob.req_cpuarch, userjob.req_memory, userjob.req_cpucores, userjob.req_storage, \
-                        userjob.req_ami, userjob.req_imageloc, userjob.target_clouds. userjob.req_hypervisor)
+                        userjob.req_ami, userjob.req_imageloc, userjob.target_clouds, userjob.req_hypervisor)
                     good_resources = [pri_rsrc]
                     if sec_rsrc and pri_rsrc != sec_rsrc:
                         good_resources.append(sec_rsrc)
@@ -889,6 +890,7 @@ class Cleanup(threading.Thread):
                 # Make sure VMs have registered with Condor
                 # Check if any retiring VMs have Retired
                 unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(machineList)
+                self.clean_map_master_machines(self.resource_pool.master_list)
                 # Shutdown the unregistered VMs over the limit
                 self.clean_kill_unregistered_vms(unregisteredvms)
                 # Shutdown the Retired VMs
@@ -1292,9 +1294,9 @@ class Cleanup(threading.Thread):
                 foundvm = False
                 if vm.status == 'Running' and machineList:
                     for machine in machineList:
-                        if utilities.match_host_with_condor_host(vm.hostname, machine['Name']):
+                        if utilities.match_host_with_condor_host(vm.hostname, machine['Machine']):
                             if vm.condorname == None:
-                                vm.condorname = machine['Name']
+                                vm.condorname = machine['Machine']
                             vm.condoraddr = machine['MyAddress']
                             foundvm = True
                             break
@@ -1313,7 +1315,21 @@ class Cleanup(threading.Thread):
                             unregisteredvms.append(vm)
         return unregisteredvms, retiredvms
 
-    def clean_check_vms_extra_machines(self, machineList):
+    def clean_map_master_machines(self, masterList):
+        for cluster in self.resource_pool.resources:
+            for vm in cluster.vms:
+                foundvm = False
+                if vm.status == 'Running' and masterList:
+                    for machine in masterList:
+                        if utilities.match_host_with_condor_host(vm.hostname, machine['Name']):
+                            if 'MasterIpAddr' in machine.keys():
+                                vm.condormasteraddr = machine['MasterIpAddr']
+                                foundvm = True
+                                break
+                    if not foundvm:
+                        log.verbose("Could not find Running VM %s in master list, may be Retiring" % vm.id)
+
+    def clean_check_vms_extra_machines(self, machineList, masterList):
         """Figure out which entries in condor_status are missing from CS."""        
         missing_vms = []
         non_cs_vms = []
@@ -1327,7 +1343,7 @@ class Cleanup(threading.Thread):
                                     #all_slots_idle = False
         for machine in machineList:
             if machine.has_key('CSManagedVM'):
-                vm = self.resource_pool.find_vm_with_name(machine['Name'])
+                vm = self.resource_pool.find_vm_with_name(machine['Machine'])
                 if not vm:
                     vm = self.resource_pool.find_vm_with_addr(machine['MyAddress'])
                 if not vm:
@@ -1341,7 +1357,9 @@ class Cleanup(threading.Thread):
             self.resource_pool.missing_vm_condor_machines.add(machine['Name'])
             if config.retire_missing_vms:
                 if machine['Activity'] != 'Retiring':
-                    self.resource_pool.do_condor_off(machine['Name'], machine['MyAddress'])
+                    for master in masterList:
+                        if master['Name'] == machine['Name']:
+                            self.resource_pool.do_condor_off(machine['Machine'], machine['MyAddress'], master['MasterIpAddr'])
         for machine in non_cs_vms:
             self.resource_pool.non_cs_condor_machines.add(machine['Name'])
 
@@ -1625,16 +1643,20 @@ class Cleanup(threading.Thread):
                 busy_vms = self.resource_pool.find_in_where(machineList, criteria)
                 for busy_vm in reversed(busy_vms):
                     vm_in_cluster = None
-                    vm = self.resource_pool.find_vm_with_name(busy_vm['Name'])
+                    vm = self.resource_pool.find_vm_with_name(busy_vm['Machine'])
                     vm_in_cluster = self.resource_pool.get_cluster_with_vm(vm)
                     if vm_in_cluster != None and vm_in_cluster not in fitting_set:
                         busy_vms.remove(busy_vm)
                 if len(busy_vms) < adjusted_val:
                     adjusted_val = len(busy_vms)
                 for x in range(0, adjusted_val):
-                    retired_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Name'])
+                    retired_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Machine'])
                     if retired_vm != None and retired_vm.override_status != 'Retiring':
-                        (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(busy_vms[x]['Name'], busy_vms[x]['MyAddress'])
+                        masterIpAddr = ""
+                        for master in self.resource_pool.master_list:
+                            if master['Name'] == busy_vms[x]['Name']:
+                                masterIpAddr = master['MasterIpAddr']
+                        (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(busy_vms[x]['Machine'], busy_vms[x]['MyAddress'], masterIpAddr)
                         if ret2 == 0 and ret22 == 0:
                             retired_vm.override_status = 'Retiring'
                         else:
@@ -1656,7 +1678,7 @@ class Cleanup(threading.Thread):
                                     log.warning("cluster lookup failed for vm %s" % bad_name_vm.id)
                             else:
                                 log.error("Lookup of %s failed, does this vm still exist within CS?" % busy_vms[x]['Name'])
-                                bad_addr_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Name'])
+                                bad_addr_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Machine'])
                                 if bad_addr_vm:
                                     log.debug("Found it via name: it think it's address is %s" % bad_addr_vm.condoraddr)
             #elif adjusted_val < 0:
@@ -1685,7 +1707,7 @@ class Cleanup(threading.Thread):
                     if vm.job_run_times.average() * config.retire_before_lifetime_factor > (config.vm_lifetime*60 - (time.time() - vm.initialize_time)):
                         # Next job submitted to this VM may not finish running before VM is shutdown
                         if not vm.force_retire:
-                            (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr)
+                            (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
                             if ret2 == 0 and ret22:
                                 vm.force_retire = True
                                 vm.override_status = 'Retiring'
@@ -1743,7 +1765,7 @@ class Cleanup(threading.Thread):
                 if idletime > config.vm_idle_threshold:
                     internal_vm = self.resource_pool.find_vm_with_addr(vm['MyAddress'])
                     if not internal_vm:
-                        internal_vm = self.resource_pool.find_vm_with_name(vm['Name'])
+                        internal_vm = self.resource_pool.find_vm_with_name(vm['Machine'])
                         if not internal_vm:
                             log.warning("Could not locate %s with address %s in CS, maybe machinelist out-of-date of has not been matched yet?" % (vm['Name'],vm['MyAddress'] ))
                             continue
