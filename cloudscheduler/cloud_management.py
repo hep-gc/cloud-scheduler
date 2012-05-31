@@ -286,6 +286,7 @@ class ResourcePool:
                     max_vm_storage = max_vm_storage,
                     netslots = net_slots,
                     hypervisor = hypervisor,
+                    vm_lifetime = get_or_none(config, cluster, "vm_lifetime"),
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":

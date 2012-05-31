@@ -553,7 +553,7 @@ class NimbusCluster(ICluster):
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0, max_vm_storage=-1,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 netslots={}, hypervisor='xen'):
+                 netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -568,6 +568,7 @@ class NimbusCluster(ICluster):
             total_pool_slots += self.net_slots[pool]
         self.max_slots = total_pool_slots
         self.max_vm_storage = max_vm_storage
+        self.vm_lifetime = vm_lifetime if not None else config.vm_lifetime
 
     def get_cluster_info_short(self):
         """Returns formatted cluster information for use by cloud_status, Overloaded from baseclass to use net_slots."""
@@ -612,7 +613,7 @@ class NimbusCluster(ICluster):
                 vm_cpuarch, vm_image, vm_storage > 0)
 
         # Create a deployment request file
-        vm_deploymentrequest = nimbus_xml.ws_deployment_factory(config.vm_lifetime, \
+        vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.vm_lifetime, \
                 self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
 
         job_proxy = None
