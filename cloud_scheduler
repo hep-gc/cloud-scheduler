@@ -1770,7 +1770,7 @@ class Cleanup(threading.Thread):
                             log.warning("Could not locate %s with address %s in CS, maybe machinelist out-of-date of has not been matched yet?" % (vm['Name'],vm['MyAddress'] ))
                             continue
                     # Verify that all slots of this VM are idle
-                    is_part_of_machine = {'Machine': vm.hostname}
+                    is_part_of_machine = {'Machine': internal_vm.hostname}
                     slots_of_machine = self.resource_pool.find_in_where(self.resource_pool.machine_list, is_part_of_machine)
                     all_slots_idle = True
                     for slot in slots_of_machine:
