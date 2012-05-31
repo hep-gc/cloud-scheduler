@@ -553,7 +553,9 @@ class NimbusCluster(ICluster):
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
                  vm_slots=0, cpu_cores=0, storage=0, max_vm_storage=-1,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime):
+                 netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
+                 image_attach_device=config.image_attach_device,
+                 scratch_attach_device=config.scratch_attach_device):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -568,7 +570,9 @@ class NimbusCluster(ICluster):
             total_pool_slots += self.net_slots[pool]
         self.max_slots = total_pool_slots
         self.max_vm_storage = max_vm_storage
-        self.vm_lifetime = vm_lifetime if not None else config.vm_lifetime
+        self.vm_lifetime = vm_lifetime if vm_lifetime != None else config.vm_lifetime
+        self.scratch_attach_device = scratch_attach_device if scratch_attach_device != None else config.scratch_attach_device
+        self.image_attach_device = image_attach_device if image_attach_device != None else config.image_attach_device
 
     def get_cluster_info_short(self):
         """Returns formatted cluster information for use by cloud_status, Overloaded from baseclass to use net_slots."""
@@ -610,7 +614,8 @@ class NimbusCluster(ICluster):
 
         # Create a workspace metadata xml file
         vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
-                vm_cpuarch, vm_image, vm_storage > 0)
+                vm_cpuarch, vm_image, vm_storage > 0, self.image_attach_device,
+                self.scratch_attach_device,)
 
         # Create a deployment request file
         vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.vm_lifetime, \

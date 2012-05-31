@@ -406,7 +406,9 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
 
 
 
-def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_blankspace=True):
+def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_blankspace=True,
+                        image_attach_device=config.image_attach_device, 
+                        scratch_attach_device=config.scratch_attach_device,):
     """ Creates and returns a Nimbus workspace metadata XML string."""
 
     # Namespace variables for populating the xml file
@@ -550,7 +552,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, 
     location_el.appendChild(location_txt)
 
     # TODO: mountAs  may need to change (automatically / parameter?)
-    mountAs_txt = doc.createTextNode(config.image_attach_device)
+    mountAs_txt = doc.createTextNode(image_attach_device)
     mountAs_el.appendChild(mountAs_txt)
 
     permissions_txt = doc.createTextNode(VM_PERMISSIONS)
@@ -560,7 +562,7 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, 
         partitionName_txt = doc.createTextNode(PARTITION_NAME)
         partitionName_el.appendChild(partitionName_txt)
 
-        mountAsPartition_txt = doc.createTextNode(config.scratch_attach_device)
+        mountAsPartition_txt = doc.createTextNode(scratch_attach_device)
         mountAsPartition_el.appendChild(mountAsPartition_txt)
 
     ## Create output file. Write xml. Close file.

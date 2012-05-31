@@ -287,6 +287,8 @@ class ResourcePool:
                     netslots = net_slots,
                     hypervisor = hypervisor,
                     vm_lifetime = get_or_none(config, cluster, "vm_lifetime"),
+                    image_attach_device = get_or_none(config, cluster, "image_attach_device"),
+                    scratch_attach_device = get_or_none(config, cluster, "scratch_attach_device"),
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
