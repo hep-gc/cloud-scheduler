@@ -58,6 +58,7 @@ graceful_shutdown_method = "off"
 retire_before_lifetime = False
 retire_before_lifetime_factor = 1.5
 retire_missing_vms = False
+clean_shutdown_idle = False
 getclouds = False
 scheduling_metric = "slot"
 scheduling_algorithm = "fairshare"
@@ -155,6 +156,7 @@ def setup(path=None):
     global retire_before_lifetime
     global retire_before_lifetime_factor
     global retire_missing_vms
+    global clean_shutdown_idle
     global getclouds
     global scheduling_metric
     global scheduling_algorithm
@@ -436,6 +438,14 @@ def setup(path=None):
             retire_missing_vms = config_file.getboolean("global", "retire_missing_vms")
         except ValueError:
             print "Configuration file problem: retire_missing_vms must be an " \
+                  "boolean value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "clean_shutdown_idle"):
+        try:
+            clean_shutdown_idle = config_file.getboolean("global", "clean_shutdown_idle")
+        except ValueError:
+            print "Configuration file problem: clean_shutdown_idle must be an " \
                   "boolean value."
             sys.exit(1)
 

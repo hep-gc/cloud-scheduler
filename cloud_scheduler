@@ -899,8 +899,9 @@ class Cleanup(threading.Thread):
                 unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(machineList, True)
                 self.clean_kill_unregistered_vms(unregisteredvms, True)
                 self.clean_retired_vms(retiredvms, True)
-                # Check for Idle machines that cannot run any jobs
-                self.clean_verify_vm_job_reqs()
+                if config.clean_shutdown_idle:
+                    # Check for Idle machines that cannot run any jobs
+                    self.clean_verify_vm_job_reqs()
 
             log.verbose("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
