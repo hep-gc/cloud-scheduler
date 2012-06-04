@@ -1494,3 +1494,34 @@ class EC2Cluster(ICluster):
 
         return 0
 
+class IBMCluster(ICluster):
+    def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
+                 memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
+                 cpu_cores=0, storage=0, hypervisor='xen', username="", password="",):
+
+        # Call super class's init
+        ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
+                         memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
+                         vm_slots=vm_slots, cpu_cores=cpu_cores,
+                         storage=storage, hypervisor=hypervisor)
+        from libcloud.compute.types import Provider
+        from libcloud.compute.providers import get_driver
+        from libcloud.compute.base import NodeImage, NodeSize, NodeLocation, NodeAuthSSHKey
+        self.username = username
+        self.password = password
+        self.driver = get_driver(Provider.IBM)
+        self.connection = self.driver(self.username, self.password)
+        self.locations = self.connection.list_locations()
+        self.compute_sizes = self.connection.list_sizes()
+        
+    def _get_connection(self):
+        pass
+
+    def vm_create(self, **args):
+        pass
+
+    def vm_destroy(self, vm, return_resources=True, reason=""):
+        pass
+
+    def vm_poll(self, vm):
+        pass
