@@ -1267,7 +1267,7 @@ class Cleanup(threading.Thread):
                         if job.job_status == self.RUNNING:
                             self.job_pool.schedule(job)
                     
-                vms = self.resource_pool.get_vmtypes_count_internal()
+                vms = self.resource_pool.get_vmtypes_count_cpu_slots()
                 job_req_count = defaultdict(int)
                 for job in self.job_pool.job_container.get_scheduled_jobs():
                     if job.job_status <= self.RUNNING: # Ignore held, complete, etc

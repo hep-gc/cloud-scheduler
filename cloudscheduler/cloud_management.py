@@ -915,6 +915,17 @@ class ResourcePool:
                 types[vm.uservmtype] += 1
         return types
 
+    def get_vmtypes_count_cpu_slots(self):
+        """Get a dictionary of uservmtypes of VMs the scheduler is currently tracking."""
+        types = defaultdict(int)
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.job_per_core:
+                    types[vm.uservmtype] += vm.cpucores
+                else:
+                    types[vm.uservmtype] += 1
+        return types
+
     def get_vm_count_user(self, user):
         """Get a count of the number of VMs for specified user."""
         count = 0
