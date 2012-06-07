@@ -80,7 +80,7 @@ class ResourcePool:
         global log
         log = logging.getLogger("cloudscheduler")
 
-        log.debug("New ResourcePool " + name + " created")
+        log.verbose("New ResourcePool " + name + " created")
         self.name = name
 
         _collector_wsdl = "file://" + determine_path() \
@@ -134,7 +134,7 @@ class ResourcePool:
 
     def setup(self):
         """Read the cloud_resources.conf to determine the available clouds."""
-        log.info("Loading cloud resource configuration file %s" % self.config_file)
+        log.debug("Loading cloud resource configuration file %s" % self.config_file)
 
         if not self.setup_lock.acquire(False):
             log.warning("Reconfig already in progress, queuing the request")
@@ -494,7 +494,7 @@ class ResourcePool:
 
         # Return the list clusters that fit given requirements
         if fitting_clusters:
-            log.debug("List of fitting clusters: ")
+            log.verbose("List of fitting clusters: ")
             self.log_list(fitting_clusters)
         return fitting_clusters
 
@@ -709,7 +709,7 @@ class ResourcePool:
         Returns a list of dictionaries with information about the machines
         registered with condor.
         """
-        log.debug("Querying Condor Collector with %s" % config.condor_status_command)
+        log.verbose("Querying Condor Collector with %s" % config.condor_status_command)
 
         machine_list = []
         try:
@@ -734,7 +734,7 @@ class ResourcePool:
         Returns a list of dictionaries with information about the machines
         registered with condor.
         """
-        log.debug("Querying condor startd with SOAP API")
+        log.verbose("Querying condor startd with SOAP API")
         try:
             machines_xml = self.condor_collector_as_xml.service.queryStartdAds()
             machine_list = self._condor_machine_xml_to_machine_list(machines_xml)
@@ -760,7 +760,7 @@ class ResourcePool:
         Returns a list of dictionaries with information about the machines masters
         registered with condor.
         """
-        log.debug("Querying Condor Collector with %s" % config.condor_status_master_command)
+        log.verbose("Querying Condor Collector with %s" % config.condor_status_master_command)
 
         master_list = []
         try:
@@ -879,7 +879,7 @@ class ResourcePool:
                     log.warning("VM Missing a Start attrib.")
                 if not vm.has_key('VMType'):
                     log.warning("This VM has no VMType key, It should not be used with cloudscheduler.")
-        log.debug("VMs in machinelist: %s" % str(count))
+        log.verbose("VMs in machinelist: %s" % str(count))
         return count
 
     def match_criteria(self, base, criteria):
@@ -1256,7 +1256,7 @@ class ResourcePool:
                             banned_changed = True
             if banned_changed:
                 self.save_banned_job_resource()
-                log.debug("Updating Banned job file")
+                log.verbose("Updating Banned job file")
 
     def save_banned_job_resource(self):
         """
@@ -1655,7 +1655,7 @@ class ResourcePool:
             for vm in cluster.vms:
                 if vm.status == "Starting":
                     num_starting += 1
-        log.debug("There are %i Starting VMs, the max_starting_vm is %i." % (num_starting, config.max_starting_vm))
+        log.verbose("There are %i Starting VMs, the max_starting_vm is %i." % (num_starting, config.max_starting_vm))
         return num_starting
 
     def get_starting_of_usertype(self, vmtype):

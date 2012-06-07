@@ -239,7 +239,7 @@ class HashTableJobContainer(JobContainer):
         self.new_jobs = {}
         self.sched_jobs = {}
         self.jobs_by_user = defaultdict(dict)
-        log.debug('HashTableJobContainer instance created.')
+        log.verbose('HashTableJobContainer instance created.')
 
     # methods
     def __str__(self):
@@ -272,7 +272,7 @@ class HashTableJobContainer(JobContainer):
             self.jobs_by_user.clear()
             self.new_jobs.clear()
             self.sched_jobs.clear()
-            log.debug('job container cleared')
+            log.verbose('job container cleared')
 
     def remove_job(self, job):
         with self.lock:

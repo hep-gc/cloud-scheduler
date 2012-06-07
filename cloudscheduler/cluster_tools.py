@@ -143,8 +143,7 @@ class VM:
 
         global log
         log = logging.getLogger("cloudscheduler")
-        log.debug("New VM object created:")
-        log.debug("VM - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
+        log.verbose("New VM Object - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
           % (name, id, clusteraddr, image, memory))
 
     def log(self):
@@ -320,7 +319,7 @@ class ICluster:
         self.hypervisor = hypervisor
 
         self.setup_logging()
-        log.info("New cluster %s created" % self.name)
+        log.debug("New cluster %s created" % self.name)
 
     def __getstate__(self):
         """Override to work with pickle module."""
@@ -506,7 +505,7 @@ class ICluster:
         Parameters: (as for checkout() )
         Notes: (as for checkout)
         """
-        log.info("Returning resources used by VM %s to Cluster %s" % (vm.id, self.name))
+        log.debug("Returning resources used by VM %s to Cluster %s" % (vm.id, self.name))
         with self.res_lock:
             self.vm_slots += 1
             self.storageGB += vm.storage
@@ -592,12 +591,12 @@ class NimbusCluster(ICluster):
             for file in files:
                 try:
                     if file:
-                        log.debug("Deleting %s" % file)
+                        log.verbose("Deleting %s" % file)
                         os.remove(file)
                 except:
                     log.exception("Couldn't delete %s" % file)
 
-        log.debug("Nimbus cloud create command")
+        log.verbose("Nimbus cloud create command")
 
         if vm_networkassoc == "":
             # No network specified, so just pick the first available one
@@ -665,7 +664,7 @@ class NimbusCluster(ICluster):
         if job_proxy_file_path and not proxy_non_boot:
             try:
                 vm_proxy_file_path = self._cache_proxy(job_proxy_file_path)
-                log.debug("Cached proxy to '%s'" % vm_proxy_file_path)
+                log.verbose("Cached proxy to '%s'" % vm_proxy_file_path)
             except:
                 log.exception("Problem caching proxy.")
                 _remove_files(nimbus_files)
@@ -708,9 +707,9 @@ class NimbusCluster(ICluster):
 
             return create_return
 
-        log.debug("Nimbus create command executed.")
+        log.verbose("Nimbus create command executed.")
 
-        log.debug("Deleting temporary Nimbus Metadata files")
+        log.verbose("Deleting temporary Nimbus Metadata files")
         _remove_files(nimbus_files)
 
         # Find the memory entry in the Cluster 'memory' list which _create will be
@@ -722,7 +721,7 @@ class NimbusCluster(ICluster):
             # memory entry that fits VM requirements.
             log.error("Cluster memory list has no sufficient memory " +\
               "entries (Not supposed to happen). Returning error.")
-        log.debug("Memory entry found in given cluster: %d" % vm_mementry)
+        log.verbose("Memory entry found in given cluster: %d" % vm_mementry)
 
         # Get the id of the VM from the output of workspace.sh
         try:
@@ -741,7 +740,7 @@ class NimbusCluster(ICluster):
         # Get the first part of the hostname given to the VM
         vm_hostname = self._extract_hostname(create_out)
         if vm_hostname:
-            log.debug("Hostname for vm_id %s is %s" % (vm_id, vm_hostname))
+            log.verbose("Hostname for vm_id %s is %s" % (vm_id, vm_hostname))
         else:
             log.warning("Unable to get the VM hostname, for vm_id %s" % vm_id)
 
@@ -796,9 +795,9 @@ class NimbusCluster(ICluster):
             if (shutdown_return != 0):
                 log.debug("(vm_destroy) - VM shutdown request failed, moving directly to destroy.")
             else:
-                log.debug("(vm_destroy) - workspace shutdown command executed successfully.")
+                log.verbose("(vm_destroy) - workspace shutdown command executed successfully.")
                 # Sleep for a few seconds to allow for proper shutdown
-                log.debug("Waiting %ss for VM to shut down..." % self.VM_SHUTDOWN)
+                log.verbose("Waiting %ss for VM to shut down..." % self.VM_SHUTDOWN)
                 time.sleep(self.VM_SHUTDOWN)
 
 
@@ -944,7 +943,7 @@ class NimbusCluster(ICluster):
             if not utilities.check_popen_timeout(sp):
                 (out, err) = sp.communicate(input=None)
             else:
-                log.warning("Process timed out!")
+                log.warning("Process %s timed out! cmd was %" % (sp.pid, " ".join(cmd)))
             return (sp.returncode, out, err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
@@ -969,7 +968,7 @@ class NimbusCluster(ICluster):
             if not utilities.check_popen_timeout(sp):
                 (out, err) = sp.communicate(input=None)
             else:
-                log.warning("Process timed out!")
+                log.warning("Process %s timed out! cmd was %" % (sp.pid, " ".join(cmd)))
             return sp.returncode
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
@@ -1195,7 +1194,7 @@ class EC2Cluster(ICluster):
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
                                    )
-                log.debug("Created a connection to Amazon EC2")
+                log.verbose("Created a connection to Amazon EC2")
 
             except boto.exception.EC2ResponseError, e:
                 log.error("Couldn't connect to Amazon EC2 because: %s" %
@@ -1213,7 +1212,7 @@ class EC2Cluster(ICluster):
                                    port=8773,
                                    path="/services/Eucalyptus",
                                    )
-                log.debug("Created a connection to Eucalyptus (%s)" % self.name)
+                log.verbose("Created a connection to Eucalyptus (%s)" % self.name)
 
             except boto.exception.EC2ResponseError, e:
                 log.error("Couldn't connect to Eucalyptus EC2 because: %s" %
@@ -1236,7 +1235,7 @@ class EC2Cluster(ICluster):
                                    port=8773,
                                    path="/services/Cloud",
                                    )
-                log.debug("Created a connection to OpenStack (%s)" % self.name)
+                log.verbose("Created a connection to OpenStack (%s)" % self.name)
 
             except boto.exception.EC2ResponseError, e:
                 log.error("Couldn't connect to OpenStack because: %s" %
@@ -1282,7 +1281,7 @@ class EC2Cluster(ICluster):
                   job_per_core=False):
         """Attempt to boot a new VM on the cluster."""
 
-        log.debug("Trying to boot %s on %s" % (vm_type, self.network_address))
+        log.verbose("Trying to boot %s on %s" % (vm_type, self.network_address))
 
         try:
             vm_ami = vm_image[self.network_address]
@@ -1383,7 +1382,7 @@ class EC2Cluster(ICluster):
             log.debug("Cluster memory list has no sufficient memory " +\
                       "entries (Not supposed to happen). Returning error.")
             return self.ERROR
-        log.debug("vm_create - Memory entry found in given cluster: %d" %
+        log.verbose("vm_create - Memory entry found in given cluster: %d" %
                                                                     vm_mementry)
         new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
@@ -1495,6 +1494,11 @@ class EC2Cluster(ICluster):
         return 0
 
 class IBMCluster(ICluster):
+
+    VM_STATES = ['Running', 'Rebooting', 'Terminated', 'Pending', 'Unknown']
+    VM_STATES_DICT = {'Running': 0, 'Rebooting': 1, 'Terminated': 2, 
+                      'Pending': 3, 'Unknown': 4}
+
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, hypervisor='xen', username="", password="",):
@@ -1513,15 +1517,47 @@ class IBMCluster(ICluster):
         self.connection = self.driver(self.username, self.password)
         self.locations = self.connection.list_locations()
         self.compute_sizes = self.connection.list_sizes()
+        self.images = self.connection.list_images()
         
     def _get_connection(self):
         pass
 
     def vm_create(self, **args):
+        # will need to use self.driver.deploy_node(...) as this seems to allow for contextualization whereas create_node() does not
         pass
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
-        pass
+        # can use either node.destroy() or self.driver.destroy_node(node) - the latter is more consistent with how we do things in the other clouds
+        nodes = self.driver.list_nodes()
+        for node in nodes:
+            if node.uuid == vm.id:
+                self.driver.destroy_node(node)
+                # return resources
+                if return_resources:
+                    self.resource_return(vm)
+                with self.vms_lock:
+                    self.vms.remove(vm)
+                break
 
     def vm_poll(self, vm):
+        # libcloud does not seem to support polling individual VMs you simply list off what you have
+        # ineffecient this way but is in line with other clouds
+        nodes = self.driver.list_nodes()
+        for node in nodes:
+            if node.uuid == vm.id:
+                if self.VM_STATES[node.state] == vm.status:
+                    continue
+                # Both startup and shutdown enter the Pending state
+                elif vm.status == 'Running' and node.state == 3:
+                    vm.status = self.VM_STATES[node.state]
+                    vm.override_status = 'Stopping'
+                    vm.last_state_change = int(time.now())
+                elif vm.status == 'Starting' and node.state == 3:
+                    vm.status = self.VM_STATES[node.state]
+                    vm.last_state_change = int(time.now())
+                else:
+                    vm.status = self.VM_STATES[node.state]
+                    vm.last_state_change = int(time.now())
+            else:
+                continue
         pass

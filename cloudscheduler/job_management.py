@@ -185,8 +185,8 @@ class Job:
         except:
             log.error("Failed to parse TargetClouds - use a comma separated list")
 
-        log.verbose("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
+        #log.verbose("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
+        #  % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
 
     def __repr__(self):
         return "Job '%s'" % self.id
@@ -233,8 +233,7 @@ class Job:
 
         """
         if (status not in self.statuses):
-            log.debug("Error: incorrect status '%s' passed" % status)
-            log.debug("Status must be one of: " + string.join(self.statuses, ", "))
+            log.error("Error: incorrect status '%s' passed. Status must be one of: %s" % (status, "".join(self.statuses, ", ")))
             return
         self.status = status
 
@@ -447,7 +446,7 @@ class JobPool:
 
     def job_query_local(self):
         """job_query_local -- query and parse condor_q for job information."""
-        log.debug("Querying Condor scheduler daemon (schedd) with %s" % config.condor_q_command)
+        log.verbose("Querying Condor scheduler daemon (schedd) with %s" % config.condor_q_command)
         try:
             condor_q = shlex.split(config.condor_q_command)
             sp = subprocess.Popen(condor_q, shell=False,
@@ -470,7 +469,7 @@ class JobPool:
 
     def job_query_SOAP(self):
         """job_qury_SOAP - query and parse condor for job information via SOAP API."""
-        log.debug("Querying Condor scheduler daemon (schedd)")
+        log.verbose("Querying Condor scheduler daemon (schedd)")
 
         # Get job classAds from the condor scheduler
         try:
@@ -488,12 +487,10 @@ class JobPool:
             return None
 
         # Create the condor_jobs list to store jobs
-        #log.verbose("Parsing Condor job data from schedd")
         condor_jobs = self._condor_job_xml_to_job_list(job_ads)
         del job_ads
         # When querying finishes successfully, reset last query timestamp
         self.last_query = datetime.datetime.now()
-        #log.verbose("Done parsing jobs from Condor Schedd SOAP (%d job(s) parsed)" % len(condor_jobs))
 
         # Return condor_jobs list
         return condor_jobs
@@ -716,7 +713,6 @@ class JobPool:
                 self.add_new_job(job)
             else:
                 self.add_high_job(job)
-            #log.verbose("Job %s added to unscheduled jobs list" % job.id)
         del query_jobs
 
 
@@ -807,7 +803,7 @@ class JobPool:
             and not job.banned:
                 required_vmtypes.append(job.req_vmtype)
 
-        log.debug("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
+        log.verbose("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes
 
     def get_required_uservmtypes(self):
@@ -826,7 +822,7 @@ class JobPool:
                and not job.banned:
                 required_vmtypes.append(job.uservmtype)
 
-        log.debug("get_required_uservmtypes - Required VM types: " + ", ".join(required_vmtypes))
+        log.verbose("get_required_uservmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes
 
     def get_required_vmtypes_dict(self):
@@ -843,7 +839,7 @@ class JobPool:
         for job in self.job_container.get_all_jobs():
             if job.job_status <= self.RUNNING and not job.banned:
                 required_vmtypes[job.req_vmtype] += 1
-        log.debug("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
+        log.verbose("get_required_vm_types_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
 
     def get_required_uservmtypes_dict(self):
@@ -857,7 +853,7 @@ class JobPool:
         for job in self.job_container.get_all_jobs():
             if job.job_status <= self.RUNNING and not job.banned:
                 required_vmtypes[job.uservmtype] += 1
-        log.debug("get_required_vm_usertypes_dict - Required VM Type : Count " + str(required_vmtypes))
+        log.verbose("get_required_vm_usertypes_dict - Required VM Type : Count " + str(required_vmtypes))
         return required_vmtypes
 
     def job_type_distribution_normal(self):
@@ -1083,7 +1079,7 @@ class JobPool:
 
             Returns a list of any job that fails to Hold.
         """
-        log.debug("Holding %i Jobs via Condor SOAP API" % len(jobs))
+        log.verbose("Holding %i Jobs via Condor SOAP API" % len(jobs))
         failed = []
         for job in jobs:
             try:
@@ -1110,7 +1106,7 @@ class JobPool:
         
         Returns a list of jobs that fail to release.
         """
-        log.debug("Releasing Jobs via Condor SOAP API")
+        log.verbose("Releasing Jobs via Condor SOAP API")
         failed = []
         for job in jobs:
             try:

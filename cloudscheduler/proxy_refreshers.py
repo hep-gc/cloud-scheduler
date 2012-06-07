@@ -72,9 +72,9 @@ class JobProxyRefresher(threading.Thread):
 
                 # Lets record the current time and then log how much time the cycle took.
                 cycle_end_ts = datetime.datetime.today()
-                log.debug("Job proxy refreshing cycle done. [%d;%s;%s;%s]" % (len(jobs), cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
+                log.verbose("Job proxy refreshing cycle done. [%d;%s;%s;%s]" % (len(jobs), cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
 
-                log.debug("JobProxyRefresher waiting %ds..." % self.polling_interval)
+                log.verbose("JobProxyRefresher waiting %ds..." % self.polling_interval)
                 sleep_tics = self.polling_interval
                 while (not self.quit) and sleep_tics > 0:
                     time.sleep(1)
@@ -139,9 +139,9 @@ class VMProxyRefresher(threading.Thread):
 
                 # Lets record the current time and then log how much time the cycle took.
                 cycle_end_ts = datetime.datetime.today()
-                log.debug("VM proxy refreshing cycle done. [%d;%s;%s;%s]" % (len(vms), cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
+                log.verbose("VM proxy refreshing cycle done. [%d;%s;%s;%s]" % (len(vms), cycle_start_ts, cycle_end_ts, cycle_end_ts - cycle_start_ts))
 
-                log.debug("VMProxyRefresher waiting %ds..." % self.polling_interval)
+                log.verbose("VMProxyRefresher waiting %ds..." % self.polling_interval)
                 sleep_tics = self.polling_interval
                 while (not self.quit) and sleep_tics > 0:
                     time.sleep(1)
@@ -200,7 +200,7 @@ class MyProxyProxyRefresher():
             os.close(new_proxy_file)
             myproxy_logon_cmd = '%s -s %s -p %s -k "%s" -a %s -o %s -t %s -d -v' % (myproxy_command, myproxy_server, myproxy_server_port, myproxy_creds_name, proxy_file_path, new_proxy_file_path, renew_time)
             cmd_args = shlex.split(myproxy_logon_cmd)
-            log.debug('Invoking myproxy-logon command to refresh proxy %s ...' % (proxy_file_path))
+            log.verbose('Invoking myproxy-logon command to refresh proxy %s ...' % (proxy_file_path))
             myproxy_logon_process = subprocess.Popen(cmd_args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (stdout, stderr) = myproxy_logon_process.communicate()
             if myproxy_logon_process.returncode != 0:
@@ -208,7 +208,7 @@ class MyProxyProxyRefresher():
                 os.remove(new_proxy_file_path)
                 return False
             else:
-                log.debug('myproxy-logon command returned successfully')
+                log.verbose('myproxy-logon command returned successfully')
 
             shutil.copyfile(new_proxy_file_path, proxy_file_path)
             os.remove(new_proxy_file_path)
