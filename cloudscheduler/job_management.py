@@ -91,7 +91,8 @@ class Job:
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
              TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
              VMProxyNonBoot=config.default_VMProxyNonBoot,
-             VMImageProxyFile=None, VMTypeLimit=-1, **kwargs):
+             VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
+             VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -166,6 +167,10 @@ class Job:
         self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
         self.vmimage_proxy_file = VMImageProxyFile
         self.usertype_limit = int(VMTypeLimit)
+        self.req_image_id = VMImageID
+        self.req_instance_type_ibm = VMInstanceTypeIBM
+        self.location = VMLocation
+        self.key_name = VMKeyName
 
         # Set the new job's status
         if self.job_status == 2:
@@ -635,6 +640,10 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMProxyNonBoot")
                 _add_if_exists(xml_job, job_dictionary, "VMImageProxyFile")
                 _add_if_exists(xml_job, job_dictionary, "VMTypeLimit")
+                _add_if_exists(xml_job, job_dictionary, "VMLocation")
+                _add_if_exists(xml_job, job_dictionary, "VMImageID")
+                _add_if_exists(xml_job, job_dictionary, "VMKeyName")
+                _add_if_exists(xml_job, job_dictionary, "VMInstanceTypeIBM")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")

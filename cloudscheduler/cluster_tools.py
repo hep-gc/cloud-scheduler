@@ -1522,7 +1522,10 @@ class IBMCluster(ICluster):
     def _get_connection(self):
         pass
 
-    def vm_create(self, **args):
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
+                  vm_image, vm_mem, vm_cores, vm_storage, customization, 
+                  vm_keepalive, instance_type, location, job_per_core,
+                  vm_keyname):
         # will need to use self.driver.deploy_node(...) as this seems to allow for contextualization whereas create_node() does not
         pass
 
