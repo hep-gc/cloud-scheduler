@@ -899,6 +899,7 @@ class NimbusCluster(ICluster):
 
             elif vm.status != new_status:
                 vm.last_state_change = int(time.time())
+                log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, new_status))
                 vm.status = new_status
 
             elif vm.override_status != None and new_status not in bad_status and vm.override_status not in special_status:
@@ -1450,6 +1451,7 @@ class EC2Cluster(ICluster):
             if vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
                 vm.last_state_change = int(time.time())
+                log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.state, "Starting")))
             vm.status = self.VM_STATES.get(instance.state, "Starting")
             vm.hostname = instance.public_dns_name
             vm.lastpoll = int(time.time())
@@ -1573,12 +1575,15 @@ class IBMCluster(ICluster):
                     vm.status = self.VM_STATES[node.state]
                     vm.override_status = 'Stopping'
                     vm.last_state_change = int(time.now())
+                    log.debug("VM: %s on %s. Changed from %s to Stopping." % (vm.id, self.name, vm.status))
                 elif vm.status == 'Starting' and node.state == 3:
                     vm.status = self.VM_STATES[node.state]
                     vm.last_state_change = int(time.now())
+                    log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES[node.state]))
                 else:
                     vm.status = self.VM_STATES[node.state]
                     vm.last_state_change = int(time.now())
+                    log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES[node.state]))
             else:
                 continue
         pass
