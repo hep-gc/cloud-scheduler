@@ -1527,7 +1527,25 @@ class IBMCluster(ICluster):
                   vm_keepalive, instance_type, location, job_per_core,
                   vm_keyname):
         # will need to use self.driver.deploy_node(...) as this seems to allow for contextualization whereas create_node() does not
-        pass
+        
+        
+        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
+                    clusteraddr = self.network_address,
+                    cloudtype = self.cloud_type, network = vm_networkassoc,
+                    cpuarch = vm_cpuarch, image= vm_image,
+                    memory = vm_mem, mementry = vm_mementry,
+                    cpucores = vm_cores, storage = vm_storage, 
+                    keep_alive = vm_keepalive, job_per_core = job_per_core)
+        try:
+            self.resource_checkout(new_vm)
+        except:
+            log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
+            self.vm_destroy(new_vm, reason="Failed Resource checkout")
+            return self.ERROR
+
+        self.vms.append(new_vm)
+
+        return 0
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
         # can use either node.destroy() or self.driver.destroy_node(node) - the latter is more consistent with how we do things in the other clouds
