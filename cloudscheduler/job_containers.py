@@ -19,7 +19,8 @@ class JobContainer():
 
     # Use this lock if you require to threadsafe an operation.
     lock = None
-
+    ## Condor Job Status mapping
+    job_status_list = ['NEW', 'IDLE', 'RUNNING', 'REMOVED', 'COMPLETE', 'HELD', 'ERROR']
     def __init__(self):
         self.lock = threading.RLock()
         global log
@@ -509,6 +510,8 @@ class HashTableJobContainer(JobContainer):
         if job != None:
             if job.job_status != status and job.override_status != None:
                 job.override_status = None
+            if job.job_status != status:
+                log.debug("Job %s status change: %s -> %s" % (job.id, self.job_status_list[job.job_status], self.job_status_list[status]))
             job.job_status = status
             job.remote_host = remote
             job.servertime = int(servertime)
