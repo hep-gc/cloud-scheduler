@@ -137,18 +137,11 @@ class VMPoller(threading.Thread):
                         #    cluster.resource_return(vm)
 
                 if vm.errorcount >= config.polling_error_threshold:
-                    # make sure we're not already in the middle of a destroy for this VM
-                    found = False
-                    for dtk, dtv in self.destroy_threads.iteritems():
-                        if dtv.get_vm() == vm:
-                            found = True
-                            break
-                    if not found:
-                        # Destroy the VM
-                        if not self.check_destroy(cluster, vm):
-                            dt = VMDestroyCmd(cluster, vm, reason="VM is in an Error state.")
-                            self.destroy_threads["".join([cluster.name, vm.id])] = dt
-                            dt.start()
+                    # Destroy the VM
+                    if not self.check_destroy(cluster, vm):
+                        dt = VMDestroyCmd(cluster, vm, reason="VM is in an Error state.")
+                        self.destroy_threads["".join([cluster.name, vm.id])] = dt
+                        dt.start()
 
     def handle_bad_image(self, user, image):
         """Respond to image url with a failed Http response, will attempt to 
