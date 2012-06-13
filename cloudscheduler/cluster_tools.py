@@ -683,12 +683,13 @@ class NimbusCluster(ICluster):
             log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (vm_proxy_file_path))
 
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
+
         if (create_return != 0):
             if create_out == "" or create_out == None:
                 create_out = "No Output returned."
             if create_err == "" or create_err == None:
                 create_err = "No Error output returned."
-            log.warning("Error creating VM %s: %s %s" % (vm_name, create_out, create_err))
+            log.warning("Error creating VM %s: %s %s %s" % (vm_name, create_out, create_err, create_return))
             _remove_files(nimbus_files + [vm_proxy_file_path])
             err_type = self._extract_create_error(create_err)
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
@@ -821,7 +822,7 @@ class NimbusCluster(ICluster):
                     destroy_out = "No Output returned."
                 if destroy_error == "" or destroy_error == None:
                     destroy_error = "No Error output returned."
-                log.warning("VM %s was not correctly destroyed: %s %s" % (vm.id, destroy_out, destroy_error))
+                log.warning("VM %s was not correctly destroyed: %s %s %s" % (vm.id, destroy_out, destroy_error, destroy_return))
                 vm.status = "Error"
                 os.remove(vm_epr)
                 return destroy_return
@@ -864,7 +865,7 @@ class NimbusCluster(ICluster):
         """
         # Retire not actually bad, just don't want that state overwritten
         bad_status = ("Destroyed", "NoProxy", "ExpiredProxy")
-        special_status = ("Retiring", "TempBanned", "HeldBadReqs", "HTTPFail")
+        special_status = ("Retiring", "TempBanned", "HeldBadReqs", "HTTPFail, BrokenPipe")
         # Create an epr for our poll command
         vm_epr = nimbus_xml.ws_epr_factory(vm.id, vm.clusteraddr, vm.clusterport)
 
@@ -897,6 +898,10 @@ class NimbusCluster(ICluster):
                 vm.override_status = new_status
                 log.error("Unable to connect to nimbus service on %s" % vm.clusteraddr)
 
+            elif new_status == "BrokenPipe":
+                vm.override_status = new_status
+                log.error("Broken Pipe error on %s. Check max_clients in libvirtd.conf on nodes." % vm.clusteraddr)
+
             elif vm.status != new_status:
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, new_status))
@@ -912,7 +917,7 @@ class NimbusCluster(ICluster):
                     poll_out = "No Output returned."
                 if poll_err == "" or poll_err == None:
                     poll_err = "No Error output returned."
-                log.warning("There was a problem polling VM %s: %s %s" % (vm.id, poll_out, poll_err))
+                log.warning("There was a problem polling VM %s: %s %s %s" % (vm.id, poll_out, poll_err, poll_return))
 
         # Tidy up and return
         os.remove(vm_epr)
@@ -1053,6 +1058,9 @@ class NimbusCluster(ICluster):
                     http_fail = re.search("Problem: TRANSFER FAILED Problem propagating :UnexpectedError :HTTP error Not Found", output)
                     if http_fail:
                         return "HttpError"
+                    broken_pipe = re.search("Problem with connection to the VMM: cannot send data: Broken pipe", output)
+                    if broken_pipe:
+                        return "BrokenPipe"
                 return NimbusCluster.VM_STATES[status]
             else:
                 return "Error"
