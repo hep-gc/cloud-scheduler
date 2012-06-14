@@ -85,6 +85,7 @@ max_destroy_threads = 10
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
+vm_reqs_from_condor_reqs = False
 
 default_VMType= "default"
 default_VMNetwork= ""
@@ -182,6 +183,7 @@ def setup(path=None):
     global proxy_cache_dir
     global myproxy_logon_command
     global override_vmtype
+    global vm_reqs_from_condor_reqs
     global default_VMType
     global default_VMNetwork
     global default_VMCPUArch
@@ -642,6 +644,13 @@ def setup(path=None):
             override_vmtype = config_file.getboolean("global", "override_vmtype")
         except ValueError:
             print "Configuration file problem: override_vmtype must be a" \
+                  " Boolean value."
+
+    if config_file.has_option("global", "vm_reqs_from_condor_reqs"):
+        try:
+            vm_reqs_from_condor_reqs = config_file.getboolean("global", "vm_reqs_from_condor_reqs")
+        except ValueError:
+            print "Configuration file problem: vm_reqs_from_condor_reqs must be a" \
                   " Boolean value."
 
     if config_file.has_option("logging", "log_level"):

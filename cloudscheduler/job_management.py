@@ -517,6 +517,14 @@ class JobPool:
             else:
                 return ""
 
+        def _attribute_from_requirements_alt(requirements, attribute):
+            regex = "%s\s[<>=][<>=]\s(?P<value>.+?)\s" % attribute
+            match = re.search(regex, requirements)
+            if match:
+                return match.group("value")
+            else:
+                return ""
+
         def _attribute_from_list(classad, attribute):
             try:
                 attr_list = classad[attribute]
@@ -554,6 +562,24 @@ class JobPool:
             except:
                 log.exception("Problem extracting VMType from Requirements")
 
+            if config.vm_reqs_from_condor_reqs:
+                if not classad.has_key("VMMem"):
+                    try:
+                        classad["VMMem"] = int(_attribute_from_requirements_alt(classad["Requirements"], "Memory"))
+                    except:
+                        log.exception("Problem extracting Memory from Requirements")
+                if not classad.has_key("VMStorage"):
+                    try:
+                        classad["VMStorage"] = int(_attribute_from_requirements_alt(classad["Requirements"], "Disk")) / 1000000
+                        if classad["VMStorage"] < 1:
+                            classad["VMStorage"] = 1
+                    except:
+                        log.exception("Problem extracting Disk from Requirements")
+                if not classad.has_key("VMCPUCores"):
+                    try:
+                        classad["VMCPUCores"] = int(_attribute_from_requirements_alt(classad["Requirements"], "Cpus"))
+                    except:
+                        log.exception("Problem extracting Cpus from Requirements")
             # VMAMI requires special fiddling
             _attribute_from_list(classad, "VMAMI")
             _attribute_from_list(classad, "VMInstanceType")
