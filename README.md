@@ -136,7 +136,10 @@ want to put these in your /etc/condor directory. You will probably also want to
 use our custom Condor init script. This does things like set up an appropriate
 environment for when Condor is started with private networking only, when
 started on EC2, and also will automatically point your node to your Condor
-Pool.
+Pool. When using the custom init script and doing offline testing of the VM
+image, ensure you place the central_manager file from scripts/condor/worker into
+/etc/condor as the init script will read the value of the CONDOR_HOST from
+this file.
 
 ## Installing Nimbus Cloud Client
 
