@@ -545,34 +545,37 @@ class ResourcePool:
             return (fitting_clusters[0], None)
         #log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
 
+        # sort them based on how full and return the list
+        fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio, reverse=True)
+        return fitting_clusters
         # Set the most-balanced and next-most-balanced initial values
         # Note: mostbal_cluster stands for "most balanced cluster"
         # Note: nextbal_cluster stands for "next most balanced cluster"
-        cluster1 = fitting_clusters.pop()
-        cluster2 = fitting_clusters.pop()
+        #cluster1 = fitting_clusters.pop()
+        #cluster2 = fitting_clusters.pop()
 
-        if (cluster1.slot_fill_ratio() < cluster2.slot_fill_ratio()):
-            mostbal_cluster = cluster1
-            nextbal_cluster = cluster2
-        else:
-            mostbal_cluster = cluster2
-            nextbal_cluster = cluster1
+        #if (cluster1.slot_fill_ratio() < cluster2.slot_fill_ratio()):
+            #mostbal_cluster = cluster1
+            #nextbal_cluster = cluster2
+        #else:
+            #mostbal_cluster = cluster2
+            #nextbal_cluster = cluster1
 
-        mostbal_vms = mostbal_cluster.slot_fill_ratio()
-        nextbal_vms = nextbal_cluster.slot_fill_ratio()
+        #mostbal_vms = mostbal_cluster.slot_fill_ratio()
+        #nextbal_vms = nextbal_cluster.slot_fill_ratio()
 
-        # Iterate through fitting clusters to check for most and next balanced clusters. (LINEAR search)
-        for cluster in fitting_clusters:
-            # If considered cluster has fewer running VMs, set it as the most balanced cluster
-            if (cluster.slot_fill_ratio() < mostbal_vms):
-                mostbal_cluster = cluster
-                mostbal_vms = cluster.slot_fill_ratio()
-            elif (cluster.slot_fill_ratio() < nextbal_vms):
-                nextbal_cluster = cluster
-                nextbal_vms = cluster.slot_fill_ratio()
+        ## Iterate through fitting clusters to check for most and next balanced clusters. (LINEAR search)
+        #for cluster in fitting_clusters:
+            ## If considered cluster has fewer running VMs, set it as the most balanced cluster
+            #if (cluster.slot_fill_ratio() < mostbal_vms):
+                #mostbal_cluster = cluster
+                #mostbal_vms = cluster.slot_fill_ratio()
+            #elif (cluster.slot_fill_ratio() < nextbal_vms):
+                #nextbal_cluster = cluster
+                #nextbal_vms = cluster.slot_fill_ratio()
 
-        # Return the most balanced cluster after considering all fitting clusters.
-        return (mostbal_cluster, nextbal_cluster)
+        ## Return the most balanced cluster after considering all fitting clusters.
+        #return (mostbal_cluster, nextbal_cluster)
 
     def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
         """

@@ -574,12 +574,12 @@ class Scheduler(threading.Thread):
                 # Check for an underallocated job that has resources
                 #if userjob and userjob.req_vmtype in diff_types.keys() and diff_types[userjob.req_vmtype] <= 0:
                 if userjob and userjob.uservmtype in diff_types.keys() and diff_types[userjob.uservmtype] <= 0:
-                    (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(userjob.req_network, \
+                    good_resources = self.resource_pool.get_resourceBF(userjob.req_network, \
                         userjob.req_cpuarch, userjob.req_memory, userjob.req_cpucores, userjob.req_storage, \
                         userjob.req_ami, userjob.req_imageloc, userjob.target_clouds, userjob.req_hypervisor)
-                    good_resources = [pri_rsrc]
-                    if sec_rsrc and pri_rsrc != sec_rsrc:
-                        good_resources.append(sec_rsrc)
+                    #good_resources = [pri_rsrc]
+                    #if sec_rsrc and pri_rsrc != sec_rsrc:
+                    #    good_resources.append(sec_rsrc)
                     # See if there's a valid resource for job to boot on
                     if good_resources[0] != None:
                         # Still resources available
@@ -587,12 +587,12 @@ class Scheduler(threading.Thread):
                         break
             # Checked all the users with under allocated jobs
             if over_allocate:
-                (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
+                good_resources = self.resource_pool.get_resourceBF(job.req_network, \
                         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
                         job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor)
-                good_resources = [pri_rsrc]
-                if sec_rsrc and pri_rsrc != sec_rsrc:
-                    good_resources.append(sec_rsrc)
+                #good_resources = [pri_rsrc]
+                #if sec_rsrc and pri_rsrc != sec_rsrc:
+                #    good_resources.append(sec_rsrc)
                 # See if there's a valid resource for job to boot on
                 if good_resources[0] != None:
                     allow = True
@@ -604,13 +604,13 @@ class Scheduler(threading.Thread):
         to create that VM. Optional failure/error tracking.
         """
         # Find resources that match the job's requirements
-        (pri_rsrc, sec_rsrc) = self.resource_pool.get_resourceBF(job.req_network, \
+        good_resources = self.resource_pool.get_resourceBF(job.req_network, \
         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
         job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor)
         
-        good_resources = [pri_rsrc]
-        if sec_rsrc and pri_rsrc != sec_rsrc:
-            good_resources.append(sec_rsrc)
+        #good_resources = [pri_rsrc]
+        #if sec_rsrc and pri_rsrc != sec_rsrc:
+        #    good_resources.append(sec_rsrc)
 
         # If no resource fits, continue to next job in user's list
         if good_resources[0] == None:
