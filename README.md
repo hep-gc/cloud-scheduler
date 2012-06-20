@@ -25,6 +25,15 @@ For more documentation on Cloud Scheduler, please refer to:
 
 * [Guppy](http://guppy-pe.sourceforge.net/) -- Used for memory usage info.
 
+## Basic Steps to get Jobs Running via Cloud Scheduler
+
+1. Install Prerequiste libraries
+2. Install Cloud Scheduler & Condor
+3. Configure Condor and Cloud Scheduler
+4. Setup a VM Image with Condor installed & CS Condor Scripts
+5. Add the Required CS Attributes to a job submission file
+6. Start CS and Submit job(s)
+
 ### Quick Start for People Who Think They Know What They're Doing
 
     # pip install cloud-scheduler
