@@ -51,7 +51,8 @@ def main(argv=None):
     parser.add_option("-d", "--disable", dest="disable", action="store", metavar="NAME", help="Disable cloud NAME")
     parser.add_option("-m", "--remove", dest="remove", action="store_true", help="Remove a VM from the Cloudscheduler. Requires -c name, and -n id or -a all.")
     parser.add_option("-q", "--quick-exit", dest="quick", action="store_true", default=False, help="Toggle the quick shutdown flag of CS.")
-    
+    parser.add_option("-i", "--reload-limits", dest="limits", action="store_true", default=False, help="Reload the user limits file.")
+    parser.add_option("-j", "--list-limits", dest="list_limits", action="store_true", default=False, help="List the current user limits.")
 
     (cli_options, args) = parser.parse_args()
 
@@ -104,6 +105,13 @@ def main(argv=None):
             print s.disable_cloud(cli_options.disable)
         elif cli_options.reconfig:
             print s.cloud_resources_reconfig()
+        elif cli_options.limits:
+            if s.user_limit_reload():
+                print "User-Limit file reloaded."
+            else:
+                print "No Limits set - list empty of problem parsing file."
+        elif cli_options.list_limits:
+            print s.list_user_limits()
         elif cli_options.log_level:
             print s.change_log_level(cli_options.log_level)
         elif cli_options.proxy_refresh:

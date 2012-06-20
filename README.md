@@ -1,4 +1,4 @@
-# Cloud Scheduler 1.1.1 README
+# Cloud Scheduler 1.2 README
 
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
@@ -24,6 +24,15 @@ For more documentation on Cloud Scheduler, please refer to:
 ## Optional Prerequisites
 
 * [Guppy](http://guppy-pe.sourceforge.net/) -- Used for memory usage info.
+
+## Basic Steps to get Jobs Running via Cloud Scheduler
+
+1. Install Prerequiste libraries
+2. Install Cloud Scheduler & Condor
+3. Configure Condor and Cloud Scheduler
+4. Setup a VM Image with Condor installed & CS Condor Scripts
+5. Add the Required CS Attributes to a job submission file
+6. Start CS and Submit job(s)
 
 ### Quick Start for People Who Think They Know What They're Doing
 
@@ -136,7 +145,10 @@ want to put these in your /etc/condor directory. You will probably also want to
 use our custom Condor init script. This does things like set up an appropriate
 environment for when Condor is started with private networking only, when
 started on EC2, and also will automatically point your node to your Condor
-Pool.
+Pool. When using the custom init script and doing offline testing of the VM
+image, ensure you place the central_manager file from scripts/condor/worker into
+/etc/condor as the init script will read the value of the CONDOR_HOST from
+this file.
 
 ## Installing Nimbus Cloud Client
 

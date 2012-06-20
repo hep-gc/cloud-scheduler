@@ -22,6 +22,7 @@ condor_collector_url = "http://localhost:9618"
 condor_retrieval_method = "soap"
 condor_q_command = "condor_q -l"
 condor_status_command = "condor_status -l"
+condor_status_master_command = "condor_status -master -l"
 condor_off_command = "/usr/sbin/condor_off"
 condor_on_command = "/usr/sbin/condor_on"
 ssh_path = "/usr/bin/ssh"
@@ -44,6 +45,7 @@ info_server_port = 8111
 admin_server_port = 8112
 workspace_path = "workspace"
 persistence_file = "/var/run/cloudscheduler.persistence"
+user_limit_file = None
 job_ban_timeout = 60*60 # 1 hour default
 ban_tracking = False
 ban_file = "/var/run/cloudscheduler.banned"
@@ -55,6 +57,8 @@ graceful_shutdown = False
 graceful_shutdown_method = "off"
 retire_before_lifetime = False
 retire_before_lifetime_factor = 1.5
+retire_missing_vms = False
+clean_shutdown_idle = False
 getclouds = False
 scheduling_metric = "slot"
 scheduling_algorithm = "fairshare"
@@ -77,9 +81,11 @@ vm_proxy_shutdown_threshold = 30 * 60 # 30 minutes default
 vm_connection_fail_threshold = 30 * 60 # 30 minutes default
 vm_idle_threshold = 5 * 60 # 5 minute default
 max_starting_vm = -1
+max_destroy_threads = 10
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
+vm_reqs_from_condor_reqs = False
 
 default_VMType= "default"
 default_VMNetwork= ""
@@ -89,7 +95,7 @@ default_VMLoc= ""
 default_VMAMI= ""
 default_VMMem= 512
 default_VMCPUCores= 1
-default_VMStorage= 1
+default_VMStorage= 0
 default_VMInstanceType= ""
 default_VMMaximumPrice= 0
 default_VMProxyNonBoot = False
@@ -115,6 +121,7 @@ def setup(path=None):
     global condor_retrieval_method
     global condor_q_command
     global condor_status_command
+    global condor_status_master_command
     global condor_off_command
     global condor_on_command
     global ssh_path
@@ -137,6 +144,7 @@ def setup(path=None):
     global admin_server_port
     global workspace_path
     global persistence_file
+    global user_limit_file
     global job_ban_timeout
     global ban_tracking
     global ban_file
@@ -148,6 +156,8 @@ def setup(path=None):
     global graceful_shutdown_method
     global retire_before_lifetime
     global retire_before_lifetime_factor
+    global retire_missing_vms
+    global clean_shutdown_idle
     global getclouds
     global scheduling_metric
     global scheduling_algorithm
@@ -173,6 +183,7 @@ def setup(path=None):
     global proxy_cache_dir
     global myproxy_logon_command
     global override_vmtype
+    global vm_reqs_from_condor_reqs
     global default_VMType
     global default_VMNetwork
     global default_VMCPUArch
@@ -254,6 +265,10 @@ def setup(path=None):
         condor_status_command = config_file.get("global",
                                                 "condor_status_command")
 
+    if config_file.has_option("global", "condor_status_master_command"):
+        condor_status_master_command = config_file.get("global",
+                                                "condor_status_master_command")
+
     if config_file.has_option("global", "condor_webservice_url"):
         condor_webservice_url = config_file.get("global",
                                                 "condor_webservice_url")
@@ -332,6 +347,9 @@ def setup(path=None):
 
     if config_file.has_option("global", "persistence_file"):
         persistence_file = config_file.get("global", "persistence_file")
+
+    if config_file.has_option("global", "user_limit_file"):
+        user_limit_file = config_file.get("global", "user_limit_file")
 
     if config_file.has_option("global", "job_ban_timeout"):
         try:
@@ -415,6 +433,22 @@ def setup(path=None):
         except ValueError:
             print "Configuration file problem: retire_before_lifetime_factor must be a " \
                   "float value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "retire_missing_vms"):
+        try:
+            retire_missing_vms = config_file.getboolean("global", "retire_missing_vms")
+        except ValueError:
+            print "Configuration file problem: retire_missing_vms must be an " \
+                  "boolean value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "clean_shutdown_idle"):
+        try:
+            clean_shutdown_idle = config_file.getboolean("global", "clean_shutdown_idle")
+        except ValueError:
+            print "Configuration file problem: clean_shutdown_idle must be an " \
+                  "boolean value."
             sys.exit(1)
 
     if config_file.has_option("global", "getclouds"):
@@ -589,6 +623,16 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "max_destroy_threads"):
+        try:
+            max_destroy_threads = config_file.getint("global", "max_destroy_threads")
+            if max_destroy_threads <= 0:
+                max_destroy_threads = 1
+        except ValueError:
+            print "Configuration file problem: max_destroy_threads must be an " \
+                  "integer value."
+            sys.exit(1)
+
     if config_file.has_option("global", "proxy_cache_dir"):
         proxy_cache_dir = config_file.get("global", "proxy_cache_dir")
 
@@ -600,6 +644,13 @@ def setup(path=None):
             override_vmtype = config_file.getboolean("global", "override_vmtype")
         except ValueError:
             print "Configuration file problem: override_vmtype must be a" \
+                  " Boolean value."
+
+    if config_file.has_option("global", "vm_reqs_from_condor_reqs"):
+        try:
+            vm_reqs_from_condor_reqs = config_file.getboolean("global", "vm_reqs_from_condor_reqs")
+        except ValueError:
+            print "Configuration file problem: vm_reqs_from_condor_reqs must be a" \
                   " Boolean value."
 
     if config_file.has_option("logging", "log_level"):

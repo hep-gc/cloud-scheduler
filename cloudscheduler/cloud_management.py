@@ -32,6 +32,7 @@ from urllib2 import URLError
 from decimal import *
 from lxml import etree
 from StringIO import StringIO
+from collections import defaultdict
 
 try:
     import cPickle as pickle
@@ -63,6 +64,7 @@ class ResourcePool:
     ## Instance variables
     resources = []
     machine_list = []
+    master_list = []
     retired_resources = []
     config_file = ""
 
@@ -78,7 +80,7 @@ class ResourcePool:
         global log
         log = logging.getLogger("cloudscheduler")
 
-        log.debug("New ResourcePool " + name + " created")
+        log.verbose("New ResourcePool " + name + " created")
         self.name = name
 
         _collector_wsdl = "file://" + determine_path() \
@@ -90,9 +92,12 @@ class ResourcePool:
         self.config_file = os.path.expanduser(config_file)
         self.ban_lock = threading.Lock()
         self.banned_job_resource = {}
+        self.user_vm_limits = {}
         self.failures = {}
         self.setup_lock = threading.Lock()
         self.setup_queued = False
+        self.non_cs_condor_machines = set()
+        self.missing_vm_condor_machines = set()
 
         if not condor_query_type:
             condor_query_type = config.condor_retrieval_method
@@ -118,6 +123,9 @@ class ResourcePool:
             self.vmtype_distribution = self.vmtype_slot_distribution
 
         self.setup()
+        
+        if config.user_limit_file:
+            self.user_vm_limits = self.load_user_limits(config.user_limit_file)
         if config.ban_tracking:
             self.load_banned_job_resource()
         self.load_persistence()
@@ -126,7 +134,7 @@ class ResourcePool:
 
     def setup(self):
         """Read the cloud_resources.conf to determine the available clouds."""
-        log.info("Loading cloud resource configuration file %s" % self.config_file)
+        log.debug("Loading cloud resource configuration file %s" % self.config_file)
 
         if not self.setup_lock.acquire(False):
             log.warning("Reconfig already in progress, queuing the request")
@@ -174,6 +182,8 @@ class ResourcePool:
             with cluster.res_lock:
                 cluster.vm_slots = 0
                 cluster.memory = []
+                if cluster.__class__.__name__ == "NimbusCluster":
+                    cluster.net_slots = {}
             old_resources.append(cluster)
             self.resources.remove(cluster)
 
@@ -240,12 +250,14 @@ class ResourcePool:
         cloud_type = get_or_none(config, cluster, "cloud_type")
         max_vm_mem = get_or_none(config, cluster, "max_vm_mem")
         max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
+        max_vm_storage = get_or_none(config, cluster, "max_vm_storage")
+        max_vm_storage = int(max_vm_storage) if max_vm_storage != None else -1
         hypervisor = get_or_none(config, cluster, "hypervisor")
         if hypervisor == None:
             hypervisor = 'xen'
         else:
             hypervisor = hypervisor.lower()
-            if hypervisor != 'xen' or hypervisor != 'kvm':
+            if hypervisor != 'xen' and hypervisor != 'kvm':
                 log.error("%s hypervisor not supported." % hypervisor)
                 return None
 
@@ -271,8 +283,12 @@ class ResourcePool:
                     vm_slots = total_slots,
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
+                    max_vm_storage = max_vm_storage,
                     netslots = net_slots,
                     hypervisor = hypervisor,
+                    vm_lifetime = get_or_none(config, cluster, "vm_lifetime"),
+                    image_attach_device = get_or_none(config, cluster, "image_attach_device"),
+                    scratch_attach_device = get_or_none(config, cluster, "scratch_attach_device"),
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -290,6 +306,7 @@ class ResourcePool:
                     secret_access_key = get_or_none(config, cluster, "secret_access_key"),
                     security_group = get_or_none(config, cluster, "security_group"),
                     hypervisor = hypervisor,
+                    key_name = get_or_none(config, cluster, "key_name"),
                     )
 
         else:
@@ -382,6 +399,8 @@ class ResourcePool:
             # If the cluster does not have sufficient storage capacity
             if (storage > cluster.storageGB):
                 continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
+                continue
 
             # Return the cluster as an available resource (meets all job reqs)
             return cluster
@@ -437,6 +456,8 @@ class ResourcePool:
                 if imageloc in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[imageloc]:
                         continue
+                if cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
+                    continue
             elif cluster.__class__.__name__ == "EC2Cluster":
                 # If no valid ami to boot from
                 if ami == "":
@@ -473,7 +494,7 @@ class ResourcePool:
 
         # Return the list clusters that fit given requirements
         if fitting_clusters:
-            log.debug("List of fitting clusters: ")
+            log.verbose("List of fitting clusters: ")
             self.log_list(fitting_clusters)
         return fitting_clusters
 
@@ -524,34 +545,37 @@ class ResourcePool:
             return (fitting_clusters[0], None)
         #log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
 
+        # sort them based on how full and return the list
+        fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio, reverse=True)
+        return fitting_clusters
         # Set the most-balanced and next-most-balanced initial values
         # Note: mostbal_cluster stands for "most balanced cluster"
         # Note: nextbal_cluster stands for "next most balanced cluster"
-        cluster1 = fitting_clusters.pop()
-        cluster2 = fitting_clusters.pop()
+        #cluster1 = fitting_clusters.pop()
+        #cluster2 = fitting_clusters.pop()
 
-        if (cluster1.slot_fill_ratio() < cluster2.slot_fill_ratio()):
-            mostbal_cluster = cluster1
-            nextbal_cluster = cluster2
-        else:
-            mostbal_cluster = cluster2
-            nextbal_cluster = cluster1
+        #if (cluster1.slot_fill_ratio() < cluster2.slot_fill_ratio()):
+            #mostbal_cluster = cluster1
+            #nextbal_cluster = cluster2
+        #else:
+            #mostbal_cluster = cluster2
+            #nextbal_cluster = cluster1
 
-        mostbal_vms = mostbal_cluster.slot_fill_ratio()
-        nextbal_vms = nextbal_cluster.slot_fill_ratio()
+        #mostbal_vms = mostbal_cluster.slot_fill_ratio()
+        #nextbal_vms = nextbal_cluster.slot_fill_ratio()
 
-        # Iterate through fitting clusters to check for most and next balanced clusters. (LINEAR search)
-        for cluster in fitting_clusters:
-            # If considered cluster has fewer running VMs, set it as the most balanced cluster
-            if (cluster.slot_fill_ratio() < mostbal_vms):
-                mostbal_cluster = cluster
-                mostbal_vms = cluster.slot_fill_ratio()
-            elif (cluster.slot_fill_ratio() < nextbal_vms):
-                nextbal_cluster = cluster
-                nextbal_vms = cluster.slot_fill_ratio()
+        ## Iterate through fitting clusters to check for most and next balanced clusters. (LINEAR search)
+        #for cluster in fitting_clusters:
+            ## If considered cluster has fewer running VMs, set it as the most balanced cluster
+            #if (cluster.slot_fill_ratio() < mostbal_vms):
+                #mostbal_cluster = cluster
+                #mostbal_vms = cluster.slot_fill_ratio()
+            #elif (cluster.slot_fill_ratio() < nextbal_vms):
+                #nextbal_cluster = cluster
+                #nextbal_vms = cluster.slot_fill_ratio()
 
-        # Return the most balanced cluster after considering all fitting clusters.
-        return (mostbal_cluster, nextbal_cluster)
+        ## Return the most balanced cluster after considering all fitting clusters.
+        #return (mostbal_cluster, nextbal_cluster)
 
     def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
         """
@@ -583,6 +607,8 @@ class ResourcePool:
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
             if not cluster.find_potential_mementry(memory):
+                continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
                 continue
             # Cluster meets network and cpu reqs and may have enough memory
             potential_fit = True
@@ -627,6 +653,8 @@ class ResourcePool:
             if not cluster.find_potential_mementry(memory):
                 continue
             if disk > cluster.max_storageGB:
+                continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
                 continue
             fitting.append(cluster)
         return fitting
@@ -684,7 +712,7 @@ class ResourcePool:
         Returns a list of dictionaries with information about the machines
         registered with condor.
         """
-        log.debug("Querying Condor Collector with %s" % config.condor_status_command)
+        log.verbose("Querying Condor Collector with %s" % config.condor_status_command)
 
         machine_list = []
         try:
@@ -709,7 +737,7 @@ class ResourcePool:
         Returns a list of dictionaries with information about the machines
         registered with condor.
         """
-        log.debug("Querying condor startd with SOAP API")
+        log.verbose("Querying condor startd with SOAP API")
         try:
             machines_xml = self.condor_collector_as_xml.service.queryStartdAds()
             machine_list = self._condor_machine_xml_to_machine_list(machines_xml)
@@ -728,6 +756,27 @@ class ResourcePool:
                       % (config.condor_collector_url))
             return []
 
+    def master_resource_query_local(self):
+        """
+        master_resource_query_local -- does a Query to the condor collector about master daemons
+
+        Returns a list of dictionaries with information about the machines masters
+        registered with condor.
+        """
+        log.verbose("Querying Condor Collector with %s" % config.condor_status_master_command)
+
+        master_list = []
+        try:
+            condor_status = shlex.split(config.condor_status_master_command)
+            sp = subprocess.Popen(condor_status, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_status, " "))
+            return []
+
+        master_list = self._condor_status_to_machine_list(condor_out)
+        return master_list
 
     @staticmethod
     def _condor_status_to_machine_list(condor_status_output):
@@ -798,13 +847,10 @@ class ResourcePool:
         
         Uses the dict-list structure returned by SOAP/local query
         """
-        count = {}
+        count = defaultdict(int)
         for vm in machineList:
             if vm.has_key('VMType'):
-                if vm['VMType'] not in count:
-                    count[vm['VMType']] = 1
-                else:
-                    count[vm['VMType']] += 1
+                count[vm['VMType']] += 1
         return count
 
     def get_uservmtypes_count(self, machineList):
@@ -813,25 +859,19 @@ class ResourcePool:
         Keywords:
             machineList - the parsed struct returned from condor of execute nodes
         """
-        count = {}
+        count = defaultdict(int)
         for vm in machineList:
             if vm.has_key('VMType') and vm.has_key('Start'):
                 userexp = re.search('(?<=Owner == ")\w+', vm['Start'])
                 if userexp:
                     user = userexp.group(0)
                     vmusertype = ':'.join([user, vm['VMType']])
-                    if vmusertype not in count:
-                        count[vmusertype] = 1
-                    else:
-                        count[vmusertype] += 1
+                    count[vmusertype] += 1
             elif vm.has_key('VMType') and vm.has_key('RemoteOwner'):
                 try:
                     user = vm['RemoteOwner'].split('@')[0]
                     vmusertype = ':'.join([user, vm['VMType']])
-                    if vmusertype not in count:
-                        count[vmusertype] = 1
-                    else:
-                        count[vmusertype] += 1
+                    count[vmusertype] += 1
                 except:
                     log.error("Failed to parse out remote owner")
             else:
@@ -842,7 +882,7 @@ class ResourcePool:
                     log.warning("VM Missing a Start attrib.")
                 if not vm.has_key('VMType'):
                     log.warning("This VM has no VMType key, It should not be used with cloudscheduler.")
-        log.debug("VMs in machinelist: %s" % str(count))
+        log.verbose("VMs in machinelist: %s" % str(count))
         return count
 
     def match_criteria(self, base, criteria):
@@ -872,14 +912,31 @@ class ResourcePool:
 
     def get_vmtypes_count_internal(self):
         """Get a dictionary of uservmtypes of VMs the scheduler is currently tracking."""
-        types = {}
+        types = defaultdict(int)
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.uservmtype in types:
-                    types[vm.uservmtype] += 1
-                else:
-                    types[vm.uservmtype] = 1
+                types[vm.uservmtype] += 1
         return types
+
+    def get_vmtypes_count_cpu_slots(self):
+        """Get a dictionary of uservmtypes of VMs the scheduler is currently tracking."""
+        types = defaultdict(int)
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.job_per_core:
+                    types[vm.uservmtype] += vm.cpucores
+                else:
+                    types[vm.uservmtype] += 1
+        return types
+
+    def get_vm_count_user(self, user):
+        """Get a count of the number of VMs for specified user."""
+        count = 0
+        for cluster in self.resources:
+            for vm in cluster.vms:
+                if vm.user == user:
+                    count += 1
+        return count
 
     def vm_count(self):
         """Count of VMs in the system."""
@@ -990,14 +1047,10 @@ class ResourcePool:
         Counts up how much/many of each resource (RAM, Cores, Storage)
         are being used by each type of VM
         """
-        types = {}
+        types = defaultdict(list)
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.uservmtype in types.keys():
-                    types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
-                else:
-                    types[vm.uservmtype] = []
-                    types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
+                types[vm.uservmtype].append([vm.memory, vm.cpucores, vm.storage])
         results = {}
         for vmtype in types.keys():
             results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
@@ -1055,11 +1108,9 @@ class ResourcePool:
 
     def vm_slots_used(self):
         """Figure out the actual number of 'slots' being used when some VMs are using multi-job settings."""
-        types = {}
+        types = defaultdict(list)
         for cluster in self.resources:
             for vm in cluster.vms:
-                if not types.has_key(vm.uservmtype):
-                    types[vm.uservmtype] = []
                 if hasattr(vm, "job_per_core") and vm.job_per_core:
                     for core in range(vm.cpucores):
                         types[vm.uservmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
@@ -1208,7 +1259,7 @@ class ResourcePool:
                             banned_changed = True
             if banned_changed:
                 self.save_banned_job_resource()
-                log.debug("Updating Banned job file")
+                log.verbose("Updating Banned job file")
 
     def save_banned_job_resource(self):
         """
@@ -1275,7 +1326,27 @@ class ResourcePool:
                                     break
             self.banned_job_resource = updated_ban
 
-    def do_condor_off(self, machine_name, machine_addr):
+    def load_user_limits(self, path=None):
+            limit_file = None
+            try:
+                log.info("Loading user VM Limits file.")
+                limit_file = open(path, "r")
+            except IOError, e:
+                log.debug("No user vm limit file to load. No Limits set.")
+                return {}
+            except:
+                log.exception("Unknown problem opening user limit file!")
+                return {}
+            user_limits = {}
+            try:
+                user_limits = json.loads(limit_file.read(), encoding='ascii')
+                limit_file.close()
+            except:
+                log.exception("Unknown problem opening user limit file!")
+                return {}
+            return user_limits
+
+    def do_condor_off(self, machine_name, machine_addr, master_addr):
         """Perform a condor_off on an execute node.
 
         Executes multiple commands to condor in order to peacefully stop the start deamon
@@ -1288,8 +1359,8 @@ class ResourcePool:
             a 3 tuple of the returncodes from the 2 commands used and a return code
         """
         cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
-        cmd2 = '%s -peaceful -addr "%s" -startd' % (config.condor_off_command, machine_addr)
-        cmd3 = '%s -peaceful -addr "%s" -master' % (config.condor_off_command, machine_addr)
+        cmd2 = '%s -peaceful -addr "%s" -subsystem startd' % (config.condor_off_command, machine_addr)
+        cmd3 = '%s -peaceful -addr "%s" -subsystem master' % (config.condor_off_command, master_addr)
         args = []
         args2 = []
         args3 = []
@@ -1330,7 +1401,7 @@ class ResourcePool:
             args3.append(config.condor_off_command)
             args3.append('-peaceful')
             args3.append('-addr')
-            args3.append(machine_addr)
+            args3.append(master_addr)
             args3.append('-subsystem')
             args3.append('master')
         # Send condor_off to startd first
@@ -1506,6 +1577,8 @@ class ResourcePool:
         """Find a VM in cloudscheduler with the given condor machine name(hostname)."""
         foundIt = False
         vm_match = None
+        if len(condor_name.split('@')) > 1:
+            condor_name = condor_name.split('@')[1]
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.condorname == condor_name:
@@ -1585,7 +1658,7 @@ class ResourcePool:
             for vm in cluster.vms:
                 if vm.status == "Starting":
                     num_starting += 1
-        log.debug("There are %i Starting VMs, the max_starting_vm is %i." % (num_starting, config.max_starting_vm))
+        log.verbose("There are %i Starting VMs, the max_starting_vm is %i." % (num_starting, config.max_starting_vm))
         return num_starting
 
     def get_starting_of_usertype(self, vmtype):
@@ -1750,6 +1823,23 @@ class ResourcePool:
         else:
             ret = "Could not find cloud %s." % clustername
         return ret
+
+    def user_at_limit(self, user):
+        """Check if a user has met their throttled limit."""
+        count = self.get_vm_count_user(user)
+        limit = False
+        if user in self.user_vm_limits:
+            if not (count < self.user_vm_limits[user]):
+                limit = True
+        return limit
+
+    def uservmtype_at_limit(self, uservmtype, limit):
+        """Check if a vmusertype has met it's limit."""
+        atLimit = False
+        counts = self.get_vmtypes_count_internal()
+        if limit != -1 and uservmtype in counts.keys() and not (counts[uservmtype] < limit):
+            atLimit = True
+        return atLimit
 
 
 class VMDestroyCmd(threading.Thread):

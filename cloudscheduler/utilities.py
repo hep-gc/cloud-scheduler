@@ -303,7 +303,7 @@ def check_popen_timeout(process, timeout=180):
         time.sleep(1)
         timeout -= 1
     if timeout == 0:
-        log.debug("subprocess timed out - attempting to terminate")
+        log.debug("subprocess timed out - attempting to terminate pid %s" % process.pid)
         try:
             process.terminate()
         except OSError, e:
@@ -311,7 +311,7 @@ def check_popen_timeout(process, timeout=180):
                 raise
         time.sleep(2) # give OS a chance to terminate
         if process.poll() == None: # Did not terminate
-            log.debug("terminate() failed using kill()")
+            log.debug("terminate() on pid %s failed using kill()" % process.pid)
             try:
                 process.kill()
             except OSError, e:

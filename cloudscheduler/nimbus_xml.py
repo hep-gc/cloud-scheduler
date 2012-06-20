@@ -45,7 +45,7 @@ def format_storage(storage_gb):
     """
     return str(int(storage_gb) * 1024)
 
-def ws_epr_factory(workspace_id, nimbus_hostname):
+def ws_epr_factory(workspace_id, nimbus_hostname, nimbus_port=8443):
     """
     Creates and returns a Nimbus epr file
 
@@ -61,11 +61,11 @@ def ws_epr_factory(workspace_id, nimbus_hostname):
 
     (xml_out, file_name) = tempfile.mkstemp()
 
-    epr_xml = ws_epr(workspace_id, nimbus_hostname)
+    epr_xml = ws_epr(workspace_id, nimbus_hostname, nimbus_port)
 
     if epr_xml != None:
 
-        os.write(xml_out, ws_epr(workspace_id, nimbus_hostname))
+        os.write(xml_out, ws_epr(workspace_id, nimbus_hostname, nimbus_port))
         os.close(xml_out)
 
         # Return the filename of the created metadata file
@@ -74,16 +74,17 @@ def ws_epr_factory(workspace_id, nimbus_hostname):
         return none
 
 
-def ws_epr(workspace_id, nimbus_hostname):
+def ws_epr(workspace_id, nimbus_hostname, nimbus_port=8443):
     """
     Creates and returns a Nimbus VM epr
 
     Arguments:
     workspace_id -- The id of the workspace
     nimbus_hostname -- The hostname of the Nimbus service
+    nimbus_port -- the port of the Nimbus service
 
     Example:
-    ws_epr(42, "your.nimbus.tld")
+    ws_epr(42, "your.nimbus.tld", 8443)
 
     This would return:
 
@@ -128,7 +129,7 @@ def ws_epr(workspace_id, nimbus_hostname):
     workspace_epr.appendChild(address)
 
     # Add the content to the Address element
-    nimbus_url = "https://%s:8443/wsrf/services/WorkspaceService" % nimbus_hostname
+    nimbus_url = "https://%s:%s/wsrf/services/WorkspaceService" % (nimbus_hostname, nimbus_port)
     address_content = doc.createTextNode(nimbus_url)
     address.appendChild(address_content)
 
@@ -378,12 +379,12 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
 
     exactmem_txt = doc.createTextNode(str(vm_mem))
     exactmem_el.appendChild(exactmem_txt)
+    if vm_storage and vm_storage > 0:
+        partitionname_txt = doc.createTextNode(PARTITION_NAME)
+        partitionname_el.appendChild(partitionname_txt)
 
-    partitionname_txt = doc.createTextNode(PARTITION_NAME)
-    partitionname_el.appendChild(partitionname_txt)
-
-    exactdisk_txt = doc.createTextNode(format_storage(vm_storage))
-    exactdisk_el.appendChild(exactdisk_txt)
+        exactdisk_txt = doc.createTextNode(format_storage(vm_storage))
+        exactdisk_el.appendChild(exactdisk_txt)
 
     nodenumber_txt = doc.createTextNode(str(vm_nodes))
     nodenumber_el.appendChild(nodenumber_txt)
@@ -405,7 +406,9 @@ def ws_deployment_factory(vm_duration, vm_targetstate, vm_mem, vm_storage, vm_no
 
 
 
-def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_blankspace=True):
+def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, vm_blankspace=True,
+                        image_attach_device=config.image_attach_device, 
+                        scratch_attach_device=config.scratch_attach_device,):
     """ Creates and returns a Nimbus workspace metadata XML string."""
 
     # Namespace variables for populating the xml file
@@ -549,17 +552,18 @@ def ws_metadata_factory(vm_name, vm_networkassoc, vm_cpuarch, vm_imagelocation, 
     location_el.appendChild(location_txt)
 
     # TODO: mountAs  may need to change (automatically / parameter?)
-    mountAs_txt = doc.createTextNode(config.image_attach_device)
+    mountAs_txt = doc.createTextNode(image_attach_device)
     mountAs_el.appendChild(mountAs_txt)
 
     permissions_txt = doc.createTextNode(VM_PERMISSIONS)
     permissions_el.appendChild(permissions_txt)
 
-    partitionName_txt = doc.createTextNode(PARTITION_NAME)
-    partitionName_el.appendChild(partitionName_txt)
+    if vm_blankspace:
+        partitionName_txt = doc.createTextNode(PARTITION_NAME)
+        partitionName_el.appendChild(partitionName_txt)
 
-    mountAsPartition_txt = doc.createTextNode(config.scratch_attach_device)
-    mountAsPartition_el.appendChild(mountAsPartition_txt)
+        mountAsPartition_txt = doc.createTextNode(scratch_attach_device)
+        mountAsPartition_el.appendChild(mountAsPartition_txt)
 
     ## Create output file. Write xml. Close file.
     (xml_out, file_name) = tempfile.mkstemp()

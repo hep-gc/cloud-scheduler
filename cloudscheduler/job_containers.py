@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from collections import defaultdict
 import time
 import threading
 import logging
@@ -18,7 +19,8 @@ class JobContainer():
 
     # Use this lock if you require to threadsafe an operation.
     lock = None
-
+    ## Condor Job Status mapping
+    job_status_list = ['NEW', 'IDLE', 'RUNNING', 'REMOVED', 'COMPLETE', 'HELD', 'ERROR']
     def __init__(self):
         self.lock = threading.RLock()
         global log
@@ -237,8 +239,8 @@ class HashTableJobContainer(JobContainer):
         self.all_jobs = {}
         self.new_jobs = {}
         self.sched_jobs = {}
-        self.jobs_by_user = {}
-        log.debug('HashTableJobContainer instance created.')
+        self.jobs_by_user = defaultdict(dict)
+        log.verbose('HashTableJobContainer instance created.')
 
     # methods
     def __str__(self):
@@ -250,8 +252,6 @@ class HashTableJobContainer(JobContainer):
     def add_job(self, job):
         with self.lock:
             self.all_jobs[job.id] = job
-            if job.user not in self.jobs_by_user:
-                self.jobs_by_user[job.user] = {}
             self.jobs_by_user[job.user][job.id] = job
 
             # Update scheduled/unscheduled maps too:
@@ -273,7 +273,7 @@ class HashTableJobContainer(JobContainer):
             self.jobs_by_user.clear()
             self.new_jobs.clear()
             self.sched_jobs.clear()
-            log.debug('job container cleared')
+            log.verbose('job container cleared')
 
     def remove_job(self, job):
         with self.lock:
@@ -386,10 +386,8 @@ class HashTableJobContainer(JobContainer):
 
     def get_scheduled_jobs_by_users(self, prioritized=False):
         with self.lock:
-            return_value = {}
+            return_value = defaultdict(list)
             for job in self.sched_jobs.values():
-                if job.user not in return_value:
-                    return_value[job.user] = []
                 return_value[job.user].append(job)
             # Now lets sort if needed.
             if prioritized:
@@ -399,10 +397,8 @@ class HashTableJobContainer(JobContainer):
 
     def get_scheduled_jobs_by_type(self, prioritized=False):
         with self.lock:
-            return_value = {}
+            return_value = defaultdict(list)
             for job in self.sched_jobs.values():
-                if job.req_vmtype not in return_value:
-                    return_value[job.req_vmtype] = []
                 return_value[job.req_vmtype].append(job)
             # Now sort if needed.
             if prioritized:
@@ -412,10 +408,8 @@ class HashTableJobContainer(JobContainer):
 
     def get_scheduled_jobs_by_usertype(self, prioritized=False):
         with self.lock:
-            return_value = {}
+            return_value = defaultdict(list)
             for job in self.sched_jobs.values():
-                if job.uservmtype not in return_value:
-                    return_value[job.uservmtype] = []
                 return_value[job.uservmtype].append(job)
             # Now sort if needed.
             if prioritized:
@@ -434,11 +428,8 @@ class HashTableJobContainer(JobContainer):
         
     def get_unscheduled_jobs_by_users(self, prioritized=False):
         with self.lock:
- 
-            return_value = {}
+            return_value = defaultdict(list)
             for job in self.new_jobs.values():
-                if job.user not in return_value:
-                    return_value[job.user] = []
                 return_value[job.user].append(job)
             # Now lets sort if needed.
             if prioritized:
@@ -448,10 +439,8 @@ class HashTableJobContainer(JobContainer):
 
     def get_unscheduled_jobs_by_type(self, prioritized=False):
         with self.lock:
-            return_value = {}
+            return_value = defaultdict(list)
             for job in self.new_jobs.values():
-                if job.req_vmtype not in return_value:
-                    return_value[job.req_vmtype] = []
                 return_value[job.req_vmtype].append(job)
             # Now sort if needed.
             if prioritized:
@@ -461,10 +450,8 @@ class HashTableJobContainer(JobContainer):
 
     def get_unscheduled_jobs_by_usertype(self, prioritized=False):
         with self.lock:
-            return_value = {}
+            return_value = defaultdict(list)
             for job in self.new_jobs.values():
-                if job.uservmtype not in return_value:
-                    return_value[job.uservmtype] = []
                 return_value[job.uservmtype].append(job)
             # Now sort if needed.
             if prioritized:
@@ -481,10 +468,8 @@ class HashTableJobContainer(JobContainer):
 
     def get_high_priority_jobs_by_users(self, prioritized=False):
         with self.lock:
-            return_value = {}
+            return_value = defaultdict(list)
             for job in self.get_high_priority_jobs():
-                if job.user not in return_value:
-                    return_value[job.user] = []
                 return_value[job.user].append(job)
             # Now lets sort if needed.
             if prioritized:
@@ -504,10 +489,8 @@ class HashTableJobContainer(JobContainer):
 
     def get_unscheduled_high_priority_jobs_by_users(self, prioritized=False):
         with self.lock:
-            return_value = {}
+            return_value = defaultdict(list)
             for job in self.get_unscheduled_high_priority_jobs():
-                if job.user not in return_value:
-                    return_value[job.user] = []
                 return_value[job.user].append(job)
             # Now lets sort if needed.
             if prioritized:
@@ -527,6 +510,8 @@ class HashTableJobContainer(JobContainer):
         if job != None:
             if job.job_status != status and job.override_status != None:
                 job.override_status = None
+            if job.job_status != status:
+                log.debug("Job %s status change: %s -> %s" % (job.id, self.job_status_list[job.job_status], self.job_status_list[status]))
             job.job_status = status
             job.remote_host = remote
             job.servertime = int(servertime)
@@ -589,11 +574,9 @@ class HashTableJobContainer(JobContainer):
     def get_unscheduled_user_jobs_by_type(self, user, prioritized=False):
         with self.lock:
             unsched = self.get_unscheduled_jobs_by_users()
-            return_value = {}
+            return_value = defaultdict(list)
             if user in unsched.keys():
                 for job in unsched[user]:
-                    if job.req_vmtype not in return_value:
-                        return_value[job.req_vmtype] = []
                     return_value[job.req_vmtype].append(job)
             # Sort if needed
             if prioritized:
@@ -604,11 +587,9 @@ class HashTableJobContainer(JobContainer):
     def get_unscheduled_user_jobs_by_usertype(self, user, prioritized=False):
         with self.lock:
             unsched = self.get_unscheduled_jobs_by_users()
-            return_value = {}
+            return_value = defaultdict(list)
             if user in unsched.keys():
                 for job in unsched[user]:
-                    if job.uservmtype not in return_value:
-                        return_value[job.uservmtype] = []
                     return_value[job.uservmtype].append(job)
             # Sort if needed
             if prioritized:
@@ -619,11 +600,9 @@ class HashTableJobContainer(JobContainer):
     def get_scheduled_user_jobs_by_type(self, user, prioritized=False):
         with self.lock:
             sched = self.get_scheduled_jobs_by_users()
-            return_value = {}
+            return_value = defaultdict(list)
             if user in sched.keys():
                 for job in sched[user]:
-                    if job.req_vmtype not in return_value:
-                        return_value[job.req_vmtype] = []
                     return_value[job.req_vmtype].append(job)
             # Sort if needed
             if prioritized:
@@ -634,11 +613,9 @@ class HashTableJobContainer(JobContainer):
     def get_scheduled_user_jobs_by_usertype(self, user, prioritized=False):
         with self.lock:
             sched = self.get_scheduled_jobs_by_users()
-            return_value = {}
+            return_value = defaultdict(list)
             if user in sched.keys():
                 for job in sched[user]:
-                    if job.req_vmtype not in return_value:
-                        return_value[job.req_vmtype] = []
                     return_value[job.req_vmtype].append(job)
             # Sort if needed
             if prioritized:
