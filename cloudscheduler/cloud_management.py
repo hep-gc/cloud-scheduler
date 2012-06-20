@@ -873,15 +873,15 @@ class ResourcePool:
                     vmusertype = ':'.join([user, vm['VMType']])
                     count[vmusertype] += 1
                 except:
-                    log.error("Failed to parse out remote owner")
+                    log.error("Failed to parse out remote owner on %s" % vm['Machine'])
             else:
-                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set - are the condor init scripts on the VM up-to-date?")
+                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set on %s - are the condor init scripts on the VM up-to-date?" % vm['Machine'])
                 if vm.has_key('Start'):
-                    log.warning("VM Start attrib = %s" % vm['Start'])
+                    log.warning("VM Start attrib = %s on %s" % (vm['Start'], vm['Machine'])
                 else:
-                    log.warning("VM Missing a Start attrib.")
+                    log.warning("VM Missing a Start attrib on %s." % vm['Machine'])
                 if not vm.has_key('VMType'):
-                    log.warning("This VM has no VMType key, It should not be used with cloudscheduler.")
+                    log.warning("This VM %s has no VMType key, It should not be used with cloudscheduler." % vm['Machine'])
         log.verbose("VMs in machinelist: %s" % str(count))
         return count
 
