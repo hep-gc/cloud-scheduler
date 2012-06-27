@@ -337,14 +337,16 @@ class Scheduler(threading.Thread):
             # Destroy all VMs and finish
             log.info("### Destroying all remaining VMs and exiting :-(")
             remaining_vms = []
+            failed_vms = []
             threadfail = True
             while threadfail:
-                (remains, threadfail) = self.scheduler_full_shutdown()
+                (remains, threadfail, failed) = self.scheduler_full_shutdown()
                 remaining_vms.extend(remains)
+                failed_vms.extend(failed)
             # Print list of VMs cloud scheduler failed to destroy before exit.
-            if (remaining_vms != []):
+            if (remaining_vms != [] or failed_vms != []):
                 log.error("The following VMs could not be destroyed properly:")
-                for vm in remaining_vms:
+                for vm in remaining_vms + failed_vms:
                     log.error("VM: %s, ID: %s" % (vm.name, vm.id))
 
         self.resource_pool.save_persistence()
@@ -354,6 +356,7 @@ class Scheduler(threading.Thread):
     def scheduler_full_shutdown(self):
         """Shutdown all VMs in the system and exit gracefully."""
         remaining_vms = []
+        failed_vms = []
         threadfail = False
         for cluster in self.resource_pool.resources:
             destroy_threads = []
@@ -378,8 +381,8 @@ class Scheduler(threading.Thread):
                 destroy_ret = thread.get_result()
                 if destroy_ret != 0:
                     log.error("Destroying VM failed. Continuing anyway... check VM logs")
-                    remaining_vms.append(thread.get_vm())
-        return (remaining_vms, threadfail)
+                    failed_vms.append(thread.get_vm())
+        return (remaining_vms, threadfail, failed_vms)
 
     def scheduler_fifo(self):
         """Approximate First In First Out scheduling of jobs based on Condor Job ID."""
