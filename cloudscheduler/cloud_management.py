@@ -1420,10 +1420,10 @@ class ResourcePool:
                 log.debug("Reason: %s" % out) 
                 log.debug("Error: %s" % err)
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args2), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args2))
             return (-1, -1, -1, -1)
         # Now send the master off
         try:
@@ -1440,10 +1440,10 @@ class ResourcePool:
                 log.debug("Failed to send condor_off master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args3), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args3))
             print args
             return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
