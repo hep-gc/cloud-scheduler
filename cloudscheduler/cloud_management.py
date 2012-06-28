@@ -537,12 +537,12 @@ class ResourcePool:
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
             log.verbose("No clusters fit requirements. Fitting resources list is empty.")
-            return (None, None)
+            return []
 
         # If the list has only 1 item, return immediately
         if len(fitting_clusters) == 1:
             log.verbose("Only one cluster fits parameters. Returning that cluster.")
-            return (fitting_clusters[0], None)
+            return fitting_clusters
         #log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
 
         # sort them based on how full and return the list

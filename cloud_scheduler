@@ -616,7 +616,10 @@ class Scheduler(threading.Thread):
         #    good_resources.append(sec_rsrc)
 
         # If no resource fits, continue to next job in user's list
-        if good_resources[0] == None:
+        for resource in reversed(good_resources):
+            if resource == None:
+                good_resources.pop()
+        if len(good_resources) == 0:
             log.verbose("No resource to match job: %s Leaving job unscheduled." % job.id)
             return False
 
