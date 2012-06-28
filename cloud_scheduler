@@ -1697,7 +1697,7 @@ class Cleanup(threading.Thread):
                         # Next job submitted to this VM may not finish running before VM is shutdown
                         if not vm.force_retire:
                             (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
-                            if ret2 == 0 and ret22:
+                            if ret2 == 0 and ret22 == 0:
                                 vm.force_retire = True
                                 vm.override_status = 'Retiring'
                             else:

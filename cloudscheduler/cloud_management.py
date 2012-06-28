@@ -1783,7 +1783,7 @@ class ResourcePool:
                 cluster.resource_return(vm)
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
             else:
-                output = "Could not find that VM ID."
+                output = "Could not find VM ID." % vmid
         else:
             output = "Could not find Cloud %s." % clustername
         return output
@@ -1800,6 +1800,39 @@ class ResourcePool:
             output = "Removed all VMs from %s." % clustername
         else:
             output = "Could not find Cloud %s." % clustername
+        return output
+
+    def force_retire_cluster_vm(self, cloudname, vmid):
+        output = ""
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            vm = cluster.get_vm(vmid)
+            if vm:
+                (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                if ret2 == 0 and ret22 == 0:
+                    vm.force_retire = True
+                    vm.override_status = 'Retiring'
+                else:
+                    log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
+            else:
+                output = "Could not find VM ID %s." % vmid
+        else:
+            output = "Could not find Cloud %s." % cloudname
+    
+    def force_retire_cluster_all(self, cloudname):
+        cluster = self.get_cluster(cloudname)
+        output = ""
+        if cluster:
+            for vm in cluster.vms:
+                (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                if ret2 == 0 and ret22 == 0:
+                    vm.force_retire = True
+                    vm.override_status = 'Retiring'
+                else:
+                    log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
+            output = "Retired all VMs in %s." % cloudname
+        else:
+            output = "Cloud not find Cloud %s." % cloudname
         return output
 
     def disable_cluster(self, clustername):
