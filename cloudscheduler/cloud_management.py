@@ -877,7 +877,7 @@ class ResourcePool:
             else:
                 log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set on %s - are the condor init scripts on the VM up-to-date?" % vm['Machine'])
                 if vm.has_key('Start'):
-                    log.warning("VM Start attrib = %s on %s" % (vm['Start'], vm['Machine'])
+                    log.warning("VM Start attrib = %s on %s" % (vm['Start'], vm['Machine']))
                 else:
                     log.warning("VM Missing a Start attrib on %s." % vm['Machine'])
                 if not vm.has_key('VMType'):
