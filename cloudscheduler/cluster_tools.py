@@ -385,8 +385,8 @@ class ICluster:
     def get_cluster_info_short(self):
         """Return a short form of cluster information."""
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "ENABLED")
-        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.enabled)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "HYPERVISOR", "ENABLED")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.hypervisor, self.enabled)
         return output
 
     def get_cluster_vms_info(self):
@@ -576,8 +576,8 @@ class NimbusCluster(ICluster):
     def get_cluster_info_short(self):
         """Returns formatted cluster information for use by cloud_status, Overloaded from baseclass to use net_slots."""
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE")
-        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "HYPERVISOR", "ENABLED")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB, self.hypervisor, self.enabled)
         return output
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,

@@ -334,12 +334,12 @@ class ResourcePool:
     def get_pool_info(self, ):
         """Print the name and address of every cluster in the resource pool."""
         output = "Resource pool " + self.name + ":\n"
-        output += "%-15s  %-10s %-15s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS")
+        output += "%-15s  %-10s %-15s %-10s\n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS", "HYPERVISOR")
         if len(self.resources) == 0:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
+                output += "%-15s  %-10s %-15s %-10s\n" % (cluster.name, cluster.cloud_type, cluster.network_address, cluster.hypervisor)
         return output
 
     def get_resource(self, ):
