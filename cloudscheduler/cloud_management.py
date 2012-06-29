@@ -1802,34 +1802,36 @@ class ResourcePool:
             output = "Could not find Cloud %s." % clustername
         return output
 
-    def force_retire_cluster_vm(self, cloudname, vmid):
+    def force_retire_cluster_vm(self, clustername, vmid):
         output = ""
         cluster = self.get_cluster(clustername)
         if cluster:
             vm = cluster.get_vm(vmid)
             if vm:
-                (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
                 if ret2 == 0 and ret22 == 0:
                     vm.force_retire = True
                     vm.override_status = 'Retiring'
+                    output = "Retired VM %s on %s." % (vmid, clustername)
                 else:
-                    log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
+                    output = "Unable to retire VM."
             else:
                 output = "Could not find VM ID %s." % vmid
         else:
-            output = "Could not find Cloud %s." % cloudname
+            output = "Could not find Cloud %s." % clusterdname
+        return output
     
     def force_retire_cluster_all(self, cloudname):
         cluster = self.get_cluster(cloudname)
         output = ""
         if cluster:
             for vm in cluster.vms:
-                (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
                 if ret2 == 0 and ret22 == 0:
                     vm.force_retire = True
                     vm.override_status = 'Retiring'
                 else:
-                    log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
+                    output += "Unable to retire VM %s\n" % vm.id
             output = "Retired all VMs in %s." % cloudname
         else:
             output = "Cloud not find Cloud %s." % cloudname
