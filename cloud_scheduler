@@ -654,8 +654,9 @@ class Scheduler(threading.Thread):
             customizations.append((config.condor_host, config.condor_context_file))
 
         # local modifications are changes made to the VM's condor_config.local modifications file
-        local_modifications = 'CSManagedVM = True\n'
-        local_modifications += 'STARTD_ATTRS = COLLECTOR_HOST_STRING VMType CSManagedVM\n'
+        local_modifications = ""
+        #local_modifications = 'CSManagedVM = True\n'
+        #local_modifications += 'STARTD_ATTRS = COLLECTOR_HOST_STRING VMType CSManagedVM\n'
 
         if config.override_vmtype:
             local_modifications += "VMType = %s\n" % job.req_vmtype
