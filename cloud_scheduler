@@ -654,11 +654,11 @@ class Scheduler(threading.Thread):
             customizations.append((config.condor_host, config.condor_context_file))
 
         # local modifications are changes made to the VM's condor_config.local modifications file
-        local_modifications = 'CSManagedVM = True\n'
-        local_modifications += 'STARTD_ATTRS = COLLECTOR_HOST_STRING VMType CSManagedVM\n'
+        local_modifications = '\nCSManagedVM = True\n'
+        local_modifications += '\nSTARTD_ATTRS = COLLECTOR_HOST_STRING VMType CSManagedVM\n'
 
         if config.override_vmtype:
-            local_modifications += "VMType = %s\n" % job.req_vmtype
+            local_modifications += "\nVMType = %s\n" % job.req_vmtype
 
         if config.cert_file:
             file_contents = open(config.cert_file).read()
@@ -710,7 +710,7 @@ class Scheduler(threading.Thread):
         # Add the owner restriction requirement.
         # This is to prevent a VM started by a user being recycled to run jobs from another user.
         if job.user != None:
-            start_requirement = 'START=(Owner == "%s")\n' % (job.user)
+            start_requirement = '\nSTART=(Owner == "%s")\n' % (job.user)
             log.verbose("Adding START requirement to match resource's original owner:\n%s" % start_requirement)
             local_modifications += start_requirement
 
