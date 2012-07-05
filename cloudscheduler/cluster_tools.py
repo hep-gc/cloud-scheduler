@@ -683,8 +683,9 @@ class NimbusCluster(ICluster):
             log.debug("VM creation environment will contain:\n\tX509_USER_PROXY = %s" % (vm_proxy_file_path))
 
         (create_return, create_out, create_err) = self.vm_execwait(ws_cmd, env)
-
+        print create_return, create_out, create_err
         if (create_return != 0):
+            print 'into the error handling'
             if create_out == "" or create_out == None:
                 create_out = "No Output returned."
             if create_err == "" or create_err == None:
@@ -701,6 +702,7 @@ class NimbusCluster(ICluster):
                         self.net_slots[vm_networkassoc] = 0 # no slots remaining
                 create_return = -2
             elif err_type =='NotEnoughMemory':
+                print ' not enough mem error found'
                 with self.res_lock:
                     index = self.find_mementry(vm_mem)
                     self.memory[index] = vm_mem - 1 # may still be memory, but just not enough for this vm
@@ -1110,12 +1112,12 @@ class NimbusCluster(ICluster):
             return "ExpiredProxy"
 
         # Check if out of network slots
-        out_of_slots = re.search("Resource request denied: Error creating workspace.s.. network", output)
+        out_of_slots = re.search("Resource request denied: Error creating workspace.s..+network", output)
         if out_of_slots:
             return "NoSlotsInNetwork"
 
         # Check if out of memory
-        out_of_memory = re.search("Resource request denied: Error creating workspace.s.. based on memory", output)
+        out_of_memory = re.search("Resource request denied: Error creating workspace.s..+based on memory", output)
         if out_of_memory:
             return "NotEnoughMemory"
 
