@@ -584,7 +584,7 @@ class Scheduler(threading.Thread):
                     #if sec_rsrc and pri_rsrc != sec_rsrc:
                     #    good_resources.append(sec_rsrc)
                     # See if there's a valid resource for job to boot on
-                    if good_resources[0] != None:
+                    if len(good_resources) > 0:
                         # Still resources available
                         over_allocate = False
                         break
@@ -597,7 +597,7 @@ class Scheduler(threading.Thread):
                 #if sec_rsrc and pri_rsrc != sec_rsrc:
                 #    good_resources.append(sec_rsrc)
                 # See if there's a valid resource for job to boot on
-                if good_resources[0] != None:
+                if len(good_resources) > 0:
                     allow = True
                     log.debug("Allowing over-allocation of %s" % job.req_vmtype)
         return allow
