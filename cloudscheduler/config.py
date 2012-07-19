@@ -653,6 +653,8 @@ def setup(path=None):
             print "Configuration file problem: vm_reqs_from_condor_reqs must be a" \
                   " Boolean value."
 
+
+    # Default Logging options
     if config_file.has_option("logging", "log_level"):
         log_level = config_file.get("logging", "log_level")
 

@@ -370,8 +370,9 @@ class Job:
                         proxy_file_name = proxy_file_name[0]
                     proxyfilepath = ''.join([self.spool_dir, '/', proxy_file_name])
                     if not os.path.isfile(proxyfilepath):
-                        log.debug("Could not locate the proxy file at %s either. I give up." % proxyfilepath)
+                        log.debug("Could not locate the proxy file at %s either." % proxyfilepath)
                         proxyfilepath = ''
+
         return proxyfilepath
 
 class JobPool:
