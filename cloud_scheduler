@@ -636,7 +636,8 @@ class Scheduler(threading.Thread):
             log.verbose("VM Creation failed - temporarily banning job %s" % job.id)
             return False
         elif create_ret == -2: # -2 on Nimbus resource failures previously banned, but need to resolve resource misconfig - admin will need to manually reconfig to resolve - adjusted happens in the nimbus cloud vm_creation() 
-            log.info("Resources on adjusted due to insufficient availability.")
+            log.info("Resources on cloud adjusted due to insufficient availability.")
+            return False
         else:
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, False)
