@@ -425,7 +425,7 @@ class Scheduler(threading.Thread):
                 if not retire_machine:
                     log.verbose("No need to retire machine with job:  %s" % machine["JobId"])
                     continue
-                (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(machine["Machine"], machine['MyAddress'], mataching_vm.condormasteraddr)
+                (_, ret2, _, ret22) = self.resource_pool.do_condor_off(machine["Machine"], machine['MyAddress'], mataching_vm.condormasteraddr)
                 if ret2 == 0 and ret22 == 0:
                     log.debug("Set %s to die after completing current job: %s" % (machine["Name"],machine["JobId"]))
                     matching_vm.force_retire = True
@@ -1404,12 +1404,21 @@ class Cleanup(threading.Thread):
             for cluster in resources:
                 for vm in cluster.vms:
                     if vm == machine:
-                        #log.info("Shutting down VM: %s that has not registered with Condor after %i sec" % (vm.id, config.condor_register_time_limit))
                         cluster.vm_destroy(machine, return_resources=(not retired), reason="Has not registered with Condor after %i seconds." % config.condor_register_time_limit)
                         killedIt = True
                         break
                 if killedIt:
                     break
+
+    def clean_kill_start_timeout_vms(self):
+        """Checks to see if any VMs have passed the vm_start_running_timeout value.
+        Tries to stop machines from being stuck in the Starting state but failing to boot."""
+        if config.vm_start_running_timeout > 0:
+            for cluster in self.resource_pool.resources:
+                for vm in cluster.vms:
+                    if vm.status == "Starting":
+                        if time.time() - vm.initialize_time > config.vm_start_running_timeout:
+                            cluster.vm_destroy(vm, reason="Has not reached Running state after %i seconds." % config.vm_start_running_timeout)
 
     def clean_retired_vms(self, retiredvms, retired = False):
         """Shuts down VMs that have finished Retiring."""
@@ -1670,7 +1679,7 @@ class Cleanup(threading.Thread):
                         for master in self.resource_pool.master_list:
                             if master['Name'] == busy_vms[x]['Name']:
                                 masterIpAddr = master['MasterIpAddr']
-                        (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(busy_vms[x]['Machine'], busy_vms[x]['MyAddress'], masterIpAddr)
+                        (_, ret2, _, ret22) = self.resource_pool.do_condor_off(busy_vms[x]['Machine'], busy_vms[x]['MyAddress'], masterIpAddr)
                         if ret2 == 0 and ret22 == 0:
                             retired_vm.override_status = 'Retiring'
                         else:
@@ -1706,7 +1715,7 @@ class Cleanup(threading.Thread):
                     if vm.job_run_times.average() * config.retire_before_lifetime_factor > (config.vm_lifetime*60 - (time.time() - vm.initialize_time)):
                         # Next job submitted to this VM may not finish running before VM is shutdown
                         if not vm.force_retire:
-                            (ret1, ret2, ret21, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                            (_, ret2, _, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
                             if ret2 == 0 and ret22 == 0:
                                 vm.force_retire = True
                                 vm.override_status = 'Retiring'
