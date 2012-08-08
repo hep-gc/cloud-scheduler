@@ -87,6 +87,7 @@ myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
 vm_reqs_from_condor_reqs = False
+adjust_insufficient_resources = False
 
 default_VMType= "default"
 default_VMNetwork= ""
@@ -186,6 +187,8 @@ def setup(path=None):
     global myproxy_logon_command
     global override_vmtype
     global vm_reqs_from_condor_reqs
+    global adjust_insufficient_resources
+
     global default_VMType
     global default_VMNetwork
     global default_VMCPUArch
@@ -661,6 +664,13 @@ def setup(path=None):
             vm_reqs_from_condor_reqs = config_file.getboolean("global", "vm_reqs_from_condor_reqs")
         except ValueError:
             print "Configuration file problem: vm_reqs_from_condor_reqs must be a" \
+                  " Boolean value."
+
+    if config_file.has_option("global", "adjust_insufficient_resources"):
+        try:
+            adjust_insufficient_resources = config_file.getboolean("global", "adjust_insufficient_resources")
+        except ValueError:
+            print "Configuration file problem: adjust_insufficient_resources must be a" \
                   " Boolean value."
 
 

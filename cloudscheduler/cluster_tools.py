@@ -695,12 +695,12 @@ class NimbusCluster(ICluster):
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
             if err_type == 'NoProxy' or err_type == 'ExpiredProxy' or err_type == 'NotAuthorized':
                 create_return = -1
-            elif err_type == 'NoSlotsInNetwork':
+            elif err_type == 'NoSlotsInNetwork' and config.adjust_insufficient_resources:
                 with self.res_lock:
                     if vm_networkassoc in self.net_slots.keys():
                         self.net_slots[vm_networkassoc] = 0 # no slots remaining
                 create_return = -2
-            elif err_type =='NotEnoughMemory':
+            elif err_type =='NotEnoughMemory' and config.adjust_insufficient_resources:
                 with self.res_lock:
                     index = self.find_mementry(vm_mem)
                     self.memory[index] = vm_mem - 1 # may still be memory, but just not enough for this vm
