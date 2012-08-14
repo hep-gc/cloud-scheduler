@@ -298,7 +298,7 @@ class ICluster:
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen'):
+                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
@@ -317,6 +317,7 @@ class ICluster:
         self.res_lock = threading.RLock()
         self.enabled = True
         self.hypervisor = hypervisor
+        self.boot_timeout = boot_timeout if boot_timeout != None else config.vm_start_running_timeout
 
         self.setup_logging()
         log.debug("New cluster %s created" % self.name)

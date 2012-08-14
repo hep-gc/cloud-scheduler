@@ -289,6 +289,7 @@ class ResourcePool:
                     vm_lifetime = get_or_none(config, cluster, "vm_lifetime"),
                     image_attach_device = get_or_none(config, cluster, "image_attach_device"),
                     scratch_attach_device = get_or_none(config, cluster, "scratch_attach_device"),
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -307,6 +308,7 @@ class ResourcePool:
                     security_group = get_or_none(config, cluster, "security_group"),
                     hypervisor = hypervisor,
                     key_name = get_or_none(config, cluster, "key_name"),
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     )
 
         else:

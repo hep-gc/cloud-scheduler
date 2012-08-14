@@ -891,6 +891,8 @@ class Cleanup(threading.Thread):
                 self.clean_retire_near_lifetime()
             # Make sure no VMs with proxys are about to expire and get stuck in expired proxy state
             self.check_vm_proxy_shutdown_threshold()
+            # See if any VMs are have been in a Starting state for too long if timeouts are set.
+            self.clean_kill_start_timeout_vms()
             # Remove unneeded VMs.
             # Make sure we only do this if we have ever gotten a list of jobs
             # from Condor. Otherwise, when we persist from a previous run
@@ -1414,13 +1416,13 @@ class Cleanup(threading.Thread):
                     break
 
     def clean_kill_start_timeout_vms(self):
-        """Checks to see if any VMs have passed the vm_start_running_timeout value.
+        """Checks to see if any VMs have passed the boot_timeout value.
         Tries to stop machines from being stuck in the Starting state but failing to boot."""
-        if config.vm_start_running_timeout > 0:
-            for cluster in self.resource_pool.resources:
+        for cluster in self.resource_pool.resources:
+            if cluster.boot_timeout > 0:
                 for vm in cluster.vms:
                     if vm.status == "Starting":
-                        if time.time() - vm.initialize_time > config.vm_start_running_timeout:
+                        if time.time() - vm.initialize_time > cluster.boot_timeout:
                             cluster.vm_destroy(vm, reason="Has not reached Running state after %i seconds." % config.vm_start_running_timeout)
 
     def clean_retired_vms(self, retiredvms, retired = False):
