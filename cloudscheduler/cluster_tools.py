@@ -555,13 +555,13 @@ class NimbusCluster(ICluster):
                  access_key_id=None, secret_access_key=None, security_group=None,
                  netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
                  image_attach_device=config.image_attach_device,
-                 scratch_attach_device=config.scratch_attach_device):
+                 scratch_attach_device=config.scratch_attach_device, boot_timeout=None):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor)
+                         storage=storage, hypervisor=hypervisor, boot_timeout= boot_timeout)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
         self.net_slots = netslots
@@ -1261,13 +1261,13 @@ class EC2Cluster(ICluster):
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 hypervisor='xen', key_name=None):
+                 hypervisor='xen', key_name=None, boot_timeout=None):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=None)
 
         if not security_group:
             security_group = "default"
