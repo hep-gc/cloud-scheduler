@@ -317,7 +317,7 @@ class ICluster:
         self.res_lock = threading.RLock()
         self.enabled = True
         self.hypervisor = hypervisor
-        self.boot_timeout = boot_timeout if boot_timeout != None else config.vm_start_running_timeout
+        self.boot_timeout = int(boot_timeout) if boot_timeout != None else config.vm_start_running_timeout
 
         self.setup_logging()
         log.debug("New cluster %s created" % self.name)
