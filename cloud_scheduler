@@ -1322,7 +1322,8 @@ class Cleanup(threading.Thread):
                         if utilities.match_host_with_condor_host(vm.hostname, machine['Machine']):
                             if vm.condorname == None:
                                 vm.condorname = machine['Machine']
-                            vm.condoraddr = machine['MyAddress']
+                            if machine.has_key('MyAddress'):
+                                vm.condoraddr = machine['MyAddress']
                             foundvm = True
                             break
                     if not foundvm:
