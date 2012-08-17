@@ -1063,7 +1063,8 @@ class Cleanup(threading.Thread):
             next_diff_types = {}
             vmcount = self.resource_pool.get_vmtypes_count_internal()
             for vmtype in vmcount.keys():
-                vmcount[vmtype] += -num_to_change[vmtype]
+                if vmtype in num_to_change.keys():
+                    vmcount[vmtype] += -num_to_change[vmtype]
             next_types = self.resource_pool.vmtype_distribution(vmcount)
             for vmtype in next_types.keys():
                 if vmtype in desired_types.keys():
