@@ -1686,30 +1686,33 @@ class Cleanup(threading.Thread):
                         for master in self.resource_pool.master_list:
                             if master['Name'] == busy_vms[x]['Name']:
                                 masterIpAddr = master['MasterIpAddr']
-                        (_, ret2, _, ret22) = self.resource_pool.do_condor_off(busy_vms[x]['Machine'], busy_vms[x]['MyAddress'], masterIpAddr)
-                        if ret2 == 0 and ret22 == 0:
-                            retired_vm.override_status = 'Retiring'
-                        else:
-                            # Since the machine could not retire make sure not to destroy the last VM of type
-                            if internal_vms[vmtype] <= adjusted_val:
-                                # fewer or equal vms left that trying to shutdown
-                                if internal_vms[vmtype] - x-1 <= 0:
-                                    continue
-                            # Unable to use condor_off on this machine for some reason - name is bad
-                            bad_name_vm = self.resource_pool.find_vm_with_addr(busy_vms[x]['MyAddress'])
-                            if bad_name_vm != None:
-                                cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
-                                if cluster:
-                                    destroy_ret = cluster.vm_destroy(bad_name_vm, reason="Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
-                                    if destroy_ret != 0:
-                                        log.error("Failed to destroy vm %s" % bad_name_vm.id)
-                                else:
-                                    log.warning("cluster lookup failed for vm %s" % bad_name_vm.id)
+                        if masterIpAddr != "":
+                            (_, ret2, _, ret22) = self.resource_pool.do_condor_off(busy_vms[x]['Machine'], busy_vms[x]['MyAddress'], masterIpAddr)
+                            if ret2 == 0 and ret22 == 0:
+                                retired_vm.override_status = 'Retiring'
                             else:
-                                log.error("Lookup of %s failed, does this vm still exist within CS?" % busy_vms[x]['Name'])
-                                bad_addr_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Machine'])
-                                if bad_addr_vm:
-                                    log.verbose("Found it via name: it think it's address is %s" % bad_addr_vm.condoraddr)
+                                # Since the machine could not retire make sure not to destroy the last VM of type
+                                if internal_vms[vmtype] <= adjusted_val:
+                                    # fewer or equal vms left that trying to shutdown
+                                    if internal_vms[vmtype] - x-1 <= 0:
+                                        continue
+                                # Unable to use condor_off on this machine for some reason - name is bad
+                                bad_name_vm = self.resource_pool.find_vm_with_addr(busy_vms[x]['MyAddress'])
+                                if bad_name_vm != None:
+                                    cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
+                                    if cluster:
+                                        destroy_ret = cluster.vm_destroy(bad_name_vm, reason="Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
+                                        if destroy_ret != 0:
+                                            log.error("Failed to destroy vm %s" % bad_name_vm.id)
+                                    else:
+                                        log.warning("cluster lookup failed for vm %s" % bad_name_vm.id)
+                                else:
+                                    log.error("Lookup of %s failed, does this vm still exist within CS?" % busy_vms[x]['Name'])
+                                    bad_addr_vm = self.resource_pool.find_vm_with_name(busy_vms[x]['Machine'])
+                                    if bad_addr_vm:
+                                        log.verbose("Found it via name: it think it's address is %s" % bad_addr_vm.condoraddr)
+                        else:
+                            log.debug("Could not find master ip address for %s" % busy_vms[x]['Name'])
 
     def clean_retire_near_lifetime(self):
         """Forces a VM to retire that is nearing it's maximum lifetime. This is 
