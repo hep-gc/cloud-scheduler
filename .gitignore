@@ -11,3 +11,6 @@ dist/
 MANIFEST
 *.egg-info
 *.swp
+bluevmtest.sub
+recon.sh
+
