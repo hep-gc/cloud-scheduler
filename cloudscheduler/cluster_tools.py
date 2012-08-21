@@ -298,7 +298,7 @@ class ICluster:
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen'):
+                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
@@ -317,6 +317,7 @@ class ICluster:
         self.res_lock = threading.RLock()
         self.enabled = True
         self.hypervisor = hypervisor
+        self.boot_timeout = int(boot_timeout) if boot_timeout != None else config.vm_start_running_timeout
 
         self.setup_logging()
         log.debug("New cluster %s created" % self.name)
@@ -385,8 +386,8 @@ class ICluster:
     def get_cluster_info_short(self):
         """Return a short form of cluster information."""
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "ENABLED")
-        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.enabled)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "HYPERVISOR", "ENABLED")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.hypervisor, self.enabled)
         return output
 
     def get_cluster_vms_info(self):
@@ -554,13 +555,13 @@ class NimbusCluster(ICluster):
                  access_key_id=None, secret_access_key=None, security_group=None,
                  netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
                  image_attach_device=config.image_attach_device,
-                 scratch_attach_device=config.scratch_attach_device):
+                 scratch_attach_device=config.scratch_attach_device, boot_timeout=None):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor)
+                         storage=storage, hypervisor=hypervisor, boot_timeout= boot_timeout)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
         self.net_slots = netslots
@@ -576,8 +577,8 @@ class NimbusCluster(ICluster):
     def get_cluster_info_short(self):
         """Returns formatted cluster information for use by cloud_status, Overloaded from baseclass to use net_slots."""
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE")
-        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "HYPERVISOR", "ENABLED")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB, self.hypervisor, self.enabled)
         return output
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
@@ -695,12 +696,12 @@ class NimbusCluster(ICluster):
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
             if err_type == 'NoProxy' or err_type == 'ExpiredProxy' or err_type == 'NotAuthorized':
                 create_return = -1
-            elif err_type == 'NoSlotsInNetwork':
+            elif err_type == 'NoSlotsInNetwork' and config.adjust_insufficient_resources:
                 with self.res_lock:
                     if vm_networkassoc in self.net_slots.keys():
                         self.net_slots[vm_networkassoc] = 0 # no slots remaining
                 create_return = -2
-            elif err_type =='NotEnoughMemory':
+            elif err_type =='NotEnoughMemory' and config.adjust_insufficient_resources:
                 with self.res_lock:
                     index = self.find_mementry(vm_mem)
                     self.memory[index] = vm_mem - 1 # may still be memory, but just not enough for this vm
@@ -1110,12 +1111,12 @@ class NimbusCluster(ICluster):
             return "ExpiredProxy"
 
         # Check if out of network slots
-        out_of_slots = re.search("Resource request denied: Error creating workspace.s.. network", output)
+        out_of_slots = re.search("Resource request denied: Error creating workspace.s..+network", output)
         if out_of_slots:
             return "NoSlotsInNetwork"
 
         # Check if out of memory
-        out_of_memory = re.search("Resource request denied: Error creating workspace.s.. based on memory", output)
+        out_of_memory = re.search("Resource request denied: Error creating workspace.s..+based on memory", output)
         if out_of_memory:
             return "NotEnoughMemory"
 
@@ -1260,13 +1261,13 @@ class EC2Cluster(ICluster):
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 hypervisor='xen', key_name=None):
+                 hypervisor='xen', key_name=None, boot_timeout=None):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=None)
 
         if not security_group:
             security_group = "default"

@@ -1,4 +1,4 @@
-# Cloud Scheduler 1.2 README
+# Cloud Scheduler 1.3 README
 
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
@@ -14,7 +14,7 @@ For more documentation on Cloud Scheduler, please refer to:
 
 ## Prerequisites
 
-* A working Condor 7.5.x install (details below)
+* A working Condor 7.5.x or later install (details below)
 * Nimbus Cloud Client tools (details below)
 * [Python 2.6+](http://www.python.org/)
 * [Suds 0.3.9+](https://fedorahosted.org/suds/)

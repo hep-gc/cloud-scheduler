@@ -362,6 +362,17 @@ class Job:
                 if not os.path.isfile(proxyfilepath):
                     log.debug("Could not locate the proxy file at %s." % self.vmimage_proxy_file)
                     proxyfilepath = ''
+                    # going to try stripping any extra path from the entered value
+                    proxy_file_name = self.vmimage_proxy_file.split('/')
+                    if len(proxy_file_name) > 1:
+                        proxy_file_name = proxy_file_name[-1]
+                    else:
+                        proxy_file_name = proxy_file_name[0]
+                    proxyfilepath = ''.join([self.spool_dir, '/', proxy_file_name])
+                    if not os.path.isfile(proxyfilepath):
+                        log.debug("Could not locate the proxy file at %s either." % proxyfilepath)
+                        proxyfilepath = ''
+
         return proxyfilepath
 
 class JobPool:

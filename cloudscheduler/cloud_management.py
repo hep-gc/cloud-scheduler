@@ -298,6 +298,7 @@ class ResourcePool:
                     vm_lifetime = get_or_none(config, cluster, "vm_lifetime"),
                     image_attach_device = get_or_none(config, cluster, "image_attach_device"),
                     scratch_attach_device = get_or_none(config, cluster, "scratch_attach_device"),
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -316,6 +317,7 @@ class ResourcePool:
                     security_group = get_or_none(config, cluster, "security_group"),
                     hypervisor = hypervisor,
                     key_name = get_or_none(config, cluster, "key_name"),
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     )
 
         elif cloud_type == "StratusLab" and stratuslab_support:
@@ -362,7 +364,7 @@ class ResourcePool:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
+                output += "%-15s  %-10s %-15s %-10s\n" % (cluster.name, cluster.cloud_type, cluster.network_address, cluster.hypervisor)
         return output
 
     def get_resource(self, ):
@@ -572,12 +574,12 @@ class ResourcePool:
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
             log.verbose("No clusters fit requirements. Fitting resources list is empty.")
-            return (None, None)
+            return []
 
         # If the list has only 1 item, return immediately
         if len(fitting_clusters) == 1:
             log.verbose("Only one cluster fits parameters. Returning that cluster.")
-            return (fitting_clusters[0], None)
+            return fitting_clusters
         #log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
 
         # sort them based on how full and return the list
@@ -908,15 +910,15 @@ class ResourcePool:
                     vmusertype = ':'.join([user, vm['VMType']])
                     count[vmusertype] += 1
                 except:
-                    log.error("Failed to parse out remote owner")
+                    log.error("Failed to parse out remote owner on %s" % vm['Machine'])
             else:
-                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set - are the condor init scripts on the VM up-to-date?")
+                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set on %s - are the condor init scripts on the VM up-to-date?" % vm['Machine'])
                 if vm.has_key('Start'):
-                    log.warning("VM Start attrib = %s" % vm['Start'])
+                    log.warning("VM Start attrib = %s on %s" % (vm['Start'], vm['Machine']))
                 else:
-                    log.warning("VM Missing a Start attrib.")
+                    log.warning("VM Missing a Start attrib on %s." % vm['Machine'])
                 if not vm.has_key('VMType'):
-                    log.warning("This VM has no VMType key, It should not be used with cloudscheduler.")
+                    log.warning("This VM %s has no VMType key, It should not be used with cloudscheduler." % vm['Machine'])
         log.verbose("VMs in machinelist: %s" % str(count))
         return count
 
@@ -1464,10 +1466,10 @@ class ResourcePool:
                 log.debug("Reason: %s" % out) 
                 log.debug("Error: %s" % err)
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args2), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args2))
             return (-1, -1, -1, -1)
         # Now send the master off
         try:
@@ -1484,10 +1486,10 @@ class ResourcePool:
                 log.debug("Failed to send condor_off master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args3), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args3))
             print args
             return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
@@ -1572,10 +1574,10 @@ class ResourcePool:
                 log.debug("Reason: %s" % out) 
                 log.debug("Error: %s" % err)
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args4), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args4))
             return (-1, -1, -1, -1)
         # Now send the startd on
         try:
@@ -1592,10 +1594,10 @@ class ResourcePool:
                 log.debug("Failed to send condor_on master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args))
             print args
             return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
@@ -1827,7 +1829,7 @@ class ResourcePool:
                 cluster.resource_return(vm)
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
             else:
-                output = "Could not find that VM ID."
+                output = "Could not find VM ID." % vmid
         else:
             output = "Could not find Cloud %s." % clustername
         return output
@@ -1844,6 +1846,41 @@ class ResourcePool:
             output = "Removed all VMs from %s." % clustername
         else:
             output = "Could not find Cloud %s." % clustername
+        return output
+
+    def force_retire_cluster_vm(self, clustername, vmid):
+        output = ""
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            vm = cluster.get_vm(vmid)
+            if vm:
+                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                if ret2 == 0 and ret22 == 0:
+                    vm.force_retire = True
+                    vm.override_status = 'Retiring'
+                    output = "Retired VM %s on %s." % (vmid, clustername)
+                else:
+                    output = "Unable to retire VM."
+            else:
+                output = "Could not find VM ID %s." % vmid
+        else:
+            output = "Could not find Cloud %s." % clusterdname
+        return output
+    
+    def force_retire_cluster_all(self, cloudname):
+        cluster = self.get_cluster(cloudname)
+        output = ""
+        if cluster:
+            for vm in cluster.vms:
+                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                if ret2 == 0 and ret22 == 0:
+                    vm.force_retire = True
+                    vm.override_status = 'Retiring'
+                else:
+                    output += "Unable to retire VM %s\n" % vm.id
+            output = "Retired all VMs in %s." % cloudname
+        else:
+            output = "Cloud not find Cloud %s." % cloudname
         return output
 
     def disable_cluster(self, clustername):
