@@ -1493,7 +1493,7 @@ class EC2Cluster(ICluster):
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
             return self.ERROR
         except:
-            log.exception("Unexpected error destroying VM: !" % vm.id)
+            log.exception("Unexpected error destroying VM: %s!" % vm.id)
 
         # Delete references to this VM
         if return_resources:

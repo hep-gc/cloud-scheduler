@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/local/bin/python2.7
 # vim: set expandtab ts=4 sw=4:
 
 # Copyright (C) 2009 University of Victoria
@@ -114,6 +114,7 @@ class VMPoller(threading.Thread):
                 # errors and being destroyed
                 if ret_state == "Error":
                     vm.errorcount += 1
+                    log.verbose("Error in VM %s, increased counter to %s" % (str(vm.id), str(vm.errorcount)))
                 elif vm.errorcount > 0:
                     vm.errorcount = 0
                 if ret_state == "HttpError":
@@ -137,6 +138,7 @@ class VMPoller(threading.Thread):
                         #    cluster.resource_return(vm)
 
                 if vm.errorcount >= config.polling_error_threshold:
+                    log.verbose("VM %s reached threshold in errors, %s" % (str(vm.id), str(vm.errorcount)))
                     # Destroy the VM
                     if not self.check_destroy(cluster, vm):
                         dt = VMDestroyCmd(cluster, vm, reason="VM is in an Error state.")
@@ -712,6 +714,9 @@ class Scheduler(threading.Thread):
         log.verbose("Finished customizations for job '%s'" % job.id)
         for resource in good_resources:
             # Print details of the resource selected
+            if resource == None:
+                log.debug("None resource in good_resources ??")
+                continue
             log.debug("Booting VM for job %s on: %s" % (job.id, resource.name))
             resource.log()
 
@@ -779,6 +784,24 @@ class Scheduler(threading.Thread):
                         'location':job.location,
                         'job_per_core':job.job_per_core,
                         'vm_keyname':job.key_name}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "StratusLabCluster":
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_cpuarch':job.req_cpuarch,
+                        'vm_image':job.req_image_id,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        #'instance_type':job.instance_type,
+                        #'location':job.location,
+                        'job_per_core':job.job_per_core,
+                        #'vm_keyname':job.key_name,
+                        'vm_loc':job.req_imageloc}
                 create_ret = resource.vm_create(**args)
 
             # If the VM create fails, try again on another resource
@@ -928,17 +951,17 @@ class Cleanup(threading.Thread):
         for job in self.job_pool.job_container.get_unscheduled_jobs():
             if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                 bad_jobs.append(job)
-                log.debug("No cluster fits job %s ignoring" % job.id)
+                log.debug("#1 No cluster fits job %s ignoring" % job.id)
                 continue
             if job.req_memory > 0:
                 if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch, memory=job.req_memory):
                     bad_jobs.append(job)
-                    log.debug("No cluster fits job %s ignoring" % job.id)
+                    log.debug("#2 No cluster fits job %s ignoring" % job.id)
                     continue
             if job.req_storage > 0:
                 if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch, disk=job.req_storage):
                     bad_jobs.append(job)
-                    log.debug("No cluster fits job %s ignoring" % job.id)
+                    log.debug("#3 No cluster fits job %s ignoring" % job.id)
                     continue
             if job.target_clouds:
                 if not set(job.target_clouds).intersection(set(cloud_names)):

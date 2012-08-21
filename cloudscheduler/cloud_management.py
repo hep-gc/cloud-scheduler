@@ -40,6 +40,7 @@ except:
     import pickle
 
 import cluster_tools
+import stratuslabcluster
 import cloudscheduler.config as config
 
 from cloudscheduler.utilities import determine_path
@@ -54,12 +55,21 @@ import cloudscheduler.utilities as utilities
 log = None
 log = logging.getLogger("cloudscheduler")
 
+"""Verify if stratuslab dependencies are available"""
+try:
+    from stratuslab.Image import Image
+    stratuslab_support = True
+except ImportError:
+    stratuslab_support = False
+    log.warning("Stratuslab dependencies are not available")
+
 ##
 ## CLASSES
 ##
 
 
-class ResourcePool:
+class ResourcePool:    
+    
     """Stores and organises a list of Cluster resources."""
     ## Instance variables
     resources = []
@@ -80,11 +90,10 @@ class ResourcePool:
         global log
         log = logging.getLogger("cloudscheduler")
 
-        log.verbose("New ResourcePool " + name + " created")
+        log.verbose("New ResourcePool %s created" %name)
         self.name = name
 
-        _collector_wsdl = "file://" + determine_path() \
-                          + "/wsdl/condorCollector.wsdl"
+        _collector_wsdl = "file://%s/wsdl/condorCollector.wsdl"%determine_path()
         self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
         self.condor_collector_as_xml = Client(_collector_wsdl, cache=None,
                                               location=config.condor_collector_url, retxml=True)
@@ -309,9 +318,23 @@ class ResourcePool:
                     key_name = get_or_none(config, cluster, "key_name"),
                     )
 
+        elif cloud_type == "StratusLab" and stratuslab_support:
+            return stratuslabcluster.StratusLabCluster(name = cluster,
+                    host = get_or_none(config, cluster, "host"),
+                    cloud_type = get_or_none(config, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
+                    storage = int(get_or_none(config, cluster, "storage")),
+                    hypervisor = hypervisor,
+                    contextualization = get_or_none(config, cluster, "contextualization")
+                    )
+
         else:
-            log.error("ResourcePool.setup doesn't know what to do with the"
-                    + "%s cloud_type" % cloud_type)
+            log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
             return None
 
 
@@ -333,7 +356,7 @@ class ResourcePool:
 
     def get_pool_info(self, ):
         """Print the name and address of every cluster in the resource pool."""
-        output = "Resource pool " + self.name + ":\n"
+        output = "Resource pool %s:\n" %self.name
         output += "%-15s  %-10s %-15s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS")
         if len(self.resources) == 0:
             output += "Pool is empty..."
@@ -435,6 +458,7 @@ class ResourcePool:
         else:
             clusters = self.resources
         for cluster in clusters:
+            log.verbose("Trying with cluster %s (Name: %s)" % (str(cluster), cluster.name))
             if not cluster.enabled:
                 continue
             if cluster.hypervisor not in hypervisor:
@@ -466,6 +490,17 @@ class ResourcePool:
                 if ami in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[ami]:
                         continue
+            
+            elif cluster.__class__.__name__ == "StratusLabCluster" and stratuslab_support:
+                # If not valid image file
+                if imageloc == "":
+                    continue
+                if imageloc in self.banned_job_resource.keys():
+                    if cluster.name in self.banned_job_resource[imageloc]:
+                        continue
+                if (not Image.isDiskId(imageloc)) and (not Image.isImageId(imageloc)):
+                    continue
+            
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
                 log.verbose("get_fitting_resources - No free slots in %s" % cluster.name)
@@ -1222,6 +1257,15 @@ class ResourcePool:
                     queue = ErrTrackQueue(cluster.name)
                     queue.append(value)
                     self.failures[job.req_imageloc].append(queue)
+
+            elif cluster.__class__.__name__ == 'StratusLabCluster' and stratuslab_support:
+                # If not valid image file to download
+                if imageloc == "":
+                    continue
+                if (not Image.isDiskId(imageloc)) and (not Image.isImageId(imageloc)):
+                    continue
+                resource.append(value)
+
             elif cluster.__class__.__name__ == 'EC2Cluster':
                 if job.req_ami in self.failures.keys():
                     foundIt = False
