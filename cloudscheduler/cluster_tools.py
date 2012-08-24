@@ -1509,6 +1509,19 @@ class IBMCluster(ICluster):
     VM_STATES = ['Running', 'Rebooting', 'Terminated', 'Pending', 'Unknown']
     VM_STATES_DICT = {'Running': 0, 'Rebooting': 1, 'Terminated': 2, 
                       'Pending': 3, 'Unknown': 4}
+    VM_COMPUTE_SIZE_MAP = { 'brz32': 0, 'bronze32': 0,
+                            'brz64': 1, 'bronze64': 1,
+                            'cop32': 2, 'copper32': 2,
+                            'cop64': 3, 'copper64': 3, 
+                            'slv32': 4, 'silver32': 4,
+                            'slv64': 5, 'silver64': 5,
+                            'gld32': 6, 'gold32': 6,
+                            'gld64': 7, 'gold64': 7,
+                            'plt64': 8, 'platinum64': 8 }
+
+    CLOUD_LOCATION_ID_MAP = {'raleigh': 41, 'ehningen': 61, 'boulder2': 81,
+                             'boulder1': 82, 'markham': 101, 'makuhari': 121,
+                             'singapore': 141,}
 
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
@@ -1525,36 +1538,56 @@ class IBMCluster(ICluster):
         self.username = username
         self.password = password
         self.driver = get_driver(Provider.IBM)
-        self.connection = self.driver(self.username, self.password)
+        #self.connection = self.driver(self.username, self.password)
         self.locations = self.connection.list_locations()
+        self.locations_dict = {loc.id: loc for loc in self.locations}
         self.compute_sizes = self.connection.list_sizes()
-        self.images = self.connection.list_images()
+        #self.images = self.connection.list_images()
         
-    def _get_connection(self):
-        pass
+    def _get_connection(username, password):
+        return self.driver(username, password)
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization, 
                   vm_keepalive, instance_type, location, job_per_core,
-                  vm_keyname):
+                  vm_keyname, username="", password=""):
         # will need to use self.driver.deploy_node(...) as this seems to allow for contextualization whereas create_node() does not
-        
-        
-        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
-                    clusteraddr = self.network_address,
-                    cloudtype = self.cloud_type, network = vm_networkassoc,
-                    cpuarch = vm_cpuarch, image= vm_image,
-                    memory = vm_mem, mementry = vm_mementry,
-                    cpucores = vm_cores, storage = vm_storage, 
-                    keep_alive = vm_keepalive, job_per_core = job_per_core)
-        try:
-            self.resource_checkout(new_vm)
-        except:
-            log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-            self.vm_destroy(new_vm, reason="Failed Resource checkout")
-            return self.ERROR
+        conn = _get_connection(username, password)
+        if instance_type.lower() in VM_COMPUTE_SIZE_MAP.keys():
+            vm_size = self.compute_sizes[VM_COMPUTE_SIZE_MAP[instance_type.lower()]]
+        else:
+            log.debug("%s not a valid instance type." % instance_type)
+            return
+        if location.lower() in CLOUD_LOCATION_ID_MAP.keys():
+            try:
+                vm_location = self.locations_dict[self.CLOUD_LOCATION_ID_MAP[location.lower()]]
+            except KeyError:
+                log.debug("Bad Dict Key mapping")
+                return
+        else:
+            log.debug("%s is not a valid location" % location)
+            return
 
-        self.vms.append(new_vm)
+        image = NodeImage(vm_image, '','')
+        instance = conn.create_node(name=vm_name, image=image, size=vm_size, location=vm_location, auth=vm_keyname)
+        if instance:
+            new_vm = VM(name = vm_name, id = instance.uuid, vmtype = vm_type, user = vm_user,
+                        clusteraddr = self.network_address,
+                        cloudtype = self.cloud_type, network = vm_networkassoc,
+                        cpuarch = vm_cpuarch, image= vm_image,
+                        memory = vm_mem, mementry = vm_mementry,
+                        cpucores = vm_cores, storage = vm_storage, 
+                        keep_alive = vm_keepalive, job_per_core = job_per_core)
+            try:
+                self.resource_checkout(new_vm)
+            except:
+                log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
+                self.vm_destroy(new_vm, reason="Failed Resource checkout")
+                return self.ERROR
+    
+            self.vms.append(new_vm)
+        else:
+            log.debug("No return from create_node()")
 
         return 0
 
@@ -1564,6 +1597,7 @@ class IBMCluster(ICluster):
         for node in nodes:
             if node.uuid == vm.id:
                 self.driver.destroy_node(node)
+                log.info("VM %s Destroyed: Reason: %s" % (vm.id, reason))
                 # return resources
                 if return_resources:
                     self.resource_return(vm)

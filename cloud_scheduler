@@ -1719,9 +1719,10 @@ class Cleanup(threading.Thread):
                                     # fewer or equal vms left that trying to shutdown
                                     if internal_vms[vmtype] - x-1 <= 0:
                                         continue
-                                # Unable to use condor_off on this machine for some reason - name is bad
+                                # Unable to use condor_off on this machine for some reason - address(es) are bad?
                                 bad_name_vm = self.resource_pool.find_vm_with_addr(busy_vms[x]['MyAddress'])
                                 if bad_name_vm != None:
+                                    log.debug("Bad Addresses for VM: %s, Startd: %s, Master: %s" % (bad_name_vm.condorname, bad_name_vm.condoraddr, bad_name_vm.condormasteraddr))
                                     cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
                                     if cluster:
                                         destroy_ret = cluster.vm_destroy(bad_name_vm, reason="Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
