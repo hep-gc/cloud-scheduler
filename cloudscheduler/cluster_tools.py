@@ -823,7 +823,7 @@ class NimbusCluster(ICluster):
                     destroy_out = "No Output returned."
                 if destroy_error == "" or destroy_error == None:
                     destroy_error = "No Error output returned."
-                log.warning("VM %s was not correctly destroyed: %s %s %s" % (vm.id, destroy_out, destroy_error, destroy_return))
+                log.warning("VM %s was not correctly destroyed on %s: %s %s %s" % (vm.id, self.name, destroy_out, destroy_error, destroy_return))
                 vm.status = "Error"
                 os.remove(vm_epr)
                 return destroy_return
@@ -889,11 +889,11 @@ class NimbusCluster(ICluster):
 
             elif new_status == "NoProxy":
                 vm.override_status = new_status
-                log.error("Problem polling VM %s. You don't have a valid proxy." % vm.id)
+                log.error("Problem polling VM %s on %s. You don't have a valid proxy." % (vm.id, self.name))
 
             elif new_status == "ExpiredProxy":
                 vm.override_status = new_status
-                log.error("Problem polling VM %s. Your proxy expired." % vm.id)
+                log.error("Problem polling VM %s on %s. Your proxy expired." % (vm.id, self.name))
 
             elif new_status == "ConnectionRefused":
                 vm.override_status = new_status
@@ -918,7 +918,7 @@ class NimbusCluster(ICluster):
                     poll_out = "No Output returned."
                 if poll_err == "" or poll_err == None:
                     poll_err = "No Error output returned."
-                log.warning("There was a problem polling VM %s: %s %s %s" % (vm.id, poll_out, poll_err, poll_return))
+                log.warning("There was a problem polling VM %s on %s: %s %s %s" % (vm.id, self.name, poll_out, poll_err, poll_return))
 
         # Tidy up and return
         os.remove(vm_epr)
