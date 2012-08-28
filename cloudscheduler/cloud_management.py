@@ -335,6 +335,21 @@ class ResourcePool:
                     contextualization = get_or_none(config, cluster, "contextualization")
                     )
 
+        elif cloud_type.lower() == "ibmsmartcloud":
+            return cluster_tools.IBMCluster(name= cluster,
+                    host= get_or_none(config, cluster, "host"),
+                    cloud_type= get_or_none(config, cluster, "cloud_type"),
+                    memory= map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem= max_vm_mem if max_vm_mem != None else -1,
+                    cpu_archs= splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks= splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    vm_slots= int(get_or_none(config, cluster, "vm_slots")),
+                    cpu_cores= int(get_or_none(config, cluster, "cpu_cores")),
+                    storage= int(get_or_none(config, cluster, "storage")),
+                    hypervisor= hypervisor,
+                    username= get_or_none(config, cluster, "username"),
+                    password= get_or_none(config, cluster, "password"),
+                    )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
             return None
