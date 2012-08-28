@@ -386,8 +386,8 @@ class ICluster:
     def get_cluster_info_short(self):
         """Return a short form of cluster information."""
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "HYPERVISOR", "ENABLED")
-        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.hypervisor, self.enabled)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "HYPERVISOR", "ENABLED")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.hypervisor, self.enabled)
         return output
 
     def get_cluster_vms_info(self):
@@ -823,7 +823,7 @@ class NimbusCluster(ICluster):
                     destroy_out = "No Output returned."
                 if destroy_error == "" or destroy_error == None:
                     destroy_error = "No Error output returned."
-                log.warning("VM %s was not correctly destroyed on %s: %s %s %s" % (vm.id, self.name, destroy_out, destroy_error, destroy_return))
+                log.warning("VM %s was not correctly destroyed: %s %s %s" % (vm.id, destroy_out, destroy_error, destroy_return))
                 vm.status = "Error"
                 os.remove(vm_epr)
                 return destroy_return
@@ -889,11 +889,11 @@ class NimbusCluster(ICluster):
 
             elif new_status == "NoProxy":
                 vm.override_status = new_status
-                log.error("Problem polling VM %s on %s. You don't have a valid proxy." % (vm.id, self.name))
+                log.error("Problem polling VM %s. You don't have a valid proxy." % vm.id)
 
             elif new_status == "ExpiredProxy":
                 vm.override_status = new_status
-                log.error("Problem polling VM %s on %s. Your proxy expired." % (vm.id, self.name))
+                log.error("Problem polling VM %s. Your proxy expired." % vm.id)
 
             elif new_status == "ConnectionRefused":
                 vm.override_status = new_status
@@ -918,7 +918,7 @@ class NimbusCluster(ICluster):
                     poll_out = "No Output returned."
                 if poll_err == "" or poll_err == None:
                     poll_err = "No Error output returned."
-                log.warning("There was a problem polling VM %s on %s: %s %s %s" % (vm.id, self.name, poll_out, poll_err, poll_return))
+                log.warning("There was a problem polling VM %s: %s %s %s" % (vm.id, poll_out, poll_err, poll_return))
 
         # Tidy up and return
         os.remove(vm_epr)
@@ -1539,13 +1539,18 @@ class IBMCluster(ICluster):
         self.password = password
         self.driver = get_driver(Provider.IBM)
         #self.connection = self.driver(self.username, self.password)
-        self.locations = self.connection.list_locations()
-        self.locations_dict = {loc.id: loc for loc in self.locations}
-        self.compute_sizes = self.connection.list_sizes()
+        #self.locations = self.connection.list_locations()
+        #self.locations_dict = {loc.id: loc for loc in self.locations}
+        #self.compute_sizes = self.connection.list_sizes()
         #self.images = self.connection.list_images()
         
     def _get_connection(username, password):
-        return self.driver(username, password)
+        self.connection = self.driver(username, password)
+        self.locations = self.connection.list_locations()
+        self.locations_dict = {loc.id: loc for loc in self.locations}
+        self.compute_sizes = self.connection.list_sizes()
+        self.images = self.connection.list_images()
+        return self.connection
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization, 
