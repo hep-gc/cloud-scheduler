@@ -1517,11 +1517,11 @@ class IBMCluster(ICluster):
                             'slv64': 5, 'silver64': 5,
                             'gld32': 6, 'gold32': 6,
                             'gld64': 7, 'gold64': 7,
-                            'plt64': 8, 'platinum64': 8 }
+                        'plt64': 8, 'platinum64': 8 }
 
-    CLOUD_LOCATION_ID_MAP = {'raleigh': 41, 'ehningen': 61, 'boulder2': 81,
-                             'boulder1': 82, 'markham': 101, 'makuhari': 121,
-                             'singapore': 141,}
+    CLOUD_LOCATION_ID_MAP = {'raleigh': '41', 'ehningen': '61', 'boulder2': '81',
+                             'boulder1': '82', 'markham': '101', 'makuhari': '121',
+                             'singapore': '141',}
 
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
@@ -1534,7 +1534,6 @@ class IBMCluster(ICluster):
                          storage=storage, hypervisor=hypervisor)
         from libcloud.compute.types import Provider
         from libcloud.compute.providers import get_driver
-        from libcloud.compute.base import NodeImage, NodeSize, NodeLocation, NodeAuthSSHKey
         self.username = username
         self.password = password
         self.driver = get_driver(Provider.IBM)
@@ -1544,7 +1543,7 @@ class IBMCluster(ICluster):
         #self.compute_sizes = self.connection.list_sizes()
         #self.images = self.connection.list_images()
         
-    def _get_connection(username, password):
+    def _get_connection(self, username, password):
         self.connection = self.driver(username, password)
         self.locations = self.connection.list_locations()
         self.locations_dict = {loc.id: loc for loc in self.locations}
@@ -1557,13 +1556,18 @@ class IBMCluster(ICluster):
                   vm_keepalive, instance_type, location, job_per_core,
                   vm_keyname, username="", password=""):
         # will need to use self.driver.deploy_node(...) as this seems to allow for contextualization whereas create_node() does not
-        conn = _get_connection(username, password)
-        if instance_type.lower() in VM_COMPUTE_SIZE_MAP.keys():
-            vm_size = self.compute_sizes[VM_COMPUTE_SIZE_MAP[instance_type.lower()]]
+        from libcloud.compute.base import NodeImage, NodeSize, NodeLocation, NodeAuthSSHKey
+        if not username:
+            username = self.username
+        if not password:
+            password = self.password
+        conn = self._get_connection(username, password)
+        if instance_type.lower() in self.VM_COMPUTE_SIZE_MAP.keys():
+            vm_size = self.compute_sizes[self.VM_COMPUTE_SIZE_MAP[instance_type.lower()]]
         else:
             log.debug("%s not a valid instance type." % instance_type)
             return
-        if location.lower() in CLOUD_LOCATION_ID_MAP.keys():
+        if location.lower() in self.CLOUD_LOCATION_ID_MAP.keys():
             try:
                 vm_location = self.locations_dict[self.CLOUD_LOCATION_ID_MAP[location.lower()]]
             except KeyError:
@@ -1571,16 +1575,21 @@ class IBMCluster(ICluster):
                 return
         else:
             log.debug("%s is not a valid location" % location)
+            print 'location invalid'
             return
 
         image = NodeImage(vm_image, '','')
-        instance = conn.create_node(name=vm_name, image=image, size=vm_size, location=vm_location, auth=vm_keyname)
+        # 20035253 image id is a RHL 5.7 that should boot on bronze 32bit and is on markham location
+        instance = None
+        vm_key = NodeAuthSSHKey(vm_keyname)
+
+        instance = conn.create_node(name=vm_name, image=image, size=vm_size, location=vm_location, auth=vm_key)
         if instance:
             new_vm = VM(name = vm_name, id = instance.uuid, vmtype = vm_type, user = vm_user,
                         clusteraddr = self.network_address,
                         cloudtype = self.cloud_type, network = vm_networkassoc,
                         cpuarch = vm_cpuarch, image= vm_image,
-                        memory = vm_mem, mementry = vm_mementry,
+                        memory = vm_mem,
                         cpucores = vm_cores, storage = vm_storage, 
                         keep_alive = vm_keepalive, job_per_core = job_per_core)
             try:
@@ -1598,10 +1607,10 @@ class IBMCluster(ICluster):
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
         # can use either node.destroy() or self.driver.destroy_node(node) - the latter is more consistent with how we do things in the other clouds
-        nodes = self.driver.list_nodes()
+        nodes = self.connection.list_nodes()
         for node in nodes:
             if node.uuid == vm.id:
-                self.driver.destroy_node(node)
+                self.connection.destroy_node(node)
                 log.info("VM %s Destroyed: Reason: %s" % (vm.id, reason))
                 # return resources
                 if return_resources:
@@ -1613,7 +1622,7 @@ class IBMCluster(ICluster):
     def vm_poll(self, vm):
         # libcloud does not seem to support polling individual VMs you simply list off what you have
         # ineffecient this way but is in line with other clouds
-        nodes = self.driver.list_nodes()
+        nodes = self.connection.list_nodes()
         for node in nodes:
             if node.uuid == vm.id:
                 if self.VM_STATES[node.state] == vm.status:
@@ -1622,15 +1631,15 @@ class IBMCluster(ICluster):
                 elif vm.status == 'Running' and node.state == 3:
                     vm.status = self.VM_STATES[node.state]
                     vm.override_status = 'Stopping'
-                    vm.last_state_change = int(time.now())
+                    vm.last_state_change = int(time.time())
                     log.debug("VM: %s on %s. Changed from %s to Stopping." % (vm.id, self.name, vm.status))
                 elif vm.status == 'Starting' and node.state == 3:
                     vm.status = self.VM_STATES[node.state]
-                    vm.last_state_change = int(time.now())
+                    vm.last_state_change = int(time.time())
                     log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES[node.state]))
                 else:
                     vm.status = self.VM_STATES[node.state]
-                    vm.last_state_change = int(time.now())
+                    vm.last_state_change = int(time.time())
                     log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES[node.state]))
             else:
                 continue

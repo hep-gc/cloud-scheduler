@@ -796,7 +796,7 @@ class Scheduler(threading.Thread):
                         'vm_storage':job.req_storage,
                         'customization':customizations,
                         'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type_ibm,
+                        'instance_type':job.req_instance_type_ibm,
                         'location':job.location,
                         'job_per_core':job.job_per_core,
                         'vm_keyname':job.key_name}
