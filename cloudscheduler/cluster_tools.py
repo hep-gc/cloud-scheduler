@@ -1617,7 +1617,8 @@ class IBMCluster(ICluster):
                     self.resource_return(vm)
                 with self.vms_lock:
                     self.vms.remove(vm)
-                break
+                return 0
+        
 
     def vm_poll(self, vm):
         # libcloud does not seem to support polling individual VMs you simply list off what you have
