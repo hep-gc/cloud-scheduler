@@ -1952,7 +1952,7 @@ class VMDestroyCmd(threading.Thread):
     def run(self):
         self.result = self.cluster.vm_destroy(self.vm, reason=self.reason)
         if self.result != 0:
-            log.error("Failed to destroy vm %s on %s" % (self.vm.id, vm.clusteraddr))
+            log.error("Failed to destroy vm %s on %s" % (self.vm.id, self.vm.clusteraddr))
     def get_result(self):
         return self.result
     def get_vm(self):
