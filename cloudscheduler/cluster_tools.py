@@ -1606,7 +1606,6 @@ class IBMCluster(ICluster):
         return 0
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
-        # can use either node.destroy() or self.driver.destroy_node(node) - the latter is more consistent with how we do things in the other clouds
         nodes = self.connection.list_nodes()
         for node in nodes:
             if node.uuid == vm.id:
