@@ -1625,6 +1625,9 @@ class IBMCluster(ICluster):
         nodes = self.connection.list_nodes()
         for node in nodes:
             if node.uuid == vm.id:
+                if not vm.ipaddress:
+                    if node.public_ip:
+                        vm.ipaddress = node.public_ip
                 if self.VM_STATES[node.state] == vm.status:
                     continue
                 # Both startup and shutdown enter the Pending state
