@@ -365,6 +365,9 @@ class Scheduler(threading.Thread):
             for vm in reversed(cluster.vms):
                 log.info("Destroying VM: %s" % vm.id)
                 vm.log()
+                if vm.override_status in ("ExpiredProxy", "NoProxy", "ConnectionRefused", "BrokenPipe"):
+                    failed_vms.append(vm)
+                    continue
                 if len(destroy_threads) < config.max_destroy_threads:
                     destroy_threads.append(VMDestroyCmd(cluster, vm, reason="Full shutdown in progress."))
                 else:
