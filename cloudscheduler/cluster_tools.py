@@ -1562,7 +1562,7 @@ class IBMCluster(ICluster):
         if not password:
             password = self.password
         conn = self._get_connection(username, password)
-        if instance_type.lower() in self.VM_COMPUTE_SIZE_MAP.keys():
+        if instance_type and instance_type.lower() in self.VM_COMPUTE_SIZE_MAP.keys():
             vm_size = self.compute_sizes[self.VM_COMPUTE_SIZE_MAP[instance_type.lower()]]
         else:
             log.debug("%s not a valid instance type." % instance_type)
