@@ -155,9 +155,12 @@ class VM:
 
     def get_vm_info(self):
         """Formatted VM information for use with cloud_status."""
-        output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, self.hostname, self.vmtype, self.user, self.status)
+        nameout = self.hostname
+        if self.hostname == "":
+            nameout = self.ipaddress
+        output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, nameout, self.vmtype, self.user, self.status)
         if self.override_status != None:
-            output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, self.hostname, self.vmtype, self.user, self.override_status)
+            output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, nameout, self.vmtype, self.user, self.override_status)
         return output
 
     @staticmethod
@@ -1542,7 +1545,22 @@ class IBMCluster(ICluster):
         #self.locations_dict = {loc.id: loc for loc in self.locations}
         #self.compute_sizes = self.connection.list_sizes()
         #self.images = self.connection.list_images()
-        
+
+    def __getstate__(self):
+        """Override to work with pickle module."""
+        state = self.__dict__.copy()
+        del state['vms_lock']
+        del state['res_lock']
+        del state['driver']
+        return state
+
+    def __setstate__(self, state):
+        """Override to work with pickle module."""
+        self.__dict__ = state
+        self.vms_lock = threading.RLock()
+        self.res_lock = threading.RLock()
+        self.driver = get_driver(Provider.IBM)
+
     def _get_connection(self, username, password):
         self.connection = self.driver(username, password)
         self.locations = self.connection.list_locations()
@@ -1627,7 +1645,7 @@ class IBMCluster(ICluster):
             if node.uuid == vm.id:
                 if not vm.ipaddress:
                     if node.public_ip:
-                        vm.ipaddress = node.public_ip
+                        vm.ipaddress = node.public_ip[0]
                 if self.VM_STATES[node.state] == vm.status:
                     continue
                 # Both startup and shutdown enter the Pending state
