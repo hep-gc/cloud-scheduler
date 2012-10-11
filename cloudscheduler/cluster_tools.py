@@ -541,8 +541,8 @@ class NimbusCluster(ICluster):
     # Nimbus VM states: Unstaged, Unpropagated, Propagated, Running, Paused,
     # TransportReady, StagedOut, Corrupted, Cancelled.
     VM_STATES = {
-         "Unstaged"       : "Starting",
-         "Unpropagated"   : "Starting",
+         "Unstaged"       : "Unstaged",
+         "Unpropagated"   : "Unpropagated",
          "Propagated"     : "Starting",
          "Running"        : "Running",
          "Paused"         : "Running",
