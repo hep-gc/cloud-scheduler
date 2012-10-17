@@ -1519,6 +1519,10 @@ class Cleanup(threading.Thread):
                         if utilities.match_host_with_condor_host(vm.hostname, condor_name) and vm.uservmtype == vmtype:
                             found_vm = True
                             log.verbose("Located %s in VM list." % unused_vms_of_type[x]['Machine'])
+                            # Check that machine is Isn't still starting and CS has picked up a zombie condor entry
+                            if vm.status != 'Running':
+                                log.verbose("VM %s still Starting, not going to shutdown" % unused_vms_of_type[x]['Machine'])
+                                break
                             # Verify that all slots of this VM are idle
                             is_part_of_machine = {'Machine': vm.hostname}
                             slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
