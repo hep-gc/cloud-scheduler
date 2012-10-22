@@ -1615,7 +1615,8 @@ class Cleanup(threading.Thread):
                     fitting_clusters.extend(self.resource_pool.get_potential_fitting_resources( \
                     vmtypes_jobs[vmtype][0].req_network, \
                     vmtypes_jobs[vmtype][0].req_cpuarch, vmtypes_jobs[vmtype][0].req_memory, \
-                    vmtypes_jobs[vmtype][0].req_storage, vmtypes_jobs[vmtype][0].target_clouds))
+                    vmtypes_jobs[vmtype][0].req_storage, vmtypes_jobs[vmtype][0].target_clouds),\
+                    vmtypes_jobs[vmtype][0].req_cpucores)
         return set(fitting_clusters)
 
     def want_to_balance(self, num_to_change):

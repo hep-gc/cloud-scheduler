@@ -261,6 +261,8 @@ class ResourcePool:
         max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
         max_vm_storage = get_or_none(config, cluster, "max_vm_storage")
         max_vm_storage = int(max_vm_storage) if max_vm_storage != None else -1
+        total_cpu_cores = get_or_none(config, cluster, "total_cpu_cores")
+        total_cpu_cores = int(total_cpu_cores) if total_cpu_cores != None else -1
         hypervisor = get_or_none(config, cluster, "hypervisor")
         if hypervisor == None:
             hypervisor = 'xen'
@@ -299,6 +301,7 @@ class ResourcePool:
                     image_attach_device = get_or_none(config, cluster, "image_attach_device"),
                     scratch_attach_device = get_or_none(config, cluster, "scratch_attach_device"),
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
+                    total_cpu_cores = total_cpu_cores,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -441,6 +444,8 @@ class ResourcePool:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
                 continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
+                continue
 
             # Return the cluster as an available resource (meets all job reqs)
             return cluster
@@ -498,6 +503,8 @@ class ResourcePool:
                     if cluster.name in self.banned_job_resource[imageloc]:
                         continue
                 if cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
+                    continue
+                if cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
                     continue
             elif cluster.__class__.__name__ == "EC2Cluster":
                 # If no valid ami to boot from
@@ -670,7 +677,7 @@ class ResourcePool:
         return potential_fit
 
     def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[],
-                                        hypervisor=['xen']):
+                                        hypervisor=['xen'], cpucores=-1):
         """
         Determines which clouds could start a VM with the given requirements.
         
@@ -707,6 +714,8 @@ class ResourcePool:
             if disk > cluster.max_storageGB:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
+                continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
                 continue
             fitting.append(cluster)
         return fitting

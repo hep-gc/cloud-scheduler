@@ -558,7 +558,7 @@ class NimbusCluster(ICluster):
                  access_key_id=None, secret_access_key=None, security_group=None,
                  netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
                  image_attach_device=config.image_attach_device,
-                 scratch_attach_device=config.scratch_attach_device, boot_timeout=None):
+                 scratch_attach_device=config.scratch_attach_device, boot_timeout=None, total_cpu_cores=-1):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -573,6 +573,7 @@ class NimbusCluster(ICluster):
             total_pool_slots += self.net_slots[pool]
         self.max_slots = total_pool_slots
         self.max_vm_storage = max_vm_storage
+        self.total_cpu_cores = total_cpu_cores
         self.vm_lifetime = vm_lifetime if vm_lifetime != None else config.vm_lifetime
         self.scratch_attach_device = scratch_attach_device if scratch_attach_device != None else config.scratch_attach_device
         self.image_attach_device = image_attach_device if image_attach_device != None else config.image_attach_device
@@ -1157,8 +1158,12 @@ class NimbusCluster(ICluster):
             remaining_net_slots = self.net_slots[vm.network] - 1
             if remaining_net_slots < 0:
                 raise NoResourcesError("net_slots: %s" % vm.network)
+            remaining_cores = self.total_cpu_cores - vm.cpucores
+            if remaining_cores < 0:
+                raise NoResourcesError("Not Enough Cores to allocate %i" % vm.cpucores)
             ICluster.resource_checkout(self, vm)
             self.net_slots[vm.network] = remaining_net_slots
+            self.total_cpu_cores = remaining_cores
 
     def resource_return(self, vm):
         """Returns the resources taken by the passed in VM to the Cluster's internal
@@ -1168,6 +1173,7 @@ class NimbusCluster(ICluster):
         """
         with self.res_lock:
             self.net_slots[vm.network] += 1
+            self.total_cpu_cores += vm.cpucores
             ICluster.resource_return(self, vm)
 
     def slot_fill_ratio(self):
