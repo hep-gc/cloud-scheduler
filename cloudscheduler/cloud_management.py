@@ -502,6 +502,13 @@ class ResourcePool:
                 if network and network in cluster.net_slots.keys() and cluster.net_slots[network] <= 0:
                     log.verbose("get_fitting_resources - No Slots left in network %s on %s" % (network, cluster.name))
                     continue
+                if not network:
+                    full = True
+                    for net in cluster.net_slots.keys():
+                        if cluster.net_slots[net] > 0:
+                            full = False
+                    if full:
+                        continue
                 if imageloc in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[imageloc]:
                         continue

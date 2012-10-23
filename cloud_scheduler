@@ -539,7 +539,7 @@ class Scheduler(threading.Thread):
         
                             # Check that type of VM for job is needed
                             #if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
-                            if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] <= 0 or self.sched_allow_over_allocation(diff_types, job):
+                            if (job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] <= 0) or self.sched_allow_over_allocation(diff_types, job):
                                 if self.sched_resource_create_track(user, job):
                                     if job.job_per_core and job.req_cpucores > 1:
                                         for job in self.job_pool.job_container.find_unscheduled_jobs_with_matching_reqs(user, \
