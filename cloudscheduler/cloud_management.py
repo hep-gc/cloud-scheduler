@@ -40,7 +40,10 @@ except:
     import pickle
 
 import cluster_tools
-import stratuslabcluster
+try:
+    import stratuslabcluster
+except:
+    log.warning("Missing stratuslab modules")
 import cloudscheduler.config as config
 
 from cloudscheduler.utilities import determine_path
