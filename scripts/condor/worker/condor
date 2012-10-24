@@ -397,23 +397,29 @@ setup_on_ec2() {
 
 			# Set hostname to external
 			EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
-			hostname $EXTHOSTNAME
+			VALID_HOST=$?
+			if [VALID_HOST -eq 0 ] ; then
+				hostname $EXTHOSTNAME
 
-			private_network_name=amazon-ec2-`curl -s http://$EC2_METADATA/latest/meta-data/placement/availability-zone`
-			replace_or_append "PRIVATE_NETWORK_NAME" "PRIVATE_NETWORK_NAME=$private_network_name" $local_file
+				private_network_name=amazon-ec2-`curl -s http://$EC2_METADATA/latest/meta-data/placement/availability-zone`
+				replace_or_append "PRIVATE_NETWORK_NAME" "PRIVATE_NETWORK_NAME=$private_network_name" $local_file
 
-			tcp_forwarding_host=`curl -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
-			replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
+				tcp_forwarding_host=`curl -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
+				replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
 
-			private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
-			replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
+				private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
+				replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
+			fi
 		else
 			# Set hostname to instance id when we're using private net
 			EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/instance-id`
-			hostname $EXTHOSTNAME
+			VALID_ID=$?
+			if [ VALID_ID - eq 0 ] ; then
+				hostname $EXTHOSTNAME
 
-			private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
-			replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
+				private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
+				replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
+			fi
 		fi
 	fi
 
