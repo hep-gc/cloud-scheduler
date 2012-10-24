@@ -703,6 +703,7 @@ class NimbusCluster(ICluster):
             elif err_type == 'NoSlotsInNetwork' and config.adjust_insufficient_resources:
                 with self.res_lock:
                     if vm_networkassoc in self.net_slots.keys():
+                        self.vm_slots -= self.net_slots[vm_networkassoc]
                         self.net_slots[vm_networkassoc] = 0 # no slots remaining
                 create_return = -2
             elif err_type =='NotEnoughMemory' and config.adjust_insufficient_resources:
