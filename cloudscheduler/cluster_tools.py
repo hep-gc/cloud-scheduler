@@ -1159,12 +1159,14 @@ class NimbusCluster(ICluster):
             remaining_net_slots = self.net_slots[vm.network] - 1
             if remaining_net_slots < 0:
                 raise NoResourcesError("net_slots: %s" % vm.network)
-            remaining_cores = self.total_cpu_cores - vm.cpucores
-            if remaining_cores < 0:
-                raise NoResourcesError("Not Enough Cores to allocate %i" % vm.cpucores)
+            if self.total_cpu_cores != -1:
+                remaining_cores = self.total_cpu_cores - vm.cpucores
+                if remaining_cores < 0:
+                    raise NoResourcesError("Not Enough Cores to allocate %i" % vm.cpucores)
             ICluster.resource_checkout(self, vm)
             self.net_slots[vm.network] = remaining_net_slots
-            self.total_cpu_cores = remaining_cores
+            if self.total_cpu_cores != -1:
+                self.total_cpu_cores = remaining_cores
 
     def resource_return(self, vm):
         """Returns the resources taken by the passed in VM to the Cluster's internal
@@ -1174,7 +1176,8 @@ class NimbusCluster(ICluster):
         """
         with self.res_lock:
             self.net_slots[vm.network] += 1
-            self.total_cpu_cores += vm.cpucores
+            if self.total_cpu_cores != -1:
+                self.total_cpu_cores += vm.cpucores
             ICluster.resource_return(self, vm)
 
     def slot_fill_ratio(self):
