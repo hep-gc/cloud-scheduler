@@ -43,7 +43,7 @@ import cluster_tools
 try:
     import stratuslabcluster
 except:
-    log.warning("Missing stratuslab modules")
+    pass
 import cloudscheduler.config as config
 
 from cloudscheduler.utilities import determine_path
