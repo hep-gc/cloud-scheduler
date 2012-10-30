@@ -1356,6 +1356,9 @@ class Cleanup(threading.Thread):
                                 vm.condorname = machine['Machine']
                             if machine.has_key('MyAddress'):
                                 vm.condoraddr = machine['MyAddress']
+                            if machine.has_key('State'):
+                                if vm.idle_start and machine['State'] == "Claimed":
+                                    vm.idle_start = None
                             foundvm = True
                             break
                     if not foundvm:
