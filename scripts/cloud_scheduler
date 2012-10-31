@@ -108,7 +108,8 @@ case "$1" in
         forcekill
         ;;
     reconfig)
-        reconfig
+        echo $"reconfig disabled. Use quickrestart"
+        #reconfig
         ;;
     status)
 	if [ -f $PIDFILE ]; then

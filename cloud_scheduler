@@ -2170,7 +2170,8 @@ def make_reconfig_handler(resource_pool):
     """
     def reconfig_handler(signal, handler):
         log.info("Recieved SIGUSR1 (reconfig) signal. Reloading resources file...")
-        resource_pool.setup()
+        log.warning("Reconfig disabled, use quickrestart.")
+        #resource_pool.setup()
 
     return reconfig_handler
 
