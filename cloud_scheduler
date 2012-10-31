@@ -640,7 +640,7 @@ class Scheduler(threading.Thread):
             self.job_pool.schedule(job)
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, True)
-        elif create_ret == -1: # or create_ret == -2: 
+        elif create_ret == -1: # proxy problem 
             job.banned = True
             job.ban_time = time.time()
             job.override_status = "TempBanned"
@@ -652,6 +652,11 @@ class Scheduler(threading.Thread):
             else:
                 log.debug("Insufficient resources to boot VM, will keep trying.")
             return False
+        elif create_ret == -3: # exceeded maximum or not authorized
+            for cloud in good_resources:
+                if cloud.name not in job.blocked_clouds:
+                    job.blocked_clouds.append(cloud.name)
+                    job.block_time = int(time.time())
         else:
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, False)

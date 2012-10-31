@@ -182,6 +182,8 @@ class Job:
         global log
         log = logging.getLogger("cloudscheduler")
 
+        self.block_time = None
+        self.blocked_clouds = []
         self.target_clouds = []
         try:
             if len(TargetClouds) != 0:
