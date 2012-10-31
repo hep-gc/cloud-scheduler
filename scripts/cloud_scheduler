@@ -55,14 +55,14 @@ start () {
 stop () {
     if [ -f $PIDFILE ]; then
         echo -n $"Stopping $SERVICE:"
-	PID=`cat $PIDFILE`
+        PID=`cat $PIDFILE`
         /bin/kill $PID
-	while ps -p $PID >/dev/null; do sleep 1; done
+        while ps -p $PID >/dev/null; do sleep 1; done
         if [ $? -eq 0 ]; then
             rm -f $PIDFILE >/dev/null 2>&1
         fi
         rm -f /var/lock/subsys/$SERVICE
-    	ok
+        ok
     fi
 }
 
@@ -95,6 +95,7 @@ reconfig () {
     fi
 }
 
+
 RETVAL=0
 
 case "$1" in
@@ -112,7 +113,7 @@ case "$1" in
         #reconfig
         ;;
     status)
-	if [ -f $PIDFILE ]; then
+        if [ -f $PIDFILE ]; then
         PID=`cat $PIDFILE`
         ps $PID >/dev/null
         IS_RUNNING=$?
@@ -122,9 +123,9 @@ case "$1" in
         else
             echo $"$SERVICE has exited unexpectedly."
         fi
-	else
-		echo "$SERVICE isn't running."
-	fi
+        else
+            echo "$SERVICE isn't running."
+        fi
         ;;
     restart)
         stop
@@ -134,6 +135,14 @@ case "$1" in
         quickstop
         ;;
     quickrestart)
+        quickstop
+        start
+        ;;
+    'reload')
+        quickstop
+        start
+        ;;
+    'force-reload')
         quickstop
         start
         ;;
