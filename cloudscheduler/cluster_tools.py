@@ -702,7 +702,7 @@ class NimbusCluster(ICluster):
             _remove_files(nimbus_files + [vm_proxy_file_path])
             err_type = self._extract_create_error(create_err)
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
-            if err_type == 'NoProxy' or err_type == 'ExpiredProxy' or err_type == 'NotAuthorized':
+            if err_type == 'NoProxy' or err_type == 'ExpiredProxy':
                 create_return = -1
             elif err_type == 'NoSlotsInNetwork' and config.adjust_insufficient_resources:
                 with self.res_lock:
@@ -715,6 +715,8 @@ class NimbusCluster(ICluster):
                     index = self.find_mementry(vm_mem)
                     self.memory[index] = vm_mem - 1 # may still be memory, but just not enough for this vm
                 create_return = -2
+            elif err_type == 'ExceedMaximumWorkspaces' or err_type == 'NotAuthorized':
+                create_return = -3
 
             return create_return
 
@@ -1128,6 +1130,11 @@ class NimbusCluster(ICluster):
         out_of_memory = re.search("Resource request denied: Error creating workspace.s..+based on memory", output)
         if out_of_memory:
             return "NotEnoughMemory"
+        
+        # Check if exceeded maximum allowed VMs
+        exceed = re.search("Denied: Request for 1 workspaces, together with number of currently..concurrently running workspaces.", output)
+        if exceed:
+            return "ExceedMaximumWorkspaces"
 
         return "Error"
     def _cache_proxy(self, proxy_file_path):
