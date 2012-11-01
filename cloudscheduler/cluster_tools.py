@@ -1264,7 +1264,7 @@ class EC2Cluster(ICluster):
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
-                                   is_secure=False,
+                                   is_secure=True,
                                    region=region,
                                    port=8773,
                                    path="/services/Cloud",
