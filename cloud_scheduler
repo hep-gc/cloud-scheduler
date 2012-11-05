@@ -1729,7 +1729,13 @@ class Cleanup(threading.Thread):
                     if retired_vm != None and retired_vm.override_status != 'Retiring':
                         masterIpAddr = ""
                         for master in self.resource_pool.master_list:
-                            if master['Name'] == busy_vms[x]['Name']:
+                            try:
+                                busy_name = busy_vms[x]['Name']
+                                busy_name_parts = busy_name.split("@")
+                                busy_name = busy_name_parts[1]
+                            except:
+                                busy_name = busy_vms[x]['Name']
+                            if master['Name'] == busy_name:
                                 masterIpAddr = master['MasterIpAddr']
                         if masterIpAddr != "":
                             (_, ret2, _, ret22) = self.resource_pool.do_condor_off(busy_vms[x]['Machine'], busy_vms[x]['MyAddress'], masterIpAddr)
