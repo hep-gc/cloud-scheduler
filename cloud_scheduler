@@ -1387,7 +1387,7 @@ class Cleanup(threading.Thread):
                 foundvm = False
                 if vm.status == 'Running' and masterList:
                     for machine in masterList:
-                        if utilities.match_host_with_condor_host(vm.hostname, machine['Machine']):
+                        if utilities.match_host_with_condor_host_master(vm.hostname, machine['Machine']):
                             if 'MasterIpAddr' in machine.keys():
                                 vm.condormasteraddr = machine['MasterIpAddr']
                                 foundvm = True
