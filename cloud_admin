@@ -115,7 +115,8 @@ def main(argv=None):
         elif cli_options.disable:
             print s.disable_cloud(cli_options.disable)
         elif cli_options.reconfig:
-            print s.cloud_resources_reconfig()
+            print "Reconfig Disabled - use 'quickrestart'"
+            #print s.cloud_resources_reconfig()
         elif cli_options.limits:
             if s.user_limit_reload():
                 print "User-Limit file reloaded."
