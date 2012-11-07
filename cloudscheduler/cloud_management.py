@@ -458,7 +458,7 @@ class ResourcePool:
 
 
     def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[],
-                              hypervisor=['xen']):
+                              hypervisor=['xen'], blocked=[]):
         """get a list of Clusters that fit the given VM/Job requirements.
         
         Keywords: (as for get_resource methods)
@@ -485,6 +485,9 @@ class ResourcePool:
         for cluster in clusters:
             log.verbose("Trying with cluster %s (Name: %s)" % (str(cluster), cluster.name))
             if not cluster.enabled:
+                continue
+            if cluster.name in blocked:
+                log.verbose("get_fitting_resources - %s is blocked." % cluster.name)
                 continue
             if cluster.hypervisor not in hypervisor:
                 log.verbose("get_fitting_resources - Wrong hypervisor on %s" % cluster.name)
@@ -568,7 +571,7 @@ class ResourcePool:
         return fitting_clusters
 
 
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[], hypervisor=['xen']):
+    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[], hypervisor=['xen'], blocked=[]):
         """
         Returns a resource that fits given requirements and fits some balance
         criteria between clusters (for example, lowest current load or most free
@@ -601,7 +604,7 @@ class ResourcePool:
 
         """
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets, hypervisor)
+        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets, hypervisor,blocked)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
@@ -687,7 +690,7 @@ class ResourcePool:
         return potential_fit
 
     def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[],
-                                        hypervisor=['xen'], cpucores=-1):
+                                        hypervisor=['xen'], cpucores=-1, blocked=[]):
         """
         Determines which clouds could start a VM with the given requirements.
         
@@ -708,6 +711,8 @@ class ResourcePool:
             clusters = self.filter_resources_by_names(targets)
         for cluster in clusters:
             if not cluster.enabled:
+                continue
+            if cluster.name in blocked:
                 continue
             if cluster.hypervisor not in hypervisor:
                 continue

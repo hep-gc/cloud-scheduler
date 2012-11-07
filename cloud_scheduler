@@ -589,7 +589,8 @@ class Scheduler(threading.Thread):
                 if userjob and userjob.uservmtype in diff_types.keys() and diff_types[userjob.uservmtype] <= 0:
                     good_resources = self.resource_pool.get_resourceBF(userjob.req_network, \
                         userjob.req_cpuarch, userjob.req_memory, userjob.req_cpucores, userjob.req_storage, \
-                        userjob.req_ami, userjob.req_imageloc, userjob.target_clouds, userjob.req_hypervisor)
+                        userjob.req_ami, userjob.req_imageloc, userjob.target_clouds, userjob.req_hypervisor, \
+                        userjob.blocked_clouds)
                     #good_resources = [pri_rsrc]
                     #if sec_rsrc and pri_rsrc != sec_rsrc:
                     #    good_resources.append(sec_rsrc)
@@ -603,7 +604,8 @@ class Scheduler(threading.Thread):
                 log.verbose("Possible Allow - check for resources: %s" % job.req_vmtype)
                 good_resources = self.resource_pool.get_resourceBF(job.req_network, \
                         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
-                        job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor)
+                        job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor, \
+                        job.blocked_clouds)
                 #good_resources = [pri_rsrc]
                 #if sec_rsrc and pri_rsrc != sec_rsrc:
                 #    good_resources.append(sec_rsrc)
@@ -620,7 +622,8 @@ class Scheduler(threading.Thread):
         # Find resources that match the job's requirements
         good_resources = self.resource_pool.get_resourceBF(job.req_network, \
         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
-        job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor)
+        job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor, \
+        job.blocked_clouds)
         
         #good_resources = [pri_rsrc]
         #if sec_rsrc and pri_rsrc != sec_rsrc:
@@ -1220,7 +1223,7 @@ class Cleanup(threading.Thread):
                 job = unsched_jobs[vmtype][0]
                 fitting = self.resource_pool.get_fitting_resources(job.req_network,  \
                         job.req_cpuarch, job.req_memory, job.req_cpucores, \
-                        job.req_storage, job.req_ami, job.req_imageloc, job.target_clouds)
+                        job.req_storage, job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor, job.blocked_clouds)
                 fits_by_type[vmtype] = set(fitting)
         for vmtype in num_to_change.keys():
             if num_to_change[vmtype] < 0:
@@ -1551,7 +1554,6 @@ class Cleanup(threading.Thread):
                                 # Check that enough time has passed to shutdown
                                 now = int(time.time())
                                 if vm.keep_alive == 0 or now - vm.idle_start > vm.keep_alive:
-                                    #vm.log_dbg()
                                     if not self.check_destroy(cluster, vm):
                                         th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
                                         th.start()
@@ -1630,7 +1632,8 @@ class Cleanup(threading.Thread):
                     vmtypes_jobs[vmtype][0].req_network, \
                     vmtypes_jobs[vmtype][0].req_cpuarch, vmtypes_jobs[vmtype][0].req_memory, \
                     vmtypes_jobs[vmtype][0].req_storage, vmtypes_jobs[vmtype][0].target_clouds,\
-                    vmtypes_jobs[vmtype][0].req_hypervisor, vmtypes_jobs[vmtype][0].req_cpucores))
+                    vmtypes_jobs[vmtype][0].req_hypervisor, vmtypes_jobs[vmtype][0].req_cpucores, \
+                    vmtypes_jobs[vmtype][0].blocked_clouds))
         return set(fitting_clusters)
 
     def want_to_balance(self, num_to_change):
