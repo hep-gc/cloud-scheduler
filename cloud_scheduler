@@ -106,7 +106,7 @@ class VMPoller(threading.Thread):
                 ret_state = cluster.vm_poll(vm)
 
                 # Print polled VM's state and details
-                log.verbose("Polled VM %s, which has status %s" % (vm.id, vm.status))
+                log.verbose("Polled VM %s, which has status %s" % (vm.id, ret_state))
 
                 # If the VM is in an error state, keep track of error and
                 # after passing some threshold destroy the machine.
