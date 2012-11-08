@@ -1369,6 +1369,16 @@ class Cleanup(threading.Thread):
                                     vm.idle_start = None
                             foundvm = True
                             break
+                        if utilities.match_host_with_condor_host_master(vm.hostname, machine['Machine']):
+                            if vm.condorname == None:
+                                vm.condorname = machine['Machine']
+                            if machine.has_key('MyAddress'):
+                                vm.condoraddr = machine['MyAddress']
+                            if machine.has_key('State'):
+                                if vm.idle_start and machine['State'] == "Claimed":
+                                    vm.idle_start = None
+                            foundvm = True
+                            break
                     if not foundvm:
                         if vm.override_status == 'Retiring':
                             retiredvms.append(vm)
