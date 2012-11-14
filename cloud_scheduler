@@ -1670,6 +1670,7 @@ class Cleanup(threading.Thread):
         makes use of condor_off to put machines into a Retiring state so they will not
         accept new jobs once their current job finishes execution."""
         log.verbose("Balancing via condor_off, machines will be shutdown once finished current job.")
+        log.verbose("Num to change: %s" % str(num_to_change))
         fitting_set = self.filter_fitting_resources(num_to_change)
         internal_vms = self.resource_pool.get_vmtypes_count_internal()
         #sched_jobs = self.job_pool.job_container.get_scheduled_jobs_by_type()
