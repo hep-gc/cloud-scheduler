@@ -1252,7 +1252,17 @@ class Cleanup(threading.Thread):
                         nummem = 0
                         for mement in cloud.memory:
                             nummem += (mement / job.req_memory)
-                        num_fit_cloud = nummem if nummem < num_fit_cloud else num_fit_cloud
+                        numcpu = 0
+                        if cloud.total_cpu_cores == -1:
+                            numcpu = -1
+                        else:
+                            if job.req_cpucores != 0:
+                                numcpu = int(cloud.total_cpu_cores / job.req_cpucores)
+                        if numstore < 0:
+                            numstore = max(nummem, num_fit_cloud, numcpu)
+                        if numcpu < 0:
+                            numcpu = max(nummem, num_fit_cloud, numstore)
+                        num_fit_cloud = min(nummem, num_fit_cloud, numstore, numcpu)
                         num_fit += num_fit_cloud
                         #log.verbose("Can fit %i VMs on the %s cloud." % (num_fit_cloud, cloud.name))
                     #log.verbose("Can fit %i VMs total." % num_fit)
