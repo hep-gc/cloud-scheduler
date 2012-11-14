@@ -511,13 +511,17 @@ class ResourcePool:
                         if cluster.net_slots[net] > 0:
                             full = False
                     if full:
+                        log.verbose("get_fitting_resources - No Slots left on %s" % cluster.name)
                         continue
                 if imageloc in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[imageloc]:
+                        log.verbose("get_fitting_resources - %s cloud is banned for image location" % cluster.name)
                         continue
                 if cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
+                    log.verbose("get_fitting_resources - Storage request exceeds max_vm_storage for %s" % cluster.name)
                     continue
                 if cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
+                    log.verbose("get_fitting_resources - cpu request greater than total available cores on %s" % cluster.name)
                     continue
             elif cluster.__class__.__name__ == "EC2Cluster":
                 # If no valid ami to boot from
@@ -526,6 +530,7 @@ class ResourcePool:
                 # If ami banned from cluster
                 if ami in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[ami]:
+                        log.verbose("get_fitting_resources - %s ami banned on %s" % (ami, cluster.name))
                         continue
             
             elif cluster.__class__.__name__ == "StratusLabCluster" and stratuslab_support:
