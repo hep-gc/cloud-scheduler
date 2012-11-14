@@ -735,8 +735,8 @@ class ResourcePool:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
                 continue
-            if cluster.cpu_cores < cpucores:
-                continue
+            #if cluster.cpu_cores < cpucores:
+             #   continue
             fitting.append(cluster)
         return fitting
 
