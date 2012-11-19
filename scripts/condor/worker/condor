@@ -358,7 +358,7 @@ setup_ccb() {
 
 	if [ $NON_LOCAL -eq 1 ]; then
 		# All addresses are local
-		LOCAL_ADDRESS=LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+		LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
 		echo $LOCAL_ADDRESS $HOSTNAME "# Added for Condor CCB" >> /etc/hosts
 	fi
 }
