@@ -570,10 +570,8 @@ class Scheduler(threading.Thread):
         resources to give them to increase that share, this will allow other users to
         continue to use other remaining resources that the underallocated user is unable to use."""
         allow = False
-        #retiring = self.resource_pool.retiring_vms_of_type(job.req_vmtype)
         retiring = self.resource_pool.retiring_vms_of_usertype(job.uservmtype)
         userjoblimits = self.job_pool.get_usertype_limits()
-        #if job.req_vmtype in diff_types.keys() and diff_types[job.req_vmtype] > 0 and len(retiring) == 0:
         if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] > 0 and len(retiring) == 0:
             over_allocate = True
             # Job may be candidate to over allocate if all underallocated jobs have no available resources
@@ -591,9 +589,6 @@ class Scheduler(threading.Thread):
                         userjob.req_cpuarch, userjob.req_memory, userjob.req_cpucores, userjob.req_storage, \
                         userjob.req_ami, userjob.req_imageloc, userjob.target_clouds, userjob.req_hypervisor, \
                         userjob.blocked_clouds)
-                    #good_resources = [pri_rsrc]
-                    #if sec_rsrc and pri_rsrc != sec_rsrc:
-                    #    good_resources.append(sec_rsrc)
                     # See if there's a valid resource for job to boot on
                     if len(good_resources) > 0:
                         # Still resources available
@@ -606,9 +601,6 @@ class Scheduler(threading.Thread):
                         job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage, \
                         job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor, \
                         job.blocked_clouds)
-                #good_resources = [pri_rsrc]
-                #if sec_rsrc and pri_rsrc != sec_rsrc:
-                #    good_resources.append(sec_rsrc)
                 # See if there's a valid resource for job to boot on
                 if len(good_resources) > 0:
                     allow = True
@@ -921,11 +913,6 @@ class Cleanup(threading.Thread):
 
         while not self.quit:
             self.check_destroy_threads()
-            # Check through new jobs for running jobs and move to sched
-            log.verbose("Syncing job queues")
-            self.clean_scheduled_unscheduled()
-            # Check the scheduled Jobs to see which running jobs are on what cloud
-            self.clean_match_jobs_clouds()
             if config.retire_before_lifetime:
                 # Check for VMs near max lifetime 
                 self.clean_retire_near_lifetime()
@@ -939,17 +926,14 @@ class Cleanup(threading.Thread):
             # we would shut down all the VMs for those jobs. Sometimes querying
             # a slow schedd can take quite a few minutes
             if self.job_pool.last_query:
+                machineList = self.resource_pool.machine_list
                 ## Check that jobs are valid for the clusters available
                 self.clean_invalid_jobs()
                 ## Clear all un-needed VMs from the system
-                log.verbose("Attempting to balance VMs")
-                self.clean_balance_vms()
                 log.verbose("Clearing all un-needed VMs from the system")
                 self.clean_unneeded_vms()
-                machineList = self.resource_pool.machine_list
                 ## See if any stray entries in condor_status
                 #self.clean_check_vms_extra_machines(machineList)
-                #if machineList:
                 # Make sure VMs have registered with Condor
                 # Check if any retiring VMs have Retired
                 unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(machineList)
@@ -965,6 +949,14 @@ class Cleanup(threading.Thread):
                 if config.clean_shutdown_idle:
                     # Check for Idle machines that cannot run any jobs
                     self.clean_verify_vm_job_reqs()
+                log.verbose("Attempting to balance VMs")
+                self.clean_balance_vms()
+
+            # Check through new jobs for running jobs and move to sched
+            log.verbose("Syncing job queues")
+            self.clean_scheduled_unscheduled()
+            # Check the scheduled Jobs to see which running jobs are on what cloud
+            self.clean_match_jobs_clouds()
 
             log.verbose("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
