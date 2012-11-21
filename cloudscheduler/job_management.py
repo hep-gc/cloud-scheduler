@@ -92,7 +92,8 @@ class Job:
              TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
-             VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None, **kwargs):
+             VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
+             VMSecurityGroup=None, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -171,6 +172,7 @@ class Job:
         self.req_instance_type_ibm = VMInstanceTypeIBM
         self.location = VMLocation
         self.key_name = VMKeyName
+        self.req_security_group = splitnstrip(',', VMSecurityGroup)
 
         # Set the new job's status
         if self.job_status == 2:
@@ -683,6 +685,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMImageID")
                 _add_if_exists(xml_job, job_dictionary, "VMKeyName")
                 _add_if_exists(xml_job, job_dictionary, "VMInstanceTypeIBM")
+                _add_if_exists(xml_job, job_dictionary, "VMSecurityGroup")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
