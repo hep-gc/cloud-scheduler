@@ -1517,19 +1517,16 @@ class Cleanup(threading.Thread):
             for vm in cluster.vms:
                 if vm.hostname in changed:
                     vm_matches.append(vm)
-                #if vm.status == "Starting" and internal_types[vm.vmtype] > num_to_change[vm.vmtype]:
                 if vm.status == "Starting" and vm.uservmtype in internal_types.keys() and vm.uservmtype in num_to_change.keys() and internal_types[vm.uservmtype] > num_to_change[vm.uservmtype]:
                     vm_starting.append(vm)
         to_shutdown = []
         fitting_set = self.filter_fitting_resources(num_to_change)
 
         for vm in vm_starting + vm_matches:
-            #if vm.vmtype in num_to_change.keys() and num_to_change[vm.vmtype] > 0:
             if vm.uservmtype in num_to_change.keys() and num_to_change[vm.uservmtype] > 0:
                 vm_in_cluster = self.resource_pool.get_cluster_with_vm(vm)
                 if vm_in_cluster and vm_in_cluster in fitting_set:
                     to_shutdown.append(vm)
-                    #num_to_change[vm.vmtype] -= 1
                     num_to_change[vm.uservmtype] -= 1
         for vm in to_shutdown:
             cluster = self.resource_pool.get_cluster_with_vm(vm)
@@ -1554,7 +1551,6 @@ class Cleanup(threading.Thread):
         self.remove_idle_machines(machineList, num_to_change)
     def filter_fitting_resources(self, num_to_change):
         """Finds the clusters that are capable of booting VMs for a type of job."""
-        #vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_type()
         vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
         
         fitting_clusters = []
@@ -1586,13 +1582,11 @@ class Cleanup(threading.Thread):
         log.verbose("Num to change: %s" % str(num_to_change))
         fitting_set = self.filter_fitting_resources(num_to_change)
         internal_vms = self.resource_pool.get_vmtypes_count_internal()
-        #sched_jobs = self.job_pool.job_container.get_scheduled_jobs_by_type()
         sched_jobs = self.job_pool.job_container.get_scheduled_jobs_by_usertype()
         unsched_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
         for vmtype, val in num_to_change.iteritems():
             if val == 0:
                 continue # nothing to do here
-            #retiring_vms_of_type = self.resource_pool.retiring_vms_of_type(vmtype)
             retiring_vms_of_type = self.resource_pool.retiring_vms_of_usertype(vmtype)
             num_force = 0
             for vm in reversed(retiring_vms_of_type):
@@ -1608,7 +1602,6 @@ class Cleanup(threading.Thread):
                     registered_diff = internal_vms[vmtype] - len(tot_vms_of_type) - num_force
                     # have registered_diff starting/error machines - shutdown those instead of running ones
                     if registered_diff > 0:
-                        #starting_vms_of_type = self.resource_pool.get_starting_of_type(vmtype)
                         starting_vms_of_type = self.resource_pool.get_starting_of_usertype(vmtype)
                         error_vms_of_type = self.resource_pool.get_error_of_usertype(vmtype)
                         num_error_to_destroy = 0
