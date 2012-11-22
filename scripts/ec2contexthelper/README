@@ -5,4 +5,8 @@ This script contextualizes your EC2 VM with Nimbus Style Context Data.
 To install it to start at runtime, just run the setup, and chkconfig:
 
 # python setup.py install
+# chmod +x /etc/init.d/context
 # chkconfig context on
+
+# check that the contexthelper script is in the path, if not make sure that CONTEXT_HELPER in /etc/init.d/context is updated with the full path of contexthelper (ie. /usr/local/bin/contexthelper)
+
