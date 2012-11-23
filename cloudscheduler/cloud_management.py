@@ -1721,7 +1721,7 @@ class ResourcePool:
         num_starting = 0
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.status == "Starting":
+                if vm.status == "Starting" or vm.status == "Unpropagated":
                     num_starting += 1
         log.verbose("There are %i Starting VMs, the max_starting_vm is %i." % (num_starting, config.max_starting_vm))
         return num_starting
