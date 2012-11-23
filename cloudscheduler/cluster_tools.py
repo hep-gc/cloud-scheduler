@@ -1305,6 +1305,7 @@ class EC2Cluster(ICluster):
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
         self.key_name = key_name
+        self.total_cpu_cores = -1
 
         connection = self._get_connection()
 
@@ -1571,6 +1572,7 @@ class IBMCluster(ICluster):
         self.username = username
         self.password = password
         self.driver = get_driver(Provider.IBM)
+        self.total_cpu_cores = -1
         #self.connection = self.driver(self.username, self.password)
         #self.locations = self.connection.list_locations()
         #self.locations_dict = {loc.id: loc for loc in self.locations}
