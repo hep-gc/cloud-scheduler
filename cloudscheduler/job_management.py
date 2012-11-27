@@ -93,7 +93,7 @@ class Job:
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
-             VMSecurityGroup=None, **kwargs):
+             VMSecurityGroup="", **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
