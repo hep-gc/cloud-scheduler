@@ -211,7 +211,6 @@ class JobPoller(threading.Thread):
                     log.error("Failed to contact Condor job scheduler. Continuing with VM management.")
                 del condor_jobs
 
-                #new_req_vmtypes = self.job_pool.get_required_vmtypes()
                 new_req_vmtypes = self.job_pool.get_required_uservmtypes()
                 # What's no longer needed
                 taken_out = set(prev_req_vmtypes) - set(new_req_vmtypes)
