@@ -489,9 +489,6 @@ class ResourcePool:
             if cluster.name in blocked:
                 log.verbose("get_fitting_resources - %s is blocked." % cluster.name)
                 continue
-            if cluster.hypervisor not in hypervisor:
-                log.verbose("get_fitting_resources - Wrong hypervisor on %s" % cluster.name)
-                continue
             if cluster.__class__.__name__ == "NimbusCluster":
                 # If not valid image file to download
                 if imageloc == "":
@@ -522,6 +519,9 @@ class ResourcePool:
                     continue
                 if cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
                     log.verbose("get_fitting_resources - cpu request greater than total available cores on %s" % cluster.name)
+                    continue
+                if cluster.hypervisor not in hypervisor:
+                    log.verbose("get_fitting_resources - Wrong hypervisor on %s" % cluster.name)
                     continue
             elif cluster.__class__.__name__ == "EC2Cluster":
                 # If no valid ami to boot from
@@ -690,7 +690,7 @@ class ResourcePool:
                 continue
             if cluster.name in blocked:
                 continue
-            if cluster.hypervisor not in hypervisor:
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
                 continue
             if not (cpuarch in cluster.cpu_archs):
                 continue
