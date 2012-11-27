@@ -720,10 +720,12 @@ class JobPool:
             return
 
         # Filter out any jobs in an error status (from the given job list)
+        jobs_removed_due_status = 0
         for job in reversed(query_jobs):
-            if job.job_status >= self.ERROR or job.job_status == self.REMOVED or job.job_status == self.COMPLETE:
+            if job.job_status >= self.REMOVED:
+                jobs_removed_due_status += 1
                 query_jobs.remove(job)
-
+        log.verbose("Jobs removed due to status held, removed, error, complete: %i" % jobs_removed_due_status)
         # Update all system jobs:
         #   - remove jobs already in the system from the jobs list
         #   - remove finished jobs (job in system, not in jobs list)
