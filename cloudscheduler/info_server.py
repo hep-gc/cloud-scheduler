@@ -387,7 +387,8 @@ class VMJSONEncoder(json.JSONEncoder):
                 'memory': vm.memory, 'mementry': vm.mementry, 
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status, 'condoraddr': vm.condoraddr,
-                'condorname': vm.condorname}
+                'condorname': vm.condorname, 'condormasteraddr': vm.condormasteraddr,
+                'keep_alive': vm.keep_alive}
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
@@ -405,7 +406,8 @@ class ClusterJSONEncoder(json.JSONEncoder):
                 'cpu_archs': cluster.cpu_archs, 
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
-                'storageGB': cluster.storageGB, 'vms': vmDecodes}
+                'storageGB': cluster.storageGB, 'vms': vmDecodes, 'enabled':cluster.enabled,
+                'hypervisor': cluster.hypervisor}
 
 class ResourcePoolJSONEncoder(json.JSONEncoder):
     def default(self, res_pool):
@@ -433,7 +435,9 @@ class JobJSONEncoder(json.JSONEncoder):
                 'req_ami': job.req_ami, 'req_memory': job.req_memory,
                 'req_cpucores': job.req_cpucores, 'req_storage': job.req_storage,
                 'keep_alive': job.keep_alive, 'status': job.status,
-                'remote_host': job.remote_host, 'running_cloud': job.running_cloud}
+                'remote_host': job.remote_host, 'running_cloud': job.running_cloud,
+                'banned': job.banned, 'ban_time': job.ban_time, 'target_clouds':job.target_clouds,
+                'blocked_clouds':job.blocked_clouds}
 
 class JobPoolJSONEncoder(json.JSONEncoder):
     def default(self, job_pool):
