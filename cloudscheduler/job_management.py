@@ -92,7 +92,8 @@ class Job:
              TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
-             VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None, **kwargs):
+             VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
+             VMSecurityGroup="", **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -171,6 +172,7 @@ class Job:
         self.req_instance_type_ibm = VMInstanceTypeIBM
         self.location = VMLocation
         self.key_name = VMKeyName
+        self.req_security_group = splitnstrip(',', VMSecurityGroup)
 
         # Set the new job's status
         if self.job_status == 2:
@@ -182,6 +184,8 @@ class Job:
         global log
         log = logging.getLogger("cloudscheduler")
 
+        self.block_time = None
+        self.blocked_clouds = []
         self.target_clouds = []
         try:
             if len(TargetClouds) != 0:
@@ -362,6 +366,17 @@ class Job:
                 if not os.path.isfile(proxyfilepath):
                     log.debug("Could not locate the proxy file at %s." % self.vmimage_proxy_file)
                     proxyfilepath = ''
+                    # going to try stripping any extra path from the entered value
+                    proxy_file_name = self.vmimage_proxy_file.split('/')
+                    if len(proxy_file_name) > 1:
+                        proxy_file_name = proxy_file_name[-1]
+                    else:
+                        proxy_file_name = proxy_file_name[0]
+                    proxyfilepath = ''.join([self.spool_dir, '/', proxy_file_name])
+                    if not os.path.isfile(proxyfilepath):
+                        log.debug("Could not locate the proxy file at %s either." % proxyfilepath)
+                        proxyfilepath = ''
+
         return proxyfilepath
 
 class JobPool:
@@ -670,6 +685,7 @@ class JobPool:
                 _add_if_exists(xml_job, job_dictionary, "VMImageID")
                 _add_if_exists(xml_job, job_dictionary, "VMKeyName")
                 _add_if_exists(xml_job, job_dictionary, "VMInstanceTypeIBM")
+                _add_if_exists(xml_job, job_dictionary, "VMSecurityGroup")
 
                 # Requirements requires special fiddling
                 requirements = _job_attribute(xml_job, "Requirements")
@@ -704,10 +720,12 @@ class JobPool:
             return
 
         # Filter out any jobs in an error status (from the given job list)
+        jobs_removed_due_status = 0
         for job in reversed(query_jobs):
-            if job.job_status >= self.ERROR or job.job_status == self.REMOVED or job.job_status == self.COMPLETE:
+            if job.job_status >= self.REMOVED:
+                jobs_removed_due_status += 1
                 query_jobs.remove(job)
-
+        log.verbose("Jobs removed due to status held, removed, error, complete: %i" % jobs_removed_due_status)
         # Update all system jobs:
         #   - remove jobs already in the system from the jobs list
         #   - remove finished jobs (job in system, not in jobs list)

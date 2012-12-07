@@ -243,14 +243,54 @@ class InfoServer(threading.Thread,):
                 desired_types = job_pool.job_type_distribution()
                 # Negative difference means will need to create that type
                 diff_types = {}
-                for type in current_types.keys():
-                    if type in desired_types.keys():
-                        diff_types[type] = current_types[type] - desired_types[type]
+                for vmtype in current_types.keys():
+                    if vmtype in desired_types.keys():
+                        diff_types[vmtype] = current_types[vmtype] - desired_types[vmtype]
                     else:
-                        diff_types[type] = 1 # changed from 0 to handle users with multiple job types
-                for type in desired_types.keys():
-                    if type not in current_types.keys():
-                        diff_types[type] = -desired_types[type]
+                        diff_types[vmtype] = 1 # changed from 0 to handle users with multiple job types, back to 0 from 1.
+                for vmtype in desired_types.keys():
+                    if vmtype not in current_types.keys():
+                        diff_types[vmtype] = -desired_types[vmtype]
+        
+                # With user limiting will need to reset any users that are at their limits
+                # so they will not interfere with scheduling
+                # will need to redistribute negatives to the non-limited users
+                limited_users = []
+                userjoblimits = job_pool.get_usertype_limits()
+                for vmusertype in diff_types.keys():
+                    user = vmusertype.split(':')[0]
+                    if cloud_resources.user_at_limit(user):
+                        if vmusertype not in limited_users:
+                            limited_users.append(vmusertype)
+                    if vmusertype in userjoblimits.keys():
+                        if cloud_resources.uservmtype_at_limit(vmusertype, userjoblimits[vmusertype]):
+                            if vmusertype not in limited_users:
+                                limited_users.append(vmusertype)
+                neg_total = 0
+                for usertype in limited_users:
+                    if diff_types[usertype] < 0:
+                        neg_total += diff_types[usertype]
+                splitby = len(diff_types) - len(limited_users)
+                adjustby = 0
+                if splitby > 0:
+                    adjustby = neg_total / splitby
+                elif splitby == 0:
+                    log.verbose("All users are limited.")
+                else:
+                    log.error("More user vmtypes limited than what's in diff types, something weird here.")
+        
+                for usertype in diff_types.keys():
+                    if usertype not in limited_users:
+                        diff_types[usertype] += adjustby # the 'extra' will be negative so add it
+                        
+                #for type in current_types.keys():
+                    #if type in desired_types.keys():
+                        #diff_types[type] = current_types[type] - desired_types[type]
+                    #else:
+                        #diff_types[type] = 1 # changed from 0 to handle users with multiple job types
+                #for type in desired_types.keys():
+                    #if type not in current_types.keys():
+                        #diff_types[type] = -desired_types[type]
                 output.append("Diff Types dictionary\n")
                 for key, value in diff_types.iteritems():
                     output.append("type: %s, dist: %f\n" % (key, value))
@@ -261,6 +301,7 @@ class InfoServer(threading.Thread,):
                 for key, value in desired_types.iteritems():
                     output.append("type: %s, dist: %f\n" % (key, value))
                 return ''.join(output)
+
             def get_vm_job_run_times(self):
                 output = []
                 output.append("Run Times of Jobs on VMs\n")
@@ -346,7 +387,8 @@ class VMJSONEncoder(json.JSONEncoder):
                 'memory': vm.memory, 'mementry': vm.mementry, 
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status, 'condoraddr': vm.condoraddr,
-                'condorname': vm.condorname}
+                'condorname': vm.condorname, 'condormasteraddr': vm.condormasteraddr,
+                'keep_alive': vm.keep_alive}
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
@@ -364,7 +406,8 @@ class ClusterJSONEncoder(json.JSONEncoder):
                 'cpu_archs': cluster.cpu_archs, 
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
-                'storageGB': cluster.storageGB, 'vms': vmDecodes}
+                'storageGB': cluster.storageGB, 'vms': vmDecodes, 'enabled':cluster.enabled,
+                'hypervisor': cluster.hypervisor}
 
 class ResourcePoolJSONEncoder(json.JSONEncoder):
     def default(self, res_pool):
@@ -392,7 +435,9 @@ class JobJSONEncoder(json.JSONEncoder):
                 'req_ami': job.req_ami, 'req_memory': job.req_memory,
                 'req_cpucores': job.req_cpucores, 'req_storage': job.req_storage,
                 'keep_alive': job.keep_alive, 'status': job.status,
-                'remote_host': job.remote_host, 'running_cloud': job.running_cloud}
+                'remote_host': job.remote_host, 'running_cloud': job.running_cloud,
+                'banned': job.banned, 'ban_time': job.ban_time, 'target_clouds':job.target_clouds,
+                'blocked_clouds':job.blocked_clouds}
 
 class JobPoolJSONEncoder(json.JSONEncoder):
     def default(self, job_pool):

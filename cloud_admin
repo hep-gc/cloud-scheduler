@@ -53,6 +53,7 @@ def main(argv=None):
     parser.add_option("-q", "--quick-exit", dest="quick", action="store_true", default=False, help="Toggle the quick shutdown flag of CS.")
     parser.add_option("-i", "--reload-limits", dest="limits", action="store_true", default=False, help="Reload the user limits file.")
     parser.add_option("-j", "--list-limits", dest="list_limits", action="store_true", default=False, help="List the current user limits.")
+    parser.add_option("-o", "--force-retire", dest="force_retire", action="store_true", default=False, help="Force Retire a VM. Requires -c name, and -n id or -a all.")
 
     (cli_options, args) = parser.parse_args()
 
@@ -99,12 +100,23 @@ def main(argv=None):
                     print "Must provide a -n [VM ID] or -a to remove all VMs on this cloud."
             else:
                 print "Must Provide the cloud name to remove VMs on and the VM ID or all flag."
+        elif cli_options.force_retire:
+            if cli_options.cloud_name:
+                if cli_options.vm_id:
+                    print s.force_retire_vm(cli_options.cloud_name, cli_options.vm_id)
+                elif cli_options.all:
+                    print s.force_retire_all_vm(cli_options.cloud_name)
+                else:
+                    print "Must provide a -n [VM ID] or -a to force retire all VMs on this cloud."
+            else:
+                print "Must Provide the cloud name to force retire VMs on and the VM ID or all flag."
         elif cli_options.enable:
             print s.enable_cloud(cli_options.enable)
         elif cli_options.disable:
             print s.disable_cloud(cli_options.disable)
         elif cli_options.reconfig:
-            print s.cloud_resources_reconfig()
+            print "Reconfig Disabled - use 'quickrestart'"
+            #print s.cloud_resources_reconfig()
         elif cli_options.limits:
             if s.user_limit_reload():
                 print "User-Limit file reloaded."

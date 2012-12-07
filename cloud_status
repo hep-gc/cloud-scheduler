@@ -35,7 +35,7 @@ def main(argv=None):
                            "information server")
     parser.add_option("-a", "--all-cluster", action="store_true", 
                       dest="all_cluster", default=False, 
-                      help="Get All clusters in Cloud Scheduler")
+                      help="Get All clusters in Cloud Scheduler, and displays remaining resources")
     parser.add_option("-c", "--cluster", dest="cluster_name", metavar="NAME", 
                       help="Get Information on a cluster")
     parser.add_option("-m", "--virtual-machines",action="store_true", 

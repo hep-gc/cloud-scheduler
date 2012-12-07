@@ -110,6 +110,10 @@ class AdminServer(threading.Thread,):
             def user_limit_reload(self):
                 cloud_resources.user_vm_limits = cloud_resources.load_user_limits(config.user_limit_file)
                 return True if len(cloud_resources.user_vm_limits) > 0 else False
+            def force_retire_vm(self, cloudname, vmid):
+                return cloud_resources.force_retire_cluster_vm(cloudname, vmid)
+            def force_retire_all_vm(self, cloudname):
+                return cloud_resources.force_retire_cluster_all(cloudname)
 
 
 

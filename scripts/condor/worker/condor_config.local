@@ -8,7 +8,9 @@ CONDOR_HOST=your.central.manager
 
 ## START requirement
 START = TRUE
-
+# Give VMs enough time to retire their jobs and for condor daemons to shutdown
+MaxJobRetirementTime = 3600 * 24 * 2
+SHUTDOWN_GRACEFUL_TIMEOUT = 3600 * 25 * 2
 ## These varibales tells condor which certificate to 
 ## use to GSI authenticate this host.
 ##

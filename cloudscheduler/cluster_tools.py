@@ -155,9 +155,12 @@ class VM:
 
     def get_vm_info(self):
         """Formatted VM information for use with cloud_status."""
-        output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, self.hostname, self.vmtype, self.user, self.status)
+        nameout = self.hostname
+        if self.hostname == "":
+            nameout = self.ipaddress
+        output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, nameout, self.vmtype, self.user, self.status)
         if self.override_status != None:
-            output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, self.hostname, self.vmtype, self.user, self.override_status)
+            output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, nameout, self.vmtype, self.user, self.override_status)
         return output
 
     @staticmethod
@@ -263,7 +266,7 @@ class VM:
             return False
         td = expiry_time - datetime.datetime.utcnow()
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        log.debug("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_shutdown_threshold))
+        log.verbose("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_shutdown_threshold))
         return td_in_seconds < config.vm_proxy_shutdown_threshold
 
     def get_env(self):
@@ -298,7 +301,7 @@ class ICluster:
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen'):
+                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
@@ -317,6 +320,7 @@ class ICluster:
         self.res_lock = threading.RLock()
         self.enabled = True
         self.hypervisor = hypervisor
+        self.boot_timeout = int(boot_timeout) if boot_timeout != None else config.vm_start_running_timeout
 
         self.setup_logging()
         log.debug("New cluster %s created" % self.name)
@@ -385,8 +389,8 @@ class ICluster:
     def get_cluster_info_short(self):
         """Return a short form of cluster information."""
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "ENABLED")
-        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.enabled)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "HYPERVISOR", "ENABLED")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.hypervisor, self.enabled)
         return output
 
     def get_cluster_vms_info(self):
@@ -537,8 +541,8 @@ class NimbusCluster(ICluster):
     # Nimbus VM states: Unstaged, Unpropagated, Propagated, Running, Paused,
     # TransportReady, StagedOut, Corrupted, Cancelled.
     VM_STATES = {
-         "Unstaged"       : "Starting",
-         "Unpropagated"   : "Starting",
+         "Unstaged"       : "Unstaged",
+         "Unpropagated"   : "Unpropagated",
          "Propagated"     : "Starting",
          "Running"        : "Running",
          "Paused"         : "Running",
@@ -554,13 +558,13 @@ class NimbusCluster(ICluster):
                  access_key_id=None, secret_access_key=None, security_group=None,
                  netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
                  image_attach_device=config.image_attach_device,
-                 scratch_attach_device=config.scratch_attach_device):
+                 scratch_attach_device=config.scratch_attach_device, boot_timeout=None, total_cpu_cores=-1):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor)
+                         storage=storage, hypervisor=hypervisor, boot_timeout= boot_timeout)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
         self.net_slots = netslots
@@ -569,6 +573,7 @@ class NimbusCluster(ICluster):
             total_pool_slots += self.net_slots[pool]
         self.max_slots = total_pool_slots
         self.max_vm_storage = max_vm_storage
+        self.total_cpu_cores = total_cpu_cores
         self.vm_lifetime = vm_lifetime if vm_lifetime != None else config.vm_lifetime
         self.scratch_attach_device = scratch_attach_device if scratch_attach_device != None else config.scratch_attach_device
         self.image_attach_device = image_attach_device if image_attach_device != None else config.image_attach_device
@@ -576,8 +581,12 @@ class NimbusCluster(ICluster):
     def get_cluster_info_short(self):
         """Returns formatted cluster information for use by cloud_status, Overloaded from baseclass to use net_slots."""
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE")
-        output += "%-25s  %-15s  %-10s  %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB)
+        if self.total_cpu_cores == -1:
+            output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "HYPERVISOR", "ENABLED")
+            output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB, self.hypervisor, self.enabled)
+        else:
+            output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "CPU_CORES", "HYPERVISOR", "ENABLED")
+            output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.net_slots, self.memory, self.storageGB, self.total_cpu_cores, self.hypervisor, self.enabled)
         return output
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
@@ -693,18 +702,21 @@ class NimbusCluster(ICluster):
             _remove_files(nimbus_files + [vm_proxy_file_path])
             err_type = self._extract_create_error(create_err)
             ## TODO Figure out some error codes to return then handle the codes in the scheduler vm creation code
-            if err_type == 'NoProxy' or err_type == 'ExpiredProxy' or err_type == 'NotAuthorized':
+            if err_type == 'NoProxy' or err_type == 'ExpiredProxy':
                 create_return = -1
-            elif err_type == 'NoSlotsInNetwork':
+            elif err_type == 'NoSlotsInNetwork' and config.adjust_insufficient_resources:
                 with self.res_lock:
                     if vm_networkassoc in self.net_slots.keys():
+                        self.vm_slots -= self.net_slots[vm_networkassoc]
                         self.net_slots[vm_networkassoc] = 0 # no slots remaining
                 create_return = -2
-            elif err_type =='NotEnoughMemory':
+            elif err_type =='NotEnoughMemory' and config.adjust_insufficient_resources:
                 with self.res_lock:
                     index = self.find_mementry(vm_mem)
                     self.memory[index] = vm_mem - 1 # may still be memory, but just not enough for this vm
                 create_return = -2
+            elif err_type == 'ExceedMaximumWorkspaces' or err_type == 'NotAuthorized':
+                create_return = -3
 
             return create_return
 
@@ -1110,14 +1122,19 @@ class NimbusCluster(ICluster):
             return "ExpiredProxy"
 
         # Check if out of network slots
-        out_of_slots = re.search("Resource request denied: Error creating workspace.s.. network", output)
+        out_of_slots = re.search("Resource request denied: Error creating workspace.s..+network", output)
         if out_of_slots:
             return "NoSlotsInNetwork"
 
         # Check if out of memory
-        out_of_memory = re.search("Resource request denied: Error creating workspace.s.. based on memory", output)
+        out_of_memory = re.search("Resource request denied: Error creating workspace.s..+based on memory", output)
         if out_of_memory:
             return "NotEnoughMemory"
+        
+        # Check if exceeded maximum allowed VMs
+        exceed = re.search("Denied: Request for 1 workspaces, together with number of currently..concurrently running workspaces.", output)
+        if exceed:
+            return "ExceedMaximumWorkspaces"
 
         return "Error"
     def _cache_proxy(self, proxy_file_path):
@@ -1153,8 +1170,14 @@ class NimbusCluster(ICluster):
             remaining_net_slots = self.net_slots[vm.network] - 1
             if remaining_net_slots < 0:
                 raise NoResourcesError("net_slots: %s" % vm.network)
+            if self.total_cpu_cores != -1:
+                remaining_cores = self.total_cpu_cores - vm.cpucores
+                if remaining_cores < 0:
+                    raise NoResourcesError("Not Enough Cores to allocate %i" % vm.cpucores)
             ICluster.resource_checkout(self, vm)
             self.net_slots[vm.network] = remaining_net_slots
+            if self.total_cpu_cores != -1:
+                self.total_cpu_cores = remaining_cores
 
     def resource_return(self, vm):
         """Returns the resources taken by the passed in VM to the Cluster's internal
@@ -1164,6 +1187,8 @@ class NimbusCluster(ICluster):
         """
         with self.res_lock:
             self.net_slots[vm.network] += 1
+            if self.total_cpu_cores != -1:
+                self.total_cpu_cores += vm.cpucores
             ICluster.resource_return(self, vm)
 
     def slot_fill_ratio(self):
@@ -1239,7 +1264,7 @@ class EC2Cluster(ICluster):
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
-                                   is_secure=False,
+                                   is_secure=True,
                                    region=region,
                                    port=8773,
                                    path="/services/Cloud",
@@ -1260,13 +1285,13 @@ class EC2Cluster(ICluster):
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 hypervisor='xen', key_name=None):
+                 hypervisor='xen', key_name=None, boot_timeout=None):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=None)
 
         if not security_group:
             security_group = "default"
@@ -1280,6 +1305,7 @@ class EC2Cluster(ICluster):
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
         self.key_name = key_name
+        self.total_cpu_cores = -1
 
         connection = self._get_connection()
 
@@ -1287,10 +1313,20 @@ class EC2Cluster(ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
-                  job_per_core=False):
+                  job_per_core=False, securitygroup=[]):
         """Attempt to boot a new VM on the cluster."""
 
         log.verbose("Trying to boot %s on %s" % (vm_type, self.network_address))
+        if len(securitygroup) != 0:
+            sec_group = []
+            for group in securitygroup:
+                if group in self.security_groups:
+                    sec_group.append(group)
+            if len(sec_group) == 0:
+                log.warning("No matching security groups - trying default")
+                sec_group.append("default")
+        else:
+            sec_group = self.security_groups
 
         try:
             vm_ami = vm_image[self.network_address]
@@ -1493,7 +1529,7 @@ class EC2Cluster(ICluster):
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
             return self.ERROR
         except:
-            log.exception("Unexpected error destroying VM: !" % vm.id)
+            log.exception("Unexpected error destroying VM: %s!" % vm.id)
 
         # Delete references to this VM
         if return_resources:
@@ -1508,6 +1544,19 @@ class IBMCluster(ICluster):
     VM_STATES = ['Running', 'Rebooting', 'Terminated', 'Pending', 'Unknown']
     VM_STATES_DICT = {'Running': 0, 'Rebooting': 1, 'Terminated': 2, 
                       'Pending': 3, 'Unknown': 4}
+    VM_COMPUTE_SIZE_MAP = { 'brz32': 0, 'bronze32': 0,
+                            'brz64': 1, 'bronze64': 1,
+                            'cop32': 2, 'copper32': 2,
+                            'cop64': 3, 'copper64': 3, 
+                            'slv32': 4, 'silver32': 4,
+                            'slv64': 5, 'silver64': 5,
+                            'gld32': 6, 'gold32': 6,
+                            'gld64': 7, 'gold64': 7,
+                        'plt64': 8, 'platinum64': 8 }
+
+    CLOUD_LOCATION_ID_MAP = {'raleigh': '41', 'ehningen': '61', 'boulder2': '81',
+                             'boulder1': '82', 'markham': '101', 'makuhari': '121',
+                             'singapore': '141',}
 
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
@@ -1520,77 +1569,131 @@ class IBMCluster(ICluster):
                          storage=storage, hypervisor=hypervisor)
         from libcloud.compute.types import Provider
         from libcloud.compute.providers import get_driver
-        from libcloud.compute.base import NodeImage, NodeSize, NodeLocation, NodeAuthSSHKey
         self.username = username
         self.password = password
         self.driver = get_driver(Provider.IBM)
-        self.connection = self.driver(self.username, self.password)
+        self.total_cpu_cores = -1
+        #self.connection = self.driver(self.username, self.password)
+        #self.locations = self.connection.list_locations()
+        #self.locations_dict = {loc.id: loc for loc in self.locations}
+        #self.compute_sizes = self.connection.list_sizes()
+        #self.images = self.connection.list_images()
+
+    def __getstate__(self):
+        """Override to work with pickle module."""
+        state = self.__dict__.copy()
+        del state['vms_lock']
+        del state['res_lock']
+        del state['driver']
+        return state
+
+    def __setstate__(self, state):
+        """Override to work with pickle module."""
+        self.__dict__ = state
+        self.vms_lock = threading.RLock()
+        self.res_lock = threading.RLock()
+        self.driver = get_driver(Provider.IBM)
+
+    def _get_connection(self, username, password):
+        self.connection = self.driver(username, password)
         self.locations = self.connection.list_locations()
+        self.locations_dict = {loc.id: loc for loc in self.locations}
         self.compute_sizes = self.connection.list_sizes()
         self.images = self.connection.list_images()
-        
-    def _get_connection(self):
-        pass
+        return self.connection
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization, 
                   vm_keepalive, instance_type, location, job_per_core,
-                  vm_keyname):
+                  vm_keyname, username="", password=""):
         # will need to use self.driver.deploy_node(...) as this seems to allow for contextualization whereas create_node() does not
-        
-        
-        new_vm = VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
-                    clusteraddr = self.network_address,
-                    cloudtype = self.cloud_type, network = vm_networkassoc,
-                    cpuarch = vm_cpuarch, image= vm_image,
-                    memory = vm_mem, mementry = vm_mementry,
-                    cpucores = vm_cores, storage = vm_storage, 
-                    keep_alive = vm_keepalive, job_per_core = job_per_core)
-        try:
-            self.resource_checkout(new_vm)
-        except:
-            log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-            self.vm_destroy(new_vm, reason="Failed Resource checkout")
-            return self.ERROR
+        from libcloud.compute.base import NodeImage, NodeSize, NodeLocation, NodeAuthSSHKey
+        if not username:
+            username = self.username
+        if not password:
+            password = self.password
+        conn = self._get_connection(username, password)
+        if instance_type and instance_type.lower() in self.VM_COMPUTE_SIZE_MAP.keys():
+            vm_size = self.compute_sizes[self.VM_COMPUTE_SIZE_MAP[instance_type.lower()]]
+        else:
+            log.debug("%s not a valid instance type." % instance_type)
+            return
+        if location.lower() in self.CLOUD_LOCATION_ID_MAP.keys():
+            try:
+                vm_location = self.locations_dict[self.CLOUD_LOCATION_ID_MAP[location.lower()]]
+            except KeyError:
+                log.debug("Bad Dict Key mapping")
+                return
+        else:
+            log.debug("%s is not a valid location" % location)
+            print 'location invalid'
+            return
 
-        self.vms.append(new_vm)
+        image = NodeImage(vm_image, '','')
+        # 20035253 image id is a RHL 5.7 that should boot on bronze 32bit and is on markham location
+        instance = None
+        vm_key = NodeAuthSSHKey(vm_keyname)
+
+        instance = conn.create_node(name=vm_name, image=image, size=vm_size, location=vm_location, auth=vm_key)
+        if instance:
+            new_vm = VM(name = vm_name, id = instance.uuid, vmtype = vm_type, user = vm_user,
+                        clusteraddr = self.network_address,
+                        cloudtype = self.cloud_type, network = vm_networkassoc,
+                        cpuarch = vm_cpuarch, image= vm_image,
+                        memory = vm_mem,
+                        cpucores = vm_cores, storage = vm_storage, 
+                        keep_alive = vm_keepalive, job_per_core = job_per_core)
+            try:
+                self.resource_checkout(new_vm)
+            except:
+                log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
+                self.vm_destroy(new_vm, reason="Failed Resource checkout")
+                return self.ERROR
+    
+            self.vms.append(new_vm)
+        else:
+            log.debug("No return from create_node()")
 
         return 0
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
-        # can use either node.destroy() or self.driver.destroy_node(node) - the latter is more consistent with how we do things in the other clouds
-        nodes = self.driver.list_nodes()
+        nodes = self.connection.list_nodes()
         for node in nodes:
             if node.uuid == vm.id:
-                self.driver.destroy_node(node)
+                self.connection.destroy_node(node)
+                log.info("VM %s Destroyed: Reason: %s" % (vm.id, reason))
                 # return resources
                 if return_resources:
                     self.resource_return(vm)
                 with self.vms_lock:
                     self.vms.remove(vm)
-                break
+                return 0
+        
 
     def vm_poll(self, vm):
         # libcloud does not seem to support polling individual VMs you simply list off what you have
         # ineffecient this way but is in line with other clouds
-        nodes = self.driver.list_nodes()
+        nodes = self.connection.list_nodes()
         for node in nodes:
             if node.uuid == vm.id:
+                if not vm.ipaddress:
+                    if node.public_ip:
+                        vm.ipaddress = node.public_ip[0]
                 if self.VM_STATES[node.state] == vm.status:
                     continue
                 # Both startup and shutdown enter the Pending state
                 elif vm.status == 'Running' and node.state == 3:
                     vm.status = self.VM_STATES[node.state]
                     vm.override_status = 'Stopping'
-                    vm.last_state_change = int(time.now())
+                    vm.last_state_change = int(time.time())
                     log.debug("VM: %s on %s. Changed from %s to Stopping." % (vm.id, self.name, vm.status))
                 elif vm.status == 'Starting' and node.state == 3:
                     vm.status = self.VM_STATES[node.state]
-                    vm.last_state_change = int(time.now())
+                    vm.last_state_change = int(time.time())
                     log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES[node.state]))
                 else:
                     vm.status = self.VM_STATES[node.state]
-                    vm.last_state_change = int(time.now())
+                    vm.last_state_change = int(time.time())
                     log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES[node.state]))
             else:
                 continue

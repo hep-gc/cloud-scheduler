@@ -40,6 +40,10 @@ except:
     import pickle
 
 import cluster_tools
+try:
+    import stratuslabcluster
+except:
+    pass
 import cloudscheduler.config as config
 
 from cloudscheduler.utilities import determine_path
@@ -54,12 +58,21 @@ import cloudscheduler.utilities as utilities
 log = None
 log = logging.getLogger("cloudscheduler")
 
+"""Verify if stratuslab dependencies are available"""
+try:
+    from stratuslab.Image import Image
+    stratuslab_support = True
+except ImportError:
+    stratuslab_support = False
+    log.warning("Stratuslab dependencies are not available")
+
 ##
 ## CLASSES
 ##
 
 
-class ResourcePool:
+class ResourcePool:    
+    
     """Stores and organises a list of Cluster resources."""
     ## Instance variables
     resources = []
@@ -80,11 +93,10 @@ class ResourcePool:
         global log
         log = logging.getLogger("cloudscheduler")
 
-        log.verbose("New ResourcePool " + name + " created")
+        log.verbose("New ResourcePool %s created" %name)
         self.name = name
 
-        _collector_wsdl = "file://" + determine_path() \
-                          + "/wsdl/condorCollector.wsdl"
+        _collector_wsdl = "file://%s/wsdl/condorCollector.wsdl"%determine_path()
         self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
         self.condor_collector_as_xml = Client(_collector_wsdl, cache=None,
                                               location=config.condor_collector_url, retxml=True)
@@ -252,6 +264,8 @@ class ResourcePool:
         max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
         max_vm_storage = get_or_none(config, cluster, "max_vm_storage")
         max_vm_storage = int(max_vm_storage) if max_vm_storage != None else -1
+        total_cpu_cores = get_or_none(config, cluster, "total_cpu_cores")
+        total_cpu_cores = int(total_cpu_cores) if total_cpu_cores != None else -1
         hypervisor = get_or_none(config, cluster, "hypervisor")
         if hypervisor == None:
             hypervisor = 'xen'
@@ -289,6 +303,8 @@ class ResourcePool:
                     vm_lifetime = get_or_none(config, cluster, "vm_lifetime"),
                     image_attach_device = get_or_none(config, cluster, "image_attach_device"),
                     scratch_attach_device = get_or_none(config, cluster, "scratch_attach_device"),
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
+                    total_cpu_cores = total_cpu_cores,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -304,14 +320,44 @@ class ResourcePool:
                     storage = int(get_or_none(config, cluster, "storage")),
                     access_key_id = get_or_none(config, cluster, "access_key_id"),
                     secret_access_key = get_or_none(config, cluster, "secret_access_key"),
-                    security_group = get_or_none(config, cluster, "security_group"),
+                    security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
                     hypervisor = hypervisor,
                     key_name = get_or_none(config, cluster, "key_name"),
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     )
 
+        elif cloud_type == "StratusLab" and stratuslab_support:
+            return stratuslabcluster.StratusLabCluster(name = cluster,
+                    host = get_or_none(config, cluster, "host"),
+                    cloud_type = get_or_none(config, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
+                    storage = int(get_or_none(config, cluster, "storage")),
+                    hypervisor = hypervisor,
+                    contextualization = get_or_none(config, cluster, "contextualization")
+                    )
+
+        elif cloud_type.lower() == "ibmsmartcloud":
+            return cluster_tools.IBMCluster(name= cluster,
+                    host= get_or_none(config, cluster, "host"),
+                    cloud_type= get_or_none(config, cluster, "cloud_type"),
+                    memory= map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem= max_vm_mem if max_vm_mem != None else -1,
+                    cpu_archs= splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks= splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    vm_slots= int(get_or_none(config, cluster, "vm_slots")),
+                    cpu_cores= int(get_or_none(config, cluster, "cpu_cores")),
+                    storage= int(get_or_none(config, cluster, "storage")),
+                    hypervisor= hypervisor,
+                    username= get_or_none(config, cluster, "username"),
+                    password= get_or_none(config, cluster, "password"),
+                    )
         else:
-            log.error("ResourcePool.setup doesn't know what to do with the"
-                    + "%s cloud_type" % cloud_type)
+            log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
             return None
 
 
@@ -333,13 +379,13 @@ class ResourcePool:
 
     def get_pool_info(self, ):
         """Print the name and address of every cluster in the resource pool."""
-        output = "Resource pool " + self.name + ":\n"
+        output = "Resource pool %s:\n" %self.name
         output += "%-15s  %-10s %-15s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS")
         if len(self.resources) == 0:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += "%-15s  %-10s %-15s \n" % (cluster.name, cluster.cloud_type, cluster.network_address)
+                output += "%-15s  %-10s %-15s %-10s\n" % (cluster.name, cluster.cloud_type, cluster.network_address, cluster.hypervisor)
         return output
 
     def get_resource(self, ):
@@ -401,6 +447,8 @@ class ResourcePool:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
                 continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
+                continue
 
             # Return the cluster as an available resource (meets all job reqs)
             return cluster
@@ -410,7 +458,7 @@ class ResourcePool:
 
 
     def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[],
-                              hypervisor=['xen']):
+                              hypervisor=['xen'], blocked=[]):
         """get a list of Clusters that fit the given VM/Job requirements.
         
         Keywords: (as for get_resource methods)
@@ -435,10 +483,11 @@ class ResourcePool:
         else:
             clusters = self.resources
         for cluster in clusters:
+            log.verbose("Trying with cluster %s (Name: %s)" % (str(cluster), cluster.name))
             if not cluster.enabled:
                 continue
-            if cluster.hypervisor not in hypervisor:
-                log.verbose("get_fitting_resources - Wrong hypervisor on %s" % cluster.name)
+            if cluster.name in blocked:
+                log.verbose("get_fitting_resources - %s is blocked." % cluster.name)
                 continue
             if cluster.__class__.__name__ == "NimbusCluster":
                 # If not valid image file to download
@@ -453,10 +502,26 @@ class ResourcePool:
                 if network and network in cluster.net_slots.keys() and cluster.net_slots[network] <= 0:
                     log.verbose("get_fitting_resources - No Slots left in network %s on %s" % (network, cluster.name))
                     continue
+                if not network:
+                    full = True
+                    for net in cluster.net_slots.keys():
+                        if cluster.net_slots[net] > 0:
+                            full = False
+                    if full:
+                        log.verbose("get_fitting_resources - No Slots left on %s" % cluster.name)
+                        continue
                 if imageloc in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[imageloc]:
+                        log.verbose("get_fitting_resources - %s cloud is banned for image location" % cluster.name)
                         continue
                 if cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
+                    log.verbose("get_fitting_resources - Storage request exceeds max_vm_storage for %s" % cluster.name)
+                    continue
+                if cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
+                    log.verbose("get_fitting_resources - cpu request greater than total available cores on %s" % cluster.name)
+                    continue
+                if cluster.hypervisor not in hypervisor:
+                    log.verbose("get_fitting_resources - Wrong hypervisor on %s" % cluster.name)
                     continue
             elif cluster.__class__.__name__ == "EC2Cluster":
                 # If no valid ami to boot from
@@ -465,7 +530,19 @@ class ResourcePool:
                 # If ami banned from cluster
                 if ami in self.banned_job_resource.keys():
                     if cluster.name in self.banned_job_resource[ami]:
+                        log.verbose("get_fitting_resources - %s ami banned on %s" % (ami, cluster.name))
                         continue
+            
+            elif cluster.__class__.__name__ == "StratusLabCluster" and stratuslab_support:
+                # If not valid image file
+                if imageloc == "":
+                    continue
+                if imageloc in self.banned_job_resource.keys():
+                    if cluster.name in self.banned_job_resource[imageloc]:
+                        continue
+                if (not Image.isDiskId(imageloc)) and (not Image.isImageId(imageloc)):
+                    continue
+            
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
                 log.verbose("get_fitting_resources - No free slots in %s" % cluster.name)
@@ -499,7 +576,7 @@ class ResourcePool:
         return fitting_clusters
 
 
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[], hypervisor=['xen']):
+    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[], hypervisor=['xen'], blocked=[]):
         """
         Returns a resource that fits given requirements and fits some balance
         criteria between clusters (for example, lowest current load or most free
@@ -532,50 +609,21 @@ class ResourcePool:
 
         """
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets, hypervisor)
+        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets, hypervisor,blocked)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
             log.verbose("No clusters fit requirements. Fitting resources list is empty.")
-            return (None, None)
+            return []
 
         # If the list has only 1 item, return immediately
         if len(fitting_clusters) == 1:
             log.verbose("Only one cluster fits parameters. Returning that cluster.")
-            return (fitting_clusters[0], None)
-        #log.verbose("%i clusters fit parameters, determining best 2." % len(fitting_clusters))
+            return fitting_clusters
 
         # sort them based on how full and return the list
-        fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio, reverse=True)
+        fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio)
         return fitting_clusters
-        # Set the most-balanced and next-most-balanced initial values
-        # Note: mostbal_cluster stands for "most balanced cluster"
-        # Note: nextbal_cluster stands for "next most balanced cluster"
-        #cluster1 = fitting_clusters.pop()
-        #cluster2 = fitting_clusters.pop()
-
-        #if (cluster1.slot_fill_ratio() < cluster2.slot_fill_ratio()):
-            #mostbal_cluster = cluster1
-            #nextbal_cluster = cluster2
-        #else:
-            #mostbal_cluster = cluster2
-            #nextbal_cluster = cluster1
-
-        #mostbal_vms = mostbal_cluster.slot_fill_ratio()
-        #nextbal_vms = nextbal_cluster.slot_fill_ratio()
-
-        ## Iterate through fitting clusters to check for most and next balanced clusters. (LINEAR search)
-        #for cluster in fitting_clusters:
-            ## If considered cluster has fewer running VMs, set it as the most balanced cluster
-            #if (cluster.slot_fill_ratio() < mostbal_vms):
-                #mostbal_cluster = cluster
-                #mostbal_vms = cluster.slot_fill_ratio()
-            #elif (cluster.slot_fill_ratio() < nextbal_vms):
-                #nextbal_cluster = cluster
-                #nextbal_vms = cluster.slot_fill_ratio()
-
-        ## Return the most balanced cluster after considering all fitting clusters.
-        #return (mostbal_cluster, nextbal_cluster)
 
     def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
         """
@@ -618,7 +666,7 @@ class ResourcePool:
         return potential_fit
 
     def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[],
-                                        hypervisor=['xen']):
+                                        hypervisor=['xen'], cpucores=-1, blocked=[]):
         """
         Determines which clouds could start a VM with the given requirements.
         
@@ -640,7 +688,9 @@ class ResourcePool:
         for cluster in clusters:
             if not cluster.enabled:
                 continue
-            if cluster.hypervisor not in hypervisor:
+            if cluster.name in blocked:
+                continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
                 continue
             if not (cpuarch in cluster.cpu_archs):
                 continue
@@ -656,6 +706,8 @@ class ResourcePool:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
                 continue
+            #if cluster.cpu_cores < cpucores:
+             #   continue
             fitting.append(cluster)
         return fitting
 
@@ -873,15 +925,19 @@ class ResourcePool:
                     vmusertype = ':'.join([user, vm['VMType']])
                     count[vmusertype] += 1
                 except:
-                    log.error("Failed to parse out remote owner")
+                    log.error("Failed to parse out remote owner on %s" % vm['Machine'])
+            elif vm.has_key('Activity') and vm['Activity'] == 'Retiring':
+                pass
             else:
-                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set - are the condor init scripts on the VM up-to-date?")
+                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set on %s - are the condor init scripts on the VM up-to-date?" % vm['Machine'])
                 if vm.has_key('Start'):
-                    log.warning("VM Start attrib = %s" % vm['Start'])
+                    log.warning("VM Start attrib = %s on %s" % (vm['Start'], vm['Machine']))
+                elif vm.has_key('Activity') and vm['Activity'] == 'Retiring':
+                    pass
                 else:
-                    log.warning("VM Missing a Start attrib.")
+                    log.warning("VM Missing a Start attrib on %s." % vm['Machine'])
                 if not vm.has_key('VMType'):
-                    log.warning("This VM has no VMType key, It should not be used with cloudscheduler.")
+                    log.warning("This VM %s has no VMType key, It should not be used with cloudscheduler." % vm['Machine'])
         log.verbose("VMs in machinelist: %s" % str(count))
         return count
 
@@ -1222,6 +1278,15 @@ class ResourcePool:
                     queue = ErrTrackQueue(cluster.name)
                     queue.append(value)
                     self.failures[job.req_imageloc].append(queue)
+
+            elif cluster.__class__.__name__ == 'StratusLabCluster' and stratuslab_support:
+                # If not valid image file to download
+                if imageloc == "":
+                    continue
+                if (not Image.isDiskId(imageloc)) and (not Image.isImageId(imageloc)):
+                    continue
+                resource.append(value)
+
             elif cluster.__class__.__name__ == 'EC2Cluster':
                 if job.req_ami in self.failures.keys():
                     foundIt = False
@@ -1420,10 +1485,10 @@ class ResourcePool:
                 log.debug("Reason: %s" % out) 
                 log.debug("Error: %s" % err)
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args2), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args2))
             return (-1, -1, -1, -1)
         # Now send the master off
         try:
@@ -1440,10 +1505,10 @@ class ResourcePool:
                 log.debug("Failed to send condor_off master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args3), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args3))
             print args
             return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
@@ -1528,10 +1593,10 @@ class ResourcePool:
                 log.debug("Reason: %s" % out) 
                 log.debug("Error: %s" % err)
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args4), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args4))
             return (-1, -1, -1, -1)
         # Now send the startd on
         try:
@@ -1548,10 +1613,10 @@ class ResourcePool:
                 log.debug("Failed to send condor_on master to %s" % (machine_name))
                 log.debug("Reason: %s \n Error: %s" % (out, err))
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args), e.errno, e.strerror))
             return (-1, -1, -1, -1)
         except:
-            log.error("Problem running %s, unexpected error" % string.join(args, " "))
+            log.error("Problem running %s, unexpected error" % ' '.join(args))
             print args
             return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
@@ -1656,7 +1721,7 @@ class ResourcePool:
         num_starting = 0
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.status == "Starting":
+                if vm.status == "Starting" or vm.status == "Unpropagated":
                     num_starting += 1
         log.verbose("There are %i Starting VMs, the max_starting_vm is %i." % (num_starting, config.max_starting_vm))
         return num_starting
@@ -1783,7 +1848,7 @@ class ResourcePool:
                 cluster.resource_return(vm)
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
             else:
-                output = "Could not find that VM ID."
+                output = "Could not find VM ID." % vmid
         else:
             output = "Could not find Cloud %s." % clustername
         return output
@@ -1800,6 +1865,41 @@ class ResourcePool:
             output = "Removed all VMs from %s." % clustername
         else:
             output = "Could not find Cloud %s." % clustername
+        return output
+
+    def force_retire_cluster_vm(self, clustername, vmid):
+        output = ""
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            vm = cluster.get_vm(vmid)
+            if vm:
+                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                if ret2 == 0 and ret22 == 0:
+                    vm.force_retire = True
+                    vm.override_status = 'Retiring'
+                    output = "Retired VM %s on %s." % (vmid, clustername)
+                else:
+                    output = "Unable to retire VM."
+            else:
+                output = "Could not find VM ID %s." % vmid
+        else:
+            output = "Could not find Cloud %s." % clusterdname
+        return output
+    
+    def force_retire_cluster_all(self, cloudname):
+        cluster = self.get_cluster(cloudname)
+        output = ""
+        if cluster:
+            for vm in cluster.vms:
+                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                if ret2 == 0 and ret22 == 0:
+                    vm.force_retire = True
+                    vm.override_status = 'Retiring'
+                else:
+                    output += "Unable to retire VM %s\n" % vm.id
+            output = "Retired all VMs in %s." % cloudname
+        else:
+            output = "Cloud not find Cloud %s." % cloudname
         return output
 
     def disable_cluster(self, clustername):
@@ -1856,7 +1956,7 @@ class VMDestroyCmd(threading.Thread):
     def run(self):
         self.result = self.cluster.vm_destroy(self.vm, reason=self.reason)
         if self.result != 0:
-            log.error("Failed to destroy vm %s" % self.vm.id)
+            log.error("Failed to destroy vm %s on %s" % (self.vm.id, self.vm.clusteraddr))
     def get_result(self):
         return self.result
     def get_vm(self):

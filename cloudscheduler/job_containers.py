@@ -521,6 +521,10 @@ class HashTableJobContainer(JobContainer):
                     job.banned = False
                     job.ban_time = None
                     job.override_status = None
+            if len(job.blocked_clouds) > 0:
+                if (time.time() - job.block_time) > config.job_ban_timeout:
+                    job.blocked_clouds = []
+                    job.block_time = None
             return True
         else:
             return False
