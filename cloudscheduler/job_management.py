@@ -525,7 +525,7 @@ class JobPool:
         """
 
         def _attribute_from_requirements(requirements, attribute):
-            regex = "%s\s=\?=\s\"(?P<value>.+?)\"" % attribute
+            regex = "%s\s=\?=\s\"(?P<value>[^\"].+?)\"" % attribute
             match = re.search(regex, requirements)
             if match:
                 return match.group("value")
@@ -533,7 +533,7 @@ class JobPool:
                 return ""
 
         def _attribute_from_requirements_alt(requirements, attribute):
-            regex = "%s\s[<>=][<>=]\s(?P<value>.+?)\s" % attribute
+            regex = "%s\s[<>=][<>=]\s(?P<value>[^\"].+?)\s" % attribute
             match = re.search(regex, requirements)
             if match:
                 return match.group("value")
