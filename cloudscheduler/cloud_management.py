@@ -622,7 +622,7 @@ class ResourcePool:
             return fitting_clusters
 
         # sort them based on how full and return the list
-        fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio)
+        fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio())
         return fitting_clusters
 
     def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
