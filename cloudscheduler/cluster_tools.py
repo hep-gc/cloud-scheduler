@@ -338,6 +338,9 @@ class ICluster:
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
 
+    def __repr__(self):
+        return self.name
+
     def setup_logging(self):
         """Fetch the global log object."""
         global log
