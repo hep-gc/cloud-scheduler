@@ -1712,7 +1712,7 @@ class ResourcePool:
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.vmtype == vmtype:
-                    if vm.status == "Starting":
+                    if vm.status == "Starting" or vm.status == "Unpropagated":
                         starting.append(vm)
         return starting
     
@@ -1732,7 +1732,7 @@ class ResourcePool:
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.uservmtype == vmtype:
-                    if vm.status == "Starting":
+                    if vm.status == "Starting" or vm.status == "Unpropagated":
                         starting.append(vm)
         return starting
 
