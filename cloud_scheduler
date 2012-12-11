@@ -249,15 +249,18 @@ class MachinePoller(threading.Thread):
 
     def run(self):
         log.info("Starting machine polling...")
-
+        zero_len_count = 0
         while not self.quit:
             log.verbose("Polling machine scheduler")
 
             self.resource_pool.prev_machine_list = self.resource_pool.machine_list
             self.resource_pool.machine_list = self.resource_pool.resource_query()
             self.resource_pool.master_list = self.resource_pool.master_resource_query_local()
-            if len(self.resource_pool.machine_list) == 0 and len(self.resource_pool.prev_machine_list) != 0:
+            if len(self.resource_pool.machine_list) == 0 and len(self.resource_pool.prev_machine_list) != 0 and zero_len_count < 3:
+                zero_len_count += 1
                 self.resource_pool.machine_list = self.resource_pool.prev_machine_list
+            else:
+                zero_len_count = 0
             log.verbose("Machine Poller waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
             while (not self.quit) and sleep_tics > 0:
@@ -1239,10 +1242,11 @@ class Cleanup(threading.Thread):
         for cluster in self.resource_pool.resources:
             for vm in reversed(cluster.vms):
                 if vm.uservmtype not in req_vmtypes and (not vm.idle_start or vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
-                    if not self.check_destroy(cluster, vm):
-                        th = VMDestroyCmd(cluster, vm, reason="VMType %s is no longer required." % vm.vmtype)
-                        th.start()
-                        self.destroy_threads["".join([cluster.name, vm.id])] = th
+                    self.resource_pool.force_retire_vm(vm)
+                    #if not self.check_destroy(cluster, vm):
+                        #th = VMDestroyCmd(cluster, vm, reason="VMType %s is no longer required." % vm.vmtype)
+                        #th.start()
+                        #self.destroy_threads["".join([cluster.name, vm.id])] = th
 
     def clean_scheduled_unscheduled(self):
         """Moves any running jobs into the scheduled state.
@@ -1279,7 +1283,7 @@ class Cleanup(threading.Thread):
         for cluster in resources:
             for vm in cluster.vms:
                 foundvm = False
-                if vm.status == 'Running' and machineList:
+                if vm.status == 'Running' and machineList != None:
                     for machine in machineList:
                         if utilities.match_host_with_condor_host(vm.hostname, machine['Machine']):
                             if vm.condorname == None:
@@ -1486,12 +1490,19 @@ class Cleanup(threading.Thread):
                                 # Check that enough time has passed to shutdown
                                 now = int(time.time())
                                 if vm.keep_alive == 0 or now - vm.idle_start > vm.keep_alive:
-                                    if not self.check_destroy(cluster, vm):
-                                        th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
-                                        th.start()
-                                        self.destroy_threads["".join([cluster.name, vm.id])] = th
+                                    if self.resource_pool.force_retire_vm(vm):
+                                        pass
                                     else:
-                                        break
+                                        pass
+                                    #if not self.check_destroy(cluster, vm):
+                                        
+                                        ##th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
+                                        ##th.start()
+                                        ##self.destroy_threads["".join([cluster.name, vm.id])] = th
+                                    #else:
+                                        #break
+                                else:
+                                    log.verbose('waiting on keep_alive: %s current: %s' % (vm.keep_alive, now-vm.idle_start))
                             else:
                                 vm.idle_start = int(time.time())
                                 break
