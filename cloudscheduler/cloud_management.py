@@ -1866,6 +1866,16 @@ class ResourcePool:
         else:
             output = "Could not find Cloud %s." % clustername
         return output
+    
+    def force_retire_vm(self, vm):
+        ret = False
+        if vm:
+            (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+            if ret2 == 0 and ret22 == 0:
+                vm.force_retire = True
+                vm.override_status = 'Retiring'
+                ret = True
+        return ret
 
     def force_retire_cluster_vm(self, clustername, vmid):
         output = ""
@@ -1873,10 +1883,7 @@ class ResourcePool:
         if cluster:
             vm = cluster.get_vm(vmid)
             if vm:
-                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
-                if ret2 == 0 and ret22 == 0:
-                    vm.force_retire = True
-                    vm.override_status = 'Retiring'
+                if self.force_retire_vm(vm):
                     output = "Retired VM %s on %s." % (vmid, clustername)
                 else:
                     output = "Unable to retire VM."
@@ -1891,10 +1898,8 @@ class ResourcePool:
         output = ""
         if cluster:
             for vm in cluster.vms:
-                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
-                if ret2 == 0 and ret22 == 0:
-                    vm.force_retire = True
-                    vm.override_status = 'Retiring'
+                if self.force_retire_vm(vm):
+                    pass
                 else:
                     output += "Unable to retire VM %s\n" % vm.id
             output = "Retired all VMs in %s." % cloudname
