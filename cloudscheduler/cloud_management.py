@@ -324,6 +324,7 @@ class ResourcePool:
                     hypervisor = hypervisor,
                     key_name = get_or_none(config, cluster, "key_name"),
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
+                    secure_connection = get_or_none(config, cluster, "secure_connection"),
                     )
 
         elif cloud_type == "StratusLab" and stratuslab_support:

@@ -1244,7 +1244,7 @@ class EC2Cluster(ICluster):
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
-                                   is_secure=False,
+                                   is_secure=self.secure_connection,
                                    region=region,
                                    port=8773,
                                    path="/services/Eucalyptus",
@@ -1267,7 +1267,7 @@ class EC2Cluster(ICluster):
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
-                                   is_secure=True,
+                                   is_secure=self.secure_connection,
                                    region=region,
                                    port=8773,
                                    path="/services/Cloud",
@@ -1283,12 +1283,11 @@ class EC2Cluster(ICluster):
 
         return connection
 
-
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 hypervisor='xen', key_name=None, boot_timeout=None):
+                 hypervisor='xen', key_name=None, boot_timeout=None, secure_connection=""):
 
         # Call super class's init
         ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -1308,6 +1307,7 @@ class EC2Cluster(ICluster):
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
         self.key_name = key_name
+        self.secure_connection = secure_connection in ['True', 'true', 'TRUE']
         self.total_cpu_cores = -1
 
         connection = self._get_connection()
@@ -1385,7 +1385,7 @@ class EC2Cluster(ICluster):
                         reservation = image.run(1,1, key_name=self.key_name,
                                                 addressing_type=addressing_type,
                                                 user_data=user_data,
-                                                security_groups=self.security_groups,
+                                                security_groups=sec_group,
                                                 instance_type=instance_type)
                         instance_id = reservation.instances[0].id
                         log.debug("Booted VM %s" % instance_id)
@@ -1402,7 +1402,7 @@ class EC2Cluster(ICluster):
                                                   key_name=self.key_name,
                                                   user_data=user_data,
                                                   addressing_type=addressing_type,
-                                                  security_groups=self.security_groups,
+                                                  security_groups=self.sec_group,
                                                   instance_type=instance_type)
                         spot_id = str(reservation[0].id)
                         instance_id = ""
