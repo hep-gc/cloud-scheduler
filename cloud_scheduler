@@ -1402,7 +1402,7 @@ class Cleanup(threading.Thread):
         for cluster in self.resource_pool.resources:
             if cluster.boot_timeout > 0:
                 for vm in cluster.vms:
-                    if vm.status == "Starting":
+                    if vm.status == "Starting" or vm.status == "Unpropagated":
                         if int(time.time() - vm.initialize_time) > cluster.boot_timeout:
                             cluster.vm_destroy(vm, reason="Has not reached Running state after %i seconds." % config.vm_start_running_timeout)
 
