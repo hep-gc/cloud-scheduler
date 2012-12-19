@@ -41,6 +41,10 @@ except:
 
 import cluster_tools
 try:
+    import ibmcluster
+except:
+    pass
+try:
     import stratuslabcluster
 except:
     pass
@@ -343,7 +347,7 @@ class ResourcePool:
                     )
 
         elif cloud_type.lower() == "ibmsmartcloud":
-            return cluster_tools.IBMCluster(name= cluster,
+            return ibmcluster.IBMCluster(name= cluster,
                     host= get_or_none(config, cluster, "host"),
                     cloud_type= get_or_none(config, cluster, "cloud_type"),
                     memory= map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
