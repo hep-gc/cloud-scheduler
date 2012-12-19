@@ -1242,11 +1242,12 @@ class Cleanup(threading.Thread):
         for cluster in self.resource_pool.resources:
             for vm in reversed(cluster.vms):
                 if vm.uservmtype not in req_vmtypes and (not vm.idle_start or vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
-                    self.resource_pool.force_retire_vm(vm)
-                    #if not self.check_destroy(cluster, vm):
-                        #th = VMDestroyCmd(cluster, vm, reason="VMType %s is no longer required." % vm.vmtype)
-                        #th.start()
-                        #self.destroy_threads["".join([cluster.name, vm.id])] = th
+                    if vm.override_status != "Retiring":
+                        if not self.resource_pool.force_retire_vm(vm):
+                            if not self.check_destroy(cluster, vm):
+                                th = VMDestroyCmd(cluster, vm, reason="VMType %s is no longer required." % vm.vmtype)
+                                th.start()
+                                self.destroy_threads["".join([cluster.name, vm.id])] = th
 
     def clean_scheduled_unscheduled(self):
         """Moves any running jobs into the scheduled state.
@@ -1490,17 +1491,13 @@ class Cleanup(threading.Thread):
                                 # Check that enough time has passed to shutdown
                                 now = int(time.time())
                                 if vm.keep_alive == 0 or now - vm.idle_start > vm.keep_alive:
-                                    if self.resource_pool.force_retire_vm(vm):
-                                        pass
-                                    else:
-                                        pass
-                                    #if not self.check_destroy(cluster, vm):
-                                        
-                                        ##th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
-                                        ##th.start()
-                                        ##self.destroy_threads["".join([cluster.name, vm.id])] = th
-                                    #else:
-                                        #break
+                                    if vm.override_status != "Retiring":
+                                        if not self.resource_pool.force_retire_vm(vm):
+                                            if not self.check_destroy(cluster, vm):
+    
+                                                th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
+                                                th.start()
+                                                self.destroy_threads["".join([cluster.name, vm.id])] = th
                                 else:
                                     log.verbose('waiting on keep_alive: %s current: %s' % (vm.keep_alive, now-vm.idle_start))
                             else:
