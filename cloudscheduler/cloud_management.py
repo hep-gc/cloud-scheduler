@@ -40,6 +40,8 @@ except:
     import pickle
 
 import cluster_tools
+import ec2cluster
+import nimbuscluster
 try:
     import ibmcluster
 except:
@@ -290,7 +292,7 @@ class ResourcePool:
             for x in range(len(nets)):
                 net_slots[nets[x]] = slots[x]
             total_slots = sum(slots)
-            return cluster_tools.NimbusCluster(name = cluster,
+            return nimbuscluster.NimbusCluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
@@ -312,7 +314,7 @@ class ResourcePool:
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
-            return cluster_tools.EC2Cluster(name = cluster,
+            return ec2cluster.EC2Cluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
