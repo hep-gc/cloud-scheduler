@@ -57,10 +57,13 @@ class IBMCluster(cluster_tools.ICluster):
 
     def _get_connection(self, username, password):
         self.connection = self.driver(username, password)
-        self.locations = self.connection.list_locations()
-        self.locations_dict = {loc.id: loc for loc in self.locations}
-        self.compute_sizes = self.connection.list_sizes()
-        self.images = self.connection.list_images()
+        try:
+            self.locations = self.connection.list_locations()
+            self.locations_dict = {loc.id: loc for loc in self.locations}
+            self.compute_sizes = self.connection.list_sizes()
+            self.images = self.connection.list_images()
+        except:
+            return None
         return self.connection
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
