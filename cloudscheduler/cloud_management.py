@@ -1877,7 +1877,7 @@ class ResourcePool:
     def force_retire_vm(self, vm):
         ret = False
         if vm:
-            (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+            (_, ret2, _, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
             if ret2 == 0 and ret22 == 0:
                 vm.force_retire = True
                 vm.override_status = 'Retiring'
