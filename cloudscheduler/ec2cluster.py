@@ -103,7 +103,7 @@ class EC2Cluster(cluster_tools.ICluster):
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=None)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout)
 
         if not security_group:
             security_group = "default"
