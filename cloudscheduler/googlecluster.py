@@ -34,11 +34,51 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout)
 
-    def vm_create(self, **args):
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
+                  vm_image, vm_mem, vm_cores, vm_storage, customization=None,
+                  vm_keepalive=0, instance_type="", maximum_price=0,
+                  job_per_core=False, securitygroup=[]):
         pass
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
+        # Delete an Instance
+        request = gce_service.instances().delete(
+            project=PROJECT_ID, instance=NEW_INSTANCE_NAME)
+        response = request.execute(auth_http)
+        response = _blocking_call(gce_service, auth_http, response)
+        print response
+
+        # Delete references to this VM
+        if return_resources:
+            self.resource_return(vm)
+        with self.vms_lock:
+            self.vms.remove(vm)
         pass
 
     def vm_poll(self, vm):
+        print "LIST of Instances:"
+        # List instances
+        request = gce_service.instances().list(project=PROJECT_ID, filter="id eq %s" % vm.id)
+        print 'made request'
+        response = request.execute(auth_http)
+        print 'executed request'
+        if response and 'items' in response:
+            instances = response['items']
+            for instance in instances:
+                if instance.id == vm.id:
+                    pass # update state etc
+                print instance['name'], instance['id']
         pass
+
+
+    def _blocking_call(gce_service, auth_http, response):
+        """Blocks until the operation status is done for the given operation."""
+        status = response['status']
+        while status != 'DONE' and response:
+            operation_id = response['name']
+            request = gce_service.operations().get(
+                project=PROJECT_ID, operation=operation_id)
+            response = request.execute(auth_http)
+            if response:
+                status = response['status']
+        return response
