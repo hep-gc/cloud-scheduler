@@ -50,6 +50,10 @@ try:
     import stratuslabcluster
 except:
     pass
+try:
+    import googlecluster
+except Exception as e:
+    pass
 import cloudscheduler.config as config
 
 from cloudscheduler.utilities import determine_path
@@ -362,6 +366,21 @@ class ResourcePool:
                     hypervisor= hypervisor,
                     username= get_or_none(config, cluster, "username"),
                     password= get_or_none(config, cluster, "password"),
+                    )
+        elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce":
+            return googlecluster.GoogleComputeEngineCluster(name = cluster,
+                    cloud_type = get_or_none(config, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
+                    storage = int(get_or_none(config, cluster, "storage")),
+                    auth_dat_file = get_or_none(config, cluster, "auth_dat_file"),
+                    secret_file = get_or_none(config, cluster, "secret_file"),
+                    security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout")
                     )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
