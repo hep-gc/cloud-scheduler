@@ -1502,7 +1502,7 @@ class Cleanup(threading.Thread):
                                 if slot['State'] != 'Unclaimed' or slot['Activity'] != 'Idle':
                                     all_slots_idle = False
                             if not all_slots_idle:
-                                log.debug("VM %s Still has non-idle slots." % unused_vms_of_type[x]['Machine'])
+                                log.verbose("VM %s Still has non-idle slots." % unused_vms_of_type[x]['Machine'])
                                 break
                             if vm.keep_alive == 0 or vm.idle_start:
                                 # Check that enough time has passed to shutdown
