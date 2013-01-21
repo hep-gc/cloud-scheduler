@@ -380,7 +380,8 @@ class ResourcePool:
                     auth_dat_file = get_or_none(config, cluster, "auth_dat_file"),
                     secret_file = get_or_none(config, cluster, "secret_file"),
                     security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
-                    boot_timeout = get_or_none(config, cluster, "boot_timeout")
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
+                    project_id = get_or_none(config, cluster, "project_id"),
                     )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
