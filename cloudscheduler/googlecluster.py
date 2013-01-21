@@ -203,7 +203,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         for x in range(0,10):
             potential_name = ''.join([self.gce_hostname_prefix, str(self.gce_hostname_counter)])
             self.gce_hostname_counter += 1
-            if self.gce_hostname_counter >= 10000:
+            if self.gce_hostname_counter >= 50000:
                 self.gce_hostname_counter = 0
             collision = False
             for vm in self.vms:

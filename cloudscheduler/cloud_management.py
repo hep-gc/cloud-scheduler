@@ -670,8 +670,6 @@ class ResourcePool:
         for cluster in self.resources:
             if not cluster.enabled:
                 continue
-            if cluster.hypervisor not in hypervisor:
-                continue
             # If the cluster does not have the required CPU architecture
             if not (cpuarch in cluster.cpu_archs):
                 continue
@@ -684,6 +682,8 @@ class ResourcePool:
             if not cluster.find_potential_mementry(memory):
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
+                continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
                 continue
             # Cluster meets network and cpu reqs and may have enough memory
             potential_fit = True
