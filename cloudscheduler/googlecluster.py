@@ -68,17 +68,27 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
                   job_per_core=False, securitygroup=[]):
+        try:
+            vm_ami = vm_image[self.network_address]
+        except:
+            log.debug("No AMI for %s, trying default" % self.network_address)
+            try:
+                vm_ami = vm_image["default"]
+            except:
+                log.exception("Can't find a suitable AMI")
+                return
         # Construct URLs
         if instance_type:
             vm_instance_type = instance_type
         else:
             vm_instance_type = self.DEFAULT_MACHINE_TYPE
         if vm_image:
-            vm_image_name = vm_image
+            vm_image_name = vm_ami
         else:
             vm_image_name = self.DEFAULT_IMAGE
+
         image_url = '%s%s/images/%s' % (
-               self.GCE_URL, self.project_id, self.DEFAULT_IMAGE)
+               self.GCE_URL, self.project_id, vm_image_name)
         machine_type_url = '%s/machineTypes/%s' % (
               self.project_url, vm_instance_type)
         zone_url = '%s/zones/%s' % (self.project_url, self.DEFAULT_ZONE)
@@ -121,6 +131,12 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         response = request.execute(self.auth_http)
         response = self._blocking_call(self.gce_service, self.auth_http, response)
 
+        if 'targetId' in response:
+            target_id = response['targetId']
+        else:
+            print 'targetID missing'
+            print response
+            return
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
             #TODO: this is kind of pointless with EC2..., but the resource code depends on it
@@ -128,7 +144,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                       "entries (Not supposed to happen). Returning error.")
             return self.ERROR
         new_vm = cluster_tools.VM(name = next_instance_name, vmtype = vm_type, user = vm_user,
-                    clusteraddr = self.network_address, id = response['targetId'],
+                    clusteraddr = self.network_address, id = target_id,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     hostname = self.construct_hostname(next_instance_name),
                     cpuarch = vm_cpuarch, image= vm_image, mementry = vm_mementry,
