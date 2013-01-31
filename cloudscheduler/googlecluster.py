@@ -1,15 +1,18 @@
-import httplib2
-from oauth2client.client import flow_from_clientsecrets
-from oauth2client.file import Storage
-from oauth2client.tools import run
-from apiclient.discovery import build
-import cluster_tools
-import time
 import os
-import ConfigParser
+import time
 import threading
 import nimbus_xml
+import ConfigParser
+import cluster_tools
 import cloudscheduler.utilities as utilities
+try:
+    import httplib2
+    from oauth2client.client import flow_from_clientsecrets
+    from oauth2client.file import Storage
+    from oauth2client.tools import run
+    from apiclient.discovery import build
+except:
+    pass
 
 log = utilities.get_cloudscheduler_logger()
 
