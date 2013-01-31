@@ -315,6 +315,7 @@ class ResourcePool:
                     scratch_attach_device = get_or_none(config, cluster, "scratch_attach_device"),
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     total_cpu_cores = total_cpu_cores,
+                    temp_lease_storage = get_or_none(config, cluster, "temp_lease_storage"),
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":

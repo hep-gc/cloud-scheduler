@@ -58,7 +58,8 @@ class NimbusCluster(cluster_tools.ICluster):
                  access_key_id=None, secret_access_key=None, security_group=None,
                  netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
                  image_attach_device=config.image_attach_device,
-                 scratch_attach_device=config.scratch_attach_device, boot_timeout=None, total_cpu_cores=-1):
+                 scratch_attach_device=config.scratch_attach_device, boot_timeout=None, total_cpu_cores=-1,
+                 temp_lease_storage=False):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -77,6 +78,7 @@ class NimbusCluster(cluster_tools.ICluster):
         self.vm_lifetime = vm_lifetime if vm_lifetime != None else config.vm_lifetime
         self.scratch_attach_device = scratch_attach_device if scratch_attach_device != None else config.scratch_attach_device
         self.image_attach_device = image_attach_device if image_attach_device != None else config.image_attach_device
+        self.temp_lease_storage = temp_lease_storage if temp_lease_storage != None else False
 
     def get_cluster_info_short(self):
         """Returns formatted cluster information for use by cloud_status, Overloaded from baseclass to use net_slots."""
@@ -121,13 +123,23 @@ class NimbusCluster(cluster_tools.ICluster):
                 return self.ERROR
 
         # Create a workspace metadata xml file
-        vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
+        if not self.temp_lease_storage:
+            vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
                 vm_cpuarch, vm_image, vm_storage > 0, self.image_attach_device,
                 self.scratch_attach_device,)
+        else:
+            vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
+                vm_cpuarch, vm_image, False, self.image_attach_device,
+                self.scratch_attach_device,)
+
 
         # Create a deployment request file
-        vm_deploymentrequest = nimbus_xml.ws_deployment_factory(self.vm_lifetime, \
-                self.VM_TARGETSTATE, vm_mem, vm_storage, self.VM_NODES, vm_cores=vm_cores)
+        if not self.temp_lease_storage:
+            vm_deploymentrequest = nimbus_xml.ws_deployment_factory(vm_duration = self.vm_lifetime, \
+                vm_targetstate = self.VM_TARGETSTATE, vm_mem = vm_mem, vm_storage = vm_storage, vm_nodes = self.VM_NODES, vm_cores=vm_cores)
+        else:
+            vm_deploymentrequest = nimbus_xml.ws_deployment_factory(vm_duration = self.vm_lifetime, \
+                vm_targetstate = self.VM_TARGETSTATE, vm_mem = vm_mem, vm_storage = None, vm_nodes = self.VM_NODES, vm_cores=vm_cores)
 
         job_proxy = None
         try:
