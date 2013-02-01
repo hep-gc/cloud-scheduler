@@ -10,9 +10,6 @@ CONDOR_HOST=your.central.manager
 HOSTALLOW_WRITE = $(FULL_HOSTNAME), $(ALLOW_ADMINISTRATOR)
 ##ALLOW_WRITE = $(FULL_HOSTNAME), $(ALLOW_ADMINISTRATOR)
 
-## Execute spool directory.
-EXECUTE=/scratch/condor
-
 ###### You should not need to make changes below here ########
 
 ##  Enable CCB for nodes behind NAT
