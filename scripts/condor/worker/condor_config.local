@@ -6,8 +6,24 @@ VMType = "your.vm.type"
 ##  What machine is your central manager?
 CONDOR_HOST=your.central.manager
 
+## Depending on the HTCondor version uncomment one of the following: 
+HOSTALLOW_WRITE = $(FULL_HOSTNAME), $(ALLOW_ADMINISTRATOR)
+##ALLOW_WRITE = $(FULL_HOSTNAME), $(ALLOW_ADMINISTRATOR)
+
+## Execute spool directory.
+EXECUTE=/scratch/condor
+
+###### You should not need to make changes below here ########
+
+##  Enable CCB for nodes behind NAT
+CCB_ADDRESS = $(CONDOR_HOST)
+
+## By default, user jobs run as nobody.
+TRUST_UID_DOMAIN = False
+
 ## START requirement
 START = TRUE
+
 # Give VMs enough time to retire their jobs and for condor daemons to shutdown
 MaxJobRetirementTime = 3600 * 24 * 2
 SHUTDOWN_GRACEFUL_TIMEOUT = 3600 * 25 * 2
@@ -21,3 +37,15 @@ GSI_DAEMON_DIRECTORY = /etc/grid-security
 GSI_DAEMON_CERT = /etc/grid-security/hostcert.pem
 GSI_DAEMON_KEY = /etc/grid-security/hostkey.pem
 
+## Job processing options.
+SUSPEND = False
+CONTINUE = True
+PREEMPT = False
+KILL = False
+
+## Evaluate VMType as part of the job requirements.
+STARTD_ATTRS = COLLECTOR_HOST_STRING VMType
+
+## Ephemeral port specifications:
+HIGHPORT = 41000
+LOWPORT = 40000
