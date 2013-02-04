@@ -28,6 +28,10 @@ CCB_ADDRESS = $(CONDOR_HOST)
 
 ## By default, user jobs run as nobody.
 TRUST_UID_DOMAIN = False
+## If you require jobs to run as a user set TRUST_UID_DOMAIN to True and uncomment the following
+#SCHEDD_HOST=$(CONDOR_HOST)
+#UID_DOMAIN=$(CONDOR_HOST)
+#FILESYSTEM_DOMAIN=$(CONDOR_HOST)
 
 ## START requirement
 START = TRUE
