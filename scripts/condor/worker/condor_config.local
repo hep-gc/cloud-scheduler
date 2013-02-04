@@ -3,14 +3,25 @@
 ## Set this to the name you would like to give your VM
 VMType = "your.vm.type"
 
-##  What machine is your central manager?
+##  What machine is your central manager? - will be contextualized by Cloud Scheduler
 CONDOR_HOST=your.central.manager
 
-## Depending on the HTCondor version uncomment one of the following: 
-HOSTALLOW_WRITE = $(FULL_HOSTNAME), $(ALLOW_ADMINISTRATOR)
-##ALLOW_WRITE = $(FULL_HOSTNAME), $(ALLOW_ADMINISTRATOR)
+## Execute spool directory. - Verify that these directory's exist - or change to desired location
+EXECUTE=/var/condor/execute
+LOCK=/var/condor/lock
+LOG=/var/condor/log
+RUN=/var/condor/run
+SPOOL=/var/condor/spool
+
+SEC_DAEMON_AUTHENTICATION =
+SEC_DAEMON_AUTHENTICATION_METHODS =
+SEC_CLIENT_AUTHENTICATION_METHODS =
+SEC_PASSWORD_FILE =
 
 ###### You should not need to make changes below here ########
+
+HOSTALLOW_WRITE = $(FULL_HOSTNAME), $(CONDOR_HOST)
+ALLOW_WRITE = $(FULL_HOSTNAME), $(CONDOR_HOST)
 
 ##  Enable CCB for nodes behind NAT
 CCB_ADDRESS = $(CONDOR_HOST)
@@ -21,9 +32,12 @@ TRUST_UID_DOMAIN = False
 ## START requirement
 START = TRUE
 
+DAEMON_LIST = MASTER, STARTD
+
 # Give VMs enough time to retire their jobs and for condor daemons to shutdown
 MaxJobRetirementTime = 3600 * 24 * 2
 SHUTDOWN_GRACEFUL_TIMEOUT = 3600 * 25 * 2
+
 ## These varibales tells condor which certificate to 
 ## use to GSI authenticate this host.
 ##
