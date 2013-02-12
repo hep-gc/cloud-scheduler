@@ -398,7 +398,7 @@ setup_on_ec2() {
 			# Set hostname to external
 			EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
 			VALID_HOST=$?
-			if [ $VALID_HOST -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]]; then
+			if [ $VALID_HOST -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
 				hostname $EXTHOSTNAME
 
 				private_network_name=amazon-ec2-`curl -s http://$EC2_METADATA/latest/meta-data/placement/availability-zone`
@@ -414,7 +414,7 @@ setup_on_ec2() {
 			# Set hostname to instance id when we're using private net
 			EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/instance-id`
 			VALID_ID=$?
-			if [ $VALID_ID -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] ; then
+			if [ $VALID_ID -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
 				hostname $EXTHOSTNAME
 
 				private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
