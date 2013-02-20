@@ -311,6 +311,9 @@ class ICluster:
         self.enabled = True
         self.hypervisor = hypervisor
         self.boot_timeout = int(boot_timeout) if boot_timeout != None else config.vm_start_running_timeout
+        self.connection_fail_disable_time = config.connection_fail_disable_time
+        self.connection_problem = False
+        self.errorconnect = None
 
         self.setup_logging()
         log.debug("New cluster %s created" % self.name)

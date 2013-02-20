@@ -125,20 +125,18 @@ class VMPoller(threading.Thread):
                     if not vm.errorconnect:
                         vm.errorconnect = time.time()
                     else:
-                        pass
-                        #if time.time() - vm.errorconnect > config.vm_connection_fail_threshold:
-                            # Have been unable to connect to service for extended period
-                            # Assume that service is down and VMs have been lost
-                            # Remove VM from cloudscheduler
-                        #    cluster = self.resource_pool.get_cluster_with_vm(vm)
-                        #    with cluster.vms_lock:
-                        #        cluster.vms.remove(vm)
-                        #    cluster.resource_return(vm)
+                        if time.time() - vm.errorconnect > config.vm_connection_fail_threshold:
+                            #Have been unable to connect to service for extended period
+                            #Assume that service is down - disable cloud for some period of time
+                            cluster = self.resource_pool.get_cluster_with_vm(vm)
+                            cluster.errorconnect = time.time()
+                            cluster.enabled = False
+                            cluster.connection_problem = True
 
                 if vm.errorcount >= config.polling_error_threshold:
                     log.verbose("VM %s reached threshold in errors, %s" % (str(vm.id), str(vm.errorcount)))
                     # Destroy the VM
-                    if not self.check_destroy(cluster, vm):
+                    if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
                         dt = VMDestroyCmd(cluster, vm, reason="VM is in an Error state.")
                         self.destroy_threads["".join([cluster.name, vm.id])] = dt
                         dt.start()
@@ -913,6 +911,8 @@ class Cleanup(threading.Thread):
             self.clean_scheduled_unscheduled()
             # Check the scheduled Jobs to see which running jobs are on what cloud
             self.clean_match_jobs_clouds()
+            # See if any clouds with connection problems should be retried.
+            self.check_connection_problems()
 
             log.verbose("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
@@ -1261,7 +1261,7 @@ class Cleanup(threading.Thread):
                 if vm.uservmtype not in req_vmtypes and (vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
                     if vm.override_status != "Retiring":
                         if not self.resource_pool.force_retire_vm(vm):
-                            if not self.check_destroy(cluster, vm):
+                            if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
                                 th = VMDestroyCmd(cluster, vm, reason="VMType %s is no longer required." % vm.vmtype)
                                 th.start()
                                 self.destroy_threads["".join([cluster.name, vm.id])] = th
@@ -1406,11 +1406,12 @@ class Cleanup(threading.Thread):
         for machine in to_kill:
             killedIt = False
             for cluster in resources:
-                for vm in cluster.vms:
-                    if vm == machine:
-                        cluster.vm_destroy(machine, return_resources=(not retired), reason="Has not registered with Condor after %i seconds." % config.condor_register_time_limit)
-                        killedIt = True
-                        break
+                if not cluster.connection_problem:
+                    for vm in cluster.vms:
+                        if vm == machine:
+                            cluster.vm_destroy(machine, return_resources=(not retired), reason="Has not registered with Condor after %i seconds." % config.condor_register_time_limit)
+                            killedIt = True
+                            break
                 if killedIt:
                     break
 
@@ -1421,7 +1422,7 @@ class Cleanup(threading.Thread):
             if cluster.boot_timeout > 0:
                 for vm in cluster.vms:
                     if vm.status == "Starting" or vm.status == "Unpropagated":
-                        if int(time.time() - vm.initialize_time) > cluster.boot_timeout:
+                        if int(time.time() - vm.initialize_time) > cluster.boot_timeout and not cluster.connection_problem:
                             cluster.vm_destroy(vm, reason="Has not reached Running state after %i seconds." % config.vm_start_running_timeout)
 
     def clean_retired_vms(self, retiredvms, retired = False):
@@ -1434,11 +1435,12 @@ class Cleanup(threading.Thread):
             else:
                 resources = self.resource_pool.retired_resources
             for cluster in resources:
-                for vm in cluster.vms:
-                    if vm == machine:
-                        cluster.vm_destroy(machine, return_resources=(not retired), reason="VM Finished Retiring.")
-                        killedIt = True
-                        break
+                if not cluster.connection_problem:
+                    for vm in cluster.vms:
+                        if vm == machine:
+                            cluster.vm_destroy(machine, return_resources=(not retired), reason="VM Finished Retiring.")
+                            killedIt = True
+                            break
                 if killedIt:
                     break
 
@@ -1510,7 +1512,7 @@ class Cleanup(threading.Thread):
                                 if vm.keep_alive == 0 or now - vm.idle_start > vm.keep_alive:
                                     if vm.override_status != "Retiring":
                                         if not self.resource_pool.force_retire_vm(vm):
-                                            if not self.check_destroy(cluster, vm):
+                                            if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
     
                                                 th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
                                                 th.start()
@@ -1555,7 +1557,7 @@ class Cleanup(threading.Thread):
         for vm in to_shutdown:
             cluster = self.resource_pool.get_cluster_with_vm(vm)
             if cluster:
-                if not self.check_destroy(cluster, vm):
+                if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
                     th = VMDestroyCmd(cluster, vm, reason="Rebalancing VMType %s." % vm.vmtype)
                     th.start()
                     self.destroy_threads["".join([cluster.name, vm.id])] = th
@@ -1573,6 +1575,7 @@ class Cleanup(threading.Thread):
             else:
                 self.job_pool.release_vmtype(vmtype)
         self.remove_idle_machines(machineList, num_to_change)
+
     def filter_fitting_resources(self, num_to_change):
         """Finds the clusters that are capable of booting VMs for a type of job."""
         vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
@@ -1638,7 +1641,7 @@ class Cleanup(threading.Thread):
                         successful_destroy = 0
                         for start_vm in islice(reversed(error_vms_of_type), num_error_to_destroy):
                             vm_in_cluster = self.resource_pool.get_cluster_with_vm(start_vm)
-                            if vm_in_cluster != None and vm_in_cluster in fitting_set:
+                            if vm_in_cluster != None and vm_in_cluster in fitting_set and not vm_in_cluster.connection_problem:
                                 destroy_ret = vm_in_cluster.vm_destroy(start_vm, reason="Trying to speed up balancing by shutting down Error state VM.")
                                 if destroy_ret == 0:
                                     successful_destroy += 1
@@ -1659,7 +1662,7 @@ class Cleanup(threading.Thread):
                                 # fewer or equal vms left that trying to shutdown
                                 continue
                             vm_in_cluster = self.resource_pool.get_cluster_with_vm(start_vm)
-                            if vm_in_cluster != None and vm_in_cluster in fitting_set:
+                            if vm_in_cluster != None and vm_in_cluster in fitting_set and not vm_in_cluster.connection_problem:
                                 destroy_ret = vm_in_cluster.vm_destroy(start_vm, reason="Trying to speed up balancing by shutting down Starting VM.")
                                 if destroy_ret == 0:
                                     successful_destroy += 1
@@ -1706,7 +1709,7 @@ class Cleanup(threading.Thread):
                                 if bad_name_vm != None:
                                     log.debug("Bad Addresses for VM: %s, Startd: %s, Master: %s" % (bad_name_vm.condorname, bad_name_vm.condoraddr, bad_name_vm.condormasteraddr))
                                     cluster = self.resource_pool.get_cluster_with_vm(bad_name_vm)
-                                    if cluster:
+                                    if cluster and not cluster.connection_problem:
                                         destroy_ret = cluster.vm_destroy(bad_name_vm, reason="Unable to Retire VM %s due to invalid Condor Name - Forcing Shutdown - any running jobs will be evicted and rescheduled" % bad_name_vm.id)
                                         if destroy_ret != 0:
                                             log.error("Failed to destroy vm %s" % bad_name_vm.id)
@@ -1770,7 +1773,7 @@ class Cleanup(threading.Thread):
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 if vm.needs_proxy_shutdown():
-                    if not self.check_destroy(cluster, vm):
+                    if not self.check_destroy(cluster, vm) and  not cluster.connection_problem:
                         th = VMDestroyCmd(cluster, vm, reason="Passed proxy expiry threshold.")
                         th.start()
                         self.destroy_threads["".join([cluster.name, vm.id])] = th
@@ -1866,7 +1869,7 @@ class Cleanup(threading.Thread):
                 continue
             cluster = self.resource_pool.get_cluster_with_vm(vm)
             if cluster:
-                if not self.check_destroy(cluster, vm):
+                if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
                     th = VMDestroyCmd(cluster, vm, reason="Unable to run any idle jobs due to resource config.")
                     th.start()
                     self.destroy_threads["".join([cluster.name, vm.id])] = th
@@ -1880,6 +1883,13 @@ class Cleanup(threading.Thread):
             and vm.uservmtype == job.uservmtype:
             vmjobmatch = True
         return vmjobmatch
+
+    def check_connection_problems(self):
+        for cluster in self.resource_pool.resources:
+            if cluster.connection_problem:
+                if time.time() - config.connection_fail_disable_time - config.vm_connection_fail_threshold > cluster.errorconnect:
+                    cluster.connection_problem = False
+                    cluster.enabled = True
 
 class GetClouds(threading.Thread):
     """
