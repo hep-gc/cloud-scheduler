@@ -78,7 +78,7 @@ job_proxy_renewal_threshold = 15 * 60 # 15 minutes default
 vm_proxy_refresher_interval = -1 # The current default is not to refresh the VM proxies. (until code is thouroughly tested -- Andre C.)
 vm_proxy_renewal_threshold = 60 * 60 # 60 minutes default
 vm_proxy_shutdown_threshold = 30 * 60 # 30 minutes default
-vm_connection_fail_threshold = 30 * 60 # 30 minutes default
+vm_connection_fail_threshold = 60 * 60 # 60 minutes default
 vm_start_running_timeout = -1 # Unlimited time
 vm_idle_threshold = 5 * 60 # 5 minute default
 max_starting_vm = -1
@@ -88,6 +88,7 @@ proxy_cache_dir = None
 override_vmtype = False
 vm_reqs_from_condor_reqs = False
 adjust_insufficient_resources = False
+connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
 
 default_VMType= "default"
 default_VMNetwork= ""
@@ -672,6 +673,15 @@ def setup(path=None):
         except ValueError:
             print "Configuration file problem: adjust_insufficient_resources must be a" \
                   " Boolean value."
+
+    if config_file.has_option("global", "connection_fail_disable_time"):
+        try:
+            connection_fail_disable_time = config_file.getint("global", "connection_fail_disable_time")
+        except ValueError:
+            print "Configuration file problem: connection_fail_disable_time must be an " \
+                  "integer value."
+            sys.exit(1)
+
 
 
     # Default Logging options
