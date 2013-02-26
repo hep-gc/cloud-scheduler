@@ -1,5 +1,6 @@
 import cluster_tools
-
+import cloudscheduler.utilities as utilities
+log = utilities.get_cloudscheduler_logger()
 try:
     import boto.ec2
     import boto
@@ -9,8 +10,8 @@ except ImportError:
             "or get it from http://code.google.com/p/boto/")
 import time
 import nimbus_xml
-import cloudscheduler.utilities as utilities
-log = utilities.get_cloudscheduler_logger()
+
+
 class EC2Cluster(cluster_tools.ICluster):
 
     VM_STATES = {
