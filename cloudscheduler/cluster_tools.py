@@ -1597,7 +1597,10 @@ class IBMCluster(ICluster):
     def _get_connection(self, username, password):
         self.connection = self.driver(username, password)
         self.locations = self.connection.list_locations()
-        self.locations_dict = {loc.id: loc for loc in self.locations}
+        self.locations_dict = {}
+        for loc in self.locations:
+            self.locations_dict[loc.id] = loc
+        #{loc.id: loc for loc in self.locations} # took out dict comprehension
         self.compute_sizes = self.connection.list_sizes()
         self.images = self.connection.list_images()
         return self.connection
