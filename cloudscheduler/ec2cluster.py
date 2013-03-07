@@ -33,10 +33,14 @@ class EC2Cluster(cluster_tools.ICluster):
         """
 
         connection = None
+        if len(self.regions) > 0:
+            region_name = self.regions[0]
+        else:
+            region_name = self.name
 
         if self.cloud_type == "AmazonEC2":
             try:
-                region = boto.ec2.regioninfo.RegionInfo(name=self.name,
+                region = boto.ec2.regioninfo.RegionInfo(name=region_name,
                                                  endpoint=self.network_address)
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
@@ -50,7 +54,7 @@ class EC2Cluster(cluster_tools.ICluster):
 
         elif self.cloud_type == "Eucalyptus":
             try:
-                region = boto.ec2.regioninfo.RegionInfo(name=self.name,
+                region = boto.ec2.regioninfo.RegionInfo(name=region_name,
                                                  endpoint=self.network_address)
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
@@ -73,7 +77,7 @@ class EC2Cluster(cluster_tools.ICluster):
 
         elif self.cloud_type == "OpenStack":
             try:
-                region = boto.ec2.regioninfo.RegionInfo(name=self.name,
+                region = boto.ec2.regioninfo.RegionInfo(name=region_name,
                                                  endpoint=self.network_address)
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
@@ -98,7 +102,8 @@ class EC2Cluster(cluster_tools.ICluster):
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 hypervisor='xen', key_name=None, boot_timeout=None, secure_connection=""):
+                 hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
+                 regions=[]):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -120,6 +125,7 @@ class EC2Cluster(cluster_tools.ICluster):
         self.key_name = key_name
         self.secure_connection = secure_connection in ['True', 'true', 'TRUE']
         self.total_cpu_cores = -1
+        self.regions = regions
 
         connection = self._get_connection()
 
