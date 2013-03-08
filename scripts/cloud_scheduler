@@ -113,14 +113,14 @@ case "$1" in
         ;;
     status)
         if [ -f $PIDFILE ]; then
-        PID=`cat $PIDFILE`
-        ps $PID >/dev/null
-        if [ $? -eq 0 ]; then
             PID=`cat $PIDFILE`
-            echo $"$SERVICE is running with PID ${PID}."
-        else
-            echo $"$SERVICE has exited unexpectedly."
-        fi
+            ps $PID >/dev/null
+            if [ $? -eq 0 ]; then
+                PID=`cat $PIDFILE`
+                echo $"$SERVICE is running with PID ${PID}."
+            else
+                echo $"$SERVICE has exited unexpectedly."
+            fi
         else
             echo "$SERVICE isn't running."
         fi
