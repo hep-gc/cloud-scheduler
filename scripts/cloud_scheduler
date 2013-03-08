@@ -28,14 +28,13 @@ start () {
     if [ -f $PIDFILE ]; then
         PID=`cat $PIDFILE`
         ps $PID >/dev/null
-        IS_NOT_RUNNING=$?
-        if [ $IS_NOT_RUNNING ]; then
-            echo $"$SERVICE didn't shut down cleanly last time."
-            rm -f $PIDFILE
-        else
+        if [ $? -eq 0 ]; then
             PID=`cat $PIDFILE`
             echo $"$SERVICE is already running with PID ${PID}."
             return 1
+        else
+            echo $"$SERVICE didn't shut down cleanly last time."
+            rm -f $PIDFILE
         fi
     fi
 
@@ -116,8 +115,7 @@ case "$1" in
         if [ -f $PIDFILE ]; then
         PID=`cat $PIDFILE`
         ps $PID >/dev/null
-        IS_RUNNING=$?
-        if [ $IS_RUNNING ]; then
+        if [ $? -eq 0 ]; then
             PID=`cat $PIDFILE`
             echo $"$SERVICE is running with PID ${PID}."
         else
