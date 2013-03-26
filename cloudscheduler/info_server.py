@@ -382,6 +382,7 @@ class VMJSONEncoder(json.JSONEncoder):
             return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
+                'ipaddress': vm.ipaddress,
                 'cloudtype': vm.cloudtype, 'network': vm.network, 
                 'cpuarch': vm.cpuarch, 'image': vm.image,
                 'memory': vm.memory, 'mementry': vm.mementry, 
