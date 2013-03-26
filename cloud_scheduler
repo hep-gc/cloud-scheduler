@@ -1483,7 +1483,7 @@ class Cleanup(threading.Thread):
                 num_to_shutdown = len_unused
                 
             for x in range(0, num_to_shutdown):
-                log.debug("Name of Condor Machine to shutdown: %s" % unused_vms_of_type[x]['Machine'])
+                log.verbose("Name of Condor Machine to shutdown: %s" % unused_vms_of_type[x]['Machine'])
                 condor_name = unused_vms_of_type[x]['Machine']
                 # Track if machine found or not so can break from loop early
                 found_vm = False
