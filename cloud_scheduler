@@ -1489,8 +1489,9 @@ class Cleanup(threading.Thread):
                 found_vm = False
                 for cluster in self.resource_pool.resources:
                     for vm in cluster.vms:
-                        if utilities.match_host_with_condor_host(vm.hostname, condor_name) and vm.uservmtype == vmtype:
+                        if utilities.match_host_with_condor_host(vm.hostname, condor_name):
                             found_vm = True
+                        if vm.uservmtype == vmtype and found_vm:
                             log.verbose("Located %s in VM list." % unused_vms_of_type[x]['Machine'])
                             # Check that machine is Isn't still starting and CS has picked up a zombie condor entry
                             if vm.status != 'Running':
