@@ -416,7 +416,7 @@ class NimbusCluster(cluster_tools.ICluster):
 
             elif new_status == "ExpiredProxy":
                 vm.override_status = new_status
-                log.error("Problem polling VM %s. Your proxy expired." % vm.id)
+                log.error("Problem polling VM %s. Your proxy expired. Proxy File: %s" % (vm.id, vm.proxy_file))
 
             elif new_status == "ConnectionRefused":
                 vm.override_status = new_status
