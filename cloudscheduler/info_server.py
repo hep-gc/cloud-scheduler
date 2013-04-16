@@ -389,7 +389,18 @@ class VMJSONEncoder(json.JSONEncoder):
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status, 'condoraddr': vm.condoraddr,
                 'condorname': vm.condorname, 'condormasteraddr': vm.condormasteraddr,
-                'keep_alive': vm.keep_alive}
+                'keep_alive': vm.keep_alive, 'user': vm.user, 'uservmtype': vm.uservmtype,
+                'clusteraddr': vm.clusteraddr, 'clusterport': vm.clusterport,
+                'errorcount': vm.errorcount, 'errorconnect': vm.errorconnect,
+                'lastpoll': vm.lastpoll, 'last_state_change': vm.last_state_change,
+                'initialize_time': vm.initialize_time, 'startup_time': vm.startup_time,
+                'idle_start': vm.idle_start, 'spot_id': vm.spot_id,
+                'proxy_file': vm.proxy_file, 'myproxy_creds_name': vm.myproxy_creds_name,
+                'myproxy_server': vm.myproxy_server, 'myproxy_server_port': vm.myproxy_server_port,
+                'myproxy_renew_time': vm.myproxy_renew_time, 'override_status': vm.override_status,
+                'job_per_core': vm.job_per_core, 'force_retire': vm.force_retire,
+                'failed_retire': vm.failed_retire, 'x509userproxy_expiry_time': vm.x509userproxy_expiry_time,
+                'job_run_times': vm.job_run_times.data}
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
@@ -408,7 +419,12 @@ class ClusterJSONEncoder(json.JSONEncoder):
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
                 'storageGB': cluster.storageGB, 'vms': vmDecodes, 'enabled':cluster.enabled,
-                'hypervisor': cluster.hypervisor}
+                'hypervisor': cluster.hypervisor, 'max_mem': cluster.max_mem,
+                'max_vm_mem': cluster.max_vm_mem, 'max_slots': cluster.max_slots,
+                'max_storageGB': cluster.max_storageGB, 'boot_timeout': cluster.boot_timeout,
+                'connection_fail_disable_time': cluster.connection_fail_disable_time,
+                'connection_problem': cluster.connection_problem,
+                'errorconnect': cluster.errorconnect}
 
 class ResourcePoolJSONEncoder(json.JSONEncoder):
     def default(self, res_pool):
@@ -438,7 +454,23 @@ class JobJSONEncoder(json.JSONEncoder):
                 'keep_alive': job.keep_alive, 'status': job.status,
                 'remote_host': job.remote_host, 'running_cloud': job.running_cloud,
                 'banned': job.banned, 'ban_time': job.ban_time, 'target_clouds':job.target_clouds,
-                'blocked_clouds':job.blocked_clouds}
+                'blocked_clouds':job.blocked_clouds, 'uservmtype': job.uservmtype,
+                'high_priority': job.high_priority, 'instance_type': job.instance_type,
+                'maximum_price': job.maximum_price, 'spool_dir': job.spool_dir,
+                'myproxy_server': job.myproxy_server, 'myproxy_server_port': job.myproxy_server_port,
+                'myproxy_creds_name': job.myproxy_creds_name, 'running_vm': self.running_vm,
+                'x509userproxysubject': job.x509userproxysubject, 'x509userproxy': job.x509userproxy,
+                'original_x509userproxy': job.original_x509userproxy,
+                'x509userproxy_expiry_time': job.x509userproxy_expiry_time,
+                'proxy_renew_time': job.proxy_renew_time, 'job_per_core': job.job_per_core,
+                'servertime': job.servertime, 'jobstarttime': job.jobstarttime,
+                'machine_reserved': job.machine_reserved, 'req_hypervisor': job.req_hypervisor,
+                'proxy_non_boot': job.proxy_non_boot, 'vmimage_proxy_file': job.vmimage_proxy_file,
+                'usertype_limit': job.usertype_limit, 'req_image_id': job.req_image_id,
+                'req_instance_type_ibm': job.req_instance_type_ibm, 'location': job.location,
+                'key_name': job.key_name, 'req_security_group': job.req_security_group,
+                'override_status': job.override_status, 'block_time': job.block_time
+                }
 
 class JobPoolJSONEncoder(json.JSONEncoder):
     def default(self, job_pool):
