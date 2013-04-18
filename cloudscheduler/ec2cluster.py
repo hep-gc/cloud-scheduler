@@ -103,7 +103,7 @@ class EC2Cluster(cluster_tools.ICluster):
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
-                 regions=[]):
+                 regions=[], vm_domain_name=""):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -126,6 +126,7 @@ class EC2Cluster(cluster_tools.ICluster):
         self.secure_connection = secure_connection in ['True', 'true', 'TRUE']
         self.total_cpu_cores = -1
         self.regions = regions
+        self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
 
         connection = self._get_connection()
 
@@ -317,7 +318,10 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.state, "Starting")))
             vm.status = self.VM_STATES.get(instance.state, "Starting")
-            vm.hostname = instance.public_dns_name
+            if self.cloud_type == "OpenStack":
+                vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
+            else:
+                vm.hostname = instance.public_dns_name
             vm.lastpoll = int(time.time())
         return vm.status
 
