@@ -1,0 +1,96 @@
+#!/bin/bash
+#
+# Init script for cloud scheduler client to modify 
+# local condor configurations
+#
+# chkconfig: 2345 90 10
+# description: Cloud Scheduler modify condor script
+#
+# config: /etc/cloud_scheduler/condor.conf
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+# Path to condor_config.local
+CONDOR_CONFIG="/etc/condor/condor_config.local"
+
+# Path to modifications
+CONDOR_CONFIG_CS="/etc/condor/cloud_scheduler.conf"
+
+# Path to backup
+CONDOR_CONFIG_SAV="/var/run/cloud_sheduler/condor_config.local"
+
+
+# does not really work because condor_config_val -set is too buggy
+modify_condor_config() {
+    local line
+    grep -v '^[[:space:]]*#' $1 | while read -r line; do
+    	condor_config_val -set "${line}"
+    	RETVAL=$((RETVAL+$?))
+    done
+}
+
+status() {
+    if [[ -e ${CONDOR_CONFIG_SAV} ]]; then
+	echo $"Cloud scheduler modifications are in place"
+	return 0
+    else
+	echo $"Cloud scheduler modifications are not applied"
+	return 3
+    fi
+}
+
+start() {
+    if [[ -e ${CONDOR_CONFIG_SAV} ]]; then
+	echo $"Cloud scheduler modifications were already applied"
+    else
+	echo -n $"Modify condor config for cloud scheduler "
+	if [[ -e ${CONDOR_CONFIG_CS} ]]; then
+	    cp -af ${CONDOR_CONFIG} ${CONDOR_CONFIG_SAV}
+	    cat ${CONDOR_CONFIG_CS} >> ${CONDOR_CONFIG}
+	    RETVAL=$?
+	else
+	    RETVAL=1
+	fi
+	[[ $RETVAL -eq 0 ]] && success || failure
+	echo
+    fi
+}
+
+stop() {
+    if [[ -e ${CONDOR_CONFIG_SAV} ]]; then
+	echo -n $"Restore condor config from cloud scheduler "
+	cp -af ${CONDOR_CONFIG_SAV} ${CONDOR_CONFIG} && \
+	    rm ${CONDOR_CONFIG_SAV}
+	RETVAL=$?
+	[[ $RETVAL -eq 0 ]] && success || failure
+	echo
+    else
+	echo $"Cloud scheduler modifications have not been applied"
+    fi
+}
+
+
+RETVAL=0
+
+case "$1" in
+    start)
+	start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+	status
+	;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart}"
+        exit 1
+        ;;
+esac
+
+exit ${RETVAL}
