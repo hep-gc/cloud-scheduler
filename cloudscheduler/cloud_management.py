@@ -337,6 +337,7 @@ class ResourcePool:
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     secure_connection = get_or_none(config, cluster, "secure_connection"),
                     regions = map(str, splitnstrip(",", get_or_none(config, cluster, "regions"))),
+                    vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
                     )
 
         elif cloud_type == "StratusLab" and stratuslab_support:
