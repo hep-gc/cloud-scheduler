@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Init script for cloud scheduler client to modify 
 # local condor configurations
@@ -11,63 +11,166 @@
 # Source function library
 . /etc/rc.d/init.d/functions
 
-# Path to condor_config.local
-CONDOR_CONFIG="/etc/condor/condor_config.local"
+# Path to your primary condor configuration file
+CONDOR_CONFIG=/etc/condor/condor_config
 
-# Path to modifications
-CONDOR_CONFIG_CS="/etc/condor/cloud_scheduler.conf"
+# Path to condor_config_val
+CONDOR_CONFIG_VAL="/usr/bin/condor_config_val"
 
-# Path to backup
-CONDOR_CONFIG_SAV="/var/run/cloud_sheduler/condor_config.local"
-
-
-# does not really work because condor_config_val -set is too buggy
-modify_condor_config() {
-    local line
-    grep -v '^[[:space:]]*#' $1 | while read -r line; do
-    	condor_config_val -set "${line}"
-    	RETVAL=$((RETVAL+$?))
-    done
+# Emits error with a "FATAL: " prefix. Exits.  Never returns
+fatal_error() {
+    echo "FATAL: $1"
+    exit 1
 }
 
-status() {
-    if [[ -e ${CONDOR_CONFIG_SAV} ]]; then
-	echo $"Cloud scheduler modifications are in place"
-	return 0
-    else
-	echo $"Cloud scheduler modifications are not applied"
-	return 3
+# Returns a setting from the CONDOR_CONFIG configuration
+# file.  Exits if the value cannot be found!
+get_condor_config_val() {
+    TMPVAL=`"$CONDOR_CONFIG_VAL" $1`
+    if [ "$TMPVAL" = "" ]; then
+	fatal_error "Unable to locate $1 in $CONDOR_CONFIG"
     fi
+    echo "$TMPVAL"
+}
+
+replace_or_append() {
+    replace_this=$1
+    with_this=$2
+    on_this_file=$3
+
+    grep -e "^$replace_this[ =]" $on_this_file >/dev/null 2>&1
+    REPLACE=$?
+    if [ $REPLACE -eq 0 ]; then
+	sed -i "s/^$replace_this[ =].*/$with_this/" $on_this_file
+    else
+	echo $with_this >> $on_this_file
+    fi
+}
+
+set_central_manager() {
+    condor_host=$1
+
+    if [ "xxx" = "xxx${condor_host}" ]; then
+	
+	echo "CENTRAL_MANAGER is undefined. Check /etc/condor/central_manager" >&1
+	exit 1
+    fi
+    
+    local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+    replace_or_append "CONDOR_HOST" "CONDOR_HOST=$condor_host" $local_file
+}
+
+update_condor_local_config() {
+    if [ -f $CONDOR_CONFIG_LOCAL_MODIFS ]; then
+	local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+	echo "Applying modifications to ${local_file} ..."
+	while read LINE
+	do
+	    # Split values like 'variable = value'
+	    variable=`echo ${LINE} | perl -pe 's/(\w*?) \s*? = \s* (.*)/\1/x'`
+	    value=`echo ${LINE} | perl -pe 's/(\w*?) \s*? = \s* (.*)/\2/x'`
+	    replace_or_append "${variable}" "${variable}=${value}" $local_file
+	done < $CONDOR_CONFIG_LOCAL_MODIFS
+    fi
+}
+
+# set up condor ccb if only private networking is available
+setup_ccb() {
+	/sbin/ifconfig | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null
+	NON_LOCAL=$?
+
+	if [ $NON_LOCAL -eq 1 ]; then
+	    # All addresses are local
+	    LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+	    echo $LOCAL_ADDRESS $HOSTNAME "# Added for Condor CCB" >> /etc/hosts
+	fi
+}
+
+# usage: setup_vmtype metadata
+setup_vmtype() {
+    IMAGE_META_FILE=$1
+    
+    if [ -f $IMAGE_META_FILE ]; then
+	
+	# Parse VMType out of repoman metadata file
+	VMTYPE=`cat $IMAGE_META_FILE | awk -F: '/^name:/ { print $2 }' | sed  's/[ \t]* //'`
+
+	if [ "xxx" != "xxx${VMTYPE}" ]; then
+	    
+	    local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+	    replace_or_append "VMType" "VMType= \"$VMTYPE\"" $local_file
+	fi
+    fi
+}
+
+setup_on_ec2() {
+    
+    local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+    
+    # Eucalyptus can give us just a private IP
+    public_ip=`curl -m 10 -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
+    test $public_ip != "0.0.0.0" > /dev/null 2>&1
+    HAS_PUBLIC_IP=$?
+    
+    curl -m 10 -s http://$EC2_METADATA/ >/dev/null 2>&1
+    IS_EC2=$?
+    if [ $IS_EC2 -eq 0 ] ; then	
+	if [ $HAS_PUBLIC_IP -eq 0 ] ; then	    
+	    # Set hostname to external
+	    EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
+	    VALID_HOST=$?
+	    if [ $VALID_HOST -eq 0 ] ; then
+		hostname $EXTHOSTNAME
+		
+		private_network_name=amazon-ec2-`curl -s http://$EC2_METADATA/latest/meta-data/placement/availability-zone`
+		replace_or_append "PRIVATE_NETWORK_NAME" "PRIVATE_NETWORK_NAME=$private_network_name" $local_file
+		
+		tcp_forwarding_host=`curl -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
+		replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
+		
+		private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
+		replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
+	    fi
+	else
+	    # Set hostname to instance id when we're using private net
+	    EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/instance-id`
+	    VALID_ID=$?
+	    if [ $VALID_ID -eq 0 ] ; then
+		hostname $EXTHOSTNAME		
+		private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
+		replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
+	    fi
+	fi
+    fi
+}
+
+# Make sure the permissions on the grid hostkey
+# are restrictive enough, else GSI will fail.
+set_hostkey_permissions () {
+    HOST_KEY=`get_condor_config_val GSI_DAEMON_KEY`
+    if [ -f $HOST_KEY ]; then
+	chmod 400 $HOST_KEY
+    else
+	echo "Grid certificate host key not found. $HOST_KEY"
+    fi
+}
+
+cleanup_ccb () {
+    sed -i '/# Added for Condor CCB/d' /etc/hosts
 }
 
 start() {
-    if [[ -e ${CONDOR_CONFIG_SAV} ]]; then
-	echo $"Cloud scheduler modifications were already applied"
-    else
-	echo -n $"Modify condor config for cloud scheduler "
-	if [[ -e ${CONDOR_CONFIG_CS} ]]; then
-	    cp -af ${CONDOR_CONFIG} ${CONDOR_CONFIG_SAV}
-	    cat ${CONDOR_CONFIG_CS} >> ${CONDOR_CONFIG}
-	    RETVAL=$?
-	else
-	    RETVAL=1
-	fi
-	[[ $RETVAL -eq 0 ]] && success || failure
-	echo
-    fi
+    set_hostkey_permissions
+    setup_on_ec2
+    setup_ccb
+    set_central_manager $CENTRAL_MANAGER
+    setup_vmtype $IMAGE_METADATA
+    update_condor_local_config
+    RETVAL=$?
 }
 
 stop() {
-    if [[ -e ${CONDOR_CONFIG_SAV} ]]; then
-	echo -n $"Restore condor config from cloud scheduler "
-	cp -af ${CONDOR_CONFIG_SAV} ${CONDOR_CONFIG} && \
-	    rm ${CONDOR_CONFIG_SAV}
-	RETVAL=$?
-	[[ $RETVAL -eq 0 ]] && success || failure
-	echo
-    else
-	echo $"Cloud scheduler modifications have not been applied"
-    fi
+    cleanup_ccb
 }
 
 
@@ -80,15 +183,12 @@ case "$1" in
     stop)
         stop
         ;;
-    status)
-	status
-	;;
     restart)
         stop
         start
         ;;
     *)
-        echo $"Usage: $0 {start|stop|status|restart}"
+        echo $"Usage: $0 {start|stop|restart}"
         exit 1
         ;;
 esac
