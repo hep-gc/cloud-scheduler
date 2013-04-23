@@ -1262,30 +1262,22 @@ class ResourcePool:
             old_cluster.setup_logging()
 
             for vm in old_cluster.vms:
+                log.debug("Found VM %s on %s" % (vm.id, old_cluster.name))
+                new_cluster = self.get_cluster(old_cluster.name)
 
-                log.debug("Found VM %s" % vm.id)
-                vm_status = old_cluster.vm_poll(vm)
-                if vm_status == "Error":
-                    old_cluster.vm_destroy(vm, reason="Persisted VM in Error state.")
-                elif vm_status == "Destroyed":
-                    log.info("VM %s on %s no longer exists. Ignoring it." % (vm.id, old_cluster.name))
+                if new_cluster:
+                    try:
+                        new_cluster.resource_checkout(vm)
+                        new_cluster.vms.append(vm)
+                        log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
+                    except cluster_tools.NoResourcesError, e:
+                        new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s left on %s" %(e.resource, new_cluster.name))
+                    except:
+                        new_cluster.vm_destroy(vm, return_resources=False, reason="Unexpected error checking out resources.")
                 else:
-                    new_cluster = self.get_cluster(old_cluster.name)
-
-                    if new_cluster:
-                        try:
-                            new_cluster.resource_checkout(vm)
-                            new_cluster.vms.append(vm)
-                            log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
-                        except cluster_tools.NoResourcesError, e:
-                            new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s left on %s" %(e.resource, new_cluster.name))
-                        except:
-                            new_cluster.vm_destroy(vm, return_resources=False, reason="Unexpected error checking out resources.")
-                    else:
-                        log.info("%s doesn't seem to exist, so destroying vm %s." %
-                                 (old_cluster.name, vm.id))
-                        old_cluster.vm_destroy(vm, reason="cloud %s no longer exists." % old_cluster.name)
-
+                    log.info("%s doesn't seem to exist, so destroying vm %s." %
+                             (old_cluster.name, vm.id))
+                    old_cluster.vm_destroy(vm, reason="cloud %s no longer exists." % old_cluster.name)
 
     def track_failures(self, job, resources,  value):
         """Error Tracking to be used to ban / filter resources."""
