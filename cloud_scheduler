@@ -1311,6 +1311,8 @@ class Cleanup(threading.Thread):
                             if machine.has_key('State'):
                                 if vm.idle_start and machine['State'] == "Claimed":
                                     vm.idle_start = None
+                                elif not vm.idle_start and machine['Activity'] == 'Idle':
+                                    vm.idle_start = int(time.time())
                             foundvm = True
                             break
                         if utilities.match_host_with_condor_host_master(vm.hostname, machine['Machine']):
@@ -1321,6 +1323,8 @@ class Cleanup(threading.Thread):
                             if machine.has_key('State'):
                                 if vm.idle_start and machine['State'] == "Claimed":
                                     vm.idle_start = None
+                                elif not vm.idle_start and machine['Activity'] == 'Idle':
+                                    vm.idle_start = int(time.time())
                             foundvm = True
                             break
                     if not foundvm:
