@@ -1968,6 +1968,25 @@ class ResourcePool:
             atLimit = True
         return atLimit
 
+    def machinelist_to_vmmachinelist(self, machinelist, master_machinelist):
+        vm_machine_list = []
+        master_machine_ips = {}
+        for master in master_machinelist:
+            try:
+                master_machine_ips[master['Machine']] = machine['MasterIpAddr']
+            except:
+                pass
+        for machine in machinelist:
+            try:
+                vmmachine = VMMachine(name=machine['Name'], machine_name=machine['Machine'], job_id=machine['JobId'], global_job_id=machine['GlobalJobId'],
+                 address_startd=machine['MyAddress'], address_master=master_machine_ips[machine['Machine']], state=machine['State'], activity=machine['Activity'],
+                 vmtype=machine['VMType'], current_time=machine['MyCurrentTime'], entered_state_time=machine['EnteredCurrentState'],
+                 start_req=machine['Start'],
+                 remote_owner=machine['RemoteOwner'])
+                vm_machine_list.append(vmmachine)
+            except:
+                pass
+        return vm_machine_list
 
 class VMDestroyCmd(threading.Thread):
     """
@@ -1988,3 +2007,29 @@ class VMDestroyCmd(threading.Thread):
         return self.result
     def get_vm(self):
         return self.vm
+
+class VMMachine():
+    """
+    VMMachine - abstraction class to hold information about machines registered with the batch queue
+    """
+
+    def __init__(self, name="", machine_name="", job_id="", global_job_id="",
+                 address_startd="", address_master="", state="", activity="",
+                 vmtype="", current_time=0, entered_state_time=0, start_req="",
+                 remote_owner="",):
+        self.name = name
+        self.machine_name = machine_name
+        self.job_id = job_id
+        self.global_job_id = global_job_id
+        self.address_startd = address_startd
+        self.address_master = address_master
+        self.state = state
+        self.activity = activity
+        self.vmtype = vmtype
+        self.current_time = current_time
+        self.entered_state_time = entered_state_time
+        self.start_req = start_req
+        self.remote_owner = remote_owner
+    
+    def get_uservmtype(self):
+        return ''.join([self.remote_owner, self.vmtype])
