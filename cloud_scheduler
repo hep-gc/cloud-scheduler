@@ -49,6 +49,7 @@ import cloudscheduler.job_management as job_management
 import cloudscheduler.proxy_refreshers as proxy_refreshers
 
 from cloudscheduler.cloud_management import VMDestroyCmd
+from cloudscheduler.cloud_management import VMMachine
 
 #from cloudscheduler.monitoring.get_clouds import getCloudsClient
 
@@ -252,11 +253,14 @@ class MachinePoller(threading.Thread):
             log.verbose("Polling machine scheduler")
 
             self.resource_pool.prev_machine_list = self.resource_pool.machine_list
+            self.resource_pool.prev_vm_machine_list = self.resource_pool.vm_machine_list
             self.resource_pool.machine_list = self.resource_pool.resource_query()
             self.resource_pool.master_list = self.resource_pool.master_resource_query_local()
+            self.resource_pool.vm_machine_list = self.resource_pool.machinelist_to_vmmachinelist(self.resource_pool.machine_list, self.resource_pool.master_list)
             if len(self.resource_pool.machine_list) == 0 and len(self.resource_pool.prev_machine_list) != 0 and zero_len_count < 3:
                 zero_len_count += 1
                 self.resource_pool.machine_list = self.resource_pool.prev_machine_list
+                self.resource_pool.vm_machine_list = self.resource_pool.prev_vm_machine_list
             else:
                 zero_len_count = 0
             log.verbose("Machine Poller waiting %ds..." % self.polling_interval)
