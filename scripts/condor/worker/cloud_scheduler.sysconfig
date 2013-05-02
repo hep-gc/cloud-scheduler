@@ -1,0 +1,21 @@
+# Path to condor_config cloud scheduler modifs
+CONDOR_CONFIG_LOCAL_MODIFS=/etc/condor/condor_config.local.modifications
+
+# Path to central manager for condor
+CENTRAL_MANAGER=/etc/condor/central_manager
+
+# Path to image metadata file. If its not set, or file doesn't exist
+# VMType won't automatically be set
+IMAGE_META_FILE=/.image.metadata
+
+## These varibales tells condor which certificate to 
+## use to GSI authenticate this host.
+## Default is undefined
+#GSI_DAEMON_DIRECTORY = /etc/grid-security
+#GSI_DAEMON_CERT = /etc/grid-security/hostcert.pem
+#GSI_DAEMON_KEY = /etc/grid-security/hostkey.pem
+
+# Amazon EC2 Metadata server
+# do not define if you don't use
+#EC2_METADATA=169.254.169.254
+
