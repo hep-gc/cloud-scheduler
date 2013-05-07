@@ -78,7 +78,7 @@ forcekill () {
 }
 
 quickstop () {
-    if [ -f $PIDFILE]; then
+    if [ -f $PIDFILE ]; then
         echo -n $"Setting Quick Exit Flag for $SERVICE:"
         /bin/kill -s SIGUSR2 `cat $PIDFILE`
         ok
