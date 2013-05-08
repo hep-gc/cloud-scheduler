@@ -203,6 +203,7 @@ class EC2Cluster(cluster_tools.ICluster):
                         reservation = image.run(1,1, key_name=self.key_name,
                                                 addressing_type=addressing_type,
                                                 user_data=user_data,
+                                                placement=self.regions[0],
                                                 security_groups=sec_group,
                                                 instance_type=instance_type)
                         instance_id = reservation.instances[0].id
@@ -219,6 +220,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                                   image.id,
                                                   key_name=self.key_name,
                                                   user_data=user_data,
+                                                  placement=self.regions[0],
                                                   addressing_type=addressing_type,
                                                   security_groups=self.sec_group,
                                                   instance_type=instance_type)
