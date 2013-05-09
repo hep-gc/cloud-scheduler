@@ -112,8 +112,8 @@ class EC2Cluster(cluster_tools.ICluster):
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout)
 
         if not security_group:
-            security_group = "default"
-        self.security_groups = [security_group]
+            security_group = ["default"]
+        self.security_groups = security_group
 
         if not access_key_id or not secret_access_key:
             log.error("Cannot connect to cluster %s "
