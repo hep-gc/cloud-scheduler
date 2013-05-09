@@ -87,6 +87,9 @@ class ResourcePool:
     ## Instance variables
     resources = []
     machine_list = []
+    prev_machine_list = []
+    vm_machine_list = []
+    prev_vm_machine_list = []
     master_list = []
     retired_resources = []
     config_file = ""
