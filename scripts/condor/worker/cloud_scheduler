@@ -36,10 +36,10 @@ update_condor_config() {
     [[ -e ${CONDOR_CONFIG_LOCAL} ]] || fatal_error "Missing local condor config file"
     local key val
     if [[ $# -eq 1 ]]; then # double quotes around args, or no spaces
-	key="${1%=*}"
-	val="${1##*=}"
+	key="${1%%=*}"
+	val="${1#*=}"
     elif [[ $# -eq 2 ]]; then # separated by one space
-	key="${1%=*}"
+	key="${1%%=*}"
 	val="${2##*=}"
     elif [[ $# -eq 3 ]]; then # 2 spaces, assume = in the middle
 	key="$1"
@@ -47,12 +47,14 @@ update_condor_config() {
     else
 	fatal_error "Cannot decode a key-value pair in $# arguments"
     fi
+    key=${key//[[:space:]]}
     [[ -z ${key} ]] && fatal_error "Cannot decode a key in $*"
     [[ -z ${val} ]] && fatal_error "Cannot decode a value in $*"
     # replace or append
     if grep -q -e "^[ \t]*${key}*=" ${CONDOR_CONFIG_LOCAL}; then
-	sed -i -e "s/^\([ \t]*${key}[ \t]*\)=.*/\1=${val}/" ${CONDOR_CONFIG_LOCAL}
+	sed -i -e "s/^\([\s\t]*${key}[\s\t]*\)=.*/\1=${val}/" ${CONDOR_CONFIG_LOCAL}
     else
+	echo >> ${CONDOR_CONFIG_LOCAL}
 	echo >> ${CONDOR_CONFIG_LOCAL} "# Added by cloud scheduler"
 	echo >> ${CONDOR_CONFIG_LOCAL} "${key} = ${val}"
     fi
@@ -68,7 +70,7 @@ setup_central_manager() {
 
 # set up condor ccb if only private networking is available
 setup_ccb() {
-    if ${IFCONFIG} | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null; then
+    if ! ${IFCONFIG} | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null; then
 	# ip  are local
 	echo  >> /etc/hosts \
 	    "$(${IFCONFIG} eth0 | grep -oP '(?<=inet addr:)[0-9.]*') ${HOSTNAME} # Added for Condor CCB"
@@ -81,7 +83,7 @@ setup_vmtype() {
 	# Parse VMType out of repoman metadata file
 	# rely on python > 2.6 to get json file
 	local vmtype=$(${PYTHON} -c "import json; print(json.load(open('${IMAGE_META_FILE}'))['vmtype'])" 2> /dev/null)
-	[[ -z ${vmtype} ]] || update_condor_condig "VMType = \"${vmtype}\""
+	[[ -z ${vmtype} ]] || update_condor_config "VMType = \"${vmtype}\""
     fi
 }
 
@@ -140,6 +142,7 @@ cleanup_ccb () {
 }
 
 start() {
+    echo -n $"Applying cloud_scheduler modifications: "
     setup_hostkey_permissions
     setup_ec2
     setup_ccb
@@ -147,6 +150,8 @@ start() {
     setup_vmtype
     apply_condor_modifs
     RETVAL=$?
+    [[ $RETVAL == 0 ]] && echo "done"
+    return $RETVAL
 }
 
 stop() {
