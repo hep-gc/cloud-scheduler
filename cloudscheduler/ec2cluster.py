@@ -128,9 +128,6 @@ class EC2Cluster(cluster_tools.ICluster):
         self.regions = regions
         self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
 
-        connection = self._get_connection()
-
-
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
