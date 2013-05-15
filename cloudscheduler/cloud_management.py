@@ -1976,19 +1976,48 @@ class ResourcePool:
         master_machine_ips = {}
         for master in master_machinelist:
             try:
-                master_machine_ips[master['Machine']] = machine['MasterIpAddr']
+                master_machine_ips[master['Machine']] = master['MasterIpAddr']
             except:
-                pass
+                log.warning('could not read master ip addr')
         for machine in machinelist:
             try:
-                vmmachine = VMMachine(name=machine['Name'], machine_name=machine['Machine'], job_id=machine['JobId'], global_job_id=machine['GlobalJobId'],
-                 address_startd=machine['MyAddress'], address_master=master_machine_ips[machine['Machine']], state=machine['State'], activity=machine['Activity'],
-                 vmtype=machine['VMType'], current_time=machine['MyCurrentTime'], entered_state_time=machine['EnteredCurrentState'],
-                 start_req=machine['Start'],
-                 remote_owner=machine['RemoteOwner'])
+                name = machine_name = job_id = global_job_id = address_startd = \
+                     address_master = state = activity = vmtype = start_req = \
+                     remote_owner = ""
+                current_time = entered_state_time = -1
+                if machine.has_key('Name'):
+                    name = machine['Name']
+                if machine.has_key('Machine'):
+                    machine_name = machine['Machine']
+                if machine.has_key('JobId'):
+                    job_id = machine['JobId']
+                if machine.has_key('GlobalJobId'):
+                    global_job_id = machine['GlobalJobId']
+                if machine.has_key('MyAddress'):
+                    address_startd = machine['MyAddress']
+                if machine.has_key('State'):
+                    state = machine['State']
+                if machine.has_key('Activity'):
+                    activity = machine['Activity']
+                if machine.has_key('VMType'):
+                    vmtype = machine['VMType']
+                if machine.has_key('MyCurrentTime'):
+                    current_time = machine['MyCurrentTime']
+                if machine.has_key('EnteredCurrentState'):
+                    entered_state_time = machine['EnteredCurrentState']
+                if machine.has_key('Start'):
+                    start_req = machine['Start']
+                if machine.has_key('RemoteOwner'):
+                    remote_owner = machine['RemoteOwner']
+                if master_machine_ips.has_key(machine['Machine']):
+                    address_master = master_machine_ips[machine['Machine']]
+                vmmachine = VMMachine(name=name, machine_name=machine_name, job_id=job_id, global_job_id=global_job_id,
+                 address_startd=address_startd, address_master=address_master, state=state, activity=activity,
+                 vmtype=vmtype, current_time=current_time, entered_state_time=entered_state_time,
+                 start_req=start_req, remote_owner=remote_owner)
                 vm_machine_list.append(vmmachine)
             except:
-                pass
+                log.warning("Failed to create VMMachine Obj")
         return vm_machine_list
 
 class VMDestroyCmd(threading.Thread):
