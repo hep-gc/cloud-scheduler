@@ -2042,6 +2042,20 @@ class VMDestroyCmd(threading.Thread):
 class VMMachine():
     """
     VMMachine - abstraction class to hold information about machines registered with the batch queue
+    
+    name - Full Name of the VM registered i.e. 'slot1@localhost'
+    machine_name - the hostname of the VM registered i.e. 'localhost'
+    job_id - ID of job running on the machine
+    global_job_id - global job ID of job running on machine
+    address_startd - address of condor startd of this machine
+    address_master - address of condor master of this machine
+    state - state of machine in condor this is typically Claimed, Unclaimed
+    activity - activity of machine, in condor this is Busy, Idle, Retiring
+    vmtype - the vmtype of the machine
+    current_time - last time the machine info was updated
+    entered_state_time - time that machine entered the current state/activity
+    start_req - the Start expression of the machine in condor
+    remote_owner - the user running jobs on the machine
     """
 
     def __init__(self, name="", machine_name="", job_id="", global_job_id="",
