@@ -934,8 +934,7 @@ class ResourcePool:
         """
         count = defaultdict(int)
         for vm in machineList:
-            if vm.has_key('VMType'):
-                count[vm['VMType']] += 1
+            count[vm.vmtype] += 1
         return count
 
     def get_uservmtypes_count(self, machineList):
@@ -946,31 +945,31 @@ class ResourcePool:
         """
         count = defaultdict(int)
         for vm in machineList:
-            if vm.has_key('VMType') and vm.has_key('Start'):
-                userexp = re.search('(?<=Owner == ")\w+', vm['Start'])
-                if userexp:
-                    user = userexp.group(0)
-                    vmusertype = ':'.join([user, vm['VMType']])
-                    count[vmusertype] += 1
-            elif vm.has_key('VMType') and vm.has_key('RemoteOwner'):
+            if vm.remote_owner:
                 try:
-                    user = vm['RemoteOwner'].split('@')[0]
-                    vmusertype = ':'.join([user, vm['VMType']])
+                    user = vm.remote_owner.split('@')[0]
+                    vmusertype = ':'.join([user, vm.vmtype])
                     count[vmusertype] += 1
                 except:
-                    log.error("Failed to parse out remote owner on %s" % vm['Machine'])
-            elif vm.has_key('Activity') and vm['Activity'] == 'Retiring':
+                    log.error("Failed to parse out remote owner on %s" % vm.machine_name)
+            elif vm.start_req:
+                userexp = re.search('(?<=Owner == ")\w+', vm.start_req)
+                if userexp:
+                    user = userexp.group(0)
+                    vmusertype = ':'.join([user, vm.vmtype])
+                    count[vmusertype] += 1
+            elif vm.activity == 'Retiring':
                 pass
             else:
-                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set on %s - are the condor init scripts on the VM up-to-date?" % vm['Machine'])
+                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set on %s - are the condor init scripts on the VM up-to-date?" % vm.machine_name)
                 if vm.has_key('Start'):
-                    log.warning("VM Start attrib = %s on %s" % (vm['Start'], vm['Machine']))
-                elif vm.has_key('Activity') and vm['Activity'] == 'Retiring':
+                    log.warning("VM Start attrib = %s on %s" % (vm.start_req, vm.machine_name))
+                elif vm.activity == 'Retiring':
                     pass
                 else:
-                    log.warning("VM Missing a Start attrib on %s." % vm['Machine'])
-                if not vm.has_key('VMType'):
-                    log.warning("This VM %s has no VMType key, It should not be used with cloudscheduler." % vm['Machine'])
+                    log.warning("VM Missing a Start attrib on %s." % vm.machine_name)
+                if not vm.vmtype:
+                    log.warning("This VM %s has no VMType key, It should not be used with cloudscheduler." % vm.machine_name)
         log.verbose("VMs in machinelist: %s" % str(count))
         return count
 
@@ -982,7 +981,7 @@ class ResourcePool:
         """Find all the matching entries for given criteria."""
         matches = []
         for machine in machineList:
-            if self.match_criteria(machine, criteria):
+            if self.match_criteria(machine.__dict__, criteria):
                 matches.append(machine)
         return matches
 
@@ -1212,8 +1211,8 @@ class ResourcePool:
         Figure out which machines have changed jobs
         return list of machine names that have
         """
-        auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current if 'GlobalJobId' in d.keys())
-        auxPrevious = dict((d['Name'], d['GlobalJobId']) for d in previous if 'GlobalJobId' in d.keys())
+        auxCurrent = dict((d.name, d.global_job_id) for d in current)
+        auxPrevious = dict((d.name, d.global_job_id) for d in previous)
         changed = [k for k,v in auxPrevious.items() if k in auxCurrent and auxCurrent[k] != v]
         del auxCurrent
         del auxPrevious
