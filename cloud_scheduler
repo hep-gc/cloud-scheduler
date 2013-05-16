@@ -1716,8 +1716,6 @@ class Cleanup(threading.Thread):
                                 bad_addr_vm = self.resource_pool.find_vm_with_name(busy_vms[x].machine_name)
                                 if bad_addr_vm:
                                     log.verbose("Found it via name: it think it's address is %s" % bad_addr_vm.condoraddr)
-                        else:
-                            log.debug("Could not find master ip address for %s" % busy_vms[x].name)
 
     def clean_retire_near_lifetime(self):
         """Forces a VM to retire that is nearing it's maximum lifetime. This is 
