@@ -1508,7 +1508,7 @@ class Cleanup(threading.Thread):
                             slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
                             all_slots_idle = True
                             for slot in slots_of_machine:
-                                if slot.state != 'Unclaimed' or slot.activty != 'Idle':
+                                if slot.state != 'Unclaimed' or slot.activity != 'Idle':
                                     all_slots_idle = False
                             if not all_slots_idle:
                                 log.verbose("VM %s Still has non-idle slots." % unused_vms_of_type[x].machine_name)
