@@ -1,3 +1,11 @@
+import os
+import sys
+import time
+import string
+import shutil
+import logging
+import nimbus_xml
+import subprocess
 import cluster_tools
 import cloudscheduler.utilities as utilities
 log = utilities.get_cloudscheduler_logger()
@@ -8,8 +16,9 @@ except ImportError:
     log.error("To use EC2-style clouds, you need to have boto " \
             "installed. You can install it from your package manager, " \
             "or get it from http://code.google.com/p/boto/")
-import time
-import nimbus_xml
+
+from subprocess import Popen
+from urlparse import urlparse
 
 
 class EC2Cluster(cluster_tools.ICluster):
@@ -103,7 +112,7 @@ class EC2Cluster(cluster_tools.ICluster):
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
-                 regions=[], vm_domain_name=""):
+                 regions=[], vm_domain_name="", reverse_dns_lookup=False):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -127,6 +136,7 @@ class EC2Cluster(cluster_tools.ICluster):
         self.total_cpu_cores = -1
         self.regions = regions
         self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
+        self.reverse_dns_lookup = reverse_dns_lookup if reverse_dns_lookup != None else False
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
@@ -317,7 +327,13 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.state, "Starting")))
             vm.status = self.VM_STATES.get(instance.state, "Starting")
-            if self.cloud_type == "OpenStack":
+            if self.reverse_dns_lookup:
+                # run a dig -x on the ip address
+                dig_cmd = ['dig', '-x', instance.ip_address]
+                (dig_return, dig_out, dig_err) = self.vm_execwait(dig_cmd, env=vm.get_env())
+                # extract the hostname from dig -x output
+                vm.hostname = self._extract_host_from_dig(dig_out)
+            elif self.cloud_type == "OpenStack":
                 vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
             else:
                 vm.hostname = instance.public_dns_name
@@ -361,3 +377,46 @@ class EC2Cluster(cluster_tools.ICluster):
             self.vms.remove(vm)
 
         return 0
+
+    def _extract_host_from_dig(self, dig_out):
+        at_answer_line = False
+        hostname = ""
+        for line in dig_out.split('\n'):
+            parts = line.split()
+            if at_answer_line:
+                hostname = parts[-1][:-1]
+                break
+            elif 'ANSWER' in parts and 'SECTION:' in parts:
+                at_answer_line = True
+                continue
+        return hostname
+
+    def vm_execwait(self, cmd, env=None):
+        """As above, a function to encapsulate command execution via Popen.
+        vm_execwait executes the given cmd list, waits for the process to finish,
+        and returns the return code of the process. STDOUT and STDERR are stored
+        in given parameters.
+        Parameters:
+        (cmd as above)
+        Returns:
+        ret - The return value of the executed command
+        out - The STDOUT of the executed command
+        err - The STDERR of the executed command
+        The return of this function is a 3-tuple
+        """
+        out = ""
+        err = ""
+        try:
+            sp = Popen(cmd, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+            if not utilities.check_popen_timeout(sp):
+                (out, err) = sp.communicate(input=None)
+            else:
+                log.warning("Process %s timed out! cmd was %" % (sp.pid, " ".join(cmd)))
+            return (sp.returncode, out, err)
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            return (-1, "", "")
+        except:
+            log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
+            return (-1, "", "")

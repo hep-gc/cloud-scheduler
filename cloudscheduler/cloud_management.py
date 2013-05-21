@@ -341,6 +341,7 @@ class ResourcePool:
                     secure_connection = get_or_none(config, cluster, "secure_connection"),
                     regions = map(str, splitnstrip(",", get_or_none(config, cluster, "regions"))),
                     vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
+                    reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
                     )
 
         elif cloud_type == "StratusLab" and stratuslab_support:
