@@ -112,7 +112,7 @@ class EC2Cluster(cluster_tools.ICluster):
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
-                 regions=[], vm_domain_name="", reverse_dns_lookup=False):
+                 regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -136,7 +136,8 @@ class EC2Cluster(cluster_tools.ICluster):
         self.total_cpu_cores = -1
         self.regions = regions
         self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
-        self.reverse_dns_lookup = reverse_dns_lookup if reverse_dns_lookup != None else False
+        self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
+        self.placement_zone = placement_zone
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
@@ -210,7 +211,7 @@ class EC2Cluster(cluster_tools.ICluster):
                         reservation = image.run(1,1, key_name=self.key_name,
                                                 addressing_type=addressing_type,
                                                 user_data=user_data,
-                                                placement=self.regions[0],
+                                                placement=self.placement_zone,
                                                 security_groups=sec_group,
                                                 instance_type=instance_type)
                         instance_id = reservation.instances[0].id
@@ -227,7 +228,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                                   image.id,
                                                   key_name=self.key_name,
                                                   user_data=user_data,
-                                                  placement=self.regions[0],
+                                                  placement=self.placement_zone,
                                                   addressing_type=addressing_type,
                                                   security_groups=self.sec_group,
                                                   instance_type=instance_type)
