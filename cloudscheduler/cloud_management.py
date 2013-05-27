@@ -1455,6 +1455,12 @@ class ResourcePool:
         args = []
         args2 = []
         args3 = []
+        if machine_name == None:
+            machine_name = 'NoneType'
+        if machine_addr == None:
+            machine_addr = 'NoneType'
+        if master_addr == None:
+            master_addr = 'NoneType'
         if config.cloudscheduler_ssh_key:
             args.append(config.ssh_path)
             args.append('-i')
