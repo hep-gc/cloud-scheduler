@@ -563,7 +563,7 @@ class Scheduler(threading.Thread):
         allow = False
         retiring = self.resource_pool.retiring_vms_of_usertype(job.uservmtype)
         userjoblimits = self.job_pool.get_usertype_limits()
-        if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] > 0 and len(retiring) == 0:
+        if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] > 0:
             over_allocate = True
             # Job may be candidate to over allocate if all underallocated jobs have no available resources
             unscheduled_jobs_by_users = self.job_pool.job_container.get_unscheduled_jobs_by_users(prioritized = True)
