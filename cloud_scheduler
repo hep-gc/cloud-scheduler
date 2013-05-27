@@ -2106,6 +2106,7 @@ def main():
 
     if should_be_running:
         log.error("Whoops. Wasn't expecting to exit. Did a thread crash?")
+        scheduler.quick_exit = True
        
 
     log.info("Cloud Scheduler quitting normally. (It might take a while, don't panic!)")
