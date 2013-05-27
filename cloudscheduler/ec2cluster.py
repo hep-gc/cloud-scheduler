@@ -174,7 +174,10 @@ class EC2Cluster(cluster_tools.ICluster):
             try:
                 i_type = instance_type["default"]
             except:
-                i_type = self.DEFAULT_INSTANCE_TYPE
+                if isinstance(instance_type, str):
+                    i_type = instance_type
+                else:
+                    i_type = self.DEFAULT_INSTANCE_TYPE
         instance_type = i_type
 
         if customization:
