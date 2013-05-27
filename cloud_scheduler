@@ -637,6 +637,7 @@ class Scheduler(threading.Thread):
                 if cloud.name not in job.blocked_clouds:
                     job.blocked_clouds.append(cloud.name)
                     job.block_time = int(time.time())
+            return False
         else:
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, False)
