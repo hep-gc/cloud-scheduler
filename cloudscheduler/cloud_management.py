@@ -40,9 +40,19 @@ except:
     import pickle
 
 import cluster_tools
+import ec2cluster
+import nimbuscluster
+try:
+    import ibmcluster
+except:
+    pass
 try:
     import stratuslabcluster
 except:
+    pass
+try:
+    import googlecluster
+except Exception as e:
     pass
 import cloudscheduler.config as config
 
@@ -77,6 +87,9 @@ class ResourcePool:
     ## Instance variables
     resources = []
     machine_list = []
+    prev_machine_list = []
+    vm_machine_list = []
+    prev_vm_machine_list = []
     master_list = []
     retired_resources = []
     config_file = ""
@@ -286,7 +299,7 @@ class ResourcePool:
             for x in range(len(nets)):
                 net_slots[nets[x]] = slots[x]
             total_slots = sum(slots)
-            return cluster_tools.NimbusCluster(name = cluster,
+            return nimbuscluster.NimbusCluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     port = get_or_none(config, cluster, "port"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
@@ -305,10 +318,11 @@ class ResourcePool:
                     scratch_attach_device = get_or_none(config, cluster, "scratch_attach_device"),
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     total_cpu_cores = total_cpu_cores,
+                    temp_lease_storage = get_or_none(config, cluster, "temp_lease_storage"),
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
-            return cluster_tools.EC2Cluster(name = cluster,
+            return ec2cluster.EC2Cluster(name = cluster,
                     host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
@@ -324,6 +338,11 @@ class ResourcePool:
                     hypervisor = hypervisor,
                     key_name = get_or_none(config, cluster, "key_name"),
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
+                    secure_connection = get_or_none(config, cluster, "secure_connection"),
+                    regions = map(str, splitnstrip(",", get_or_none(config, cluster, "regions"))),
+                    vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
+                    reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
+                    placement_zone = get_or_none(config, cluster, "placement_zone"),
                     )
 
         elif cloud_type == "StratusLab" and stratuslab_support:
@@ -342,7 +361,7 @@ class ResourcePool:
                     )
 
         elif cloud_type.lower() == "ibmsmartcloud":
-            return cluster_tools.IBMCluster(name= cluster,
+            return ibmcluster.IBMCluster(name= cluster,
                     host= get_or_none(config, cluster, "host"),
                     cloud_type= get_or_none(config, cluster, "cloud_type"),
                     memory= map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
@@ -355,6 +374,22 @@ class ResourcePool:
                     hypervisor= hypervisor,
                     username= get_or_none(config, cluster, "username"),
                     password= get_or_none(config, cluster, "password"),
+                    )
+        elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce":
+            return googlecluster.GoogleComputeEngineCluster(name = cluster,
+                    cloud_type = get_or_none(config, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
+                    storage = int(get_or_none(config, cluster, "storage")),
+                    auth_dat_file = get_or_none(config, cluster, "auth_dat_file"),
+                    secret_file = get_or_none(config, cluster, "secret_file"),
+                    security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
+                    project_id = get_or_none(config, cluster, "project_id"),
                     )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
@@ -622,7 +657,7 @@ class ResourcePool:
             return fitting_clusters
 
         # sort them based on how full and return the list
-        fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio)
+        fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio())
         return fitting_clusters
 
     def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
@@ -643,8 +678,6 @@ class ResourcePool:
         for cluster in self.resources:
             if not cluster.enabled:
                 continue
-            if cluster.hypervisor not in hypervisor:
-                continue
             # If the cluster does not have the required CPU architecture
             if not (cpuarch in cluster.cpu_archs):
                 continue
@@ -657,6 +690,8 @@ class ResourcePool:
             if not cluster.find_potential_mementry(memory):
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
+                continue
+            if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
                 continue
             # Cluster meets network and cpu reqs and may have enough memory
             potential_fit = True
@@ -901,8 +936,7 @@ class ResourcePool:
         """
         count = defaultdict(int)
         for vm in machineList:
-            if vm.has_key('VMType'):
-                count[vm['VMType']] += 1
+            count[vm.vmtype] += 1
         return count
 
     def get_uservmtypes_count(self, machineList):
@@ -913,31 +947,31 @@ class ResourcePool:
         """
         count = defaultdict(int)
         for vm in machineList:
-            if vm.has_key('VMType') and vm.has_key('Start'):
-                userexp = re.search('(?<=Owner == ")\w+', vm['Start'])
-                if userexp:
-                    user = userexp.group(0)
-                    vmusertype = ':'.join([user, vm['VMType']])
-                    count[vmusertype] += 1
-            elif vm.has_key('VMType') and vm.has_key('RemoteOwner'):
+            if vm.remote_owner:
                 try:
-                    user = vm['RemoteOwner'].split('@')[0]
-                    vmusertype = ':'.join([user, vm['VMType']])
+                    user = vm.remote_owner.split('@')[0]
+                    vmusertype = ':'.join([user, vm.vmtype])
                     count[vmusertype] += 1
                 except:
-                    log.error("Failed to parse out remote owner on %s" % vm['Machine'])
-            elif vm.has_key('Activity') and vm['Activity'] == 'Retiring':
+                    log.error("Failed to parse out remote owner on %s" % vm.machine_name)
+            elif vm.start_req:
+                userexp = re.search('(?<=Owner == ")\w+', vm.start_req)
+                if userexp:
+                    user = userexp.group(0)
+                    vmusertype = ':'.join([user, vm.vmtype])
+                    count[vmusertype] += 1
+            elif vm.activity == 'Retiring':
                 pass
             else:
-                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set on %s - are the condor init scripts on the VM up-to-date?" % vm['Machine'])
-                if vm.has_key('Start'):
-                    log.warning("VM Start attrib = %s on %s" % (vm['Start'], vm['Machine']))
-                elif vm.has_key('Activity') and vm['Activity'] == 'Retiring':
+                log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner set on %s - are the condor init scripts on the VM up-to-date?" % vm.machine_name)
+                if vm.start_req:
+                    log.warning("VM Start attrib = %s on %s" % (vm.start_req, vm.machine_name))
+                elif vm.activity == 'Retiring':
                     pass
                 else:
-                    log.warning("VM Missing a Start attrib on %s." % vm['Machine'])
-                if not vm.has_key('VMType'):
-                    log.warning("This VM %s has no VMType key, It should not be used with cloudscheduler." % vm['Machine'])
+                    log.warning("VM Missing a Start attrib on %s." % vm.machine_name)
+                if not vm.vmtype:
+                    log.warning("This VM %s has no VMType key, It should not be used with cloudscheduler." % vm.machine_name)
         log.verbose("VMs in machinelist: %s" % str(count))
         return count
 
@@ -949,7 +983,7 @@ class ResourcePool:
         """Find all the matching entries for given criteria."""
         matches = []
         for machine in machineList:
-            if self.match_criteria(machine, criteria):
+            if self.match_criteria(machine.__dict__, criteria):
                 matches.append(machine)
         return matches
 
@@ -1179,8 +1213,8 @@ class ResourcePool:
         Figure out which machines have changed jobs
         return list of machine names that have
         """
-        auxCurrent = dict((d['Name'], d['GlobalJobId']) for d in current if 'GlobalJobId' in d.keys())
-        auxPrevious = dict((d['Name'], d['GlobalJobId']) for d in previous if 'GlobalJobId' in d.keys())
+        auxCurrent = dict((d.name, d.global_job_id) for d in current)
+        auxPrevious = dict((d.name, d.global_job_id) for d in previous)
         changed = [k for k,v in auxPrevious.items() if k in auxCurrent and auxCurrent[k] != v]
         del auxCurrent
         del auxPrevious
@@ -1232,30 +1266,22 @@ class ResourcePool:
             old_cluster.setup_logging()
 
             for vm in old_cluster.vms:
+                log.debug("Found VM %s on %s" % (vm.id, old_cluster.name))
+                new_cluster = self.get_cluster(old_cluster.name)
 
-                log.debug("Found VM %s" % vm.id)
-                vm_status = old_cluster.vm_poll(vm)
-                if vm_status == "Error":
-                    old_cluster.vm_destroy(vm, reason="Persisted VM in Error state.")
-                elif vm_status == "Destroyed":
-                    log.info("VM %s on %s no longer exists. Ignoring it." % (vm.id, old_cluster.name))
+                if new_cluster:
+                    try:
+                        new_cluster.resource_checkout(vm)
+                        new_cluster.vms.append(vm)
+                        log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
+                    except cluster_tools.NoResourcesError, e:
+                        new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s left on %s" %(e.resource, new_cluster.name))
+                    except:
+                        new_cluster.vm_destroy(vm, return_resources=False, reason="Unexpected error checking out resources.")
                 else:
-                    new_cluster = self.get_cluster(old_cluster.name)
-
-                    if new_cluster:
-                        try:
-                            new_cluster.resource_checkout(vm)
-                            new_cluster.vms.append(vm)
-                            log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
-                        except cluster_tools.NoResourcesError, e:
-                            new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s left on %s" %(e.resource, new_cluster.name))
-                        except:
-                            new_cluster.vm_destroy(vm, return_resources=False, reason="Unexpected error checking out resources.")
-                    else:
-                        log.info("%s doesn't seem to exist, so destroying vm %s." %
-                                 (old_cluster.name, vm.id))
-                        old_cluster.vm_destroy(vm, reason="cloud %s no longer exists." % old_cluster.name)
-
+                    log.info("%s doesn't seem to exist, so destroying vm %s." %
+                             (old_cluster.name, vm.id))
+                    old_cluster.vm_destroy(vm, reason="cloud %s no longer exists." % old_cluster.name)
 
     def track_failures(self, job, resources,  value):
         """Error Tracking to be used to ban / filter resources."""
@@ -1429,6 +1455,12 @@ class ResourcePool:
         args = []
         args2 = []
         args3 = []
+        if machine_name == None:
+            machine_name = 'NoneType'
+        if machine_addr == None:
+            machine_addr = 'NoneType'
+        if master_addr == None:
+            master_addr = 'NoneType'
         if config.cloudscheduler_ssh_key:
             args.append(config.ssh_path)
             args.append('-i')
@@ -1513,131 +1545,6 @@ class ResourcePool:
             return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
 
-    def do_condor_on(self, machine_name, machine_addr):
-        """Attempt to turn on the start deamon of a VM.
-        
-        Keywords:
-            machine_name - the condor machine name to try to condor_on
-            machine_addr - the condor machine addr to try to condor_on
-        Return:
-            the return code indicating success of failure to condor_on
-        """
-        cmd = '%s -subsystem startd -name "%s"' % (config.condor_on_command, machine_name)
-        cmd4 = '%s -subsystem master -name "%s"' % (config.condor_on_command, machine_name)
-        cmd2 = '%s -addr "%s" -startd' % (config.condor_on_command, machine_addr)
-        cmd3 = '%s -addr "%s" -master' % (config.condor_on_command, machine_addr)
-        args = []
-        args2 = []
-        args3 = []
-        args4 = []
-        if config.cloudscheduler_ssh_key:
-            args.append(config.ssh_path)
-            args.append('-i')
-            args.append(config.cloudscheduler_ssh_key)
-            central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
-            args.append(central_address)
-            args.append(cmd)
-            args4.append(config.ssh_path)
-            args4.append('-i')
-            args4.append(config.cloudscheduler_ssh_key)
-            args4.append(central_address)
-            args4.append(cmd4)
-
-            args2.append(config.ssh_path)
-            args2.append('-i')
-            args2.append(config.cloudscheduler_ssh_key)
-            args2.append(central_address)
-            args2.append(cmd2)
-            
-            args3.append(config.ssh_path)
-            args3.append('-i')
-            args3.append(config.cloudscheduler_ssh_key)
-            args3.append(central_address)
-            args3.append(cmd3)
-        else:
-            args.append(config.condor_on_command)
-            args.append('-subsystem')
-            args.append('startd')
-            args.append('-name')
-            args.append(machine_name)
-            args4.append(config.condor_on_command)
-            args4.append('-name')
-            args4.append(machine_name)
-            args4.append('-subsystem')
-            args4.append('master')
-
-            args2.append(config.condor_on_command)
-            args2.append('-addr')
-            args2.append(machine_addr)
-            args2.append('-subsystem')
-            args2.append('startd')
-
-            args3.append(config.condor_on_command)
-            args3.append('-addr')
-            args3.append(machine_addr)
-            args3.append('-subsystem')
-            args3.append('master')
-        # try to turn on master first
-        try:
-            sp1 = subprocess.Popen(args4, shell=False,
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if not utilities.check_popen_timeout(sp1):
-                (out, err) = sp1.communicate(input=None)
-            ret1 = -1
-            if out.startswith("Sent"):
-                ret1 = 0
-            if sp1.returncode == 0 and ret1 == 0:
-                log.verbose("Successfuly sent condor_on startd to %s" % (machine_name))
-            else:
-                log.debug("Failed to send condor_on startd to %s" % (machine_name))
-                log.debug("Reason: %s" % out) 
-                log.debug("Error: %s" % err)
-        except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args4), e.errno, e.strerror))
-            return (-1, -1, -1, -1)
-        except:
-            log.error("Problem running %s, unexpected error" % ' '.join(args4))
-            return (-1, -1, -1, -1)
-        # Now send the startd on
-        try:
-            sp2 = subprocess.Popen(args, shell=False,
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if not utilities.check_popen_timeout(sp2):
-                (out, err) = sp2.communicate(input=None)
-            ret2 = -1
-            if out.startswith("Sent"):
-                ret2 = 0
-            if sp2.returncode == 0 and ret2 == 0:
-                log.verbose("Successfuly sent condor_on master to %s" % (machine_name))
-            else:
-                log.debug("Failed to send condor_on master to %s" % (machine_name))
-                log.debug("Reason: %s \n Error: %s" % (out, err))
-        except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args), e.errno, e.strerror))
-            return (-1, -1, -1, -1)
-        except:
-            log.error("Problem running %s, unexpected error" % ' '.join(args))
-            print args
-            return (-1, -1, -1, -1)
-        return (sp1.returncode, ret1, sp2.returncode, ret2)
-        #try:
-            #sp = subprocess.Popen(args, shell=False,
-                                  #stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            #if not utilities.check_popen_timeout(sp):
-                #(out, err) = sp.communicate(input=None)
-            #if sp.returncode == 0:
-                #log.debug("Successfuly sent condor_on to %s" % (machine_name))
-            #else:
-                #log.debug("Failed to send condor_on to %s" % (machine_name))
-                #log.debug("Reason: %s \n Error: %s" % (out, err))
-            #return sp.returncode
-        #except OSError, e:
-            #log.error("Problem running %s, got errno %d \"%s\"" % (string.join(args, " "), e.errno, e.strerror))
-            #return (-1, "")
-        #except:
-            #log.exception("Problem running %s, unexpected error" % string.join(args, " "))
-            #return (-1, "")
-
     def find_vm_with_name(self, condor_name):
         """Find a VM in cloudscheduler with the given condor machine name(hostname)."""
         foundIt = False
@@ -1653,7 +1560,7 @@ class ResourcePool:
             if foundIt:
                 break
         if not foundIt:
-            log.debug("Could not find a VM with name: %s" % condor_name)
+            log.verbose("Could not find a VM with name: %s" % condor_name)
         return vm_match
 
     def find_cluster_with_vm(self, condor_name):
@@ -1712,7 +1619,7 @@ class ResourcePool:
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.vmtype == vmtype:
-                    if vm.status == "Starting":
+                    if vm.status == "Starting" or vm.status == "Unpropagated":
                         starting.append(vm)
         return starting
     
@@ -1732,7 +1639,7 @@ class ResourcePool:
         for cluster in self.resources:
             for vm in cluster.vms:
                 if vm.uservmtype == vmtype:
-                    if vm.status == "Starting":
+                    if vm.status == "Starting" or vm.status == "Unpropagated":
                         starting.append(vm)
         return starting
 
@@ -1866,6 +1773,16 @@ class ResourcePool:
         else:
             output = "Could not find Cloud %s." % clustername
         return output
+    
+    def force_retire_vm(self, vm):
+        ret = False
+        if vm:
+            (_, ret2, _, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+            if ret2 == 0 and ret22 == 0:
+                vm.force_retire = True
+                vm.override_status = 'Retiring'
+                ret = True
+        return ret
 
     def force_retire_cluster_vm(self, clustername, vmid):
         output = ""
@@ -1873,10 +1790,7 @@ class ResourcePool:
         if cluster:
             vm = cluster.get_vm(vmid)
             if vm:
-                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
-                if ret2 == 0 and ret22 == 0:
-                    vm.force_retire = True
-                    vm.override_status = 'Retiring'
+                if self.force_retire_vm(vm):
                     output = "Retired VM %s on %s." % (vmid, clustername)
                 else:
                     output = "Unable to retire VM."
@@ -1891,10 +1805,8 @@ class ResourcePool:
         output = ""
         if cluster:
             for vm in cluster.vms:
-                (ret1, ret2, ret21, ret22) = self.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
-                if ret2 == 0 and ret22 == 0:
-                    vm.force_retire = True
-                    vm.override_status = 'Retiring'
+                if self.force_retire_vm(vm):
+                    pass
                 else:
                     output += "Unable to retire VM %s\n" % vm.id
             output = "Retired all VMs in %s." % cloudname
@@ -1941,6 +1853,54 @@ class ResourcePool:
             atLimit = True
         return atLimit
 
+    def machinelist_to_vmmachinelist(self, machinelist, master_machinelist):
+        vm_machine_list = []
+        master_machine_ips = {}
+        for master in master_machinelist:
+            try:
+                master_machine_ips[master['Machine']] = master['MasterIpAddr']
+            except:
+                log.warning('could not read master ip addr')
+        for machine in machinelist:
+            try:
+                name = machine_name = job_id = global_job_id = address_startd = \
+                     address_master = state = activity = vmtype = start_req = \
+                     remote_owner = ""
+                current_time = entered_state_time = -1
+                if machine.has_key('Name'):
+                    name = machine['Name']
+                if machine.has_key('Machine'):
+                    machine_name = machine['Machine']
+                if machine.has_key('JobId'):
+                    job_id = machine['JobId']
+                if machine.has_key('GlobalJobId'):
+                    global_job_id = machine['GlobalJobId']
+                if machine.has_key('MyAddress'):
+                    address_startd = machine['MyAddress']
+                if machine.has_key('State'):
+                    state = machine['State']
+                if machine.has_key('Activity'):
+                    activity = machine['Activity']
+                if machine.has_key('VMType'):
+                    vmtype = machine['VMType']
+                if machine.has_key('MyCurrentTime'):
+                    current_time = machine['MyCurrentTime']
+                if machine.has_key('EnteredCurrentState'):
+                    entered_state_time = machine['EnteredCurrentState']
+                if machine.has_key('Start'):
+                    start_req = machine['Start']
+                if machine.has_key('RemoteOwner'):
+                    remote_owner = machine['RemoteOwner']
+                if master_machine_ips.has_key(machine['Machine']):
+                    address_master = master_machine_ips[machine['Machine']]
+                vmmachine = VMMachine(name=name, machine_name=machine_name, job_id=job_id, global_job_id=global_job_id,
+                 address_startd=address_startd, address_master=address_master, state=state, activity=activity,
+                 vmtype=vmtype, current_time=current_time, entered_state_time=entered_state_time,
+                 start_req=start_req, remote_owner=remote_owner)
+                vm_machine_list.append(vmmachine)
+            except:
+                log.warning("Failed to create VMMachine Obj")
+        return vm_machine_list
 
 class VMDestroyCmd(threading.Thread):
     """
@@ -1961,3 +1921,43 @@ class VMDestroyCmd(threading.Thread):
         return self.result
     def get_vm(self):
         return self.vm
+
+class VMMachine():
+    """
+    VMMachine - abstraction class to hold information about machines registered with the batch queue
+    
+    name - Full Name of the VM registered i.e. 'slot1@localhost'
+    machine_name - the hostname of the VM registered i.e. 'localhost'
+    job_id - ID of job running on the machine
+    global_job_id - global job ID of job running on machine
+    address_startd - address of condor startd of this machine
+    address_master - address of condor master of this machine
+    state - state of machine in condor this is typically Claimed, Unclaimed
+    activity - activity of machine, in condor this is Busy, Idle, Retiring
+    vmtype - the vmtype of the machine
+    current_time - last time the machine info was updated
+    entered_state_time - time that machine entered the current state/activity
+    start_req - the Start expression of the machine in condor
+    remote_owner - the user running jobs on the machine
+    """
+
+    def __init__(self, name="", machine_name="", job_id="", global_job_id="",
+                 address_startd="", address_master="", state="", activity="",
+                 vmtype="", current_time=0, entered_state_time=0, start_req="",
+                 remote_owner="",):
+        self.name = name
+        self.machine_name = machine_name
+        self.job_id = job_id
+        self.global_job_id = global_job_id
+        self.address_startd = address_startd
+        self.address_master = address_master
+        self.state = state
+        self.activity = activity
+        self.vmtype = vmtype
+        self.current_time = current_time
+        self.entered_state_time = entered_state_time
+        self.start_req = start_req
+        self.remote_owner = remote_owner
+    
+    def get_uservmtype(self):
+        return ''.join([self.remote_owner, self.vmtype])
