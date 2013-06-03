@@ -42,8 +42,14 @@ For more documentation on Cloud Scheduler, please refer to:
 ### Special help for RHEL 5
 
 Since Cloud Scheduler requires Python 2.6+, and we recognize that RHEL 5 comes
-with and requires Python 2.4, here's a quick guide to getting Python 2.7 
+with and requires Python 2.4, here's a quick guide to getting Python 
 installed on those systems:
+
+Python 2.6 may be in the repos depending on your version(5.5+):
+
+    $ yum install python26 python26-distribute
+
+For Python 2.7:
 
 Install the tools we need to build Python and its modules:
 
