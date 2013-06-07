@@ -514,3 +514,4 @@ class ICluster:
                 self.memory[vm.mementry] += vm.memory
             except:
                 log.warning("Couldn't return memory because I don't know about that mem entry anymore...")
+

@@ -1,0 +1,20 @@
+# Location of the Nimbus cloud client installs
+# Make sure that ${NIMBUS_CLOUD_CLIENT_DIR}/bin contains execs
+NIMBUS_CLOUD_CLIENT_DIR=/opt/nimbus-cloud-client
+
+# Set the user to run the cloud_scheduler
+CS_USER="root"
+
+# Set a non-default path to the cloud_scheduler executable
+# eg. "/opt/bin/cloud_scheduler"
+CS_EXEC="cloud_scheduler"
+
+# Directory where cloud_scheduler.conf is
+CS_CONFIG_DIR="/etc/cloudscheduler"
+
+# You probably won't want to change these
+SERVICE=cloud_scheduler
+CRASHLOG=/tmp/${SERVICE}.crash.log
+PIDSPATH=/var/run
+PIDFILE=$PIDSPATH/${SERVICE}.pid
+
