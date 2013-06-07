@@ -41,6 +41,7 @@ and Cloud Scheduler boots VMs to suit those jobs.
 install -m 755 -d %{buildroot}/%{_sbindir}
 install -m 755 %{SOURCE1} %{buildroot}/%{_sbindir}
 install -m 755 -d %{buildroot}/%{_initrddir}
+install -m 755 -d %{buildroot}/%{_sysconfdir}/sysconfig
 install -m0755 scripts/cloud_scheduler.init.d %{buildroot}/%{_initrddir}/cloud_scheduler
 install -m0644 scripts/cloud_scheduler.sysconf %{buildroot}/%{_sysconfdir}/sysconfig/cloud_scheduler
 
