@@ -1,6 +1,6 @@
 Name:		cloud-scheduler
-Version:	1.4
-Release:	2%{?dist}
+Version:	1.4.1
+Release:	1%{?dist}
 Summary:	Cloud-enabled distributed resource manager
 
 License:	GPLv3 or ASL-2.0
@@ -41,7 +41,8 @@ and Cloud Scheduler boots VMs to suit those jobs.
 install -m 755 -d %{buildroot}/%{_sbindir}
 install -m 755 %{SOURCE1} %{buildroot}/%{_sbindir}
 install -m 755 -d %{buildroot}/%{_initrddir}
-install -m0755 scripts/cloud_scheduler %{buildroot}/%{_initrddir}
+install -m0755 scripts/cloud_scheduler.init.d %{buildroot}/%{_initrddir}/cloud_scheduler
+install -m0644 scripts/cloud_scheduler.sysconf %{buildroot}/%{_sysconfdir}/sysconfig/cloud_scheduler
 
 # hack to fix a setup.py error when install user is not root
 install -m 755 -d %{buildroot}/%{_sysconfdir}/cloudscheduler
@@ -60,23 +61,28 @@ rm -r %{buildroot}/${HOME}
 %config(noreplace) %{_sysconfdir}/cloudscheduler/cloud_resources.conf
 %config(noreplace) %{_sysconfdir}/cloudscheduler/cloud_scheduler.conf
 %config(noreplace) %{_initrddir}/cloud_scheduler
+%config(noreplace) %{_sysconfdir}/sysconfig/cloud_scheduler
 
 %post
-/sbin/chkconfig --add cloud_scheduler
+if [ $1 = 0 ]; then
+    /sbin/chkconfig --add cloud_scheduler
+fi
 
 %preun
 if [ $1 = 0 ]; then
-  /sbin/service cloud_scheduler stop >/dev/null 2>&1
-  /sbin/chkconfig --del cloud_scheduler
+    /sbin/service cloud_scheduler stop >/dev/null 2>&1
+    /sbin/chkconfig --del cloud_scheduler
 fi
 
 %postun
 if [ $1 = 0 ]; then
-  /sbin/service cloud_scheduler quickrestart >/dev/null 2>&1 || :
+    /sbin/service cloud_scheduler quickrestart >/dev/null 2>&1 || :
 fi
 
 
 %changelog
+* Wed Jun 05 2013 Sebastien Fabbro <sfabbro@uvic.ca> - 1.5-1
+Version bump. Added sysconfig config script.
 * Wed Jun 05 2013 Sebastien Fabbro <sfabbro@uvic.ca> - 1.4-2
 Added installation of init scripts and doc files.
 Lower dependency on python-lxml
