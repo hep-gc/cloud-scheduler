@@ -1236,6 +1236,46 @@ class JobPool:
         ret = self.release_jobSOAP(jobs)
         return ret
 
+    def job_hold_local(self, jobs):
+        """job_query_local -- query and parse condor_q for job information."""
+        log.verbose("Holding Condor jobs with %s" % config.condor_hold_command)
+        try:
+            condor_hold = shlex.split(config.condor_hold_command)
+            condor_hold.extend(jobs)
+            sp = subprocess.Popen(condor_hold, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+            returncode = sp.returncode
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            return None
+
+        if returncode != 0:
+            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
+                              (returncode, string.join(condor_q, " "), condor_err))
+            return None
+        return returncode
+
+    def job_release_local(self, jobs):
+        """job_query_local -- query and parse condor_q for job information."""
+        log.verbose("Releasing Condor jobs with %s" % config.condor_release_command)
+        try:
+            condor_release = shlex.split(config.condor_release_command)
+            condor_release.extend(jobs)
+            sp = subprocess.Popen(condor_release, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+            returncode = sp.returncode
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            return None
+
+        if returncode != 0:
+            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
+                              (returncode, string.join(condor_q, " "), condor_err))
+            return None
+        return returncode
+
     def track_run_time(self, removed):
         """Keeps track of the approximate run time of jobs on each VM."""
         for job in removed:
