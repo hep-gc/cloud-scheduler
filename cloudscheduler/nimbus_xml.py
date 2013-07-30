@@ -270,6 +270,15 @@ def ws_optional(custom_tasks):
         filewrite.appendChild(pathOnVM_el)
         pathOnVM = doc.createTextNode(task[1])
         pathOnVM_el.appendChild(pathOnVM)
+        
+        executable_el = doc.createElement("executable")
+        filewrite.appendChild(executable_el)
+        executable = 'False'
+        if len(task) > 2:
+            if task[2] == True:
+                executable = 'True'
+        executable_tn = doc.createTextNode(executable)
+        executable_el.appendChild(executable_tn)
 
     return doc.toxml(encoding="utf-8")
 

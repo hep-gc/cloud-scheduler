@@ -102,6 +102,7 @@ default_VMStorage= 0
 default_VMInstanceType= ""
 default_VMMaximumPrice= 0
 default_VMProxyNonBoot = False
+default_VMUserData = []
 
 log_level = "INFO"
 log_location = None
@@ -202,6 +203,7 @@ def setup(path=None):
     global default_VMInstanceType
     global default_VMMaximumPrice
     global default_VMProxyNonBoot
+    global default_VMUserData
 
     global log_level
     global log_location
@@ -769,6 +771,9 @@ def setup(path=None):
         except ValueError:
             print "Configuration file problem: default_VMProxyNonBoot must be a" \
                   " Boolean value."
+
+    if config_file.has_option("job", "default_VMUserData"):
+        default_VMUserData = config_file.get("job", "default_VMUserData").replace(' ', '').strip('"').split(',')
 
     # Derived options
     if condor_host_on_vm:

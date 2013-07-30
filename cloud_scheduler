@@ -30,6 +30,7 @@ import string
 import getopt
 import signal
 import logging
+import urllib2
 import threading
 import traceback
 import ConfigParser
@@ -716,6 +717,38 @@ class Scheduler(threading.Thread):
             local_modifications += start_requirement
 
         customizations.append((local_modifications, '/etc/condor/condor_config.local.modifications'))
+        
+        # Read and add admin's user data scripts which must be local files
+        if config.default_VMUserData:
+            for userdata in config.default_VMUserData:
+                try:
+                    file_content = open(userdata).read()
+                    basename = os.path.basename(userdata)
+                    filename = "admin_userdata_%s" % (basename) 
+                    destination = "/etc/condor/%s" % (filename)
+                    executable = False
+                    if re.match('^#!/.*', file_content):
+                        executable = True
+                    customizations.append((file_content, destination, executable))            
+                except:
+                    log.error('Error reading %s' % (userdata))
+        
+                    
+        # Read and add user's user data scripts which must be accessible via http 
+        if job.user_data:
+            for userdata in job.user_data:
+                try:
+                    file_content = urllib2.urlopen(userdata).read()
+                    basename = os.path.basename(userdata)
+                    filename = "user_userdata_%s" % (basename) 
+                    destination = "/etc/condor/%s" % (filename)
+                    executable = False
+                    if re.match('^#!/.*', file_content):
+                        executable = True
+                    customizations.append((file_content, destination, executable)) 
+                except:
+                    log.error('Error reading %s' % (userdata))               
+        
         log.verbose("Finished customizations for job '%s'" % job.id)
         for resource in good_resources:
             # Print details of the resource selected
