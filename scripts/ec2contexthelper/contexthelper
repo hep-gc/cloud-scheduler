@@ -9,14 +9,18 @@
 #    <filewrite>
 #        <content>These are the contents</content>
 #        <pathOnVM>/tmp/custom</pathOnVM>
+#        <executable>False</executable>
 #    </filewrite>
 #    <filewrite>
 #        <content>These are the contents</content>
 #        <pathOnVM>/tmp/custom0</pathOnVM>
+#        <executable>True</executable>
 #    </filewrite>
 #</OptionalParameters>
 
+import os
 import sys
+import stat
 from xml.dom import minidom
 import urllib2
 
@@ -33,11 +37,18 @@ user_data = minidom.parseString(user_data_xml)
 for file in user_data.getElementsByTagName("filewrite"):
     path = file.getElementsByTagName("pathOnVM")[0].firstChild.nodeValue
     content = file.getElementsByTagName("content")[0].firstChild.nodeValue
+    executable = file.getElementsByTagName("executable")[0].firstChild.nodeValue
 
     try:
         f = open(path, "w")
         f.write(content)
         f.close()
+        if executable.lower() == 'true':
+            # update script permission
+            st = os.stat(path)
+            os.chmod(path, st.st_mode | stat.S_IEXEC)
+            # execute the script
+            os.system(path)
     except:
         print >>sys.stderr, "Couldn't write file %s" % path
         sys.exit(1)
