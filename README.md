@@ -20,6 +20,7 @@ For more documentation on Cloud Scheduler, please refer to:
 * [Suds 0.3.9+](https://fedorahosted.org/suds/)
 * [boto](http://code.google.com/p/boto/)
 * [lxml](http://codespeak.net/lxml/)
+* redhat-lsb 
 
 ## Optional Prerequisites
 
