@@ -370,9 +370,13 @@ class EC2Cluster(cluster_tools.ICluster):
             log.warning("%s already seem to be gone... removing anyway." % vm.id)
         except boto.exception.EC2ResponseError, e:
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
+            print e.error_message
             return self.ERROR
-        except:
+        except e:
+            print e.error_message
             log.exception("Unexpected error destroying VM: %s!" % vm.id)
+        except:
+            print 'another exception uncaught?'
 
         # Delete references to this VM
         if return_resources:
