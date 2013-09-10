@@ -790,7 +790,7 @@ class Scheduler(threading.Thread):
                         'vmimage_proxy_file_path':job.get_vmimage_proxy_file_path()}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "EC2Cluster":
-                customizations.append(("ec2", cloud_type_file_dest))
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
