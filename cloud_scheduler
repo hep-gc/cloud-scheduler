@@ -1903,10 +1903,12 @@ class Cleanup(threading.Thread):
                 continue
             cluster = self.resource_pool.get_cluster_with_vm(vm)
             if cluster:
-                if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
-                    th = VMDestroyCmd(cluster, vm, reason="Unable to run any idle jobs due to resource config.")
-                    th.start()
-                    self.destroy_threads["".join([cluster.name, vm.id])] = th
+                if vm.override_status != "Retiring":
+                    if not self.resource_pool.force_retire_vm(vm):
+                        if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
+                            th = VMDestroyCmd(cluster, vm, reason="Unable to run any idle jobs due to resource config.")
+                            th.start()
+                            self.destroy_threads["".join([cluster.name, vm.id])] = th
 
     def check_vm_job_reqs(self, vm, job):
         """ Check if a vm has correct attributes to run a job."""
