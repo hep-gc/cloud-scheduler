@@ -750,7 +750,7 @@ class Scheduler(threading.Thread):
                     log.error('Error reading %s' % (userdata))               
         
         log.verbose("Finished customizations for job '%s'" % job.id)
-        cloud_type_file_dest = "/var/run/cloud_type"
+        cloud_type_file_dest = "/var/lib/cloud_type"
         for resource in good_resources:
             # Print details of the resource selected
             if resource == None:
