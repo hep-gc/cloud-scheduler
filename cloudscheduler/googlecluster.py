@@ -20,7 +20,7 @@ log = utilities.get_cloudscheduler_logger()
 class GoogleComputeEngineCluster(cluster_tools.ICluster):
     GCE_SCOPE = 'https://www.googleapis.com/auth/compute'
     
-    API_VERSION = 'v1beta13'
+    API_VERSION = 'v1beta15'
     GCE_URL = 'https://www.googleapis.com/compute/%s/projects/' % (API_VERSION)
 
     DEFAULT_ZONE = 'us-central1-a' # will need to be option in job
@@ -90,12 +90,12 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         else:
             vm_image_name = self.DEFAULT_IMAGE
 
-        image_url = '%s%s/images/%s' % (
+        image_url = '%s%s/global/images/%s' % (
                self.GCE_URL, self.project_id, vm_image_name)
-        machine_type_url = '%s/machineTypes/%s' % (
-              self.project_url, vm_instance_type)
+        machine_type_url = '%s/zones/%s/machineTypes/%s' % (
+              self.project_url, self.DEFAULT_ZONE, vm_instance_type)
         zone_url = '%s/zones/%s' % (self.project_url, self.DEFAULT_ZONE)
-        network_url = '%s/networks/%s' % (self.project_url, self.DEFAULT_NETWORK)
+        network_url = '%s/global/networks/%s' % (self.project_url, self.DEFAULT_NETWORK)
 
         if customization:
             user_data = nimbus_xml.ws_optional(customization)
@@ -108,7 +108,6 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
           'name': next_instance_name,
           'machineType': machine_type_url,
           'image': image_url,
-          'zone': zone_url,
           'networkInterfaces': [{
             'accessConfigs': [{
               'type': 'ONE_TO_ONE_NAT',
@@ -130,7 +129,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
         # Create the instance
         request = self.gce_service.instances().insert(
-             project=self.project_id, body=instance)
+             project=self.project_id, body=instance, zone=self.DEFAULT_ZONE)
         response = request.execute(self.auth_http)
         response = self._blocking_call(self.gce_service, self.auth_http, response)
 
@@ -168,7 +167,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
     def vm_destroy(self, vm, return_resources=True, reason=""):
         # Delete an Instance
         request = self.gce_service.instances().delete(
-            project=self.project_id, instance=vm.name)
+            project=self.project_id, instance=vm.name, zone=self.DEFAULT_ZONE)
         response = request.execute(self.auth_http)
         response = self._blocking_call(self.gce_service, self.auth_http, response)
 
@@ -182,7 +181,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
     def vm_poll(self, vm):
         #filter_str = ''.join(["id eq ", vm.id])
         #request = self.gce_service.instances().list(project=self.project_id, filter=filter_str)
-        request = self.gce_service.instances().list(project=self.project_id)
+        request = self.gce_service.instances().list(project=self.project_id, filter=None, zone=self.DEFAULT_ZONE)
 
         response = request.execute(self.auth_http)
 
@@ -193,28 +192,29 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                     vm.status = instance['status']
                     vm.ipaddress = instance['networkInterfaces'][0]['accessConfigs'][0]['natIP']
                 
-        pass
+        else:
+            pass
 
 
     def _blocking_call(self, gce_service, auth_http, response):
         """Blocks until the operation status is done for the given operation."""
         if 'status' in response:
             status = response['status']
-        failed_status = 0
+            
         while status != 'DONE' and response:
             if 'name' in response:
                 operation_id = response['name']
             else:
                 break
-            request = gce_service.operations().get(
-                project=self.project_id, operation=operation_id)
+            if 'zone' in response:
+                zone_name = response['zone'].split('/')[-1]
+                request = gce_service.zoneOperations().get(project=self.project_id, operation=operation_id, zone=zone_name)
+            else:
+                request = gce_service.globalOperations().get(project=self.project_id, operation=operation_id)
             response = request.execute(auth_http)
             if response and 'status' in response:
                 status = response['status']
-            #else:
-                #failed_status += 1
-                #if failed_status > 10:
-                    #return response
+
             time.sleep(1)
         return response
     
