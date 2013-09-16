@@ -130,8 +130,11 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         # Create the instance
         request = self.gce_service.instances().insert(
              project=self.project_id, body=instance, zone=self.DEFAULT_ZONE)
-        response = request.execute(self.auth_http)
-        response = self._blocking_call(self.gce_service, self.auth_http, response)
+        try:
+            response = request.execute(self.auth_http)
+            response = self._blocking_call(self.gce_service, self.auth_http, response)
+        except e:
+            print e.error_message, e
 
         if 'targetId' in response:
             target_id = response['targetId']
