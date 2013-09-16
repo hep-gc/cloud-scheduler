@@ -78,11 +78,9 @@ class Job:
     statuses = (SCHEDULED, UNSCHEDULED)
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
-             JobStatus=0, ClusterId=0, ProcId=0, VMType=config.default_VMType,
-             VMNetwork=config.default_VMNetwork, VMCPUArch=config.default_VMCPUArch, 
-             VMName=config.default_VMName, VMLoc=config.default_VMLoc, 
-             VMAMI={"default": config.default_VMAMI}, VMMem=config.default_VMMem, 
-             VMCPUCores=config.default_VMCPUCores, VMStorage=config.default_VMStorage, 
+             JobStatus=0, ClusterId=0, ProcId=0, VMType=None, VMNetwork=None,
+             VMCPUArch=None, VMName=None, VMLoc=None, VMAMI=None, VMMem=None,
+             VMCPUCores=None, VMStorage=None,
              VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
@@ -125,8 +123,26 @@ class Job:
                                 for when this can save you money (eg. with EC2)
 
      """
-        if VMType == "":
+
+        if not VMType:
             VMType = config.default_VMType
+        if not VMNetwork:
+            VMNetwork = config.default_VMNetwork
+        if not VMCPUArch:
+            VMCPUArch = config.default_VMCPUArch
+        if not VMName:
+            VMName = config.default_VMName
+        if not VMLoc:
+            VMLoc = config.default_VMLoc
+        if not VMAMI:
+            VMAMI = {"default": config.default_VMAMI}
+        if not VMMem:
+            VMMem = config.default_VMMem
+        if not VMCPUCores:
+            VMCPUCores = config.default_VMCPUCores
+        if not VMStorage:
+            VMStorage = config.default_VMStorage
+    
         self.id           = GlobalJobId
         self.user         = Owner
         self.uservmtype   = ':'.join([Owner, VMType])
