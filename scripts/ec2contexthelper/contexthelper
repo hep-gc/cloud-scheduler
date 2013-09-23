@@ -29,15 +29,15 @@ USER_DATA_URL = "http://169.254.169.254/latest/user-data"
 try:
     user_data_xml = urllib2.urlopen(USER_DATA_URL).read()
 except:
-    print >>sys.stderr, "Couldn't read userdata!"
-    sys.exit(1)
+    print >>sys.stderr, "Couldn't read userdata! - may be no metadata server."
+    sys.exit(0)
 
 user_data = minidom.parseString(user_data_xml)
 
-for file in user_data.getElementsByTagName("filewrite"):
-    path = file.getElementsByTagName("pathOnVM")[0].firstChild.nodeValue
-    content = file.getElementsByTagName("content")[0].firstChild.nodeValue
-    executable = file.getElementsByTagName("executable")[0].firstChild.nodeValue
+for file_tag in user_data.getElementsByTagName("filewrite"):
+    path = file_tag.getElementsByTagName("pathOnVM")[0].firstChild.nodeValue
+    content = file_tag.getElementsByTagName("content")[0].firstChild.nodeValue
+    executable = file_tag.getElementsByTagName("executable")[0].firstChild.nodeValue
 
     try:
         f = open(path, "w")
