@@ -78,11 +78,9 @@ class Job:
     statuses = (SCHEDULED, UNSCHEDULED)
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
-             JobStatus=0, ClusterId=0, ProcId=0, VMType=config.default_VMType,
-             VMNetwork=config.default_VMNetwork, VMCPUArch=config.default_VMCPUArch, 
-             VMName=config.default_VMName, VMLoc=config.default_VMLoc, 
-             VMAMI={"default": config.default_VMAMI}, VMMem=config.default_VMMem, 
-             VMCPUCores=config.default_VMCPUCores, VMStorage=config.default_VMStorage, 
+             JobStatus=0, ClusterId=0, ProcId=0, VMType=None, VMNetwork=None,
+             VMCPUArch=None, VMName=None, VMLoc=None, VMAMI=None, VMMem=None,
+             VMCPUCores=None, VMStorage=None,
              VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
@@ -125,8 +123,26 @@ class Job:
                                 for when this can save you money (eg. with EC2)
 
      """
-        if VMType == "":
+
+        if not VMType:
             VMType = config.default_VMType
+        if not VMNetwork:
+            VMNetwork = config.default_VMNetwork
+        if not VMCPUArch:
+            VMCPUArch = config.default_VMCPUArch
+        if not VMName:
+            VMName = config.default_VMName
+        if not VMLoc:
+            VMLoc = config.default_VMLoc
+        if not VMAMI:
+            VMAMI = {"default": config.default_VMAMI}
+        if not VMMem:
+            VMMem = config.default_VMMem
+        if not VMCPUCores:
+            VMCPUCores = config.default_VMCPUCores
+        if not VMStorage:
+            VMStorage = config.default_VMStorage
+    
         self.id           = GlobalJobId
         self.user         = Owner
         self.uservmtype   = ':'.join([Owner, VMType])
@@ -1235,6 +1251,46 @@ class JobPool:
                 jobs.append(job)
         ret = self.release_jobSOAP(jobs)
         return ret
+
+    def job_hold_local(self, jobs):
+        """job_query_local -- query and parse condor_q for job information."""
+        log.verbose("Holding Condor jobs with %s" % config.condor_hold_command)
+        try:
+            condor_hold = shlex.split(config.condor_hold_command)
+            condor_hold.extend(jobs)
+            sp = subprocess.Popen(condor_hold, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+            returncode = sp.returncode
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            return None
+
+        if returncode != 0:
+            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
+                              (returncode, string.join(condor_q, " "), condor_err))
+            return None
+        return returncode
+
+    def job_release_local(self, jobs):
+        """job_query_local -- query and parse condor_q for job information."""
+        log.verbose("Releasing Condor jobs with %s" % config.condor_release_command)
+        try:
+            condor_release = shlex.split(config.condor_release_command)
+            condor_release.extend(jobs)
+            sp = subprocess.Popen(condor_release, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+            returncode = sp.returncode
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            return None
+
+        if returncode != 0:
+            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
+                              (returncode, string.join(condor_q, " "), condor_err))
+            return None
+        return returncode
 
     def track_run_time(self, removed):
         """Keeps track of the approximate run time of jobs on each VM."""

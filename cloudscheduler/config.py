@@ -23,6 +23,8 @@ condor_retrieval_method = "soap"
 condor_q_command = "condor_q -l"
 condor_status_command = "condor_status -l"
 condor_status_master_command = "condor_status -master -l"
+condor_hold_command = "condor_hold"
+condor_release_command = "condor_release"
 condor_off_command = "/usr/sbin/condor_off"
 condor_on_command = "/usr/sbin/condor_on"
 ssh_path = "/usr/bin/ssh"
@@ -126,6 +128,8 @@ def setup(path=None):
     global condor_q_command
     global condor_status_command
     global condor_status_master_command
+    global condor_hold_command
+    global condor_release_command
     global condor_off_command
     global condor_on_command
     global ssh_path
@@ -276,6 +280,14 @@ def setup(path=None):
     if config_file.has_option("global", "condor_status_master_command"):
         condor_status_master_command = config_file.get("global",
                                                 "condor_status_master_command")
+
+    if config_file.has_option("global", "condor_hold_command"):
+        condor_hold_command = config_file.get("global",
+                                                "condor_hold_command")
+
+    if config_file.has_option("global", "condor_release_command"):
+        condor_release_command = config_file.get("global",
+                                                "condor_release_command")
 
     if config_file.has_option("global", "condor_webservice_url"):
         condor_webservice_url = config_file.get("global",

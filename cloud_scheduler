@@ -1,4 +1,4 @@
-#!/usr/local/bin/python2.7
+#!/usr/bin/env python
 # vim: set expandtab ts=4 sw=4:
 
 # Copyright (C) 2009 University of Victoria
@@ -750,6 +750,7 @@ class Scheduler(threading.Thread):
                     log.error('Error reading %s' % (userdata))               
         
         log.verbose("Finished customizations for job '%s'" % job.id)
+        cloud_type_file_dest = "/var/lib/cloud_type"
         for resource in good_resources:
             # Print details of the resource selected
             if resource == None:
@@ -760,6 +761,7 @@ class Scheduler(threading.Thread):
 
             #TODO: unify this
             if resource.__class__.__name__ == "NimbusCluster":
+                customizations.append(("nimbus", cloud_type_file_dest))
                 imageloc = job.req_imageloc
                 imagesplit = imageloc.split('/')
                 if '__hypervisor__' in imagesplit:
@@ -788,6 +790,7 @@ class Scheduler(threading.Thread):
                         'vmimage_proxy_file_path':job.get_vmimage_proxy_file_path()}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "EC2Cluster":
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
@@ -805,6 +808,7 @@ class Scheduler(threading.Thread):
                         'securitygroup':job.req_security_group}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "IBMCluster":
+                customizations.append(("ibm", cloud_type_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
@@ -822,6 +826,7 @@ class Scheduler(threading.Thread):
                         'vm_keyname':job.key_name}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "StratusLabCluster":
+                customizations.append(("stratuslab", cloud_type_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
@@ -837,6 +842,7 @@ class Scheduler(threading.Thread):
                         'vm_loc':job.req_imageloc}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "GoogleComputeEngineCluster":
+                customizations.append(("gce", cloud_type_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
@@ -1897,10 +1903,12 @@ class Cleanup(threading.Thread):
                 continue
             cluster = self.resource_pool.get_cluster_with_vm(vm)
             if cluster:
-                if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
-                    th = VMDestroyCmd(cluster, vm, reason="Unable to run any idle jobs due to resource config.")
-                    th.start()
-                    self.destroy_threads["".join([cluster.name, vm.id])] = th
+                if vm.override_status != "Retiring":
+                    if not self.resource_pool.force_retire_vm(vm):
+                        if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
+                            th = VMDestroyCmd(cluster, vm, reason="Unable to run any idle jobs due to resource config.")
+                            th.start()
+                            self.destroy_threads["".join([cluster.name, vm.id])] = th
 
     def check_vm_job_reqs(self, vm, job):
         """ Check if a vm has correct attributes to run a job."""
