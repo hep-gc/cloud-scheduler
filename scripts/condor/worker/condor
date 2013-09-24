@@ -411,8 +411,8 @@ setup_on_ec2() {
 				replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
 			fi
 		else
-			# Set hostname to instance id when we're using private net
-			EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/instance-id`
+			# EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/instance-id`
+			EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
 			VALID_ID=$?
 			if [ $VALID_ID -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
 				hostname $EXTHOSTNAME
