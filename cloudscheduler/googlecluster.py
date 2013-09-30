@@ -91,7 +91,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             vm_image_name = self.DEFAULT_IMAGE
 
         image_url = '%s%s/global/images/%s' % (
-               self.GCE_URL, self.project_id, vm_image_name)
+              self.GCE_URL, self.project_id, vm_image_name)
+        
         machine_type_url = '%s/zones/%s/machineTypes/%s' % (
               self.project_url, self.DEFAULT_ZONE, vm_instance_type)
         zone_url = '%s/zones/%s' % (self.project_url, self.DEFAULT_ZONE)
@@ -120,27 +121,38 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                'scopes': self.DEFAULT_SCOPES
           }],
           'metadata': {
-              'items': [{
+              'items': [
+                {
                   'key': 'userdata',
                   'value': user_data,
-              }]
+                },
+             #   {
+             #    'key': 'startup-script',
+             #    'value': user_script,
+             #    }
+            ]
           }
         }
 
         # Create the instance
+        response = None
         request = self.gce_service.instances().insert(
              project=self.project_id, body=instance, zone=self.DEFAULT_ZONE)
         try:
             response = request.execute(self.auth_http)
             response = self._blocking_call(self.gce_service, self.auth_http, response)
-        except e:
-            print e.error_message, e
+        except Exception, e:
+            #print e
+            pass
 
-        if 'targetId' in response:
+        if response and 'targetId' in response:
             target_id = response['targetId']
+        elif response:
+            #print 'targetID missing'
+            #print response
+            return
         else:
-            print 'targetID missing'
-            print response
+            #print 'no response'
             return
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
