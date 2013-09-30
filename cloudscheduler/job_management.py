@@ -383,7 +383,7 @@ class Job:
                 log.debug("Could not locate the proxy file at %s. Trying alternate location." % proxyfilepath)
                 proxyfilepath = self.vmimage_proxy_file
                 if not os.path.isfile(proxyfilepath):
-                    log.debug("Could not locate the proxy file at %s." % self.vmimage_proxy_file)
+                    log.debug("Could not locate the proxy file at %s." % proxyfilepath)
                     proxyfilepath = ''
                     # going to try stripping any extra path from the entered value
                     proxy_file_name = self.vmimage_proxy_file.split('/')
