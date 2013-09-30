@@ -731,7 +731,7 @@ class Scheduler(threading.Thread):
                         executable = True
                     customizations.append((file_content, destination, executable))            
                 except:
-                    log.error('Error reading %s' % (userdata))
+                    log.error('Error reading default %s' % (userdata))
         
                     
         # Read and add user's user data scripts which must be accessible via http 
@@ -747,7 +747,7 @@ class Scheduler(threading.Thread):
                         executable = True
                     customizations.append((file_content, destination, executable)) 
                 except:
-                    log.error('Error reading %s' % (userdata))               
+                    log.error('Error reading user %s' % (userdata))               
         
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
