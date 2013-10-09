@@ -1540,7 +1540,7 @@ class Cleanup(threading.Thread):
                         if vm.uservmtype == vmtype and found_vm:
                             log.verbose("Located %s in VM list." % unused_vms_of_type[x].machine_name)
                             # Check that machine is Isn't still starting and CS has picked up a zombie condor entry
-                            if vm.status != 'Running':
+                            if vm.status != 'Running' and vm.status != 'RUNNING':
                                 log.verbose("VM %s still Starting, not going to shutdown" % unused_vms_of_type[x].machine_name)
                                 break
                             # Verify that all slots of this VM are idle
@@ -1560,7 +1560,7 @@ class Cleanup(threading.Thread):
                                     if vm.override_status != "Retiring":
                                         if not self.resource_pool.force_retire_vm(vm):
                                             if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
-    
+                                                log.verbose("Starting Destroy of VM: %s" % (vm.id))
                                                 th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
                                                 th.start()
                                                 self.destroy_threads["".join([cluster.name, vm.id])] = th

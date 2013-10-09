@@ -95,7 +95,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         
         machine_type_url = '%s/zones/%s/machineTypes/%s' % (
               self.project_url, self.DEFAULT_ZONE, vm_instance_type)
-        zone_url = '%s/zones/%s' % (self.project_url, self.DEFAULT_ZONE)
+        #zone_url = '%s/zones/%s' % (self.project_url, self.DEFAULT_ZONE)
         network_url = '%s/global/networks/%s' % (self.project_url, self.DEFAULT_NETWORK)
 
         if customization:
@@ -123,7 +123,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
           'metadata': {
               'items': [
                 {
-                  'key': 'userdata',
+                  'key': 'user-data',
                   'value': user_data,
                 },
              #   {
@@ -186,12 +186,16 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         response = request.execute(self.auth_http)
         response = self._blocking_call(self.gce_service, self.auth_http, response)
 
-        # Delete references to this VM
-        if return_resources:
-            self.resource_return(vm)
-        with self.vms_lock:
-            self.vms.remove(vm)
-        pass
+        if response and response['status'] == 'DONE':
+            # Delete references to this VM
+            if return_resources:
+                self.resource_return(vm)
+            with self.vms_lock:
+                self.vms.remove(vm)
+            return 0
+        else:
+            log.debug("Error Destroying GCE VM: %s" % (vm.name))
+            return 1
 
     def vm_poll(self, vm):
         #filter_str = ''.join(["id eq ", vm.id])
@@ -234,7 +238,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         return response
     
     def generate_next_instance_name(self):
-        for x in range(0,10):
+        for _ in range(0,10):
             potential_name = ''.join([self.gce_hostname_prefix, str(self.gce_hostname_counter)])
             self.gce_hostname_counter += 1
             if self.gce_hostname_counter >= 50000:
