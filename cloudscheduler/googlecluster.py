@@ -24,7 +24,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
     GCE_URL = 'https://www.googleapis.com/compute/%s/projects/' % (API_VERSION)
 
     DEFAULT_ZONE = 'us-central1-a' # will need to be option in job
-    DEFAULT_MACHINE_TYPE = 'n1-standard-1'  # option specified in job config
+    DEFAULT_MACHINE_TYPE = 'n1-standard-1-d'  # option specified in job config
     DEFAULT_IMAGE = 'condorimagebase'  
 
     DEFAULT_NETWORK = 'default' # job option setup
@@ -142,7 +142,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             response = request.execute(self.auth_http)
             response = self._blocking_call(self.gce_service, self.auth_http, response)
         except Exception, e:
-            #print e
+            log.error("Error creating VM on gce: %s" % e)
             pass
 
         if response and 'targetId' in response:
@@ -183,8 +183,12 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         # Delete an Instance
         request = self.gce_service.instances().delete(
             project=self.project_id, instance=vm.name, zone=self.DEFAULT_ZONE)
-        response = request.execute(self.auth_http)
-        response = self._blocking_call(self.gce_service, self.auth_http, response)
+        try:
+            response = request.execute(self.auth_http)
+            response = self._blocking_call(self.gce_service, self.auth_http, response)
+        except:
+            log.error("Failure while destroying VM %s." % (vm.id))
+            return
 
         if response and response['status'] == 'DONE':
             # Delete references to this VM
@@ -201,8 +205,11 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         #filter_str = ''.join(["id eq ", vm.id])
         #request = self.gce_service.instances().list(project=self.project_id, filter=filter_str)
         request = self.gce_service.instances().list(project=self.project_id, filter=None, zone=self.DEFAULT_ZONE)
-
-        response = request.execute(self.auth_http)
+        try:
+            response = request.execute(self.auth_http)
+        except Exception as e:
+            log.error("Problem polling gce vm %s error %s will retry later." % (vm.id, e))
+            return
 
         if response and 'items' in response:
             instances = response['items']
@@ -230,7 +237,11 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                 request = gce_service.zoneOperations().get(project=self.project_id, operation=operation_id, zone=zone_name)
             else:
                 request = gce_service.globalOperations().get(project=self.project_id, operation=operation_id)
-            response = request.execute(auth_http)
+            try:
+                response = request.execute(auth_http)
+            except:
+                pass
+            
             if response and 'status' in response:
                 status = response['status']
 
