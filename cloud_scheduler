@@ -1157,7 +1157,7 @@ class Cleanup(threading.Thread):
             else:
                 # shutdown after the previous job has finished executing
                 # interupts the new running job and will be rescheduled by condor
-                self.balance_hard_shutdown(machineList, self.resource_pool.prev_machine_list, num_to_change)
+                self.balance_hard_shutdown(self.resource_pool.vm_machine_list, self.resource_pool.prev_vm_machine_list, num_to_change)
         else:
             log.verbose("No Machines returned by Condor Collector Query")
 
