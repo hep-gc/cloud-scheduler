@@ -182,17 +182,17 @@ class EC2Cluster(cluster_tools.ICluster):
             i_type = instance_type[self.network_address]
         except:
             log.debug("No instance type for %s, trying default" % self.network_address)
+            #try:
+            #    i_type = instance_type["default"]
+            #except:
+            #    if isinstance(instance_type, str):
+            #        i_type = instance_type
+            #    else:
             try:
-                i_type = instance_type["default"]
+                i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
             except:
-                if isinstance(instance_type, str):
-                    i_type = instance_type
-                else:
-                    try:
-                        i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
-                    except:
-                        log.debug("No default instance type found for %s, trying single default" % self.network_address)
-                        i_type = self.DEFAULT_INSTANCE_TYPE
+                log.debug("No default instance type found for %s, trying single default" % self.network_address)
+                i_type = self.DEFAULT_INSTANCE_TYPE
         instance_type = i_type
 
         if customization:
