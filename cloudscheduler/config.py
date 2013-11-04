@@ -102,6 +102,7 @@ default_VMMem= 512
 default_VMCPUCores= 1
 default_VMStorage= 0
 default_VMInstanceType= ""
+default_VMInstanceTypeList= ""
 default_VMMaximumPrice= 0
 default_VMProxyNonBoot = False
 default_VMUserData = []
@@ -205,6 +206,7 @@ def setup(path=None):
     global default_VMCPUCores
     global default_VMStorage
     global default_VMInstanceType
+    global default_VMInstanceTypeList
     global default_VMMaximumPrice
     global default_VMProxyNonBoot
     global default_VMUserData
@@ -768,6 +770,9 @@ def setup(path=None):
 
     if config_file.has_option("job", "default_VMInstanceType"):
         default_VMInstanceType = config_file.get("job", "default_VMInstanceType")
+
+    if config_file.has_option("job", "default_VMInstanceTypeList"):
+        default_VMInstanceTypeList = config_file.get("job", "default_VMInstanceTypeList")
 
     if config_file.has_option("job", "default_VMMaximumPrice"):
         try:

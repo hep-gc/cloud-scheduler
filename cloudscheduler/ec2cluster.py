@@ -9,6 +9,7 @@ import subprocess
 import cluster_tools
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
+from cloudscheduler.job_management import _attr_list_to_dict
 log = utilities.get_cloudscheduler_logger()
 try:
     import boto.ec2
@@ -34,6 +35,7 @@ class EC2Cluster(cluster_tools.ICluster):
 
     ERROR = 1
     DEFAULT_INSTANCE_TYPE = config.default_VMInstanceType if config.default_VMInstanceType else "m1.small"
+    DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config.default_VMInstanceTypeList)
 
     def _get_connection(self):
         """
@@ -165,8 +167,16 @@ class EC2Cluster(cluster_tools.ICluster):
             try:
                 vm_ami = vm_image["default"]
             except:
-                log.exception("Can't find a suitable AMI")
-                return
+                log.debug("No given default - trying global defaults")
+                try:
+                    vm_default_ami = _attr_list_to_dict(config.default_VMAMI)
+                    vm_ami = vm_default_ami[self.network_address]
+                except:
+                    try:
+                        vm_ami = vm_default_ami["default"]
+                    except:
+                        log.exception("Can't find a suitable AMI")
+                        return
 
         try:
             i_type = instance_type[self.network_address]
@@ -178,7 +188,11 @@ class EC2Cluster(cluster_tools.ICluster):
                 if isinstance(instance_type, str):
                     i_type = instance_type
                 else:
-                    i_type = self.DEFAULT_INSTANCE_TYPE
+                    try:
+                        i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
+                    except:
+                        log.debug("No default instance type found for %s, trying single default" % self.network_address)
+                        i_type = self.DEFAULT_INSTANCE_TYPE
         instance_type = i_type
 
         if customization:
