@@ -7,6 +7,7 @@ import logging
 import nimbus_xml
 import subprocess
 import cluster_tools
+import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 log = utilities.get_cloudscheduler_logger()
 try:
@@ -32,7 +33,7 @@ class EC2Cluster(cluster_tools.ICluster):
     }
 
     ERROR = 1
-    DEFAULT_INSTANCE_TYPE = "m1.small"
+    DEFAULT_INSTANCE_TYPE = config.default_VMInstanceType if config.default_VMInstanceType else "m1.small"
 
     def _get_connection(self):
         """
