@@ -135,7 +135,7 @@ class Job:
         if not VMLoc:
             VMLoc = config.default_VMLoc
         if not VMAMI:
-            VMAMI = {"default": config.default_VMAMI}
+            VMAMI = _attr_list_to_dict(config.default_VMAMI)
         if not VMMem:
             VMMem = config.default_VMMem
         if not VMCPUCores:

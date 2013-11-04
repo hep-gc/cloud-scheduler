@@ -164,19 +164,19 @@ class EC2Cluster(cluster_tools.ICluster):
             vm_ami = vm_image[self.network_address]
         except:
             log.debug("No AMI for %s, trying default" % self.network_address)
+            #try:
+            #    vm_ami = vm_image["default"]
+            #except:
+                #log.debug("No given default - trying global defaults")
             try:
-                vm_ami = vm_image["default"]
+                vm_default_ami = _attr_list_to_dict(config.default_VMAMI)
+                vm_ami = vm_default_ami[self.network_address]
             except:
-                log.debug("No given default - trying global defaults")
                 try:
-                    vm_default_ami = _attr_list_to_dict(config.default_VMAMI)
-                    vm_ami = vm_default_ami[self.network_address]
+                    vm_ami = vm_default_ami["default"]
                 except:
-                    try:
-                        vm_ami = vm_default_ami["default"]
-                    except:
-                        log.exception("Can't find a suitable AMI")
-                        return
+                    log.exception("Can't find a suitable AMI")
+                    return
 
         try:
             i_type = instance_type[self.network_address]
