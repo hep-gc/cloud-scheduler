@@ -85,7 +85,7 @@ class Job:
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
-             VMInstanceType=config.default_VMInstanceType, 
+             VMInstanceType=None, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
              TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
              VMProxyNonBoot=config.default_VMProxyNonBoot,
@@ -136,6 +136,8 @@ class Job:
             VMLoc = config.default_VMLoc
         if not VMAMI:
             VMAMI = _attr_list_to_dict(config.default_VMAMI)
+        if not VMInstanceType:
+            VMInstanceType = _attr_list_to_dict(config.default_VMInstanceTypeList)
         if not VMMem:
             VMMem = config.default_VMMem
         if not VMCPUCores:
