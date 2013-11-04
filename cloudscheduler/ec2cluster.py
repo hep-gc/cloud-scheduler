@@ -179,9 +179,9 @@ class EC2Cluster(cluster_tools.ICluster):
                     return
 
         try:
-            i_type = instance_type[self.network_address]
             log.debug("from job")
             log.debug(instance_type)
+            i_type = instance_type[self.network_address]
         except:
             log.debug("No instance type for %s, trying default" % self.network_address)
             #try:
@@ -191,9 +191,9 @@ class EC2Cluster(cluster_tools.ICluster):
             #        i_type = instance_type
             #    else:
             try:
-                i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
                 log.debug("from defaults")
                 log.debug(self.DEFAULT_INSTANCE_TYPE_LIST)
+                i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
             except:
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
                 i_type = self.DEFAULT_INSTANCE_TYPE
