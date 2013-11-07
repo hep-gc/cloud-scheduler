@@ -95,6 +95,7 @@ connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
 default_VMType= "default"
 default_VMNetwork= ""
 default_VMCPUArch= "x86"
+default_VMHypervisor= "xen"
 default_VMName= "Default-Image"
 default_VMLoc= ""
 default_VMAMI= ""
@@ -199,6 +200,7 @@ def setup(path=None):
     global default_VMType
     global default_VMNetwork
     global default_VMCPUArch
+    global default_VMHypervisor
     global default_VMName
     global default_VMLoc
     global default_VMAMI
@@ -734,6 +736,9 @@ def setup(path=None):
 
     if config_file.has_option("job", "default_VMCPUArch"):
         default_VMCPUArch = config_file.get("job", "default_VMCPUArch")
+        
+    if config_file.has_option("job", "default_VMHypervisor"):
+        default_VMHypervisor = config_file.get("job", "default_VMHypervisor")
 
     if config_file.has_option("job", "default_VMName"):
         default_VMName = config_file.get("job", "default_VMName")

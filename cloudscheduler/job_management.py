@@ -87,7 +87,7 @@ class Job:
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
              VMInstanceType=None, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
+             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor=None,
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
@@ -130,6 +130,8 @@ class Job:
             VMNetwork = config.default_VMNetwork
         if not VMCPUArch:
             VMCPUArch = config.default_VMCPUArch
+        if not VMHypervisor:
+            VMHypervisor = config.default_VMHypervisor
         if not VMName:
             VMName = config.default_VMName
         if not VMLoc:
