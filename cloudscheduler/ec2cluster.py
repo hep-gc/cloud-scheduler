@@ -29,7 +29,7 @@ class EC2Cluster(cluster_tools.ICluster):
             "running" : "Running",
             "pending" : "Starting",
             "shutting-down" : "Shutdown",
-            "termimated" : "Shutdown",
+            "terminated" : "Shutdown",
             "error" : "Error",
     }
 
