@@ -161,7 +161,10 @@ class EC2Cluster(cluster_tools.ICluster):
             sec_group = self.security_groups
 
         try:
-            vm_ami = vm_image[self.network_address]
+            if self.name in vm_image.keys():
+                vm_ami = vm_image[self.name]
+            else:
+                vm_ami = vm_image[self.network_address]
         except:
             log.debug("No AMI for %s, trying default" % self.network_address)
             #try:
@@ -170,7 +173,10 @@ class EC2Cluster(cluster_tools.ICluster):
                 #log.debug("No given default - trying global defaults")
             try:
                 vm_default_ami = _attr_list_to_dict(config.default_VMAMI)
-                vm_ami = vm_default_ami[self.network_address]
+                if self.name in vm_default_ami.keys():
+                    vm_ami = vm_default_ami[self.name]
+                else:
+                    vm_ami = vm_default_ami[self.network_address]
             except:
                 try:
                     vm_ami = vm_default_ami["default"]
@@ -179,9 +185,10 @@ class EC2Cluster(cluster_tools.ICluster):
                     return
 
         try:
-            log.debug("from job")
-            log.debug(instance_type)
-            i_type = instance_type[self.network_address]
+            if self.name in instance_type.keys():
+                i_type = instance_type[self.name]
+            else:
+                i_type = instance_type[self.network_address]
         except:
             log.debug("No instance type for %s, trying default" % self.network_address)
             #try:
@@ -191,9 +198,10 @@ class EC2Cluster(cluster_tools.ICluster):
             #        i_type = instance_type
             #    else:
             try:
-                log.debug("from defaults")
-                log.debug(self.DEFAULT_INSTANCE_TYPE_LIST)
-                i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
+                if self.name in self.DEFAULT_INSTANCE_TYPE_LIST.keys():
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.name]
+                else:
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
             except:
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
                 i_type = self.DEFAULT_INSTANCE_TYPE
