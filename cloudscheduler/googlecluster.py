@@ -4,7 +4,9 @@ import threading
 import nimbus_xml
 import ConfigParser
 import cluster_tools
+import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
+from cloudscheduler.job_management import _attr_list_to_dict
 try:
     import httplib2
     from oauth2client.client import flow_from_clientsecrets
@@ -25,6 +27,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
     DEFAULT_ZONE = 'us-central1-a' # will need to be option in job
     DEFAULT_MACHINE_TYPE = 'n1-standard-1-d'  # option specified in job config
+    DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config.default_VMInstanceTypeList)
     DEFAULT_IMAGE = 'condorimagebase'  
 
     DEFAULT_NETWORK = 'default' # job option setup
@@ -81,10 +84,26 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                 log.exception("Can't find a suitable AMI")
                 return
         # Construct URLs
-        if instance_type:
-            vm_instance_type = instance_type
-        else:
-            vm_instance_type = self.DEFAULT_MACHINE_TYPE
+        #if instance_type:
+        #    vm_instance_type = instance_type
+        #else:
+        #    vm_instance_type = self.DEFAULT_MACHINE_TYPE
+        try:
+            if self.name in instance_type.keys():
+                i_type = instance_type[self.name]
+            else:
+                i_type = instance_type[self.network_address]
+        except:
+            log.debug("No instance type for %s, trying default" % self.network_address)
+            try:
+                if self.name in self.DEFAULT_INSTANCE_TYPE_LIST.keys():
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.name]
+                else:
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
+            except:
+                log.debug("No default instance type found for %s, trying single default" % self.network_address)
+                i_type = self.DEFAULT_MACHINE_TYPE
+        instance_type = i_type
         if vm_image:
             vm_image_name = vm_ami
         else:
