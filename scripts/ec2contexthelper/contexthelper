@@ -25,6 +25,7 @@ from xml.dom import minidom
 import urllib2
 
 USER_DATA_URL = "http://169.254.169.254/latest/user-data"
+#USER_DATA_URL ="http://metadata/computeMetadata/v1beta1/instance/attributes/user-data"
 
 try:
     user_data_xml = urllib2.urlopen(USER_DATA_URL).read()

@@ -269,7 +269,11 @@ class ResourcePool:
     def _cluster_from_config(config, cluster):
         """Create a new cluster object from a config file's specification."""
         if config.has_option(cluster, "enabled"):
-            enabled = config.getboolean(cluster, "enabled")
+            try:
+                enabled = config.getboolean(cluster, "enabled")
+            except ValueError:
+                log.error("Error reading config - cluster %s disabled" % cluster)
+                enabled = False
             if not enabled:
                 return None
         cloud_type = get_or_none(config, cluster, "cloud_type")

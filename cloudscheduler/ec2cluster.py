@@ -7,7 +7,9 @@ import logging
 import nimbus_xml
 import subprocess
 import cluster_tools
+import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
+from cloudscheduler.job_management import _attr_list_to_dict
 log = utilities.get_cloudscheduler_logger()
 try:
     import boto.ec2
@@ -27,12 +29,13 @@ class EC2Cluster(cluster_tools.ICluster):
             "running" : "Running",
             "pending" : "Starting",
             "shutting-down" : "Shutdown",
-            "termimated" : "Shutdown",
+            "terminated" : "Shutdown",
             "error" : "Error",
     }
 
     ERROR = 1
-    DEFAULT_INSTANCE_TYPE = "m1.small"
+    DEFAULT_INSTANCE_TYPE = config.default_VMInstanceType if config.default_VMInstanceType else "m1.small"
+    DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config.default_VMInstanceTypeList)
 
     def _get_connection(self):
         """
@@ -158,26 +161,50 @@ class EC2Cluster(cluster_tools.ICluster):
             sec_group = self.security_groups
 
         try:
-            vm_ami = vm_image[self.network_address]
+            if self.name in vm_image.keys():
+                vm_ami = vm_image[self.name]
+            else:
+                vm_ami = vm_image[self.network_address]
         except:
             log.debug("No AMI for %s, trying default" % self.network_address)
+            #try:
+            #    vm_ami = vm_image["default"]
+            #except:
+                #log.debug("No given default - trying global defaults")
             try:
-                vm_ami = vm_image["default"]
+                vm_default_ami = _attr_list_to_dict(config.default_VMAMI)
+                if self.name in vm_default_ami.keys():
+                    vm_ami = vm_default_ami[self.name]
+                else:
+                    vm_ami = vm_default_ami[self.network_address]
             except:
-                log.exception("Can't find a suitable AMI")
-                return
+                try:
+                    vm_ami = vm_default_ami["default"]
+                except:
+                    log.exception("Can't find a suitable AMI")
+                    return
 
         try:
-            i_type = instance_type[self.network_address]
+            if self.name in instance_type.keys():
+                i_type = instance_type[self.name]
+            else:
+                i_type = instance_type[self.network_address]
         except:
             log.debug("No instance type for %s, trying default" % self.network_address)
+            #try:
+            #    i_type = instance_type["default"]
+            #except:
+            #    if isinstance(instance_type, str):
+            #        i_type = instance_type
+            #    else:
             try:
-                i_type = instance_type["default"]
-            except:
-                if isinstance(instance_type, str):
-                    i_type = instance_type
+                if self.name in self.DEFAULT_INSTANCE_TYPE_LIST.keys():
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.name]
                 else:
-                    i_type = self.DEFAULT_INSTANCE_TYPE
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
+            except:
+                log.debug("No default instance type found for %s, trying single default" % self.network_address)
+                i_type = self.DEFAULT_INSTANCE_TYPE
         instance_type = i_type
 
         if customization:

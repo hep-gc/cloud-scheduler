@@ -85,9 +85,9 @@ class Job:
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
-             VMInstanceType=config.default_VMInstanceType, 
+             VMInstanceType=None, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
+             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor=None,
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
@@ -130,12 +130,16 @@ class Job:
             VMNetwork = config.default_VMNetwork
         if not VMCPUArch:
             VMCPUArch = config.default_VMCPUArch
+        if not VMHypervisor:
+            VMHypervisor = config.default_VMHypervisor
         if not VMName:
             VMName = config.default_VMName
         if not VMLoc:
             VMLoc = config.default_VMLoc
         if not VMAMI:
-            VMAMI = {"default": config.default_VMAMI}
+            VMAMI = _attr_list_to_dict(config.default_VMAMI)
+        if not VMInstanceType:
+            VMInstanceType = _attr_list_to_dict(config.default_VMInstanceTypeList)
         if not VMMem:
             VMMem = config.default_VMMem
         if not VMCPUCores:
@@ -369,6 +373,7 @@ class Job:
     def get_vmimage_proxy_file_path(self):
         proxypath = []
         proxyfilepath= ''
+
         if self.spool_dir and self.vmimage_proxy_file:
             proxypath.append(self.spool_dir)
             if self.vmimage_proxy_file.startswith('/'):
@@ -382,7 +387,7 @@ class Job:
                 log.debug("Could not locate the proxy file at %s. Trying alternate location." % proxyfilepath)
                 proxyfilepath = self.vmimage_proxy_file
                 if not os.path.isfile(proxyfilepath):
-                    log.debug("Could not locate the proxy file at %s." % self.vmimage_proxy_file)
+                    log.debug("Could not locate the proxy file at %s." % proxyfilepath)
                     proxyfilepath = ''
                     # going to try stripping any extra path from the entered value
                     proxy_file_name = self.vmimage_proxy_file.split('/')
@@ -394,7 +399,9 @@ class Job:
                     if not os.path.isfile(proxyfilepath):
                         log.debug("Could not locate the proxy file at %s either." % proxyfilepath)
                         proxyfilepath = ''
-
+        elif self.vmimage_proxy_file:
+            if os.path.isfile(self.vmimage_proxy_file):
+                proxyfilepath = self.vmimage_proxy_file
         return proxyfilepath
 
 class JobPool:

@@ -731,7 +731,7 @@ class Scheduler(threading.Thread):
                         executable = True
                     customizations.append((file_content, destination, executable))            
                 except:
-                    log.error('Error reading %s' % (userdata))
+                    log.error('Error reading default %s' % (userdata))
         
                     
         # Read and add user's user data scripts which must be accessible via http 
@@ -747,7 +747,7 @@ class Scheduler(threading.Thread):
                         executable = True
                     customizations.append((file_content, destination, executable)) 
                 except:
-                    log.error('Error reading %s' % (userdata))               
+                    log.error('Error reading user %s' % (userdata))               
         
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
@@ -977,17 +977,17 @@ class Cleanup(threading.Thread):
         for job in self.job_pool.job_container.get_unscheduled_jobs():
             if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
                 bad_jobs.append(job)
-                log.debug("#1 No cluster fits job %s ignoring" % job.id)
+                log.debug("#1 network and cpuarch - No cluster fits job %s ignoring" % job.id)
                 continue
             if job.req_memory > 0:
                 if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch, memory=job.req_memory):
                     bad_jobs.append(job)
-                    log.debug("#2 No cluster fits job %s ignoring" % job.id)
+                    log.debug("#2 memory - No cluster fits job %s ignoring" % job.id)
                     continue
             if job.req_storage > 0:
                 if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch, disk=job.req_storage):
                     bad_jobs.append(job)
-                    log.debug("#3 No cluster fits job %s ignoring" % job.id)
+                    log.debug("#3 storage - No cluster fits job %s ignoring" % job.id)
                     continue
             if job.target_clouds:
                 if not set(job.target_clouds).intersection(set(cloud_names)):
@@ -1157,7 +1157,7 @@ class Cleanup(threading.Thread):
             else:
                 # shutdown after the previous job has finished executing
                 # interupts the new running job and will be rescheduled by condor
-                self.balance_hard_shutdown(machineList, self.resource_pool.prev_machine_list, num_to_change)
+                self.balance_hard_shutdown(self.resource_pool.vm_machine_list, self.resource_pool.prev_vm_machine_list, num_to_change)
         else:
             log.verbose("No Machines returned by Condor Collector Query")
 
@@ -1540,7 +1540,7 @@ class Cleanup(threading.Thread):
                         if vm.uservmtype == vmtype and found_vm:
                             log.verbose("Located %s in VM list." % unused_vms_of_type[x].machine_name)
                             # Check that machine is Isn't still starting and CS has picked up a zombie condor entry
-                            if vm.status != 'Running':
+                            if vm.status != 'Running' and vm.status != 'RUNNING':
                                 log.verbose("VM %s still Starting, not going to shutdown" % unused_vms_of_type[x].machine_name)
                                 break
                             # Verify that all slots of this VM are idle
@@ -1560,7 +1560,7 @@ class Cleanup(threading.Thread):
                                     if vm.override_status != "Retiring":
                                         if not self.resource_pool.force_retire_vm(vm):
                                             if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
-    
+                                                log.verbose("Starting Destroy of VM: %s" % (vm.id))
                                                 th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
                                                 th.start()
                                                 self.destroy_threads["".join([cluster.name, vm.id])] = th
