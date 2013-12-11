@@ -859,6 +859,24 @@ class Scheduler(threading.Thread):
                         'job_per_core':job.job_per_core,
                         'securitygroup':job.req_security_group}
                 create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "OpenStackCluster":
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_cpuarch':job.req_cpuarch,
+                        'vm_image':job.req_ami,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':job.instance_type,
+                        'maximum_price':job.maximum_price,
+                        'job_per_core':job.job_per_core,
+                        'securitygroup':job.req_security_group}
+                create_ret = resource.vm_create(**args)
 
             # If the VM create fails, try again on another resource
             if (create_ret != 0):

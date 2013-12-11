@@ -54,6 +54,10 @@ try:
     import googlecluster
 except Exception as e:
     pass
+try:
+    import openstackcluster
+except:
+    pass
 import cloudscheduler.config as config
 
 from cloudscheduler.utilities import determine_path
@@ -153,6 +157,10 @@ class ResourcePool:
             self.user_vm_limits = self.load_user_limits(config.user_limit_file)
         if config.ban_tracking:
             self.load_banned_job_resource()
+        if config.target_cloud_alias_file:
+            self.taget_cloud_aliases = self.load_cloud_alaises(config.target_cloud_alias_file)
+        else:
+            self.target_cloud_aliases = {}
         self.load_persistence()
 
 
@@ -394,6 +402,29 @@ class ResourcePool:
                     security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     project_id = get_or_none(config, cluster, "project_id"),
+                    )
+        elif cloud_type == "OpenStackNative":
+            return openstackcluster.OpenStackCluster(name = cluster,
+                    host = get_or_none(config, cluster, "host"),
+                    cloud_type = get_or_none(config, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
+                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
+                    storage = int(get_or_none(config, cluster, "storage")),
+                    access_key_id = get_or_none(config, cluster, "access_key_id"),
+                    secret_access_key = get_or_none(config, cluster, "secret_access_key"),
+                    security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
+                    hypervisor = hypervisor,
+                    key_name = get_or_none(config, cluster, "key_name"),
+                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
+                    secure_connection = get_or_none(config, cluster, "secure_connection"),
+                    regions = map(str, splitnstrip(",", get_or_none(config, cluster, "regions"))),
+                    vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
+                    reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
+                    placement_zone = get_or_none(config, cluster, "placement_zone"),
                     )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
@@ -745,8 +776,7 @@ class ResourcePool:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
                 continue
-            #if cluster.cpu_cores < cpucores:
-             #   continue
+
             fitting.append(cluster)
         return fitting
 
@@ -1440,6 +1470,26 @@ class ResourcePool:
                 log.exception("Unknown problem opening user limit file!")
                 return {}
             return user_limits
+
+    def load_cloud_alaises(self, path=None):
+            alias_file = None
+            try:
+                log.info("Loading Cloud Alias file.")
+                alias_file = open(path, "r")
+            except IOError, e:
+                log.debug("No Cloud Alias file to load. No alias' set.")
+                return {}
+            except:
+                log.exception("Unknown problem opening cloud alias file!")
+                return {}
+            cloud_alias = {}
+            try:
+                cloud_alias = json.loads(alias_file.read(), encoding='ascii')
+                alias_file.close()
+            except:
+                log.exception("Unknown problem parsing cloud alias file!")
+                return {}
+            return cloud_alias
 
     def do_condor_off(self, machine_name, machine_addr, master_addr):
         """Perform a condor_off on an execute node.
