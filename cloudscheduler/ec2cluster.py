@@ -446,8 +446,14 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.warning("Process %s timed out! cmd was %" % (sp.pid, " ".join(cmd)))
             return (sp.returncode, out, err)
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            try:
+                log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            except:
+                log.error("Problem running command, OSError.")
             return (-1, "", "")
         except:
-            log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
+            try:
+                log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
+            except:
+                log.error("Problem running command, unexpected error.")
             return (-1, "", "")
