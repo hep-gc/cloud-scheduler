@@ -95,7 +95,7 @@ connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
 
 default_VMType= "default"
 default_VMNetwork= ""
-default_VMCPUArch= "x86"
+default_VMCPUArch= "x86_64"
 default_VMHypervisor= "xen"
 default_VMName= "Default-Image"
 default_VMLoc= ""
