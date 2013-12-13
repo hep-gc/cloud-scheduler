@@ -496,8 +496,8 @@ class ResourcePool:
             if (cluster.vm_slots <= 0):
                 continue
             # If the cluster does not have the required CPU architecture
-            if not (cpuarch in cluster.cpu_archs):
-                continue
+            #if not (cpuarch in cluster.cpu_archs):
+            #    continue
             # If required network is NOT in cluster's network associations
             if not (network in cluster.network_pools):
                 continue
@@ -618,9 +618,9 @@ class ResourcePool:
                 log.verbose("get_fitting_resources - No free slots in %s" % cluster.name)
                 continue
             # If the cluster does not have the required CPU architecture
-            if (cpuarch not in cluster.cpu_archs):
-                log.verbose("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
-                continue
+            #if (cpuarch not in cluster.cpu_archs):
+                #log.verbose("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
+                #continue
             # If request exceeds the max vm memory on cluster
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
@@ -714,8 +714,8 @@ class ResourcePool:
             if not cluster.enabled:
                 continue
             # If the cluster does not have the required CPU architecture
-            if not (cpuarch in cluster.cpu_archs):
-                continue
+            #if not (cpuarch in cluster.cpu_archs):
+                #continue
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
                 continue
@@ -762,8 +762,8 @@ class ResourcePool:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
                 continue
-            if not (cpuarch in cluster.cpu_archs):
-                continue
+            #if not (cpuarch in cluster.cpu_archs):
+                #continue
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
                 continue
@@ -1851,7 +1851,7 @@ class ResourcePool:
             else:
                 output = "Could not find VM ID %s." % vmid
         else:
-            output = "Could not find Cloud %s." % clusterdname
+            output = "Could not find Cloud %s." % clustername
         return output
     
     def force_retire_cluster_all(self, cloudname):
