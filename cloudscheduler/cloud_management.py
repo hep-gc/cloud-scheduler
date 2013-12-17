@@ -418,6 +418,8 @@ class ResourcePool:
                     secret_access_key = get_or_none(config, cluster, "secret_access_key"),
                     username = get_or_none(config, cluster, "username"),
                     password = get_or_none(config, cluster, "password"),
+                    tenant_name = get_or_none(config, cluster, "tenant_name"),
+                    auth_url = get_or_none(config, cluster, "auth_url"),
                     security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
                     hypervisor = hypervisor,
                     key_name = get_or_none(config, cluster, "key_name"),

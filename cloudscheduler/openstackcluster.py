@@ -23,7 +23,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
-                 username=None, password=None,
+                 username=None, password=None, tenant_name=None, auth_url=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
                  regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None):
 
@@ -46,6 +46,8 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.secret_access_key = secret_access_key
         self.username = username
         self.password = password
+        self.tenant_name = tenant_name
+        self.auth_url = auth_url
         self.key_name = key_name
         self.secure_connection = secure_connection in ['True', 'true', 'TRUE']
         self.total_cpu_cores = -1
