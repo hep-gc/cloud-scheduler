@@ -805,7 +805,8 @@ class Scheduler(threading.Thread):
                         'instance_type':job.instance_type,
                         'maximum_price':job.maximum_price,
                         'job_per_core':job.job_per_core,
-                        'securitygroup':job.req_security_group}
+                        'securitygroup':job.req_security_group
+                        'key_name': job.key_name}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "IBMCluster":
                 customizations.append(("ibm", cloud_type_file_dest))

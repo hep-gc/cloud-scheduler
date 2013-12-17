@@ -145,7 +145,7 @@ class EC2Cluster(cluster_tools.ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
-                  job_per_core=False, securitygroup=[]):
+                  job_per_core=False, securitygroup=[],key_name):
         """Attempt to boot a new VM on the cluster."""
 
         log.verbose("Trying to boot %s on %s" % (vm_type, self.network_address))
@@ -206,7 +206,8 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
                 i_type = self.DEFAULT_INSTANCE_TYPE
         instance_type = i_type
-
+        if key_name == None:
+            key_name = self.key_name
         if customization:
             user_data = nimbus_xml.ws_optional(customization)
         else:
@@ -238,7 +239,7 @@ class EC2Cluster(cluster_tools.ICluster):
             if image:
                 if maximum_price is 0: # don't request a spot instance
                     try:
-                        reservation = image.run(1,1, key_name=self.key_name,
+                        reservation = image.run(1,1, key_name=key_name,
                                                 addressing_type=addressing_type,
                                                 user_data=user_data,
                                                 placement=self.placement_zone,
@@ -256,7 +257,7 @@ class EC2Cluster(cluster_tools.ICluster):
                         reservation = connection.request_spot_instances(
                                                   price_in_dollars,
                                                   image.id,
-                                                  key_name=self.key_name,
+                                                  key_name=key_name,
                                                   user_data=user_data,
                                                   placement=self.placement_zone,
                                                   addressing_type=addressing_type,
