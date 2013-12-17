@@ -416,6 +416,8 @@ class ResourcePool:
                     storage = int(get_or_none(config, cluster, "storage")),
                     access_key_id = get_or_none(config, cluster, "access_key_id"),
                     secret_access_key = get_or_none(config, cluster, "secret_access_key"),
+                    username = get_or_none(config, cluster, "username"),
+                    password = get_or_none(config, cluster, "password"),
                     security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
                     hypervisor = hypervisor,
                     key_name = get_or_none(config, cluster, "key_name"),
