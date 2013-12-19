@@ -11,7 +11,7 @@ import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.job_management import _attr_list_to_dict
 try:
-    from novaclient import client as nclient
+    import novaclient.v1_1.client as nvclient
     import keystoneclient.v2_0.client as ksclient
 except:
     print "Unable to import novaclient - cannot use native openstack cloudtypes"
@@ -60,10 +60,21 @@ class OpenStackCluster(cluster_tools.ICluster):
         pass
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
+        nova = self._get_creds_nova()
+        instance = nova.servers.get(vm.id)
+        instance.delete()
         pass
 
     def vm_poll(self, vm):
+        """ Query OpenStack for status information of VMs."""
+        nova = self._get_creds_nova()
+        instance = nova.servers.get(vm.id)
+        vm.status = instance.status
         pass
     
-    def _get_creds(self):
-        pass
+    def _get_creds_ks(self):
+        """Get an auth token to Keystone."""
+        return ksclient.Client(username=self.username, password=self.password, auth_url=self.auth_url, tenant_name=self.tenant_name)
+    def _get_creds_nova(self):
+        """Get an auth token to Nova."""
+        return nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name)
