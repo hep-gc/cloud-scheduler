@@ -145,7 +145,7 @@ class EC2Cluster(cluster_tools.ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
-                  job_per_core=False, securitygroup=[],key_name):
+                  job_per_core=False, securitygroup=[],key_name=""):
         """Attempt to boot a new VM on the cluster."""
 
         log.verbose("Trying to boot %s on %s" % (vm_type, self.network_address))
