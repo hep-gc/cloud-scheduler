@@ -730,7 +730,7 @@ def setup(path=None):
             sys.exit(1)
 
     if config_file.has_option("logging", "log_format"):
-        log_format = config_file.get("logging", "log_format")
+        log_format = config_file.get("logging", "log_format", raw=True)
 
     # Default Job options
     if config_file.has_option("job", "default_VMType"):
