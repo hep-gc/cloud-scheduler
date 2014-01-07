@@ -114,6 +114,8 @@ class AdminServer(threading.Thread,):
                 return cloud_resources.force_retire_cluster_vm(cloudname, vmid)
             def force_retire_all_vm(self, cloudname):
                 return cloud_resources.force_retire_cluster_all(cloudname)
+            def reset_override_state(self, cloudname, vmid):
+                return cloud_resources.reset_override_state(cloudname, vmid)
 
 
 

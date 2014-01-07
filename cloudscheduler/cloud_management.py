@@ -1894,6 +1894,20 @@ class ResourcePool:
             ret = "Could not find cloud %s." % clustername
         return ret
 
+    def reset_override_state(self, clustername, vmid):
+        output = ""
+        cluster = self.get_cluster(clustername)
+        if cluster:
+            vm = cluster.get_vm(vmid)
+            if vm:
+                vm.override_status = ""
+                vm.force_retire = False
+                output = "Reset state of %s on %s" % (clustername, vmid)
+            else:
+                output = "Could not find VM ID %s." % vmid
+        else:
+            output = "Could not find Cloud %s." % clustername
+        return output
     def user_at_limit(self, user):
         """Check if a user has met their throttled limit."""
         count = self.get_vm_count_user(user)
