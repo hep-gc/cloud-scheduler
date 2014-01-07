@@ -404,6 +404,11 @@ class Job:
                 proxyfilepath = self.vmimage_proxy_file
         return proxyfilepath
 
+    def get_ami_dict(self):
+        return self.req_ami
+    def get_type_dict(self):
+        return self.instance_type
+
 class JobPool:
     """ A pool of all jobs read from the job scheduler. Stores all jobs until they
  complete. Keeps scheduled and unscheduled jobs.
@@ -798,6 +803,8 @@ class JobPool:
         log.verbose("Updating job status of %d jobs" % (len(jobs_to_update)))
         for job in jobs_to_update:
             self.update_job_status(job)
+            #print job.get_ami_dict()
+            #print job.get_type_dict()
         del jobs_to_update
 
         # DBG: print both jobs dicts before updating system.
