@@ -127,11 +127,6 @@ class OpenStackCluster(cluster_tools.ICluster):
                     keep_alive = vm_keepalive, job_per_core = job_per_core)
 
         try:
-            new_vm.spot_id = spot_id
-        except:
-            log.verbose("No spot ID to add to VM %s" % instance_id)
-
-        try:
             self.resource_checkout(new_vm)
         except:
             log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
