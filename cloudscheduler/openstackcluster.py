@@ -19,6 +19,13 @@ except:
 log = utilities.get_cloudscheduler_logger()
 
 class OpenStackCluster(cluster_tools.ICluster):
+    VM_STATES = {
+            "running" : "Running",
+            "pending" : "Starting",
+            "shutting-down" : "Shutdown",
+            "terminated" : "Shutdown",
+            "error" : "Error",
+    }
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
@@ -56,20 +63,109 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
     
-    def vm_create(self, **args):
-        pass
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
+                  vm_image, vm_mem, vm_cores, vm_storage, customization=None,
+                  vm_keepalive=0, instance_type="", job_per_core=False, 
+                  securitygroup=[],key_name=""):
+        """ Create a VM on OpenStack."""
+        nova = self._get_creds_nova()
+        if len(key_name) > 0:
+            if not nova.keypairs.findall(name=key_name):
+                key_name = ""
+        try:
+            image = vm_image[self.name]
+        except:
+            try:
+                image = vm_image[self.network_address]
+            except:
+                try:
+                    vm_default_ami = _attr_list_to_dict(config.default_VMAMI)
+                    if self.name in vm_default_ami.keys():
+                        image = vm_default_ami[self.name]
+                    else:
+                        image = vm_default_ami[self.network_address]
+                except:
+                    try:
+                        image = vm_default_ami["default"]
+                    except:
+                        log.exception("Can't find a suitable AMI")
+                        return
+        try:
+            if self.name in instance_type.keys():
+                i_type = instance_type[self.name]
+            else:
+                i_type = instance_type[self.network_address]
+        except:
+            log.debug("No instance type for %s, trying default" % self.network_address)
+            try:
+                if self.name in self.DEFAULT_INSTANCE_TYPE_LIST.keys():
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.name]
+                else:
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
+            except:
+                log.debug("No default instance type found for %s, trying single default" % self.network_address)
+                i_type = self.DEFAULT_INSTANCE_TYPE        
+        
+        instance = nova.servers.create(image=image, flavor=i_type, key_name=key_name)
+        #print instance
+        instance_id = instance.id
+        
+        vm_mementry = self.find_mementry(vm_mem)
+        if (vm_mementry < 0):
+            #TODO: this is kind of pointless with EC2...
+            log.debug("Cluster memory list has no sufficient memory " +\
+                      "entries (Not supposed to happen). Returning error.")
+            return self.ERROR
+        log.verbose("vm_create - Memory entry found in given cluster: %d" %
+                                                                    vm_mementry)
+        new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
+                    clusteraddr = self.network_address,
+                    cloudtype = self.cloud_type, network = vm_networkassoc,
+                    cpuarch = vm_cpuarch, image= vm_image,
+                    memory = vm_mem, mementry = vm_mementry,
+                    cpucores = vm_cores, storage = vm_storage, 
+                    keep_alive = vm_keepalive, job_per_core = job_per_core)
+
+        try:
+            new_vm.spot_id = spot_id
+        except:
+            log.verbose("No spot ID to add to VM %s" % instance_id)
+
+        try:
+            self.resource_checkout(new_vm)
+        except:
+            log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
+            self.vm_destroy(new_vm, reason="Failed Resource checkout")
+            return self.ERROR
+
+        self.vms.append(new_vm)
+
+        return 0
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
+        """ Destroy a VM on OpenStack."""
         nova = self._get_creds_nova()
         instance = nova.servers.get(vm.id)
-        instance.delete()
-        pass
+        ret = instance.delete()
+        #print 'delete ret %s' % ret
+        
+        # Delete references to this VM
+        if return_resources:
+            self.resource_return(vm)
+        with self.vms_lock:
+            self.vms.remove(vm)
 
+        return 0
     def vm_poll(self, vm):
         """ Query OpenStack for status information of VMs."""
         nova = self._get_creds_nova()
         instance = nova.servers.get(vm.id)
-        vm.status = instance.status
+        with self.vms_lock:
+            if vm.status != self.VM_STATES.get(instance.state, "Starting"):
+
+                vm.last_state_change = int(time.time())
+                log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.state, "Starting")))
+            vm.status = instance.status
         pass
     
     def _get_creds_ks(self):
