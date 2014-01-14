@@ -157,7 +157,7 @@ class VMPoller(threading.Thread):
                 job.override_status = "HTTPFail"
                 if job.job_status != HELD:
                     jobs_to_hold.append(job)
-        self.job_pool.hold_jobSOAP(jobs_to_hold)
+        self.job_pool.job_hold_local(jobs_to_hold)
 
     def check_destroy_threads(self):
         """Checks the  VM destroy thread list for threads that have finished
@@ -1912,7 +1912,7 @@ class Cleanup(threading.Thread):
         if len(to_hold) > 0:
             for job in to_hold:
                 job.override_status = 'HeldBadReqs'
-            failedhold = self.job_pool.hold_jobSOAP(list(to_hold))
+            failedhold = self.job_pool.job_hold_local(list(to_hold))
             if failedhold and len(failedhold) > 0:
                 log.debug("Failed to hold %i jobs" % len(failedhold))
 
