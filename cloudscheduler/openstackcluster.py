@@ -10,12 +10,7 @@ import cluster_tools
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.job_management import _attr_list_to_dict
-try:
-    import novaclient.v1_1.client as nvclient
-    import keystoneclient.v2_0.client as ksclient
-except:
-    print "Unable to import novaclient - cannot use native openstack cloudtypes"
-    sys.exit(1)
+
 log = utilities.get_cloudscheduler_logger()
 
 class OpenStackCluster(cluster_tools.ICluster):
@@ -39,7 +34,12 @@ class OpenStackCluster(cluster_tools.ICluster):
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout)
-
+        try:
+            import novaclient.v1_1.client as nvclient
+            import keystoneclient.v2_0.client as ksclient
+        except:
+                print "Unable to import novaclient - cannot use native openstack cloudtypes"
+                sys.exit(1)
         if not security_group:
             security_group = ["default"]
         self.security_groups = security_group
