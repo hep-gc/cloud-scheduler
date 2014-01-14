@@ -347,8 +347,10 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.status = self.VM_STATES['error']
                 vm.last_state_change = int(time.time())
                 return vm.status
-            except:
-                log.exception("Unexpected error polling %s" % vm.id)
+            except Exception, e:
+                log.exception("Unexpected error polling %s: %s" % (vm.id, e))
+                if e.status == 400 and e.error_code == 'InstanceNotFound':
+                    vm.status = self.VM_STATES['error']
                 return vm.status
 
         except boto.exception.EC2ResponseError, e:
@@ -399,8 +401,13 @@ class EC2Cluster(cluster_tools.ICluster):
         except IndexError:
             log.warning("%s already seem to be gone... removing anyway." % vm.id)
         except boto.exception.EC2ResponseError, e:
+            returnError = True
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
-            return self.ERROR
+            if e.status == 400 and e.error_code == 'InstanceNotFound':
+                log.exception("VM %s no longer exists... removing from system")
+                returnError = False
+            if returnError:
+                return self.ERROR
         except:
             log.exception("Unexpected error destroying VM: %s!" % vm.id)
 
