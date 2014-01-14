@@ -366,7 +366,7 @@ class EC2Cluster(cluster_tools.ICluster):
             if self.reverse_dns_lookup:
                 # run a dig -x on the ip address
                 dig_cmd = ['dig', '-x', instance.ip_address]
-                (dig_return, dig_out, dig_err) = self.vm_execwait(dig_cmd, env=vm.get_env())
+                (_, dig_out, _) = self.vm_execwait(dig_cmd, env=vm.get_env())
                 # extract the hostname from dig -x output
                 vm.hostname = self._extract_host_from_dig(dig_out)
             elif self.cloud_type == "OpenStack":
