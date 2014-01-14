@@ -19,7 +19,7 @@ import utilities
 # Set default values
 condor_webservice_url = "http://localhost:8080"
 condor_collector_url = "http://localhost:9618"
-condor_retrieval_method = "soap"
+condor_retrieval_method = "local"
 condor_q_command = "condor_q -l"
 condor_status_command = "condor_status -l"
 condor_status_master_command = "condor_status -master -l"
