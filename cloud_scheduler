@@ -1015,8 +1015,8 @@ class Cleanup(threading.Thread):
                     continue
         failedhold = []
         if len(bad_jobs) > 0:
-            failedhold = self.job_pool.hold_jobSOAP(bad_jobs)
-        if len(failedhold) > 0:
+            failedhold = self.job_pool.job_hold_local(bad_jobs)
+        if failedhold and len(failedhold) > 0:
             # failed to hold some of these jobs remove from container instead
             self.job_pool.job_container.remove_jobs(failedhold)
 
