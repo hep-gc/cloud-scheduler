@@ -19,10 +19,12 @@ import utilities
 # Set default values
 condor_webservice_url = "http://localhost:8080"
 condor_collector_url = "http://localhost:9618"
-condor_retrieval_method = "soap"
+condor_retrieval_method = "local"
 condor_q_command = "condor_q -l"
 condor_status_command = "condor_status -l"
 condor_status_master_command = "condor_status -master -l"
+condor_hold_command = "condor_hold"
+condor_release_command = "condor_release"
 condor_off_command = "/usr/sbin/condor_off"
 condor_on_command = "/usr/sbin/condor_on"
 ssh_path = "/usr/bin/ssh"
@@ -46,6 +48,7 @@ admin_server_port = 8112
 workspace_path = "workspace"
 persistence_file = "/var/lib/cloudscheduler.persistence"
 user_limit_file = None
+target_cloud_alias_file = None
 job_ban_timeout = 60*60 # 1 hour default
 ban_tracking = False
 ban_file = "/var/run/cloudscheduler.banned"
@@ -53,7 +56,7 @@ ban_min_track = 5
 ban_failrate_threshold = 1.0
 polling_error_threshold = 5
 condor_register_time_limit = 900
-graceful_shutdown = False
+graceful_shutdown = True
 graceful_shutdown_method = "off"
 retire_before_lifetime = False
 retire_before_lifetime_factor = 1.5
@@ -92,7 +95,8 @@ connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
 
 default_VMType= "default"
 default_VMNetwork= ""
-default_VMCPUArch= "x86"
+default_VMCPUArch= "x86_64"
+default_VMHypervisor= "xen"
 default_VMName= "Default-Image"
 default_VMLoc= ""
 default_VMAMI= ""
@@ -100,8 +104,10 @@ default_VMMem= 512
 default_VMCPUCores= 1
 default_VMStorage= 0
 default_VMInstanceType= ""
+default_VMInstanceTypeList= ""
 default_VMMaximumPrice= 0
 default_VMProxyNonBoot = False
+default_VMUserData = []
 
 log_level = "INFO"
 log_location = None
@@ -125,6 +131,8 @@ def setup(path=None):
     global condor_q_command
     global condor_status_command
     global condor_status_master_command
+    global condor_hold_command
+    global condor_release_command
     global condor_off_command
     global condor_on_command
     global ssh_path
@@ -148,6 +156,7 @@ def setup(path=None):
     global workspace_path
     global persistence_file
     global user_limit_file
+    global target_cloud_alias_file
     global job_ban_timeout
     global ban_tracking
     global ban_file
@@ -193,6 +202,7 @@ def setup(path=None):
     global default_VMType
     global default_VMNetwork
     global default_VMCPUArch
+    global default_VMHypervisor
     global default_VMName
     global default_VMLoc
     global default_VMAMI
@@ -200,8 +210,10 @@ def setup(path=None):
     global default_VMCPUCores
     global default_VMStorage
     global default_VMInstanceType
+    global default_VMInstanceTypeList
     global default_VMMaximumPrice
     global default_VMProxyNonBoot
+    global default_VMUserData
 
     global log_level
     global log_location
@@ -274,6 +286,14 @@ def setup(path=None):
     if config_file.has_option("global", "condor_status_master_command"):
         condor_status_master_command = config_file.get("global",
                                                 "condor_status_master_command")
+
+    if config_file.has_option("global", "condor_hold_command"):
+        condor_hold_command = config_file.get("global",
+                                                "condor_hold_command")
+
+    if config_file.has_option("global", "condor_release_command"):
+        condor_release_command = config_file.get("global",
+                                                "condor_release_command")
 
     if config_file.has_option("global", "condor_webservice_url"):
         condor_webservice_url = config_file.get("global",
@@ -356,6 +376,9 @@ def setup(path=None):
 
     if config_file.has_option("global", "user_limit_file"):
         user_limit_file = config_file.get("global", "user_limit_file")
+
+    if config_file.has_option("global", "target_cloud_alias_file"):
+        target_cloud_alias_file = config_file.get("global", "target_cloud_alias_file")
 
     if config_file.has_option("global", "job_ban_timeout"):
         try:
@@ -707,7 +730,7 @@ def setup(path=None):
             sys.exit(1)
 
     if config_file.has_option("logging", "log_format"):
-        log_format = config_file.get("logging", "log_format")
+        log_format = config_file.get("logging", "log_format", raw=True)
 
     # Default Job options
     if config_file.has_option("job", "default_VMType"):
@@ -718,6 +741,9 @@ def setup(path=None):
 
     if config_file.has_option("job", "default_VMCPUArch"):
         default_VMCPUArch = config_file.get("job", "default_VMCPUArch")
+        
+    if config_file.has_option("job", "default_VMHypervisor"):
+        default_VMHypervisor = config_file.get("job", "default_VMHypervisor")
 
     if config_file.has_option("job", "default_VMName"):
         default_VMName = config_file.get("job", "default_VMName")
@@ -755,6 +781,9 @@ def setup(path=None):
     if config_file.has_option("job", "default_VMInstanceType"):
         default_VMInstanceType = config_file.get("job", "default_VMInstanceType")
 
+    if config_file.has_option("job", "default_VMInstanceTypeList"):
+        default_VMInstanceTypeList = config_file.get("job", "default_VMInstanceTypeList")
+
     if config_file.has_option("job", "default_VMMaximumPrice"):
         try:
             default_VMMaximumPrice = config_file.getint("job", "default_VMMaximumPrice")
@@ -769,6 +798,9 @@ def setup(path=None):
         except ValueError:
             print "Configuration file problem: default_VMProxyNonBoot must be a" \
                   " Boolean value."
+
+    if config_file.has_option("job", "default_VMUserData"):
+        default_VMUserData = config_file.get("job", "default_VMUserData").replace(' ', '').strip('"').split(',')
 
     # Derived options
     if condor_host_on_vm:

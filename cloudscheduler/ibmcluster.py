@@ -1,4 +1,5 @@
 import cluster_tools
+import threading
 
 class IBMCluster(cluster_tools.ICluster):
 
@@ -59,7 +60,10 @@ class IBMCluster(cluster_tools.ICluster):
         self.connection = self.driver(username, password)
         try:
             self.locations = self.connection.list_locations()
-            self.locations_dict = {loc.id: loc for loc in self.locations}
+            self.locations_dict = {}
+            for loc in self.locations:
+                self.locations_dict[loc.id] = loc
+            #self.locations_dict = {loc.id: loc for loc in self.locations}
             self.compute_sizes = self.connection.list_sizes()
             self.images = self.connection.list_images()
         except:

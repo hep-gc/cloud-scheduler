@@ -78,22 +78,20 @@ class Job:
     statuses = (SCHEDULED, UNSCHEDULED)
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
-             JobStatus=0, ClusterId=0, ProcId=0, VMType=config.default_VMType,
-             VMNetwork=config.default_VMNetwork, VMCPUArch=config.default_VMCPUArch, 
-             VMName=config.default_VMName, VMLoc=config.default_VMLoc, 
-             VMAMI={"default": config.default_VMAMI}, VMMem=config.default_VMMem, 
-             VMCPUCores=config.default_VMCPUCores, VMStorage=config.default_VMStorage, 
+             JobStatus=0, ClusterId=0, ProcId=0, VMType=None, VMNetwork=None,
+             VMCPUArch=None, VMName=None, VMLoc=None, VMAMI=None, VMMem=None,
+             VMCPUCores=None, VMStorage=None,
              VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
-             VMInstanceType=config.default_VMInstanceType, 
+             VMInstanceType=None, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor="xen",
+             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor=None,
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
-             VMSecurityGroup="", **kwargs):
+             VMSecurityGroup="", VMUserData="", **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -112,6 +110,7 @@ class Job:
      VMHighPriority - (int) Indicates a High priority job / VM (default = 0)
      VMInstanceType - (str) The EC2 instance type of the VM requested
      VMMaximumPrice - (str) The maximum price in cents per hour for a VM (EC2 Only)
+     VMUserData - (str) The EC2 user data passed into VM
      CSMyProxyCredsName - (str) The name of the credentials to retreive from the myproxy server
      CSMyProxyServer - (str) The hostname of the myproxy server to retreive user creds from
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
@@ -124,8 +123,30 @@ class Job:
                                 for when this can save you money (eg. with EC2)
 
      """
-        if VMType == "":
+
+        if not VMType:
             VMType = config.default_VMType
+        if not VMNetwork:
+            VMNetwork = config.default_VMNetwork
+        if not VMCPUArch:
+            VMCPUArch = config.default_VMCPUArch
+        if not VMHypervisor:
+            VMHypervisor = config.default_VMHypervisor
+        if not VMName:
+            VMName = config.default_VMName
+        if not VMLoc:
+            VMLoc = config.default_VMLoc
+        if not VMAMI:
+            VMAMI = _attr_list_to_dict(config.default_VMAMI)
+        if not VMInstanceType:
+            VMInstanceType = _attr_list_to_dict(config.default_VMInstanceTypeList)
+        if not VMMem:
+            VMMem = config.default_VMMem
+        if not VMCPUCores:
+            VMCPUCores = config.default_VMCPUCores
+        if not VMStorage:
+            VMStorage = config.default_VMStorage
+    
         self.id           = GlobalJobId
         self.user         = Owner
         self.uservmtype   = ':'.join([Owner, VMType])
@@ -173,6 +194,7 @@ class Job:
         self.location = VMLocation
         self.key_name = VMKeyName
         self.req_security_group = splitnstrip(',', VMSecurityGroup)
+        self.user_data = splitnstrip(',', VMUserData)
 
         # Set the new job's status
         if self.job_status == 2:
@@ -351,6 +373,7 @@ class Job:
     def get_vmimage_proxy_file_path(self):
         proxypath = []
         proxyfilepath= ''
+
         if self.spool_dir and self.vmimage_proxy_file:
             proxypath.append(self.spool_dir)
             if self.vmimage_proxy_file.startswith('/'):
@@ -364,7 +387,7 @@ class Job:
                 log.debug("Could not locate the proxy file at %s. Trying alternate location." % proxyfilepath)
                 proxyfilepath = self.vmimage_proxy_file
                 if not os.path.isfile(proxyfilepath):
-                    log.debug("Could not locate the proxy file at %s." % self.vmimage_proxy_file)
+                    log.debug("Could not locate the proxy file at %s." % proxyfilepath)
                     proxyfilepath = ''
                     # going to try stripping any extra path from the entered value
                     proxy_file_name = self.vmimage_proxy_file.split('/')
@@ -376,8 +399,15 @@ class Job:
                     if not os.path.isfile(proxyfilepath):
                         log.debug("Could not locate the proxy file at %s either." % proxyfilepath)
                         proxyfilepath = ''
-
+        elif self.vmimage_proxy_file:
+            if os.path.isfile(self.vmimage_proxy_file):
+                proxyfilepath = self.vmimage_proxy_file
         return proxyfilepath
+
+    def get_ami_dict(self):
+        return self.req_ami
+    def get_type_dict(self):
+        return self.instance_type
 
 class JobPool:
     """ A pool of all jobs read from the job scheduler. Stores all jobs until they
@@ -773,6 +803,8 @@ class JobPool:
         log.verbose("Updating job status of %d jobs" % (len(jobs_to_update)))
         for job in jobs_to_update:
             self.update_job_status(job)
+            #print job.get_ami_dict()
+            #print job.get_type_dict()
         del jobs_to_update
 
         # DBG: print both jobs dicts before updating system.
@@ -1233,6 +1265,46 @@ class JobPool:
                 jobs.append(job)
         ret = self.release_jobSOAP(jobs)
         return ret
+
+    def job_hold_local(self, jobs):
+        """job_query_local -- query and parse condor_q for job information."""
+        log.verbose("Holding Condor jobs with %s" % config.condor_hold_command)
+        try:
+            condor_hold = shlex.split(config.condor_hold_command)
+            condor_hold.extend(jobs)
+            sp = subprocess.Popen(condor_hold, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+            returncode = sp.returncode
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_err, " "))
+            return None
+
+        if returncode != 0:
+            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
+                              (returncode, string.join(condor_out, " "), condor_err))
+            return None
+        return returncode
+
+    def job_release_local(self, jobs):
+        """job_query_local -- query and parse condor_q for job information."""
+        log.verbose("Releasing Condor jobs with %s" % config.condor_release_command)
+        try:
+            condor_release = shlex.split(config.condor_release_command)
+            condor_release.extend(jobs)
+            sp = subprocess.Popen(condor_release, shell=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (condor_out, condor_err) = sp.communicate(input=None)
+            returncode = sp.returncode
+        except:
+            log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            return None
+
+        if returncode != 0:
+            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
+                              (returncode, string.join(condor_q, " "), condor_err))
+            return None
+        return returncode
 
     def track_run_time(self, removed):
         """Keeps track of the approximate run time of jobs on each VM."""
