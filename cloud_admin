@@ -54,6 +54,7 @@ def main(argv=None):
     parser.add_option("-i", "--reload-limits", dest="limits", action="store_true", default=False, help="Reload the user limits file.")
     parser.add_option("-j", "--list-limits", dest="list_limits", action="store_true", default=False, help="List the current user limits.")
     parser.add_option("-o", "--force-retire", dest="force_retire", action="store_true", default=False, help="Force Retire a VM. Requires -c name, and -n id or -a all.")
+    parser.add_option("-x", "--reset-vm-state", dest="reset_state", action="store_true", default=False, help="Reset the override state of VM. Requires -c name and -n id.")
 
     (cli_options, args) = parser.parse_args()
 
@@ -110,6 +111,14 @@ def main(argv=None):
                     print "Must provide a -n [VM ID] or -a to force retire all VMs on this cloud."
             else:
                 print "Must Provide the cloud name to force retire VMs on and the VM ID or all flag."
+        elif cli_options.reset_state:
+            if cli_options.cloud_name:
+                if cli_options.vm_id:
+                    print s.reset_override_state(cli_options.cloud_name, cli_options.vm_id)
+                else:
+                    print "Must provide -n [VM ID] to reset state of VM."
+            else:
+                print "Must provide the cloud name and VM ID to reset override state on."
         elif cli_options.enable:
             print s.enable_cloud(cli_options.enable)
         elif cli_options.disable:

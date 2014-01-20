@@ -145,9 +145,11 @@ class EC2Cluster(cluster_tools.ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
-                  job_per_core=False, securitygroup=[]):
+                  job_per_core=False, securitygroup=[],key_name=""):
         """Attempt to boot a new VM on the cluster."""
-
+        #print vm_image
+        #print instance_type
+        #print securitygroup
         log.verbose("Trying to boot %s on %s" % (vm_type, self.network_address))
         if len(securitygroup) != 0:
             sec_group = []
@@ -206,7 +208,8 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
                 i_type = self.DEFAULT_INSTANCE_TYPE
         instance_type = i_type
-
+        if key_name == None:
+            key_name = self.key_name
         if customization:
             user_data = nimbus_xml.ws_optional(customization)
         else:
@@ -238,7 +241,7 @@ class EC2Cluster(cluster_tools.ICluster):
             if image:
                 if maximum_price is 0: # don't request a spot instance
                     try:
-                        reservation = image.run(1,1, key_name=self.key_name,
+                        reservation = image.run(1,1, key_name=key_name,
                                                 addressing_type=addressing_type,
                                                 user_data=user_data,
                                                 placement=self.placement_zone,
@@ -256,7 +259,7 @@ class EC2Cluster(cluster_tools.ICluster):
                         reservation = connection.request_spot_instances(
                                                   price_in_dollars,
                                                   image.id,
-                                                  key_name=self.key_name,
+                                                  key_name=key_name,
                                                   user_data=user_data,
                                                   placement=self.placement_zone,
                                                   addressing_type=addressing_type,
@@ -344,8 +347,10 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.status = self.VM_STATES['error']
                 vm.last_state_change = int(time.time())
                 return vm.status
-            except:
-                log.exception("Unexpected error polling %s" % vm.id)
+            except Exception, e:
+                log.exception("Unexpected error polling %s: %s" % (vm.id, e))
+                if e.status == 400 and e.error_code == 'InstanceNotFound':
+                    vm.status = self.VM_STATES['error']
                 return vm.status
 
         except boto.exception.EC2ResponseError, e:
@@ -361,7 +366,7 @@ class EC2Cluster(cluster_tools.ICluster):
             if self.reverse_dns_lookup:
                 # run a dig -x on the ip address
                 dig_cmd = ['dig', '-x', instance.ip_address]
-                (dig_return, dig_out, dig_err) = self.vm_execwait(dig_cmd, env=vm.get_env())
+                (_, dig_out, _) = self.vm_execwait(dig_cmd, env=vm.get_env())
                 # extract the hostname from dig -x output
                 vm.hostname = self._extract_host_from_dig(dig_out)
             elif self.cloud_type == "OpenStack":
@@ -396,8 +401,13 @@ class EC2Cluster(cluster_tools.ICluster):
         except IndexError:
             log.warning("%s already seem to be gone... removing anyway." % vm.id)
         except boto.exception.EC2ResponseError, e:
+            returnError = True
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
-            return self.ERROR
+            if e.status == 400 and e.error_code == 'InstanceNotFound':
+                log.exception("VM %s no longer exists... removing from system")
+                returnError = False
+            if returnError:
+                return self.ERROR
         except:
             log.exception("Unexpected error destroying VM: %s!" % vm.id)
 
@@ -446,8 +456,14 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.warning("Process %s timed out! cmd was %" % (sp.pid, " ".join(cmd)))
             return (sp.returncode, out, err)
         except OSError, e:
-            log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            try:
+                log.error("Problem running %s, got errno %d \"%s\"" % (string.join(cmd, " "), e.errno, e.strerror))
+            except:
+                log.error("Problem running command, OSError.")
             return (-1, "", "")
         except:
-            log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
+            try:
+                log.error("Problem running %s, unexpected error: %s" % (string.join(cmd, " "), err))
+            except:
+                log.error("Problem running command, unexpected error.")
             return (-1, "", "")

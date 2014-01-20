@@ -19,7 +19,7 @@ import utilities
 # Set default values
 condor_webservice_url = "http://localhost:8080"
 condor_collector_url = "http://localhost:9618"
-condor_retrieval_method = "soap"
+condor_retrieval_method = "local"
 condor_q_command = "condor_q -l"
 condor_status_command = "condor_status -l"
 condor_status_master_command = "condor_status -master -l"
@@ -48,6 +48,7 @@ admin_server_port = 8112
 workspace_path = "workspace"
 persistence_file = "/var/lib/cloudscheduler.persistence"
 user_limit_file = None
+target_cloud_alias_file = None
 job_ban_timeout = 60*60 # 1 hour default
 ban_tracking = False
 ban_file = "/var/run/cloudscheduler.banned"
@@ -94,7 +95,7 @@ connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
 
 default_VMType= "default"
 default_VMNetwork= ""
-default_VMCPUArch= "x86"
+default_VMCPUArch= "x86_64"
 default_VMHypervisor= "xen"
 default_VMName= "Default-Image"
 default_VMLoc= ""
@@ -155,6 +156,7 @@ def setup(path=None):
     global workspace_path
     global persistence_file
     global user_limit_file
+    global target_cloud_alias_file
     global job_ban_timeout
     global ban_tracking
     global ban_file
@@ -374,6 +376,9 @@ def setup(path=None):
 
     if config_file.has_option("global", "user_limit_file"):
         user_limit_file = config_file.get("global", "user_limit_file")
+
+    if config_file.has_option("global", "target_cloud_alias_file"):
+        target_cloud_alias_file = config_file.get("global", "target_cloud_alias_file")
 
     if config_file.has_option("global", "job_ban_timeout"):
         try:
@@ -725,7 +730,7 @@ def setup(path=None):
             sys.exit(1)
 
     if config_file.has_option("logging", "log_format"):
-        log_format = config_file.get("logging", "log_format")
+        log_format = config_file.get("logging", "log_format", raw=True)
 
     # Default Job options
     if config_file.has_option("job", "default_VMType"):
