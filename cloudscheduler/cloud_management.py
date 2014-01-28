@@ -1240,7 +1240,7 @@ class ResourcePool:
         for cluster in self.resources:
             for vm in cluster.vms:
                 if hasattr(vm, "job_per_core") and vm.job_per_core:
-                    for core in range(vm.cpucores):
+                    for _ in range(vm.cpucores):
                         types[vm.uservmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
                 else:
                     types[vm.uservmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
