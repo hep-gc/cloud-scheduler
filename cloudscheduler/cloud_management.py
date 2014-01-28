@@ -1345,9 +1345,9 @@ class ResourcePool:
 
             elif cluster.__class__.__name__ == 'StratusLabCluster' and stratuslab_support:
                 # If not valid image file to download
-                if imageloc == "":
+                if job.req_imageloc == "":
                     continue
-                if (not Image.isDiskId(imageloc)) and (not Image.isImageId(imageloc)):
+                if (not Image.isDiskId(job.req_imageloc)) and (not Image.isImageId(job.req_imageloc)):
                     continue
                 resource.append(value)
 
