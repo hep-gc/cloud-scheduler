@@ -158,7 +158,7 @@ class ResourcePool:
         if config.ban_tracking:
             self.load_banned_job_resource()
         if config.target_cloud_alias_file:
-            self.taget_cloud_aliases = self.load_cloud_alaises(config.target_cloud_alias_file)
+            self.target_cloud_aliases = self.load_cloud_alaises(config.target_cloud_alias_file)
         else:
             self.target_cloud_aliases = {}
         self.load_persistence()
@@ -1710,6 +1710,7 @@ class ResourcePool:
                     if vm.status == "Error":
                         error.append(vm)
         return error
+
     def get_all_vms(self):
         """Returns a list of all the VMs in the system."""
         all_vms = []
@@ -1908,6 +1909,7 @@ class ResourcePool:
         else:
             output = "Could not find Cloud %s." % clustername
         return output
+
     def user_at_limit(self, user):
         """Check if a user has met their throttled limit."""
         count = self.get_vm_count_user(user)
