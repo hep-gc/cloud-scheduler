@@ -1976,6 +1976,16 @@ class ResourcePool:
                 log.warning("Failed to create VMMachine Obj")
         return vm_machine_list
 
+    def resolve_target_cloud_alias(self, targets):
+        expanded_targets = []
+        for cloud in targets:
+            if cloud in self.target_cloud_aliases.keys():
+                expanded_targets.extend(self.target_cloud_aliases[cloud])
+            else:
+                expanded_targets.append(cloud)
+        trimmed_targets = list(set(expanded_targets))
+        return trimmed_targets
+    
 class VMDestroyCmd(threading.Thread):
     """
     VMCmd - passing shutdown and destroy requests to a separate thread 
