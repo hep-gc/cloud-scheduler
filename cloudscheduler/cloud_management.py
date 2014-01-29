@@ -786,8 +786,9 @@ class ResourcePool:
 
     def filter_resources_by_names(self, names):
         """Return list of clusters that match names."""
+        expanded_names = self.resolve_target_cloud_alias(names)
         clusters = []
-        for name in names:
+        for name in expanded_names:
             cluster = self.get_cluster(name)
             if cluster != None:
                 clusters.append(cluster)
