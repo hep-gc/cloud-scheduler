@@ -57,6 +57,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
+                                   region=region
                                    )
                 log.verbose("Created a connection to Amazon EC2")
 
@@ -224,6 +225,7 @@ class EC2Cluster(cluster_tools.ICluster):
         try:
             connection = self._get_connection()
             image = None
+
             if not "Eucalyptus" == self.cloud_type:
                 image = connection.get_image(vm_ami)
 
