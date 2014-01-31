@@ -1270,6 +1270,8 @@ class JobPool:
         """job_query_local -- query and parse condor_q for job information."""
         log.verbose("Holding Condor jobs with %s" % config.condor_hold_command)
         try:
+            condor_out = ""
+            condor_err = ""
             condor_hold = shlex.split(config.condor_hold_command)
             condor_hold.extend(jobs)
             sp = subprocess.Popen(condor_hold, shell=False,
