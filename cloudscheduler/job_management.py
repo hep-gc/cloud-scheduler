@@ -1274,7 +1274,8 @@ class JobPool:
             condor_err = ""
             log.verbose("Holding jobs via condor_hold.")
             condor_hold = shlex.split(config.condor_hold_command)
-            condor_hold.extend(jobs)
+            job_ids = [str(job.cluster_id)+"."+str(job.proc_id) for job in jobs]
+            condor_hold.extend(job_ids)
             log.verbose("Popen condor_hold command")
             sp = subprocess.Popen(condor_hold, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -1299,7 +1300,8 @@ class JobPool:
         log.verbose("Releasing Condor jobs with %s" % config.condor_release_command)
         try:
             condor_release = shlex.split(config.condor_release_command)
-            condor_release.extend(jobs)
+            job_ids = [str(job.cluster_id)+"."+str(job.proc_id) for job in jobs]
+            condor_release.extend(job_ids)
             sp = subprocess.Popen(condor_release, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (condor_out, condor_err) = sp.communicate(input=None)
