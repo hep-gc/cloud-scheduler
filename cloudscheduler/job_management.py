@@ -1277,7 +1277,10 @@ class JobPool:
             (condor_out, condor_err) = sp.communicate(input=None)
             returncode = sp.returncode
         except:
-            log.exception("Problem running %s, unexpected error" % string.join(condor_err, " "))
+            if condor_err:
+                log.exception("Problem running %s, unexpected error" % string.join(condor_err, " "))
+            else:
+                log.exception("Problem running condor_hold, unexpected error.")
             return None
 
         if returncode != 0:
@@ -1297,12 +1300,12 @@ class JobPool:
             (condor_out, condor_err) = sp.communicate(input=None)
             returncode = sp.returncode
         except:
-            log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            log.exception("Problem running %s, unexpected error" % string.join(condor_release, " "))
             return None
 
         if returncode != 0:
             log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
-                              (returncode, string.join(condor_q, " "), condor_err))
+                              (returncode, string.join(condor_release, " "), condor_err))
             return None
         return returncode
 
