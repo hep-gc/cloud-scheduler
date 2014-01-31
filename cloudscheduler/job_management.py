@@ -1272,10 +1272,13 @@ class JobPool:
         try:
             condor_out = ""
             condor_err = ""
+            log.verbose("Holding jobs via condor_hold.")
             condor_hold = shlex.split(config.condor_hold_command)
             condor_hold.extend(jobs)
+            log.verbose("Popen condor_hold command")
             sp = subprocess.Popen(condor_hold, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            log.verbose("Popen communicate condor_hold.")
             (condor_out, condor_err) = sp.communicate(input=None)
             returncode = sp.returncode
         except:
