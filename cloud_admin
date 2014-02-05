@@ -55,6 +55,8 @@ def main(argv=None):
     parser.add_option("-j", "--list-limits", dest="list_limits", action="store_true", default=False, help="List the current user limits.")
     parser.add_option("-o", "--force-retire", dest="force_retire", action="store_true", default=False, help="Force Retire a VM. Requires -c name, and -n id or -a all.")
     parser.add_option("-x", "--reset-vm-state", dest="reset_state", action="store_true", default=False, help="Reset the override state of VM. Requires -c name and -n id.")
+    parser.add_option("-t", "--reload-target-alias", dest="alias", action="store_true", default=False, help="Reload the Target Cloud Alias file.")
+    parser.add_option("-y", "--list-alias", dest="list_alias", action="store_true", default=False, help="List the current cloud aliases.")
 
     (cli_options, args) = parser.parse_args()
 
@@ -130,9 +132,16 @@ def main(argv=None):
             if s.user_limit_reload():
                 print "User-Limit file reloaded."
             else:
-                print "No Limits set - list empty of problem parsing file."
+                print "No Limits set - list empty or problem parsing file."
         elif cli_options.list_limits:
             print s.list_user_limits()
+        elif cli_options.alias:
+            if s.cloud_alias_reload():
+                print "Target Cloud Alias file reloaded."
+            else:
+                print "Failed to load alias file - check json format, path, or permissions."
+        elif cli_options.list_alias:
+            print s.list_cloud_alias()
         elif cli_options.log_level:
             print s.change_log_level(cli_options.log_level)
         elif cli_options.proxy_refresh:

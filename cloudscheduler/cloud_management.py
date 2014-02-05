@@ -158,7 +158,7 @@ class ResourcePool:
         if config.ban_tracking:
             self.load_banned_job_resource()
         if config.target_cloud_alias_file:
-            self.target_cloud_aliases = self.load_cloud_alaises(config.target_cloud_alias_file)
+            self.target_cloud_aliases = self.load_cloud_aliases(config.target_cloud_alias_file)
         else:
             self.target_cloud_aliases = {}
         self.load_persistence()
@@ -1476,7 +1476,7 @@ class ResourcePool:
                 return {}
             return user_limits
 
-    def load_cloud_alaises(self, path=None):
+    def load_cloud_aliases(self, path=None):
             alias_file = None
             try:
                 log.info("Loading Cloud Alias file.")
