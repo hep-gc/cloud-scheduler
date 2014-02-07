@@ -146,6 +146,8 @@ class Job:
             VMCPUCores = config.default_VMCPUCores
         if not VMStorage:
             VMStorage = config.default_VMStorage
+        if not TargetClouds:
+            TargetClouds = config.default_TargetClouds
     
         self.id           = GlobalJobId
         self.user         = Owner
