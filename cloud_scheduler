@@ -1009,7 +1009,8 @@ class Cleanup(threading.Thread):
                     log.debug("#3 storage - No cluster fits job %s ignoring" % job.id)
                     continue
             if job.target_clouds:
-                if not set(job.target_clouds).intersection(set(cloud_names)):
+                unrolled_targets = self.resource_pool.resolve_target_cloud_alias(job.target_clouds)
+                if not set(unrolled_targets).intersection(set(cloud_names)):
                     bad_jobs.append(job)
                     log.debug("No matching target cloud for job %s" % job.id)
                     continue
