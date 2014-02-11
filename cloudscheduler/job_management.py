@@ -124,6 +124,8 @@ class Job:
 
      """
 
+        global log
+        log = logging.getLogger("cloudscheduler")
         if not VMType:
             VMType = config.default_VMType
         if not VMNetwork:
@@ -162,13 +164,37 @@ class Job:
         self.req_image    = VMName
         self.req_imageloc = VMLoc
         self.req_ami      = VMAMI
-        self.req_memory   = int(VMMem)
-        self.req_cpucores = int(VMCPUCores)
-        self.req_storage  = int(VMStorage)
-        self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
-        self.high_priority = int(VMHighPriority)
+        try:
+            self.req_memory   = int(VMMem)
+        except:
+            log.exception("VMMem not int: %s" % VMMem)
+            raise ValueError
+        try:
+            self.req_cpucores = int(VMCPUCores)
+        except:
+            log.exception("VMCPUCores not int: %s" % VMCPUCores)
+            raise ValueError
+        try:
+            self.req_storage  = int(VMStorage)
+        except:
+            log.exception("VMStorage not int: %s" % VMStorage)
+            raise ValueError
+        try:
+            self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
+        except:
+            log.exception("VMKeepAlive not int: %s" % VMKeepAlive)
+            raise ValueError
+        try:    
+            self.high_priority = int(VMHighPriority)
+        except:
+            log.exception("VMHighPriority not int: %s" % VMHighPriority)
+            raise ValueError
         self.instance_type = VMInstanceType
-        self.maximum_price = int(VMMaximumPrice)
+        try:
+            self.maximum_price = int(VMMaximumPrice)
+        except:
+            log.exception("VMMaximumPrice not int: %s" % VMMaximumPrice)
+            raise ValueError
         self.myproxy_server = CSMyProxyServer
         self.myproxy_server_port = CSMyProxyServerPort
         self.myproxy_creds_name = CSMyProxyCredsName
@@ -190,7 +216,11 @@ class Job:
         self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
         self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
         self.vmimage_proxy_file = VMImageProxyFile
-        self.usertype_limit = int(VMTypeLimit)
+        try:
+            self.usertype_limit = int(VMTypeLimit)
+        except:
+            log.exception("VMTypeLimit not int: %s" % VMTypeLimit)
+            raise ValueError
         self.req_image_id = VMImageID
         self.req_instance_type_ibm = VMInstanceTypeIBM
         self.location = VMLocation
@@ -204,10 +234,6 @@ class Job:
         else:
             self.status = self.statuses[1]
         self.override_status = None
-
-        global log
-        log = logging.getLogger("cloudscheduler")
-
         self.block_time = None
         self.blocked_clouds = []
         self.target_clouds = []
@@ -630,8 +656,12 @@ class JobPool:
             # VMAMI requires special fiddling
             _attribute_from_list(classad, "VMAMI")
             _attribute_from_list(classad, "VMInstanceType")
-
-            jobs.append(Job(**classad))
+            try:            
+                jobs.append(Job(**classad))
+            except ValueError:
+                log.exception("Failed to add job: %s due to Value Errors in jdl." % classad["GlobalJobId"])
+            except:
+                log.exception("Failed to add job: %s due to unspecified exception." % classad["GlobalJobId"])
         return jobs
 
     @staticmethod
