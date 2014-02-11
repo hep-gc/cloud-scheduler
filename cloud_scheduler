@@ -555,6 +555,8 @@ class Scheduler(threading.Thread):
                             else:
                                 log.verbose("User %s vmtype %s not being scheduled. Exceptional case, report" % (user, job.uservmtype))
                                 break
+        else:
+            log.debug("At Max Starting VMs CloudScheduler not booting any new VMs.")
 
     def sched_allow_over_allocation(self, diff_types, job):
         """Determine if a VM request is allowed to have more than that users fairshare.
