@@ -110,6 +110,14 @@ class AdminServer(threading.Thread,):
             def user_limit_reload(self):
                 cloud_resources.user_vm_limits = cloud_resources.load_user_limits(config.user_limit_file)
                 return True if len(cloud_resources.user_vm_limits) > 0 else False
+            def cloud_alias_reload(self):
+                if config.target_cloud_alias_file:
+                    cloud_resources.target_cloud_aliases = cloud_resources.load_cloud_aliases(config.target_cloud_alias_file)
+                    return True if len(cloud_resources.target_cloud_aliases) > 0 else False
+                else:
+                    return False
+            def list_cloud_alias(self):
+                return str(cloud_resources.target_cloud_aliases)
             def force_retire_vm(self, cloudname, vmid):
                 return cloud_resources.force_retire_cluster_vm(cloudname, vmid)
             def force_retire_all_vm(self, cloudname):

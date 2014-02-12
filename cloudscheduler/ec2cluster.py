@@ -57,6 +57,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
+                                   region=region
                                    )
                 log.verbose("Created a connection to Amazon EC2")
 
@@ -157,8 +158,9 @@ class EC2Cluster(cluster_tools.ICluster):
                 if group in self.security_groups:
                     sec_group.append(group)
             if len(sec_group) == 0:
-                log.warning("No matching security groups - trying default")
-                sec_group.append("default")
+                log.warning("No matching security groups - trying default config")
+                sec_group = self.security_groups
+                #sec_group.append("default") - don't just append default use what is in cloud_resources.conf for this cloud
         else:
             sec_group = self.security_groups
 
@@ -224,6 +226,7 @@ class EC2Cluster(cluster_tools.ICluster):
         try:
             connection = self._get_connection()
             image = None
+
             if not "Eucalyptus" == self.cloud_type:
                 image = connection.get_image(vm_ami)
 

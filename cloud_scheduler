@@ -555,6 +555,8 @@ class Scheduler(threading.Thread):
                             else:
                                 log.verbose("User %s vmtype %s not being scheduled. Exceptional case, report" % (user, job.uservmtype))
                                 break
+        else:
+            log.debug("At Max Starting VMs CloudScheduler not booting any new VMs.")
 
     def sched_allow_over_allocation(self, diff_types, job):
         """Determine if a VM request is allowed to have more than that users fairshare.
@@ -572,7 +574,7 @@ class Scheduler(threading.Thread):
                 if self.resource_pool.user_at_limit(user):
                     continue
                 userjob = unscheduled_jobs_by_users[user][0]
-                if userjob.uservmtype in userjoblimits.keys() and self.resource_pool.uservmtype_at_limit(vmusertype, userjoblimits[vmusertype]):
+                if userjob.uservmtype in userjoblimits.keys() and self.resource_pool.uservmtype_at_limit(userjob.uservmtype, userjoblimits[userjob.uservmtype]):
                     continue
                 # Check for an underallocated job that has resources
                 if userjob and userjob.uservmtype in diff_types.keys() and diff_types[userjob.uservmtype] <= 0:
@@ -747,7 +749,7 @@ class Scheduler(threading.Thread):
                         executable = True
                     customizations.append((file_content, destination, executable)) 
                 except:
-                    log.error('Error reading user %s' % (userdata))               
+                    log.error('Error reading userdata %s' % (userdata))               
         
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
@@ -1009,7 +1011,8 @@ class Cleanup(threading.Thread):
                     log.debug("#3 storage - No cluster fits job %s ignoring" % job.id)
                     continue
             if job.target_clouds:
-                if not set(job.target_clouds).intersection(set(cloud_names)):
+                unrolled_targets = self.resource_pool.resolve_target_cloud_alias(job.target_clouds)
+                if not set(unrolled_targets).intersection(set(cloud_names)):
                     bad_jobs.append(job)
                     log.debug("No matching target cloud for job %s" % job.id)
                     continue

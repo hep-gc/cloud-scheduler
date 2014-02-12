@@ -158,7 +158,7 @@ class ResourcePool:
         if config.ban_tracking:
             self.load_banned_job_resource()
         if config.target_cloud_alias_file:
-            self.taget_cloud_aliases = self.load_cloud_alaises(config.target_cloud_alias_file)
+            self.target_cloud_aliases = self.load_cloud_aliases(config.target_cloud_alias_file)
         else:
             self.target_cloud_aliases = {}
         self.load_persistence()
@@ -786,8 +786,9 @@ class ResourcePool:
 
     def filter_resources_by_names(self, names):
         """Return list of clusters that match names."""
+        expanded_names = self.resolve_target_cloud_alias(names)
         clusters = []
-        for name in names:
+        for name in expanded_names:
             cluster = self.get_cluster(name)
             if cluster != None:
                 clusters.append(cluster)
@@ -1240,7 +1241,7 @@ class ResourcePool:
         for cluster in self.resources:
             for vm in cluster.vms:
                 if hasattr(vm, "job_per_core") and vm.job_per_core:
-                    for core in range(vm.cpucores):
+                    for _ in range(vm.cpucores):
                         types[vm.uservmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
                 else:
                     types[vm.uservmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
@@ -1345,9 +1346,9 @@ class ResourcePool:
 
             elif cluster.__class__.__name__ == 'StratusLabCluster' and stratuslab_support:
                 # If not valid image file to download
-                if imageloc == "":
+                if job.req_imageloc == "":
                     continue
-                if (not Image.isDiskId(imageloc)) and (not Image.isImageId(imageloc)):
+                if (not Image.isDiskId(job.req_imageloc)) and (not Image.isImageId(job.req_imageloc)):
                     continue
                 resource.append(value)
 
@@ -1475,7 +1476,7 @@ class ResourcePool:
                 return {}
             return user_limits
 
-    def load_cloud_alaises(self, path=None):
+    def load_cloud_aliases(self, path=None):
             alias_file = None
             try:
                 log.info("Loading Cloud Alias file.")
@@ -1710,6 +1711,7 @@ class ResourcePool:
                     if vm.status == "Error":
                         error.append(vm)
         return error
+
     def get_all_vms(self):
         """Returns a list of all the VMs in the system."""
         all_vms = []
@@ -1908,6 +1910,7 @@ class ResourcePool:
         else:
             output = "Could not find Cloud %s." % clustername
         return output
+
     def user_at_limit(self, user):
         """Check if a user has met their throttled limit."""
         count = self.get_vm_count_user(user)
@@ -1974,6 +1977,16 @@ class ResourcePool:
                 log.warning("Failed to create VMMachine Obj")
         return vm_machine_list
 
+    def resolve_target_cloud_alias(self, targets):
+        expanded_targets = []
+        for cloud in targets:
+            if cloud in self.target_cloud_aliases.keys():
+                expanded_targets.extend(self.target_cloud_aliases[cloud])
+            else:
+                expanded_targets.append(cloud)
+        trimmed_targets = list(set(expanded_targets))
+        return trimmed_targets
+    
 class VMDestroyCmd(threading.Thread):
     """
     VMCmd - passing shutdown and destroy requests to a separate thread 
