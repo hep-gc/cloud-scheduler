@@ -191,8 +191,10 @@ class EC2Cluster(cluster_tools.ICluster):
         try:
             if self.name in instance_type.keys():
                 i_type = instance_type[self.name]
-            else:
+            elif self.network_address in instance_type.keys():
                 i_type = instance_type[self.network_address]
+            else:
+                i_type = instance_type["default"]
         except:
             log.debug("No instance type for %s, trying default" % self.network_address)
             #try:
