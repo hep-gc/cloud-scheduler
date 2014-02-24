@@ -411,7 +411,10 @@ class EC2Cluster(cluster_tools.ICluster):
             returnError = True
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
             if e.status == 400 and e.error_code == 'InstanceNotFound':
-                log.exception("VM %s no longer exists... removing from system")
+                log.exception("VM %s no longer exists... removing from system" % vm.id)
+                returnError = False
+            if e.status == 404:
+                log.exception("VM %s not found... removing from system" % vm.id)
                 returnError = False
             if returnError:
                 return self.ERROR
