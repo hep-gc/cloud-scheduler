@@ -662,7 +662,7 @@ class Scheduler(threading.Thread):
         #local_modifications += 'STARTD_ATTRS = COLLECTOR_HOST_STRING VMType CSManagedVM\n'
 
         if config.override_vmtype:
-            local_modifications += "VMType = %s\n" % job.req_vmtype
+            local_modifications += 'VMType = "%s"\n' % job.req_vmtype
 
         if config.cert_file:
             file_contents = open(config.cert_file).read()
