@@ -377,9 +377,15 @@ class EC2Cluster(cluster_tools.ICluster):
                 # extract the hostname from dig -x output
                 vm.hostname = self._extract_host_from_dig(dig_out)
             elif self.cloud_type == "OpenStack":
-                vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
+                if len(instance.public_dns_name) > 0:
+                    vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
+                else:
+                    vm.hostname = ''.join([instance.private_dns_name, self.vm_domain_name])
             else:
-                vm.hostname = instance.public_dns_name
+                if len(instance.public_dns_name) > 0:
+                    vm.hostname = instance.public_dns_name
+                else:
+                    vm.hostname = instance.private_dns_name
             vm.lastpoll = int(time.time())
         return vm.status
 
