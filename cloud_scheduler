@@ -1365,7 +1365,8 @@ class Cleanup(threading.Thread):
             resources = self.resource_pool.retired_resources
         for cluster in resources:
             for vm in cluster.vms:
-                foundvm = False
+                foundvmstartd = False
+                foundvmmaster = False
                 if vm.status == 'Running' and machineList != None:
                     for machine in machineList:
                         if utilities.match_host_with_condor_host(vm.hostname, machine.machine_name):
@@ -1378,8 +1379,7 @@ class Cleanup(threading.Thread):
                                     vm.idle_start = None
                                 elif not vm.idle_start and machine.activity == 'Idle':
                                     vm.idle_start = int(time.time())
-                            foundvm = True
-                            break
+                            foundvmstartd = True
                         if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name):
                             if vm.condorname == None:
                                 vm.condorname = machine.machine_name
@@ -1390,9 +1390,10 @@ class Cleanup(threading.Thread):
                                     vm.idle_start = None
                                 elif not vm.idle_start and machine.activity == 'Idle':
                                     vm.idle_start = int(time.time())
-                            foundvm = True
+                            foundvmmaster = True
+                        if foundvmmaster and foundvmstartd:
                             break
-                    if not foundvm:
+                    if not foundvmstartd and not foundvmmaster:
                         if vm.override_status == 'Retiring':
                             retiredvms.append(vm)
                         elif vm.condorname != None:
