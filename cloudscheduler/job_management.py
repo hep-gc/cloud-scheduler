@@ -91,7 +91,7 @@ class Job:
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
-             VMSecurityGroup="", VMUserData="", **kwargs):
+             VMSecurityGroup="", VMUserData="", VMAMIConfig=None, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -111,6 +111,7 @@ class Job:
      VMInstanceType - (str) The EC2 instance type of the VM requested
      VMMaximumPrice - (str) The maximum price in cents per hour for a VM (EC2 Only)
      VMUserData - (str) The EC2 user data passed into VM
+     VMAMIConfig - (str) AMI Config file to use as part of contextualization
      CSMyProxyCredsName - (str) The name of the credentials to retreive from the myproxy server
      CSMyProxyServer - (str) The hostname of the myproxy server to retreive user creds from
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
@@ -150,6 +151,8 @@ class Job:
             VMStorage = config.default_VMStorage
         if not TargetClouds:
             TargetClouds = config.default_TargetClouds
+        if not VMAMIConfig:
+            VMAMIConfig = config.default_VMAMIConfig
     
         self.id           = GlobalJobId
         self.user         = Owner
@@ -227,6 +230,7 @@ class Job:
         self.key_name = VMKeyName
         self.req_security_group = splitnstrip(',', VMSecurityGroup)
         self.user_data = splitnstrip(',', VMUserData)
+        self.ami_config = VMAMIConfig
 
         # Set the new job's status
         if self.job_status == 2:

@@ -145,8 +145,9 @@ class EC2Cluster(cluster_tools.ICluster):
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
-                  vm_keepalive=0, instance_type="", maximum_price=0,
-                  job_per_core=False, securitygroup=[],key_name=""):
+                  pre_customization=None, vm_keepalive=0, instance_type="", 
+                  maximum_price=0, job_per_core=False, securitygroup=[],
+                  key_name=""):
         """Attempt to boot a new VM on the cluster."""
         #print vm_image
         #print instance_type
@@ -218,6 +219,9 @@ class EC2Cluster(cluster_tools.ICluster):
             user_data = nimbus_xml.ws_optional(customization)
         else:
             user_data = ""
+        if pre_customization:
+            for item in pre_customization:
+                user_data = '\n'.join([item, user_data])
 
         if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
             log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)

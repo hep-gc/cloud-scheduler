@@ -749,7 +749,18 @@ class Scheduler(threading.Thread):
                         executable = True
                     customizations.append((file_content, destination, executable)) 
                 except:
-                    log.error('Error reading userdata %s' % (userdata))               
+                    log.error('Error reading userdata %s' % (userdata))
+        
+        pre_customizations = []
+        if job.ami_config:
+            try:
+                if job.ami_config.startswith('http'):
+                    file_content = urllib2.urlopen(job.ami_config).read()
+                elif os.path.isfile(job.ami_config):
+                    file_content = open(job.ami_config).read()
+                pre_customizations.append(file_content)
+            except:
+                log.error("Unable to read ami_config - check path or url: %s" % job.ami_config)               
         
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
@@ -803,6 +814,7 @@ class Scheduler(threading.Thread):
                         'vm_cores':job.req_cpucores,
                         'vm_storage':job.req_storage,
                         'customization':customizations,
+                        'pre_customization': pre_customizations,
                         'vm_keepalive':job.keep_alive,
                         'instance_type':job.instance_type,
                         'maximum_price':job.maximum_price,
