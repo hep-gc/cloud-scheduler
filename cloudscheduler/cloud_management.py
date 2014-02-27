@@ -1902,7 +1902,7 @@ class ResourcePool:
         if cluster:
             vm = cluster.get_vm(vmid)
             if vm:
-                vm.override_status = ""
+                vm.override_status = None
                 vm.force_retire = False
                 output = "Reset state of %s on %s" % (clustername, vmid)
             else:
