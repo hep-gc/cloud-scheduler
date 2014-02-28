@@ -105,6 +105,9 @@ case "$1" in
         start
         ;;
     stop)
+        quickstop
+        ;;
+    fullstop)
         stop
         ;;
     forcekill)
@@ -129,7 +132,7 @@ case "$1" in
         fi
         ;;
     restart)
-        stop
+        quickstop
         start
         ;;
     quickstop)
