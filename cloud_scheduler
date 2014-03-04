@@ -1604,6 +1604,7 @@ class Cleanup(threading.Thread):
                                 vm.idle_start = int(time.time())
                                 break
                     if found_vm:
+                        log.verbose('vm: %s found matching: %s stopping search. Types %s and %s' % (vm.hostname, unused_vms_of_type[x].machine_name, vm.uservmtype, vmtype))
                         break
                 if not found_vm:
                     log.debug("Unable to find Condor Machine %s in VM list" % unused_vms_of_type[x].machine_name)
