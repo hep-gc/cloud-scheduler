@@ -1,0 +1,11 @@
+The cloud_scheduler init script is a sysinit V init script for typical
+RHEL OS or Debian based to be placed in /etc/init.d. 
+It goes with the cloud_scheduler.sysconfig configuration file to be
+placed in /etc/condor/cloud_scheduler.
+With these two, the modified condor init script should not be needed.
+
+In the condor worker:
+   1. copy cloud_scheduler to /etc/init.d/cloud_scheduler
+   2. copy cloud_scheduler.sysconfig to /etc/condor/cloud_scheduler
+   3. /sbin/chkconfig --add cloud_scheduler
+

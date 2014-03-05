@@ -1,5 +1,5 @@
 Name:		nimbus-cloud-client
-Version:	021
+Version:	022
 Release:	1%{?dist}
 Summary:	Nimbus cloud client
 
@@ -30,5 +30,7 @@ chmod +x $RPM_BUILD_ROOT/opt/%{name}/lib/workspace.sh
 /opt/%{name}
 
 %changelog
+* Mon Jun 03 2013 Sebastien Fabbro <sfabbro@uvic.ca> - 022
+Version bump.
 * Mon Jun 03 2013 Sebastien Fabbro <sfabbro@uvic.ca> - 021
 First build. This package is a horrendous java blob, waste of time to unbundle it.

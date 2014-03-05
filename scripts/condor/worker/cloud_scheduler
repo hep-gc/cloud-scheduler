@@ -1,0 +1,202 @@
+#!/bin/bash
+#
+# Init script for cloud scheduler client to modify 
+# local condor configurations
+#
+# chkconfig: 2345 90 10
+# description: Cloud Scheduler modify condor script
+#
+# LSB init part (Used by Debian package)
+### BEGIN INIT INFO
+# Provides:          cloud_scheduler
+# Required-Start:    $network $local_fs $remote_fs
+# Required-Stop:     $remote_fs $local_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Add cloud scheduler modifs to condor
+# Description: Cloud Scheduler modify condor script
+### END INIT INFO
+
+# Source function library
+# fedora/rhel
+. /etc/rc.d/init.d/functions
+# debian/ubuntu
+#. /lib/lsb/init-functions
+
+# Source cloud scheduler special configurations
+. /etc/condor/cloud_scheduler
+
+IFCONFIG=/sbin/ifconfig
+PYTHON=python
+# use python26 for rhel-5 based distros
+#PYTHON=python26
+CONDOR_CONFIG_VAL=/usr/bin/condor_config_val
+
+# Emits error with a "FATAL: " prefix. Exits.  Never returns
+fatal_error() {
+    echo "FATAL: $1" 1>&2
+    exit 1
+}
+
+# Returns a setting from the CONDOR_CONFIG configuration
+# file. Exits if the value cannot be found!
+get_condor_config_val() {
+    local val="$(${CONDOR_CONFIG_VAL} $1)"
+    [ -z "${val}" ] && fatal_error "Variable $1 is not defined with condor"
+    echo "${val}"
+}
+
+# Update the condor config file with KEY=VAL
+update_condor_config() {
+    : ${CONDOR_CONFIG_LOCAL:=$(get_condor_config_val LOCAL_CONFIG_FILE)}
+    [ -e "${CONDOR_CONFIG_LOCAL}" ] || fatal_error "Missing local condor config file"
+    local key val
+    if [ $# -eq 1 ]; then # double quotes around args, or no spaces
+	key="${1%%=*}"
+	val="${1#*=}"
+    elif [ $# -eq 2 ]; then # separated by one space
+	key="${1%%=*}"
+	val="${2##*=}"
+    elif [ $# -eq 3 ]; then # 2 spaces, assume = in the middle
+	key="$1"
+	val="$3"
+    else
+	fatal_error "Cannot decode a key-value pair in $# arguments"
+    fi
+    key=${key//[[:space:]]}
+    [ -z "${key}" ] && fatal_error "Cannot decode a key in $*"
+    [ -z "${val}" ] && fatal_error "Cannot decode a value in $*"
+    # replace or append
+    if grep -q -e "^[ \t]*${key}*=" ${CONDOR_CONFIG_LOCAL}; then
+	sed -i -e "s/^\([\s\t]*${key}[\s\t]*\)=.*/\1=${val}/" ${CONDOR_CONFIG_LOCAL}
+    else
+	echo >> ${CONDOR_CONFIG_LOCAL}
+	echo >> ${CONDOR_CONFIG_LOCAL} "# Added by cloud scheduler"
+	echo >> ${CONDOR_CONFIG_LOCAL} "${key}=${val}"
+	echo >> ${CONDOR_CONFIG_LOCAL}
+    fi
+}
+
+# setup the condor_host
+setup_central_manager() {
+    local condor_host="$(cat ${CENTRAL_MANAGER} 2> /dev/null)"
+    [ -z "${condor_host}" ] && \
+	fatal_error "CENTRAL_MANAGER is undefined, check ${CENTRAL_MANAGER}"
+    update_condor_config "CONDOR_HOST=${condor_host}"
+}
+
+# set up condor ccb if only private networking is available
+setup_ccb() {
+    if ! ${IFCONFIG} | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null; then
+	# ip are local
+	local ip=$(${IFCONFIG} eth0 | grep -oP '(?<=inet addr:)[0-9.]*')
+	if grep -q "# Added for Condor CCB" /etc/hosts ; then
+	    sed -i -e "s:.*\(# Added for Condor CCB\):${ip} ${HOSTNAME} \1:" /etc/hosts
+	else
+	    echo >> /etc/hosts "${ip} ${HOSTNAME} # Added for Condor CCB"
+	fi
+    fi
+}
+
+# set the VMType for condor
+setup_vmtype() {
+    if [ -n "${IMAGE_META_FILE}" ] && [ -f "${IMAGE_META_FILE}" ]; then
+	# Parse VMType out of repoman metadata file
+	# rely on python > 2.6 to get json file
+	local vmtype=$(${PYTHON} -c "import json; print(json.load(open('${IMAGE_META_FILE}'))['vmtype'])" 2> /dev/null)
+	[ -z "${vmtype}" ] || update_condor_config "VMType=\"${vmtype}\""
+    fi
+}
+
+# setup EC2 if used
+setup_ec2() {
+    [ -z "${EC2_METADATA}" ] && return
+    local ec2url="http://${EC2_METADATA}/latest/meta-data"
+    local exthostname
+    # is it an ec2?
+    if curl -m 10 -s "http://${EC2_METADATA}/" > /dev/null 2>&1 ; then
+	# does it have public ip?
+	if [ $(curl -m 10 -s "${ec2url}/public-ipv4}") != 0.0.0.0 ]; then
+	    # set hostname to external
+	    exthostname=$(curl -s "${ec2url}/public-hostname")
+	    if [ $? -eq 0 ]; then
+		hostname ${exthostname}
+		update_condor_config "PRIVATE_NETWORK_NAME=amazon-ec2-$(curl -s ${ec2url}/placement/availability-zone)"
+		update_condor_config "TCP_FORWARDING_HOST=$(curl -s ${ec2url}/public-ipv4)"
+		update_condor_config "PRIVATE_NETWORK_INTERFACE=$(curl -s ${ec2url}/local-ipv4)"
+	    fi
+	else
+	    # set hostname to instance id when we're using private net
+	    exthostname=$(curl -s "${ec2url}/instance-id")
+	    if $? ; then
+		hostname ${exthostname}
+		update_condor_config "PRIVATE_NETWORK_INTERFACE=$(curl -s ${ec2url}/local-ipv4)"
+	    fi
+	fi
+    fi
+}
+
+# Make sure the permissions on the grid hostkey
+# are restrictive enough, else GSI will fail.
+setup_hostkey_permissions () {
+    local hostkey=$(condor_config_val GSI_DAEMON_KEY 2> /dev/null)
+    [ -z "${hostkey}" ] && return
+    if [ -f "${hostkey}" ]; then
+	chmod 400 ${hostkey}
+    else
+	echo "Grid certificate host key not found: ${hostkey}" 2>&1
+    fi
+}
+
+apply_condor_modifs() {
+    if [ -f "${CONDOR_CONFIG_LOCAL_MODIFS}" ]; then
+	local line
+	grep -v '^[ \t]*#' ${CONDOR_CONFIG_LOCAL_MODIFS} | while read -r line; do
+	    [ -z "${line}" ] && continue
+	    update_condor_config "${line}"
+	done
+    fi
+}
+
+cleanup_ccb () {
+    sed -i -e '/# Added for Condor CCB/d' /etc/hosts
+}
+
+start() {
+    echo -n $"Applying cloud_scheduler modifications: "
+    setup_hostkey_permissions
+    setup_ec2
+    setup_ccb
+    setup_central_manager
+    setup_vmtype
+    apply_condor_modifs
+    RETVAL=$?
+    [ ${RETVAL} -eq 0 ] && echo "done"
+    return ${RETVAL}
+}
+
+stop() {
+    cleanup_ccb
+}
+
+
+RETVAL=0
+
+case "$1" in
+    start)
+	start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit ${RETVAL}
