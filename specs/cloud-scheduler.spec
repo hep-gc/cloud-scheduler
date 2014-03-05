@@ -1,12 +1,11 @@
 Name:		cloud-scheduler
-Version:	1.4.1
+Version:	1.7
 Release:	1%{?dist}
 Summary:	Cloud-enabled distributed resource manager
 
 License:	GPLv3 or ASL-2.0
 URL:		http://github.com/hep-gc/cloud-scheduler
 Source0:	http://pypi.python.org/packages/source/c/%{name}/%{name}-%{version}.tar.gz
-Source1:        https://raw.github.com/hep-gc/%{name}/%{version}/cloud_admin
 
 BuildArch:      noarch
 
@@ -41,9 +40,9 @@ and Cloud Scheduler boots VMs to suit those jobs.
 install -m 755 -d %{buildroot}/%{_sbindir}
 install -m 755 %{SOURCE1} %{buildroot}/%{_sbindir}
 install -m 755 -d %{buildroot}/%{_initrddir}
-install -m 755 -d %{buildroot}/%{_sysconfdir}/sysconfig
+install -m 755 -d %{buildroot}/%{_sysconfdir}/condor
 install -m0755 scripts/cloud_scheduler.init.d %{buildroot}/%{_initrddir}/cloud_scheduler
-install -m0644 scripts/cloud_scheduler.sysconf %{buildroot}/%{_sysconfdir}/sysconfig/cloud_scheduler
+install -m0644 scripts/cloud_scheduler.sysconf %{buildroot}/%{_sysconfdir}/condor/cloud_scheduler
 
 # hack to fix a setup.py error when install user is not root
 install -m 755 -d %{buildroot}/%{_sysconfdir}/cloudscheduler
@@ -62,7 +61,7 @@ rm -r %{buildroot}/${HOME}
 %config(noreplace) %{_sysconfdir}/cloudscheduler/cloud_resources.conf
 %config(noreplace) %{_sysconfdir}/cloudscheduler/cloud_scheduler.conf
 %config(noreplace) %{_initrddir}/cloud_scheduler
-%config(noreplace) %{_sysconfdir}/sysconfig/cloud_scheduler
+%config(noreplace) %{_sysconfdir}/condor/cloud_scheduler
 
 %post
 if [ $1 = 0 ]; then
@@ -82,6 +81,9 @@ fi
 
 
 %changelog
+* Wed Jun 05 2013 Sebastien Fabbro <sfabbro@uvic.ca> - 1.7-1
+Version bump. Move configuration to /etc/condor for debian
+compatibility. cloud_admin now on tar ball.
 * Wed Jun 05 2013 Sebastien Fabbro <sfabbro@uvic.ca> - 1.5-1
 Version bump. Added sysconfig config script.
 * Wed Jun 05 2013 Sebastien Fabbro <sfabbro@uvic.ca> - 1.4-2
