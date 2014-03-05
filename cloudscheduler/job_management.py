@@ -91,7 +91,7 @@ class Job:
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
-             VMSecurityGroup="", VMUserData="", **kwargs):
+             VMSecurityGroup="", VMUserData="", VMAMIConfig=None, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -111,6 +111,7 @@ class Job:
      VMInstanceType - (str) The EC2 instance type of the VM requested
      VMMaximumPrice - (str) The maximum price in cents per hour for a VM (EC2 Only)
      VMUserData - (str) The EC2 user data passed into VM
+     VMAMIConfig - (str) AMI Config file to use as part of contextualization
      CSMyProxyCredsName - (str) The name of the credentials to retreive from the myproxy server
      CSMyProxyServer - (str) The hostname of the myproxy server to retreive user creds from
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
@@ -124,6 +125,8 @@ class Job:
 
      """
 
+        global log
+        log = logging.getLogger("cloudscheduler")
         if not VMType:
             VMType = config.default_VMType
         if not VMNetwork:
@@ -146,6 +149,10 @@ class Job:
             VMCPUCores = config.default_VMCPUCores
         if not VMStorage:
             VMStorage = config.default_VMStorage
+        if not TargetClouds:
+            TargetClouds = config.default_TargetClouds
+        if not VMAMIConfig:
+            VMAMIConfig = config.default_VMAMIConfig
     
         self.id           = GlobalJobId
         self.user         = Owner
@@ -160,13 +167,37 @@ class Job:
         self.req_image    = VMName
         self.req_imageloc = VMLoc
         self.req_ami      = VMAMI
-        self.req_memory   = int(VMMem)
-        self.req_cpucores = int(VMCPUCores)
-        self.req_storage  = int(VMStorage)
-        self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
-        self.high_priority = int(VMHighPriority)
+        try:
+            self.req_memory   = int(VMMem)
+        except:
+            log.exception("VMMem not int: %s" % VMMem)
+            raise ValueError
+        try:
+            self.req_cpucores = int(VMCPUCores)
+        except:
+            log.exception("VMCPUCores not int: %s" % VMCPUCores)
+            raise ValueError
+        try:
+            self.req_storage  = int(VMStorage)
+        except:
+            log.exception("VMStorage not int: %s" % VMStorage)
+            raise ValueError
+        try:
+            self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
+        except:
+            log.exception("VMKeepAlive not int: %s" % VMKeepAlive)
+            raise ValueError
+        try:    
+            self.high_priority = int(VMHighPriority)
+        except:
+            log.exception("VMHighPriority not int: %s" % VMHighPriority)
+            raise ValueError
         self.instance_type = VMInstanceType
-        self.maximum_price = int(VMMaximumPrice)
+        try:
+            self.maximum_price = int(VMMaximumPrice)
+        except:
+            log.exception("VMMaximumPrice not int: %s" % VMMaximumPrice)
+            raise ValueError
         self.myproxy_server = CSMyProxyServer
         self.myproxy_server_port = CSMyProxyServerPort
         self.myproxy_creds_name = CSMyProxyCredsName
@@ -188,13 +219,18 @@ class Job:
         self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
         self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
         self.vmimage_proxy_file = VMImageProxyFile
-        self.usertype_limit = int(VMTypeLimit)
+        try:
+            self.usertype_limit = int(VMTypeLimit)
+        except:
+            log.exception("VMTypeLimit not int: %s" % VMTypeLimit)
+            raise ValueError
         self.req_image_id = VMImageID
         self.req_instance_type_ibm = VMInstanceTypeIBM
         self.location = VMLocation
         self.key_name = VMKeyName
         self.req_security_group = splitnstrip(',', VMSecurityGroup)
         self.user_data = splitnstrip(',', VMUserData)
+        self.ami_config = VMAMIConfig
 
         # Set the new job's status
         if self.job_status == 2:
@@ -202,10 +238,6 @@ class Job:
         else:
             self.status = self.statuses[1]
         self.override_status = None
-
-        global log
-        log = logging.getLogger("cloudscheduler")
-
         self.block_time = None
         self.blocked_clouds = []
         self.target_clouds = []
@@ -628,8 +660,12 @@ class JobPool:
             # VMAMI requires special fiddling
             _attribute_from_list(classad, "VMAMI")
             _attribute_from_list(classad, "VMInstanceType")
-
-            jobs.append(Job(**classad))
+            try:            
+                jobs.append(Job(**classad))
+            except ValueError:
+                log.exception("Failed to add job: %s due to Value Errors in jdl." % classad["GlobalJobId"])
+            except:
+                log.exception("Failed to add job: %s due to unspecified exception." % classad["GlobalJobId"])
         return jobs
 
     @staticmethod
@@ -1270,14 +1306,23 @@ class JobPool:
         """job_query_local -- query and parse condor_q for job information."""
         log.verbose("Holding Condor jobs with %s" % config.condor_hold_command)
         try:
+            condor_out = ""
+            condor_err = ""
+            log.verbose("Holding jobs via condor_hold.")
             condor_hold = shlex.split(config.condor_hold_command)
-            condor_hold.extend(jobs)
+            job_ids = [str(job.cluster_id)+"."+str(job.proc_id) for job in jobs]
+            condor_hold.extend(job_ids)
+            log.verbose("Popen condor_hold command")
             sp = subprocess.Popen(condor_hold, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            log.verbose("Popen communicate condor_hold.")
             (condor_out, condor_err) = sp.communicate(input=None)
             returncode = sp.returncode
         except:
-            log.exception("Problem running %s, unexpected error" % string.join(condor_err, " "))
+            if condor_err:
+                log.exception("Problem running %s, unexpected error" % string.join(condor_err, " "))
+            else:
+                log.exception("Problem running condor_hold, unexpected error.")
             return None
 
         if returncode != 0:
@@ -1291,18 +1336,19 @@ class JobPool:
         log.verbose("Releasing Condor jobs with %s" % config.condor_release_command)
         try:
             condor_release = shlex.split(config.condor_release_command)
-            condor_release.extend(jobs)
+            job_ids = [str(job.cluster_id)+"."+str(job.proc_id) for job in jobs]
+            condor_release.extend(job_ids)
             sp = subprocess.Popen(condor_release, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (condor_out, condor_err) = sp.communicate(input=None)
             returncode = sp.returncode
         except:
-            log.exception("Problem running %s, unexpected error" % string.join(condor_q, " "))
+            log.exception("Problem running %s, unexpected error" % string.join(condor_release, " "))
             return None
 
         if returncode != 0:
             log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
-                              (returncode, string.join(condor_q, " "), condor_err))
+                              (returncode, string.join(condor_release, " "), condor_err))
             return None
         return returncode
 

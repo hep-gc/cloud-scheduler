@@ -112,7 +112,6 @@ class OpenStackCluster(cluster_tools.ICluster):
         
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
-            #TODO: this is kind of pointless with EC2...
             log.debug("Cluster memory list has no sufficient memory " +\
                       "entries (Not supposed to happen). Returning error.")
             return self.ERROR
@@ -156,13 +155,13 @@ class OpenStackCluster(cluster_tools.ICluster):
         nova = self._get_creds_nova()
         instance = nova.servers.get(vm.id)
         with self.vms_lock:
-            if vm.status != self.VM_STATES.get(instance.state, "Starting"):
+            if instance and vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.state, "Starting")))
             vm.status = instance.status
-        pass
-    
+        return vm.status
+
     def _get_creds_ks(self):
         """Get an auth token to Keystone."""
         return ksclient.Client(username=self.username, password=self.password, auth_url=self.auth_url, tenant_name=self.tenant_name)

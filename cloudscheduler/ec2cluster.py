@@ -57,6 +57,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 connection = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secret_access_key,
+                                   region=region
                                    )
                 log.verbose("Created a connection to Amazon EC2")
 
@@ -144,8 +145,9 @@ class EC2Cluster(cluster_tools.ICluster):
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
-                  vm_keepalive=0, instance_type="", maximum_price=0,
-                  job_per_core=False, securitygroup=[],key_name=""):
+                  pre_customization=None, vm_keepalive=0, instance_type="", 
+                  maximum_price=0, job_per_core=False, securitygroup=[],
+                  key_name=""):
         """Attempt to boot a new VM on the cluster."""
         #print vm_image
         #print instance_type
@@ -157,8 +159,9 @@ class EC2Cluster(cluster_tools.ICluster):
                 if group in self.security_groups:
                     sec_group.append(group)
             if len(sec_group) == 0:
-                log.warning("No matching security groups - trying default")
-                sec_group.append("default")
+                log.warning("No matching security groups - trying default config")
+                sec_group = self.security_groups
+                #sec_group.append("default") - don't just append default use what is in cloud_resources.conf for this cloud
         else:
             sec_group = self.security_groups
 
@@ -189,8 +192,10 @@ class EC2Cluster(cluster_tools.ICluster):
         try:
             if self.name in instance_type.keys():
                 i_type = instance_type[self.name]
-            else:
+            elif self.network_address in instance_type.keys():
                 i_type = instance_type[self.network_address]
+            else:
+                i_type = instance_type["default"]
         except:
             log.debug("No instance type for %s, trying default" % self.network_address)
             #try:
@@ -214,6 +219,9 @@ class EC2Cluster(cluster_tools.ICluster):
             user_data = nimbus_xml.ws_optional(customization)
         else:
             user_data = ""
+        if pre_customization:
+            for item in pre_customization:
+                user_data = '\n'.join([item, user_data])
 
         if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
             log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)
@@ -224,6 +232,7 @@ class EC2Cluster(cluster_tools.ICluster):
         try:
             connection = self._get_connection()
             image = None
+
             if not "Eucalyptus" == self.cloud_type:
                 image = connection.get_image(vm_ami)
 
@@ -351,6 +360,8 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.exception("Unexpected error polling %s: %s" % (vm.id, e))
                 if e.status == 400 and e.error_code == 'InstanceNotFound':
                     vm.status = self.VM_STATES['error']
+                elif e.status == 404:
+                    vm.status = self.VM_STATES['error']
                 return vm.status
 
         except boto.exception.EC2ResponseError, e:
@@ -370,9 +381,15 @@ class EC2Cluster(cluster_tools.ICluster):
                 # extract the hostname from dig -x output
                 vm.hostname = self._extract_host_from_dig(dig_out)
             elif self.cloud_type == "OpenStack":
-                vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
+                if len(instance.public_dns_name) > 0:
+                    vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
+                else:
+                    vm.hostname = ''.join([instance.private_dns_name, self.vm_domain_name])
             else:
-                vm.hostname = instance.public_dns_name
+                if len(instance.public_dns_name) > 0:
+                    vm.hostname = instance.public_dns_name
+                else:
+                    vm.hostname = instance.private_dns_name
             vm.lastpoll = int(time.time())
         return vm.status
 
@@ -404,7 +421,10 @@ class EC2Cluster(cluster_tools.ICluster):
             returnError = True
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
             if e.status == 400 and e.error_code == 'InstanceNotFound':
-                log.exception("VM %s no longer exists... removing from system")
+                log.exception("VM %s no longer exists... removing from system" % vm.id)
+                returnError = False
+            if e.status == 404:
+                log.exception("VM %s not found... removing from system" % vm.id)
                 returnError = False
             if returnError:
                 return self.ERROR

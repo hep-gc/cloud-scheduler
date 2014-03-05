@@ -555,6 +555,8 @@ class Scheduler(threading.Thread):
                             else:
                                 log.verbose("User %s vmtype %s not being scheduled. Exceptional case, report" % (user, job.uservmtype))
                                 break
+        else:
+            log.debug("At Max Starting VMs CloudScheduler not booting any new VMs.")
 
     def sched_allow_over_allocation(self, diff_types, job):
         """Determine if a VM request is allowed to have more than that users fairshare.
@@ -572,7 +574,7 @@ class Scheduler(threading.Thread):
                 if self.resource_pool.user_at_limit(user):
                     continue
                 userjob = unscheduled_jobs_by_users[user][0]
-                if userjob.uservmtype in userjoblimits.keys() and self.resource_pool.uservmtype_at_limit(vmusertype, userjoblimits[vmusertype]):
+                if userjob.uservmtype in userjoblimits.keys() and self.resource_pool.uservmtype_at_limit(userjob.uservmtype, userjoblimits[userjob.uservmtype]):
                     continue
                 # Check for an underallocated job that has resources
                 if userjob and userjob.uservmtype in diff_types.keys() and diff_types[userjob.uservmtype] <= 0:
@@ -660,7 +662,7 @@ class Scheduler(threading.Thread):
         #local_modifications += 'STARTD_ATTRS = COLLECTOR_HOST_STRING VMType CSManagedVM\n'
 
         if config.override_vmtype:
-            local_modifications += "VMType = %s\n" % job.req_vmtype
+            local_modifications += 'VMType = "%s"\n' % job.req_vmtype
 
         if config.cert_file:
             file_contents = open(config.cert_file).read()
@@ -747,7 +749,18 @@ class Scheduler(threading.Thread):
                         executable = True
                     customizations.append((file_content, destination, executable)) 
                 except:
-                    log.error('Error reading user %s' % (userdata))               
+                    log.error('Error reading userdata %s' % (userdata))
+        
+        pre_customizations = []
+        if job.ami_config:
+            try:
+                if job.ami_config.startswith('http'):
+                    file_content = urllib2.urlopen(job.ami_config).read()
+                elif os.path.isfile(job.ami_config):
+                    file_content = open(job.ami_config).read()
+                pre_customizations.append(file_content)
+            except:
+                log.error("Unable to read ami_config - check path or url: %s" % job.ami_config)               
         
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
@@ -801,6 +814,7 @@ class Scheduler(threading.Thread):
                         'vm_cores':job.req_cpucores,
                         'vm_storage':job.req_storage,
                         'customization':customizations,
+                        'pre_customization': pre_customizations,
                         'vm_keepalive':job.keep_alive,
                         'instance_type':job.instance_type,
                         'maximum_price':job.maximum_price,
@@ -1009,7 +1023,8 @@ class Cleanup(threading.Thread):
                     log.debug("#3 storage - No cluster fits job %s ignoring" % job.id)
                     continue
             if job.target_clouds:
-                if not set(job.target_clouds).intersection(set(cloud_names)):
+                unrolled_targets = self.resource_pool.resolve_target_cloud_alias(job.target_clouds)
+                if not set(unrolled_targets).intersection(set(cloud_names)):
                     bad_jobs.append(job)
                     log.debug("No matching target cloud for job %s" % job.id)
                     continue
@@ -1589,6 +1604,7 @@ class Cleanup(threading.Thread):
                                 vm.idle_start = int(time.time())
                                 break
                     if found_vm:
+                        log.verbose('vm: %s found matching: %s stopping search. Types %s and %s' % (vm.hostname, unused_vms_of_type[x].machine_name, vm.uservmtype, vmtype))
                         break
                 if not found_vm:
                     log.debug("Unable to find Condor Machine %s in VM list" % unused_vms_of_type[x].machine_name)

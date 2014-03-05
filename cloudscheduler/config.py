@@ -108,6 +108,8 @@ default_VMInstanceTypeList= ""
 default_VMMaximumPrice= 0
 default_VMProxyNonBoot = False
 default_VMUserData = []
+default_TargetClouds = []
+default_VMAMIConfig = ""
 
 log_level = "INFO"
 log_location = None
@@ -214,6 +216,8 @@ def setup(path=None):
     global default_VMMaximumPrice
     global default_VMProxyNonBoot
     global default_VMUserData
+    global default_TargetClouds
+    global default_VMAMIConfig
 
     global log_level
     global log_location
@@ -801,7 +805,13 @@ def setup(path=None):
 
     if config_file.has_option("job", "default_VMUserData"):
         default_VMUserData = config_file.get("job", "default_VMUserData").replace(' ', '').strip('"').split(',')
+    
+    if config_file.has_option("job", "default_TargetClouds"):
+        default_TargetClouds = config_file.get("job", "default_TargetClouds").replace(' ', '').strip('"').split(',')
 
+    if config_file.has_option("job", "default_VMAMIConfig"):
+        default_VMAMIConfig = config_file.get("job", "default_VMAMIConfig")
+    
     # Derived options
     if condor_host_on_vm:
         condor_host = condor_host_on_vm
