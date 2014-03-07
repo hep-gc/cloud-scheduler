@@ -276,14 +276,13 @@ class ResourcePool:
     @staticmethod
     def _cluster_from_config(config, cluster):
         """Create a new cluster object from a config file's specification."""
+        enabled = True
         if config.has_option(cluster, "enabled"):
             try:
                 enabled = config.getboolean(cluster, "enabled")
             except ValueError:
                 log.error("Error reading config - cluster %s disabled" % cluster)
                 enabled = False
-            if not enabled:
-                return None
         cloud_type = get_or_none(config, cluster, "cloud_type")
         max_vm_mem = get_or_none(config, cluster, "max_vm_mem")
         max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
@@ -331,6 +330,7 @@ class ResourcePool:
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     total_cpu_cores = total_cpu_cores,
                     temp_lease_storage = get_or_none(config, cluster, "temp_lease_storage"),
+                    enabled=enabled,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -355,6 +355,7 @@ class ResourcePool:
                     vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
                     reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
                     placement_zone = get_or_none(config, cluster, "placement_zone"),
+                    enabled=enabled,
                     )
 
         elif cloud_type == "StratusLab" and stratuslab_support:
@@ -369,7 +370,8 @@ class ResourcePool:
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
                     hypervisor = hypervisor,
-                    contextualization = get_or_none(config, cluster, "contextualization")
+                    contextualization = get_or_none(config, cluster, "contextualization"),
+                    enabled=enabled,
                     )
 
         elif cloud_type.lower() == "ibmsmartcloud":
@@ -386,6 +388,7 @@ class ResourcePool:
                     hypervisor= hypervisor,
                     username= get_or_none(config, cluster, "username"),
                     password= get_or_none(config, cluster, "password"),
+                    enabled=enabled,
                     )
         elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce":
             return googlecluster.GoogleComputeEngineCluster(name = cluster,
@@ -402,6 +405,7 @@ class ResourcePool:
                     security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     project_id = get_or_none(config, cluster, "project_id"),
+                    enabled=enabled,
                     )
         elif cloud_type == "OpenStackNative":
             return openstackcluster.OpenStackCluster(name = cluster,
@@ -429,6 +433,7 @@ class ResourcePool:
                     vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
                     reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
                     placement_zone = get_or_none(config, cluster, "placement_zone"),
+                    enabled=enabled,
                     )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
@@ -454,12 +459,12 @@ class ResourcePool:
     def get_pool_info(self, ):
         """Print the name and address of every cluster in the resource pool."""
         output = "Resource pool %s:\n" %self.name
-        output += "%-15s  %-10s %-15s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS")
+        output += "%-15s  %-10s %-30s %-10s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS", "ENABLED")
         if len(self.resources) == 0:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += "%-15s  %-10s %-15s %-10s\n" % (cluster.name, cluster.cloud_type, cluster.network_address, cluster.hypervisor)
+                output += "%-15s  %-10s %-30s %-10s\n" % (cluster.name, cluster.cloud_type, cluster.network_address, cluster.enabled)
         return output
 
     def get_resource(self, ):

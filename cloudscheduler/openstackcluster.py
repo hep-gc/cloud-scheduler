@@ -27,13 +27,13 @@ class OpenStackCluster(cluster_tools.ICluster):
                  access_key_id=None, secret_access_key=None, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
-                 regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None):
+                 regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, enabled=True):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled)
         try:
             import novaclient.v1_1.client as nvclient
             import keystoneclient.v2_0.client as ksclient

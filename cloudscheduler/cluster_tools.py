@@ -292,7 +292,7 @@ class ICluster:
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None):
+                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None, enabled=True):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
@@ -309,7 +309,7 @@ class ICluster:
         self.vms = [] # List of running VMs
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
-        self.enabled = True
+        self.enabled = enabled
         self.hypervisor = hypervisor
         self.boot_timeout = int(boot_timeout) if boot_timeout != None else config.vm_start_running_timeout
         self.connection_fail_disable_time = config.connection_fail_disable_time
