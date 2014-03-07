@@ -790,7 +790,7 @@ def setup(path=None):
 
     if config_file.has_option("job", "default_VMMaximumPrice"):
         try:
-            default_VMMaximumPrice = config_file.getint("job", "default_VMMaximumPrice")
+            default_VMMaximumPrice = config_file.getfloat("job", "default_VMMaximumPrice")
         except ValueError:
             print "Configuration file problem: default_VMMaximumPrice must be an " \
                   "integer value."
