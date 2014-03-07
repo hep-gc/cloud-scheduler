@@ -99,6 +99,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                    region=region,
                                    port=8773,
                                    path="/services/Cloud",
+                                   validate_certs=False
                                    )
                 log.verbose("Created a connection to OpenStack (%s)" % self.name)
 
