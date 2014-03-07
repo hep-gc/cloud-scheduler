@@ -249,7 +249,7 @@ class EC2Cluster(cluster_tools.ICluster):
                         break
 
             if image:
-                if maximum_price is 0: # don't request a spot instance
+                if maximum_price is 0 or self.cloud_type == "OpenStack": # don't request a spot instance
                     try:
                         reservation = image.run(1,1, key_name=key_name,
                                                 addressing_type=addressing_type,
