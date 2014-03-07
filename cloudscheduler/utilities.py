@@ -182,7 +182,8 @@ def match_host_with_condor_host(hostname, condor_hostname):
 
     returns True if matching, and false if not.
     """
-
+    if hostname == None:
+        return False
     # Strip off slotx@
     try:
         condor_hostname_parts = condor_hostname.split("@")

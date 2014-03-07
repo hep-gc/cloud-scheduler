@@ -414,7 +414,8 @@ class Scheduler(threading.Thread):
                 #find the VM object that corresponds with the machine (actual Nimbus VM)
                 matching_vm = None
                 for vm in vm_list:
-                    if utilities.match_host_with_condor_host(vm.hostname, machine.name):
+                    if utilities.match_host_with_condor_host(vm.hostname, machine.name) \
+                    or utilities.match_host_with_condor_host(vm.alt_hostname, machine.name):
                         matching_vm = vm
                         break
                 #If no matching VM or a machine hasn't been assigned a job, we don't want to retire it yet. Same if already retired.
@@ -1380,7 +1381,8 @@ class Cleanup(threading.Thread):
                 foundvm = False
                 if vm.status == 'Running' and machineList != None:
                     for machine in machineList:
-                        if utilities.match_host_with_condor_host(vm.hostname, machine.machine_name):
+                        if utilities.match_host_with_condor_host(vm.hostname, machine.machine_name) \
+                        or utilities.match_host_with_condor_host(vm.alt_hostname, machine.machine_name):
                             if vm.condorname == None:
                                 vm.condorname = machine.machine_name
                             if machine.address_startd != "":
@@ -1392,7 +1394,8 @@ class Cleanup(threading.Thread):
                                     vm.idle_start = int(time.time())
                             foundvm = True
                             break
-                        if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name):
+                        if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name) \
+                        or utilities.match_host_with_condor_host_master(vm.alt_hostname, machine.machine_name):
                             if vm.condorname == None:
                                 vm.condorname = machine.machine_name
                             if machine.address_startd != "":
@@ -1425,7 +1428,8 @@ class Cleanup(threading.Thread):
                 foundvm = False
                 if vm.status == 'Running' and masterList:
                     for machine in masterList:
-                        if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name):
+                        if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name) \
+                        or utilities.match_host_with_condor_host_master(vm.alt_hostname, machine.machine_name):
                             vm.condormasteraddr = machine.address_master
                             foundvm = True
                             break
@@ -1569,7 +1573,8 @@ class Cleanup(threading.Thread):
                 found_vm = False
                 for cluster in self.resource_pool.resources:
                     for vm in cluster.vms:
-                        if utilities.match_host_with_condor_host(vm.hostname, condor_name):
+                        if utilities.match_host_with_condor_host(vm.hostname, condor_name) \
+                        or utilities.match_host_with_condor_host(vm.alt_hostname, condor_name):
                             found_vm = True
                         if vm.uservmtype == vmtype and found_vm:
                             log.verbose("Located %s in VM list." % unused_vms_of_type[x].machine_name)
@@ -1580,6 +1585,8 @@ class Cleanup(threading.Thread):
                             # Verify that all slots of this VM are idle
                             is_part_of_machine = {'machine_name': vm.hostname}
                             slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
+                            is_part_of_machine = {'machine_name': vm.alt_hostname}
+                            slots_of_machine.extend(self.resource_pool.find_in_where(machineList, is_part_of_machine))
                             all_slots_idle = True
                             for slot in slots_of_machine:
                                 if slot.state != 'Unclaimed' or slot.activity != 'Idle':
@@ -1868,6 +1875,8 @@ class Cleanup(threading.Thread):
                     # Verify that all slots of this VM are idle
                     is_part_of_machine = {'machine_name': internal_vm.hostname}
                     slots_of_machine = self.resource_pool.find_in_where(self.resource_pool.machine_list, is_part_of_machine)
+                    is_part_of_machine = {'machine_name': internal_vm.alt_hostname}
+                    slots_of_machine.extend(self.resource_pool.find_in_where(self.resource_pool.machine_list, is_part_of_machine))
                     all_slots_idle = True
                     for slot in slots_of_machine:
                         if slot.state != 'Unclaimed' or slot.activity != 'Idle' or (int(vm.current_time) - int(vm.entered_state_time) > config.vm_idle_threshold):

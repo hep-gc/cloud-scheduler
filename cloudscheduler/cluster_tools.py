@@ -93,6 +93,7 @@ class VM:
         self.user = user
         self.uservmtype = ':'.join([user,vmtype])
         self.hostname = hostname
+        self.alt_hostname = None
         self.ipaddress = ipaddress
         self.condorname = None
         self.condoraddr = None

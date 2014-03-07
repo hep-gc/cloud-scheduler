@@ -391,6 +391,12 @@ class EC2Cluster(cluster_tools.ICluster):
                     vm.hostname = instance.public_dns_name
                 else:
                     vm.hostname = instance.private_dns_name
+            if len(instance.public_dns_name) > 0 and len(instance.private_dns_name) > 0:
+                vm.hostname = instance.public_dns_name
+                vm.alt_hostname = instance.private_dns_name
+                if self.cloud_type == "OpenStack":
+                    vm.hostname = ''.join([vm.hostname, self.vm_domain_name])
+                    vm.alt_hostname = ''.join([vm.alt_hostname, self.vm_domain_name])
             vm.lastpoll = int(time.time())
         return vm.status
 
