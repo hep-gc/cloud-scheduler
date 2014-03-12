@@ -12,6 +12,7 @@ try:
     from oauth2client.client import flow_from_clientsecrets
     from oauth2client.file import Storage
     from oauth2client.tools import run
+    from oauth2client.tools import run_flow
     from apiclient.discovery import build
 except:
     pass
@@ -22,13 +23,14 @@ log = utilities.get_cloudscheduler_logger()
 class GoogleComputeEngineCluster(cluster_tools.ICluster):
     GCE_SCOPE = 'https://www.googleapis.com/auth/compute'
     
-    API_VERSION = 'v1beta15'
+    API_VERSION = 'v1'
     GCE_URL = 'https://www.googleapis.com/compute/%s/projects/' % (API_VERSION)
 
     DEFAULT_ZONE = 'us-central1-a' # will need to be option in job
     DEFAULT_MACHINE_TYPE = 'n1-standard-1-d'  # option specified in job config
     DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config.default_VMInstanceTypeList)
-    DEFAULT_IMAGE = 'condorimagebase'  
+    DEFAULT_IMAGE = 'condorimagebase'
+    DEFAULT_ROOT_PD_NAME = 'my-root-pd'  
 
     DEFAULT_NETWORK = 'default' # job option setup
     DEFAULT_SERVICE_EMAIL = 'default' 
@@ -56,7 +58,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         credentials = auth_storage.get()
       
         if credentials is None or credentials.invalid:
-            credentials = run(flow, auth_storage)
+            credentials = run_flow(flow, auth_storage)
         http = httplib2.Http()
         self.auth_http = credentials.authorize(http)
 
@@ -103,7 +105,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             except:
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
                 i_type = self.DEFAULT_MACHINE_TYPE
-        instance_type = i_type
+        vm_instance_type = i_type
         if vm_image:
             vm_image_name = vm_ami
         else:
@@ -127,6 +129,15 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         instance = {
           'name': next_instance_name,
           'machineType': machine_type_url,
+          'disks': [{
+                'autoDelete': 'true',
+                'boot': 'true',
+                'type': 'PERSISTANT',
+                'initializeParams' : {
+                        'diskname': self.DEFAULT_ROOT_PD_NAME,
+                        'sourceImage': image_url
+                        }
+                }],
           'image': image_url,
           'networkInterfaces': [{
             'accessConfigs': [{
