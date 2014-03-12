@@ -93,7 +93,7 @@ def main(argv=None):
                     print "Must provide a -n [VM ID] or -a to kill all VMs on this cloud."
             else:
                 print "Must Provide the cloud name to kill VMs on and the VM ID or all flag."
-        if cli_options.remove:
+        elif cli_options.remove:
             if cli_options.cloud_name:
                 if cli_options.vm_id:
                     print s.delete_vm_entry(cli_options.cloud_name, cli_options.vm_id)
