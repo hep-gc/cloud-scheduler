@@ -87,7 +87,7 @@ class Job:
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
              VMInstanceType=None, 
              VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor=None,
+             TargetClouds=None, ServerTime=0, JobStartDate=0, VMHypervisor=None,
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
@@ -242,7 +242,7 @@ class Job:
         self.blocked_clouds = []
         self.target_clouds = []
         try:
-            if len(TargetClouds) != 0:
+            if TargetClouds and len(TargetClouds) != 0:
                 for cloud in TargetClouds.split(','):
                     self.target_clouds.append(cloud.strip())
         except:

@@ -807,7 +807,7 @@ def setup(path=None):
         default_VMUserData = config_file.get("job", "default_VMUserData").replace(' ', '').strip('"').split(',')
     
     if config_file.has_option("job", "default_TargetClouds"):
-        default_TargetClouds = config_file.get("job", "default_TargetClouds").replace(' ', '').strip('"').split(',')
+        default_TargetClouds = config_file.get("job", "default_TargetClouds")
 
     if config_file.has_option("job", "default_VMAMIConfig"):
         default_VMAMIConfig = config_file.get("job", "default_VMAMIConfig")
