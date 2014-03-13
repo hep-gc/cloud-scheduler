@@ -29,7 +29,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
     DEFAULT_ZONE = 'us-central1-a' # will need to be option in job
     DEFAULT_MACHINE_TYPE = 'n1-standard-1-d'  # option specified in job config
     DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config.default_VMInstanceTypeList)
-    DEFAULT_IMAGE = 'condorimagebase'
+    DEFAULT_IMAGE = 'cloudscheduler-centos-9'
     DEFAULT_ROOT_PD_NAME = 'my-root-pd'  
 
     DEFAULT_NETWORK = 'default' # job option setup
@@ -65,7 +65,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
         # Build service object
         self.gce_service = build('compute', self.API_VERSION)
-        self.project_url = self.GCE_URL + self.project_id
+        self.project_url = '%s%s' % (self.GCE_URL, self.project_id)
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
@@ -77,7 +77,10 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                   vm_keepalive=0, instance_type="", maximum_price=0,
                   job_per_core=False, securitygroup=[]):
         try:
-            vm_ami = vm_image[self.network_address]
+            if self.network_address in vm_image.keys():
+                vm_ami = vm_image[self.network_address]
+            elif self.name in vm_image.keys():
+                vm_ami = vm_image[self.name]
         except:
             log.debug("No AMI for %s, trying default" % self.network_address)
             try:
@@ -118,6 +121,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
               self.project_url, self.DEFAULT_ZONE, vm_instance_type)
         #zone_url = '%s/zones/%s' % (self.project_url, self.DEFAULT_ZONE)
         network_url = '%s/global/networks/%s' % (self.project_url, self.DEFAULT_NETWORK)
+        root_disk_url = '%s/zones/%s/disks/%s' % (self.project_url, self.DEFAULT_ZONE, self.DEFAULT_ROOT_PD_NAME)
 
         if customization:
             user_data = nimbus_xml.ws_optional(customization)
@@ -125,18 +129,28 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             user_data = ""
 
         next_instance_name = self.generate_next_instance_name()
+
         # Construct the request body
+        disk = {
+            'name': self.DEFAULT_ROOT_PD_NAME
+        }
+        # Create the root pd
+        request = self.gce_service.disks().insert(project=self.project_id, body=disk, zone=self.DEFAULT_ZONE, sourceImage=image_url)
+        response = request.execute(http=self.auth_http)
+        response = self._blocking_call(self.gce_service, self.auth_http, response)
+        
         instance = {
           'name': next_instance_name,
           'machineType': machine_type_url,
           'disks': [{
+                'source': root_disk_url,
                 'autoDelete': 'true',
                 'boot': 'true',
                 'type': 'PERSISTANT',
-                'initializeParams' : {
-                        'diskname': self.DEFAULT_ROOT_PD_NAME,
-                        'sourceImage': image_url
-                        }
+                #'initializeParams' : {
+                #        'diskname': self.DEFAULT_ROOT_PD_NAME,
+                #        'sourceImage': image_url
+                #        }
                 }],
           'image': image_url,
           'networkInterfaces': [{
@@ -169,7 +183,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         request = self.gce_service.instances().insert(
              project=self.project_id, body=instance, zone=self.DEFAULT_ZONE)
         try:
-            response = request.execute(self.auth_http)
+            response = request.execute(http=self.auth_http)
             response = self._blocking_call(self.gce_service, self.auth_http, response)
         except Exception, e:
             log.error("Error creating VM on gce: %s" % e)
@@ -214,7 +228,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         request = self.gce_service.instances().delete(
             project=self.project_id, instance=vm.name, zone=self.DEFAULT_ZONE)
         try:
-            response = request.execute(self.auth_http)
+            response = request.execute(http=self.auth_http)
             response = self._blocking_call(self.gce_service, self.auth_http, response)
         except:
             log.error("Failure while destroying VM %s." % (vm.id))
@@ -236,7 +250,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         #request = self.gce_service.instances().list(project=self.project_id, filter=filter_str)
         request = self.gce_service.instances().list(project=self.project_id, filter=None, zone=self.DEFAULT_ZONE)
         try:
-            response = request.execute(self.auth_http)
+            response = request.execute(http=self.auth_http)
         except Exception as e:
             log.error("Problem polling gce vm %s error %s will retry later." % (vm.id, e))
             return
@@ -268,7 +282,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             else:
                 request = gce_service.globalOperations().get(project=self.project_id, operation=operation_id)
             try:
-                response = request.execute(auth_http)
+                response = request.execute(http=auth_http)
             except:
                 pass
             
