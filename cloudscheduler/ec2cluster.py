@@ -442,7 +442,10 @@ class EC2Cluster(cluster_tools.ICluster):
         if return_resources:
             self.resource_return(vm)
         with self.vms_lock:
-            self.vms.remove(vm)
+            try:
+                self.vms.remove(vm)
+            except Exception as e:
+                log.error("Unable to remove VM % on %s: %s" % e)
 
         return 0
 
