@@ -378,7 +378,7 @@ class InfoServer(threading.Thread,):
 class VMJSONEncoder(json.JSONEncoder):
     def default(self, vm):
         if not isinstance (vm, VM):
-            log.error("Cannot use VMJSONEncoder on non VM object")
+            log.error("Cannot use VMJSONEncoder on non VM object of type %s" % type(vm))
             return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
