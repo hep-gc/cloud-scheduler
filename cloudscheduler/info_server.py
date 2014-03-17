@@ -378,7 +378,7 @@ class InfoServer(threading.Thread,):
 class VMJSONEncoder(json.JSONEncoder):
     def default(self, vm):
         if not isinstance (vm, VM):
-            log.error("Cannot use VMJSONEncoder on non VM object of type %s" % type(vm))
+            log.error("Cannot use VMJSONEncoder on non VM object of type %s, %s" % (type(vm), vm))
             return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
@@ -399,7 +399,7 @@ class VMJSONEncoder(json.JSONEncoder):
                 'myproxy_server': vm.myproxy_server, 'myproxy_server_port': vm.myproxy_server_port,
                 'myproxy_renew_time': vm.myproxy_renew_time, 'override_status': vm.override_status,
                 'job_per_core': vm.job_per_core, 'force_retire': vm.force_retire,
-                'failed_retire': vm.failed_retire, 'x509userproxy_expiry_time': vm.x509userproxy_expiry_time,
+                'failed_retire': vm.failed_retire, 'x509userproxy_expiry_time': str(vm.x509userproxy_expiry_time),
                 'job_run_times': vm.job_run_times.data}
 
 class ClusterJSONEncoder(json.JSONEncoder):
