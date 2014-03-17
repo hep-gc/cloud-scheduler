@@ -283,13 +283,12 @@ class NimbusCluster(cluster_tools.ICluster):
             myproxy_server_port = myproxy_server_port, job_per_core = job_per_core)
 
         # Add the new VM object to the cluster's vms list And check out required resources
-        self.vms.append(new_vm)
         try:
             self.resource_checkout(new_vm)
         except:
             log.exception("Unexpected error checking out resources when creating a VM. Programming error?")
             return self.ERROR
-
+        self.vms.append(new_vm)
         log.info("Started vm %s on %s using image at %s" % (new_vm.id, new_vm.clusteraddr, new_vm.image))
         return create_return
 
