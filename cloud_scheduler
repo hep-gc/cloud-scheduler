@@ -1338,11 +1338,11 @@ class Cleanup(threading.Thread):
             for vm in reversed(cluster.vms):
                 if vm.uservmtype not in req_vmtypes and (vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
                     #if vm.override_status != "Retiring":
-                    if not self.resource_pool.force_retire_vm(vm):
-                        if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
-                            th = VMDestroyCmd(cluster, vm, reason="VMType %s is no longer required." % vm.vmtype)
-                            th.start()
-                            self.destroy_threads["".join([cluster.name, vm.id])] = th
+                    self.resource_pool.force_retire_vm(vm)
+                    if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
+                        th = VMDestroyCmd(cluster, vm, reason="VMType %s is no longer required." % vm.vmtype)
+                        th.start()
+                        self.destroy_threads["".join([cluster.name, vm.id])] = th
 
     def clean_scheduled_unscheduled(self):
         """Moves any running jobs into the scheduled state.
