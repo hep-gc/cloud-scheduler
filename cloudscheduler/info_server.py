@@ -458,7 +458,7 @@ class JobJSONEncoder(json.JSONEncoder):
                 'high_priority': job.high_priority, 'instance_type': job.instance_type,
                 'maximum_price': job.maximum_price, 'spool_dir': job.spool_dir,
                 'myproxy_server': job.myproxy_server, 'myproxy_server_port': job.myproxy_server_port,
-                'myproxy_creds_name': job.myproxy_creds_name, 'running_vm': self.running_vm,
+                'myproxy_creds_name': job.myproxy_creds_name, 'running_vm': job.running_vm,
                 'x509userproxysubject': job.x509userproxysubject, 'x509userproxy': job.x509userproxy,
                 'original_x509userproxy': job.original_x509userproxy,
                 'x509userproxy_expiry_time': job.x509userproxy_expiry_time,
