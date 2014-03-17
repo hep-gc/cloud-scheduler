@@ -10,7 +10,7 @@ import nimbus_xml
 import config
 import logging
 import string
-import datetime
+#import datetime
 import tempfile
 import subprocess
 from subprocess import Popen
@@ -172,7 +172,7 @@ class NimbusCluster(cluster_tools.ICluster):
 
 
         # Set a timestamp for VM creation
-        now = datetime.datetime.now()
+        #now = datetime.datetime.now()
 
         # Create an EPR file name (unique with timestamp)
         (epr_handle, vm_epr) = tempfile.mkstemp(suffix=".vm_epr")
