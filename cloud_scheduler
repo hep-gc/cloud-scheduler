@@ -740,17 +740,18 @@ class Scheduler(threading.Thread):
         # Read and add user's user data scripts which must be accessible via http 
         if job.user_data:
             for userdata in job.user_data:
-                try:
-                    file_content = urllib2.urlopen(userdata).read()
-                    basename = os.path.basename(userdata)
-                    filename = "user_userdata_%s" % (basename) 
-                    destination = "/etc/condor/%s" % (filename)
-                    executable = False
-                    if re.match('^#!/.*', file_content):
-                        executable = True
-                    customizations.append((file_content, destination, executable)) 
-                except:
-                    log.error('Error reading userdata %s' % (userdata))
+                if userdata:
+                    try:
+                        file_content = urllib2.urlopen(userdata).read()
+                        basename = os.path.basename(userdata)
+                        filename = "user_userdata_%s" % (basename) 
+                        destination = "/etc/condor/%s" % (filename)
+                        executable = False
+                        if re.match('^#!/.*', file_content):
+                            executable = True
+                        customizations.append((file_content, destination, executable)) 
+                    except:
+                        log.error('Error reading userdata %s' % (userdata))
         
         pre_customizations = []
         if job.ami_config:
