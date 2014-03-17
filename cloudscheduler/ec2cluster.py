@@ -445,7 +445,7 @@ class EC2Cluster(cluster_tools.ICluster):
             try:
                 self.vms.remove(vm)
             except Exception as e:
-                log.error("Unable to remove VM % on %s: %s" % e)
+                log.error("Unable to remove VM %s on %s: %s" % (vm.id, self.name, e))
 
         return 0
 
