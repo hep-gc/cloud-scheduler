@@ -161,8 +161,8 @@ class VM:
 
     def get_vm_info_pretty(self):
         """Header + VM info formatted output."""
-        output = get_vm_info_header()
-        output += get_vm_info()
+        output = self.get_vm_info_header()
+        output += self.get_vm_info()
         return output
 
     def get_proxy_file(self):
