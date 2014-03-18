@@ -306,7 +306,7 @@ class EC2Cluster(cluster_tools.ICluster):
         new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
-                    cpuarch = vm_cpuarch, image= vm_image,
+                    cpuarch = vm_cpuarch, image= vm_ami,
                     memory = vm_mem, mementry = vm_mementry,
                     cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive, job_per_core = job_per_core)
