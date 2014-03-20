@@ -160,7 +160,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 if group in self.security_groups:
                     sec_group.append(group)
             if len(sec_group) == 0:
-                log.warning("No matching security groups - trying default config")
+                log.debug("No matching security groups - trying default config")
                 sec_group = self.security_groups
                 #sec_group.append("default") - don't just append default use what is in cloud_resources.conf for this cloud
         else:
