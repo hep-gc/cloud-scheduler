@@ -15,6 +15,7 @@ log = utilities.get_cloudscheduler_logger()
 
 class OpenStackCluster(cluster_tools.ICluster):
     VM_STATES = {
+            "BUILD" : "Starting",
             "running" : "Running",
             "pending" : "Starting",
             "shutting-down" : "Shutdown",
@@ -90,6 +91,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                     except:
                         log.exception("Can't find a suitable AMI")
                         return
+        image = nova.images.find(name=image)
         try:
             if self.name in instance_type.keys():
                 i_type = instance_type[self.name]
@@ -104,9 +106,11 @@ class OpenStackCluster(cluster_tools.ICluster):
                     i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
             except:
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
-                i_type = self.DEFAULT_INSTANCE_TYPE        
+                i_type = self.DEFAULT_INSTANCE_TYPE   
+        flavor = nova.flavors.find(name=i_type)     
+        name="testinstancemhp.cern.ch"
         
-        instance = nova.servers.create(image=image, flavor=i_type, key_name=key_name)
+        instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name)
         #print instance
         instance_id = instance.id
         
@@ -155,10 +159,11 @@ class OpenStackCluster(cluster_tools.ICluster):
         nova = self._get_creds_nova()
         instance = nova.servers.get(vm.id)
         with self.vms_lock:
-            if instance and vm.status != self.VM_STATES.get(instance.state, "Starting"):
+            #print instance.status
+            if instance and vm.status != self.VM_STATES.get(instance.status, "Starting"):
 
                 vm.last_state_change = int(time.time())
-                log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.state, "Starting")))
+                log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.status, "Starting")))
             vm.status = instance.status
         return vm.status
 
@@ -167,4 +172,11 @@ class OpenStackCluster(cluster_tools.ICluster):
         return ksclient.Client(username=self.username, password=self.password, auth_url=self.auth_url, tenant_name=self.tenant_name)
     def _get_creds_nova(self):
         """Get an auth token to Nova."""
+        try:
+            import novaclient.v1_1.client as nvclient
+        except:
+                print "Unable to import novaclient - cannot use native openstack cloudtypes"
+                sys.exit(1)
+
         return nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name)
+
