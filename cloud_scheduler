@@ -890,7 +890,7 @@ class Scheduler(threading.Thread):
                         'customization':customizations,
                         'vm_keepalive':job.keep_alive,
                         'instance_type':job.instance_type,
-                        'maximum_price':job.maximum_price,
+                        #'maximum_price':job.maximum_price,
                         'job_per_core':job.job_per_core,
                         'securitygroup':job.req_security_group}
                 create_ret = resource.vm_create(**args)
