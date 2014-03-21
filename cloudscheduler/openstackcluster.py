@@ -14,13 +14,14 @@ from cloudscheduler.job_management import _attr_list_to_dict
 log = utilities.get_cloudscheduler_logger()
 
 class OpenStackCluster(cluster_tools.ICluster):
+    ERROR = 1
     VM_STATES = {
             "BUILD" : "Starting",
-            "running" : "Running",
-            "pending" : "Starting",
-            "shutting-down" : "Shutdown",
-            "terminated" : "Shutdown",
-            "error" : "Error",
+            "ACTIVE" : "Running",
+            "SHUTOFF" : "Shutdown",
+            "SUSPENDED": "Suspended",
+            "PAUSED": "Paused",
+            "ERROR" : "Error",
     }
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
@@ -109,10 +110,14 @@ class OpenStackCluster(cluster_tools.ICluster):
                 i_type = self.DEFAULT_INSTANCE_TYPE   
         flavor = nova.flavors.find(name=i_type)     
         name="testinstancemhp.cern.ch"
-        
-        instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name)
-        #print instance
-        instance_id = instance.id
+        try:
+            instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name)
+            #print instance.__dict__
+        except Exception as e:
+            #print e
+            log.exception(e)
+        if instance:
+            instance_id = instance.id
         
         vm_mementry = self.find_mementry(vm_mem)
         if (vm_mementry < 0):
@@ -144,8 +149,12 @@ class OpenStackCluster(cluster_tools.ICluster):
         """ Destroy a VM on OpenStack."""
         nova = self._get_creds_nova()
         instance = nova.servers.get(vm.id)
-        ret = instance.delete()
-        #print 'delete ret %s' % ret
+        try:
+            instance.delete()
+        except Exception as e:
+            log.exception(e)
+            return 1
+
         
         # Delete references to this VM
         if return_resources:
@@ -164,7 +173,10 @@ class OpenStackCluster(cluster_tools.ICluster):
 
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.status, "Starting")))
-            vm.status = instance.status
+            if instance.status in self.VM_STATES.keys():
+                vm.status = self.VM_STATES[instance.status]
+            else:
+                vm.status = instance.status
         return vm.status
 
     def _get_creds_ks(self):
