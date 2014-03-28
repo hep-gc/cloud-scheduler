@@ -357,7 +357,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.status = self.VM_STATES['error']
                 vm.last_state_change = int(time.time())
                 return vm.status
-            except Exception, e:
+            except boto.exception.EC2ResponseError, e:
                 log.exception("Unexpected error polling %s: %s" % (vm.id, e))
                 if e.status == 400 and e.error_code == 'InstanceNotFound':
                     vm.status = self.VM_STATES['error']
