@@ -86,7 +86,7 @@ class Job:
              x509userproxysubject=None, x509userproxy=None,
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
              VMInstanceType=None, 
-             VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
+             VMMaximumPrice=None, VMJobPerCore=False,
              TargetClouds=None, ServerTime=0, JobStartDate=0, VMHypervisor=None,
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
@@ -153,6 +153,8 @@ class Job:
             TargetClouds = config.default_TargetClouds
         if not VMAMIConfig:
             VMAMIConfig = config.default_VMAMIConfig
+        if not VMMaximumPrice:
+            VMMaximumPrice = config.default_VMMaximumPrice
     
         self.id           = GlobalJobId
         self.user         = Owner
