@@ -365,7 +365,8 @@ class EC2Cluster(cluster_tools.ICluster):
                     vm.status = self.VM_STATES['error']
                 return vm.status
             except Exception, e:
-                log.exception("Unexpected exception polling vm: %s on: %s: %s" % (vm.id, self.name, e)
+                log.exception("Unexpected exception polling vm: %s on: %s: %s" % (vm.id, self.name, e))
+                return vm.status
 
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)

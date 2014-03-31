@@ -108,7 +108,8 @@ class OpenStackCluster(cluster_tools.ICluster):
             except:
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
                 i_type = self.DEFAULT_INSTANCE_TYPE   
-        flavor = nova.flavors.find(name=i_type)     
+        flavor = nova.flavors.find(name=i_type)   
+        # Need to get the rotating hostname from the google code to use for here.  
         name="testinstancemhp.cern.ch"
         try:
             instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name)
