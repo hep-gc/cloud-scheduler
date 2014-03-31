@@ -273,7 +273,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                                   user_data=user_data,
                                                   placement=self.placement_zone,
                                                   addressing_type=addressing_type,
-                                                  security_groups=self.sec_group,
+                                                  security_groups=sec_group,
                                                   instance_type=instance_type)
                         spot_id = str(reservation[0].id)
                         instance_id = ""
