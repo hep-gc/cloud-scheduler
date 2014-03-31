@@ -364,6 +364,8 @@ class EC2Cluster(cluster_tools.ICluster):
                 elif e.status == 404:
                     vm.status = self.VM_STATES['error']
                 return vm.status
+            except Exception, e:
+                log.exception("Unexpected exception polling vm: %s on: %s: %s" % (vm.id, self.name, e)
 
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
