@@ -259,8 +259,11 @@ class EC2Cluster(cluster_tools.ICluster):
                                                 instance_type=instance_type)
                         instance_id = reservation.instances[0].id
                         log.debug("Booted VM %s" % instance_id)
-                    except:
-                        log.exception("There was a problem creating an EC2 instance...")
+                    except boto.exception.EC2ResponseError, e:
+                        log.exception("There was a problem creating an EC2 instance: %s" % e)
+                        return self.ERROR
+                    except Exception, e:
+                        log.exception("There was an unexpected problem creating an EC2 instance: %s" % e)
                         return self.ERROR
 
                 else: # get a spot instance of no more than maximum_price
@@ -282,8 +285,11 @@ class EC2Cluster(cluster_tools.ICluster):
                         log.exception("Your version of boto doesn't seem to support "\
                                   "spot instances. You need at least 1.9")
                         return self.ERROR
-                    except:
-                        log.exception("Problem creating an EC2 spot instance...")
+                    except boto.exception.EC2ResponseError, e:
+                        log.exception("There was a problem creating an EC2 spot instance: %s" % e)
+                        return self.ERROR
+                    except Exception, e:
+                        log.exception("Problem an unexpected error creating an EC2 spot instance: %s" % e)
                         return self.ERROR
 
 
@@ -291,8 +297,8 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.error("Couldn't find image %s on %s" % (vm_image, self.name))
                 return self.ERROR
 
-        except:
-            log.exception("Problem creating EC2 instance on on %s" % self.name)
+        except Exception, e:
+            log.exception("Problem creating EC2 instance on %s: %s" % (self.name, e))
             return self.ERROR
 
         vm_mementry = self.find_mementry(vm_mem)
