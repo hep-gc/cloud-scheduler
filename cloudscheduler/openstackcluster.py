@@ -191,12 +191,12 @@ class OpenStackCluster(cluster_tools.ICluster):
         return nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name)
 
     def _generate_next_name(self):
-        name = ''.join(['csvm-', self.vm_counter])
+        name = ''.join(['csvm-', str(self.vm_counter)])
         self.vm_counter += 1
         if self.vm_counter > 500000:
             self.vm_counter = 0
+        collision = False
         for vm in self.vms:
-            collision = False
             if name == vm.hostname:
                 collision= True
                 break
