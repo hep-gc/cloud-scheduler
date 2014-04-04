@@ -64,6 +64,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
+        self.vm_counter = 0
     
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
@@ -110,39 +111,35 @@ class OpenStackCluster(cluster_tools.ICluster):
                 i_type = self.DEFAULT_INSTANCE_TYPE   
         flavor = nova.flavors.find(name=i_type)   
         # Need to get the rotating hostname from the google code to use for here.  
-        name="testinstancemhp.cern.ch"
-        try:
-            instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name)
-            #print instance.__dict__
-        except Exception as e:
-            #print e
-            log.exception(e)
-        if instance:
-            instance_id = instance.id
-        
-        vm_mementry = self.find_mementry(vm_mem)
-        if (vm_mementry < 0):
-            log.debug("Cluster memory list has no sufficient memory " +\
-                      "entries (Not supposed to happen). Returning error.")
+        name = self._generate_next_name()
+        if name:
+            try:
+                instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name)
+                #print instance.__dict__
+            except Exception as e:
+                #print e
+                log.exception(e)
+            if instance:
+                instance_id = instance.id
+            
+            new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
+                        clusteraddr = self.network_address,
+                        cloudtype = self.cloud_type, network = vm_networkassoc,
+                        cpuarch = vm_cpuarch, image= vm_image,
+                        memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
+                        keep_alive = vm_keepalive, job_per_core = job_per_core)
+    
+            try:
+                self.resource_checkout(new_vm)
+            except:
+                log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
+                self.vm_destroy(new_vm, reason="Failed Resource checkout")
+                return self.ERROR
+    
+            self.vms.append(new_vm)
+        else:
+            log.debug("Unable to generate name for %" % self.name)
             return self.ERROR
-        log.verbose("vm_create - Memory entry found in given cluster: %d" %
-                                                                    vm_mementry)
-        new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
-                    clusteraddr = self.network_address,
-                    cloudtype = self.cloud_type, network = vm_networkassoc,
-                    cpuarch = vm_cpuarch, image= vm_image,
-                    memory = vm_mem, mementry = vm_mementry,
-                    cpucores = vm_cores, storage = vm_storage, 
-                    keep_alive = vm_keepalive, job_per_core = job_per_core)
-
-        try:
-            self.resource_checkout(new_vm)
-        except:
-            log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-            self.vm_destroy(new_vm, reason="Failed Resource checkout")
-            return self.ERROR
-
-        self.vms.append(new_vm)
 
         return 0
 
@@ -192,4 +189,18 @@ class OpenStackCluster(cluster_tools.ICluster):
                 sys.exit(1)
 
         return nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name)
+
+    def _generate_next_name(self):
+        name = ''.join(['csvm-', self.vm_counter])
+        self.vm_counter += 1
+        if self.vm_counter > 500000:
+            self.vm_counter = 0
+        for vm in self.vms:
+            collision = False
+            if name == vm.hostname:
+                collision= True
+                break
+        if collision:
+            name = None
+        return name
 
