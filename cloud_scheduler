@@ -431,7 +431,7 @@ class Scheduler(threading.Thread):
                 if not retire_machine:
                     log.verbose("No need to retire machine with job:  %s" % machine.job_id)
                     continue
-                (_, ret2, _, ret22) = self.resource_pool.do_condor_off(machine.machine_name, machine.address_startd, mataching_vm.condormasteraddr)
+                (_, ret2, _, ret22) = self.resource_pool.do_condor_off(machine.machine_name, machine.address_startd, matching_vm.condormasteraddr)
                 if ret2 == 0 and ret22 == 0:
                     log.debug("Set %s to die after completing current job: %s" % (machine.name,machine.job_id))
                     matching_vm.force_retire = True
