@@ -69,12 +69,19 @@ class OpenStackCluster(cluster_tools.ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", job_per_core=False, 
-                  securitygroup=[],key_name=""):
+                  securitygroup=[],key_name="", pre_customization=None):
         """ Create a VM on OpenStack."""
         nova = self._get_creds_nova()
         if len(key_name) > 0:
             if not nova.keypairs.findall(name=key_name):
                 key_name = ""
+        if customization:
+            user_data = nimbus_xml.ws_optional(customization)
+        else:
+            user_data = ""
+        if pre_customization:
+            for item in pre_customization:
+                user_data = '\n'.join([item, user_data])
         try:
             image = vm_image[self.name]
         except:
@@ -114,7 +121,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         name = self._generate_next_name()
         if name:
             try:
-                instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name)
+                instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name, userdata=user_data)
                 #print instance.__dict__
             except Exception as e:
                 #print e
