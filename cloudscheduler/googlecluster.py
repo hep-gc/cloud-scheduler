@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 import threading
 import nimbus_xml
 import ConfigParser
@@ -43,7 +44,6 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                  auth_dat_file=None, secret_file=None, security_group=None, project_id=None,enabled=True):
 
         self.gce_hostname_prefix = 'gce-cs-vm'
-        self.gce_hostname_counter = 0
         self.security_group = security_group
         self.auth_dat_file_path = auth_dat_file
         self.secret_file_path = secret_file
@@ -293,19 +293,12 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         return response
     
     def generate_next_instance_name(self):
-        for _ in range(0,10):
-            potential_name = ''.join([self.gce_hostname_prefix, str(self.gce_hostname_counter)])
-            self.gce_hostname_counter += 1
-            if self.gce_hostname_counter >= 50000:
-                self.gce_hostname_counter = 0
-            collision = False
-            for vm in self.vms:
-                if potential_name == vm.name:
-                    collision = True
-                    break
-            if not collision:
+        potential_name = ''.join([self.gce_hostname_prefix, str(uuid.uuid4())])
+        collision = False
+        for vm in self.vms:
+            if potential_name == vm.name:
+                collision = True
                 break
-        # had 10 collisions give up and try again later
         if collision:
             potential_name = None
         return potential_name

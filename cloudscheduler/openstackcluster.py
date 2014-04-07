@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import uuid
 import string
 import shutil
 import logging
@@ -64,7 +65,6 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
-        self.vm_counter = 0
     
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
@@ -196,12 +196,18 @@ class OpenStackCluster(cluster_tools.ICluster):
                 sys.exit(1)
 
         return nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name)
+    def _get_creds_nova_alt(self):
+        """Get an auth token to Nova."""
+        try:
+            import novaclient.v1_1.client as nvclient
+        except:
+                print "Unable to import novaclient - cannot use native openstack cloudtypes"
+                sys.exit(1)
 
+        return nvclient.Client(username=self.access_key_id, api_key=self.secret_access_key, auth_url=self.auth_url, project_id=self.tenant_name)
+    
     def _generate_next_name(self):
-        name = ''.join(['csvm-', self.name.replace('_', '-'), str(self.vm_counter)])
-        self.vm_counter += 1
-        if self.vm_counter > 500000:
-            self.vm_counter = 0
+        name = str(uuid.uuid4())
         collision = False
         for vm in self.vms:
             if name == vm.hostname:
