@@ -207,7 +207,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         return nvclient.Client(username=self.access_key_id, api_key=self.secret_access_key, auth_url=self.auth_url, project_id=self.tenant_name)
     
     def _generate_next_name(self):
-        name = str(uuid.uuid4())
+        name = ''.join([self.name.replace('_', '-'), '-', str(uuid.uuid4())])
         collision = False
         for vm in self.vms:
             if name == vm.hostname:
