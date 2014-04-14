@@ -1088,7 +1088,7 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     diff_types[vmtype] = -desired_types[vmtype]
-            log.debug("Diff Types Before Limits: %s" % str(diff_types))
+            log.verbose("Diff Types Before Limits: %s" % str(diff_types))
 
             # With user limiting will need to reset any users that are at their limits
             # so they will not interfere with scheduling
@@ -1121,7 +1121,7 @@ class Cleanup(threading.Thread):
             for usertype in diff_types.keys():
                 if usertype not in limited_users:
                     diff_types[usertype] += adjustby # the 'extra' will be negative so add it
-            log.debug("Diff Types After Limits: %s" % str(diff_types))
+            log.verbose("Diff Types After Limits: %s" % str(diff_types))
             num_to_change = self.clean_determine_num_to_change(diff_types, required_vmtypes_dict)
 
             next_diff_types = {}
@@ -1138,7 +1138,7 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     next_diff_types[vmtype] = -desired_types[vmtype]
-            log.debug("Next Diff Types: %s" % str(next_diff_types))
+            log.verbose("Next Diff Types: %s" % str(next_diff_types))
             
             #       determine new num_to_change based on updated diff_types
             next_num_to_change = self.clean_determine_num_to_change(next_diff_types, required_vmtypes_dict)
@@ -1150,7 +1150,7 @@ class Cleanup(threading.Thread):
                         # Has fliped, adjust num_to_change to prevent flipflop
                         num_to_change[vmtype] = num_to_change[vmtype] + next_num_to_change[vmtype]
             
-            log.debug("Pre-User-Throttling values: %s" % str(num_to_change))
+            log.verbose("Pre-User-Throttling values: %s" % str(num_to_change))
             # Make sure not going to retire too many machines if some are throttled
             adjust_num_total = 0
             total_pos_num = 0
@@ -1206,7 +1206,7 @@ class Cleanup(threading.Thread):
         vm_count = self.resource_pool.vm_count()
         for vmtype, val in diff_types.iteritems():
             num_to_change[vmtype] = int(round(val * vm_count))
-        log.debug("Initial num to change: %s adjust for queued jobs." % str(num_to_change))
+        log.verbose("Initial num to change: %s adjust for queued jobs." % str(num_to_change))
         excess_diff = 0
         positive_types = []
         # check if there are fewer jobs in queue than trying to adjust VM count by
@@ -1231,7 +1231,7 @@ class Cleanup(threading.Thread):
 
         # Postive num_to_change is how many CS going to try and shutdown
         # Negative is how many it wants to start
-        log.debug("Midway num to change: %s adjusting for free resources." % str(num_to_change))
+        log.verbose("Midway num to change: %s adjusting for free resources." % str(num_to_change))
         pos_change_types = []
         for vmtype, val in num_to_change.iteritems():
             if val > 0:
@@ -1320,7 +1320,7 @@ class Cleanup(threading.Thread):
                             num_to_change[postype] -= adjustby
                             if num_to_change[postype] < 0:
                                     num_to_change[postype] = 0
-        log.debug("End num to change: %s" % str(num_to_change))
+        log.verbose("End num to change: %s" % str(num_to_change))
         free_space = True
         for vmtype in free_space_for_vmtype.keys():
             if not free_space_for_vmtype[vmtype]:
