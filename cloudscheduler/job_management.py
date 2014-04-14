@@ -500,11 +500,9 @@ class JobPool:
 
         if condor_query_type.lower() == "local":
             self.job_query = self.job_query_local
-        elif condor_query_type.lower() == "soap":
-            self.job_query = self.job_query_SOAP
         else:
-            log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
-            self.job_query = self.job_query_SOAP
+            log.error("Can't use '%s' retrieval method. Using local method." % condor_query_type)
+            self.job_query = self.job_query_local
             
         if config.job_distribution_type.lower() == "normal":
             #self.job_type_distribution = self.job_type_distribution_normal
@@ -549,35 +547,6 @@ class JobPool:
         job_ads = self._condor_q_to_job_list(condor_out)
         self.last_query = datetime.datetime.now()
         return job_ads
-
-
-    def job_query_SOAP(self):
-        """job_qury_SOAP - query and parse condor for job information via SOAP API."""
-        log.verbose("Querying Condor scheduler daemon (schedd)")
-
-        # Get job classAds from the condor scheduler
-        try:
-            job_ads = self.condor_schedd_as_xml.service.getJobAds(None, None)
-        except URLError, e:
-            log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason: %s"
-                      % (config.condor_webservice_url, e.reason))
-            return None
-        except:
-            log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s). Unknown reason."
-                      % (config.condor_webservice_url))
-            return None
-
-        # Create the condor_jobs list to store jobs
-        condor_jobs = self._condor_job_xml_to_job_list(job_ads)
-        del job_ads
-        # When querying finishes successfully, reset last query timestamp
-        self.last_query = datetime.datetime.now()
-
-        # Return condor_jobs list
-        return condor_jobs
 
     @staticmethod
     def _condor_q_to_job_list(condor_q_output):
@@ -669,109 +638,6 @@ class JobPool:
             except:
                 log.exception("Failed to add job: %s due to unspecified exception." % classad["GlobalJobId"])
         return jobs
-
-    @staticmethod
-    def _condor_job_xml_to_job_list(condor_xml):
-        """
-        _condor_job_xml_to_job_list - Converts Condor SOAP XML from Condor
-                to a list of Job Objects
-
-                returns [] if there are no jobs
-        """
-        def _job_attribute(xml, element):
-            try:
-                return xml.xpath(".//item[name='%s']/value" % element)[0].text
-            except:
-                return ""
-
-        def _add_if_exists(xml, dictionary, attribute):
-            job_value = string.strip(_job_attribute(xml, attribute))
-            if job_value:
-                dictionary[attribute] = job_value
-
-        def _add_dict_if_exists(xml, dictionary, attribute):
-            attr_list = _job_attribute(xml_job, attribute)
-            if attr_list:
-                try:
-                    attr_dict = _attr_list_to_dict(attr_list)
-                    dictionary[attribute] = attr_dict
-                except:
-                    log.exception("Problem extracting %s attribute '%s'" % (attribute, attr_list))
-
-        def _attribute_from_requirements(requirements, attribute):
-            regex = "%s\s=\?=\s\"(?P<value>.+?)\"" % attribute
-            match = re.search(regex, requirements)
-            if match:
-                return match.group("value")
-            else:
-                return ""
-
-        jobs = []
-
-        context = etree.iterparse(StringIO(condor_xml))
-        for action, elem in context:
-            if elem.tag == "item" and elem.getparent().tag == "classAdArray":
-                xml_job = elem
-                job_dictionary = {}
-                # Mandatory parameters
-                job_dictionary['GlobalJobId'] = _job_attribute(xml_job, "GlobalJobId")
-                job_dictionary['Owner'] = _job_attribute(xml_job, "Owner")
-                job_dictionary['JobPrio'] = _job_attribute(xml_job, "JobPrio")
-                job_dictionary['JobStatus'] = _job_attribute(xml_job, "JobStatus")
-                job_dictionary['ClusterId'] = _job_attribute(xml_job, "ClusterId")
-                job_dictionary['ProcId'] = _job_attribute(xml_job, "ProcId")
-                job_dictionary['ServerTime'] = _job_attribute(xml_job, "ServerTime")
-
-                # Optional parameters
-                _add_if_exists(xml_job, job_dictionary, "VMNetwork")
-                _add_if_exists(xml_job, job_dictionary, "VMCPUArch")
-                _add_if_exists(xml_job, job_dictionary, "VMName")
-                _add_if_exists(xml_job, job_dictionary, "VMLoc")
-                _add_if_exists(xml_job, job_dictionary, "VMMem")
-                _add_if_exists(xml_job, job_dictionary, "VMCPUCores")
-                _add_if_exists(xml_job, job_dictionary, "VMStorage")
-                _add_if_exists(xml_job, job_dictionary, "VMKeepAlive")
-                _add_if_exists(xml_job, job_dictionary, "VMMaximumPrice")
-                _add_if_exists(xml_job, job_dictionary, "CSMyProxyCredsName")
-                _add_if_exists(xml_job, job_dictionary, "CSMyProxyServer")
-                _add_if_exists(xml_job, job_dictionary, "CSMyProxyServerPort")
-                _add_if_exists(xml_job, job_dictionary, "CSMyProxyRenewalTime")
-                _add_if_exists(xml_job, job_dictionary, "x509userproxysubject")
-                _add_if_exists(xml_job, job_dictionary, "x509userproxy")
-                _add_if_exists(xml_job, job_dictionary, "VMHighPriority")
-                _add_if_exists(xml_job, job_dictionary, "VMJobPerCore")
-                _add_if_exists(xml_job, job_dictionary, "RemoteHost")
-                _add_if_exists(xml_job, job_dictionary, "TargetClouds")
-                _add_if_exists(xml_job, job_dictionary, "JobStartDate")
-                _add_if_exists(xml_job, job_dictionary, "Iwd")
-                _add_if_exists(xml_job, job_dictionary, "SUBMIT_x509userproxy")
-                _add_if_exists(xml_job, job_dictionary, "VMHypervisor")
-                _add_if_exists(xml_job, job_dictionary, "VMProxyNonBoot")
-                _add_if_exists(xml_job, job_dictionary, "VMImageProxyFile")
-                _add_if_exists(xml_job, job_dictionary, "VMTypeLimit")
-                _add_if_exists(xml_job, job_dictionary, "VMLocation")
-                _add_if_exists(xml_job, job_dictionary, "VMImageID")
-                _add_if_exists(xml_job, job_dictionary, "VMKeyName")
-                _add_if_exists(xml_job, job_dictionary, "VMInstanceTypeIBM")
-                _add_if_exists(xml_job, job_dictionary, "VMSecurityGroup")
-
-                # Requirements requires special fiddling
-                requirements = _job_attribute(xml_job, "Requirements")
-                if requirements:
-                    vmtype = _attribute_from_requirements(requirements, "VMType")
-                    if vmtype:
-                        job_dictionary['VMType'] = vmtype
-
-                # VMAMI requires special fiddling
-                _add_dict_if_exists(xml_job, job_dictionary, "VMAMI")
-                _add_dict_if_exists(xml_job, job_dictionary, "VMInstanceType")
-
-                jobs.append(Job(**job_dictionary))
-
-                elem.clear()
-        return jobs
-
-
  
     def update_jobs(self, query_jobs):
         """Updates the system jobs:
