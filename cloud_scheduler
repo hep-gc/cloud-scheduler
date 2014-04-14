@@ -80,9 +80,12 @@ class VMPoller(threading.Thread):
         log.info("Starting VM polling...")
 
         while not self.quit:
+            start_loop_time = time.time()
             self.poll_all_machines()
             self.check_destroy_threads()
             sleep_tics = self.run_interval
+            elapsed_loop_time = time.time() - start_loop_time
+            log.verbose("VMPoller thread loop time: %s" % str(elapsed_loop_time))
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -200,6 +203,7 @@ class JobPoller(threading.Thread):
             prev_req_vmtypes = []
             new_req_vmtypes = []
             while not self.quit:
+                start_loop_time = time.time()
                 log.verbose("Polling job scheduler")
 
                 ## Query the job pool to get new unscheduled jobs
@@ -224,6 +228,8 @@ class JobPoller(threading.Thread):
                 log.verbose("Job Poller waiting %ds..." % self.polling_interval)
                 prev_req_vmtypes = new_req_vmtypes
                 sleep_tics = self.polling_interval
+                elapsed_loop_time = time.time() - start_loop_time
+                log.verbose("JobPoller loop time: %s" % elapsed_loop_time)
                 while (not self.quit) and sleep_tics > 0:
                     time.sleep(1)
                     sleep_tics -= 1
@@ -251,6 +257,7 @@ class MachinePoller(threading.Thread):
         log.info("Starting machine polling...")
         zero_len_count = 0
         while not self.quit:
+            start_loop_time = time.time()
             log.verbose("Polling machine scheduler")
 
             self.resource_pool.prev_machine_list = self.resource_pool.machine_list
@@ -266,6 +273,8 @@ class MachinePoller(threading.Thread):
                 zero_len_count = 0
             log.verbose("Machine Poller waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
+            elapsed_loop_time = time.time() - start_loop_time
+            log.verbose("MachinePoller loop time: %s" % str(elapsed_loop_time))
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -320,6 +329,7 @@ class Scheduler(threading.Thread):
         ## Full scheduler loop
         ########################################################################
         while not self.quit:
+            start_loop_time = time.time()
             log.verbose("### Scheduler Cycle:")
 
             self.scheduling_method()
@@ -329,6 +339,8 @@ class Scheduler(threading.Thread):
             ## Wait for a number of seconds
             log.verbose("Scheduler - Waiting %ss" % self.scheduling_interval)
             sleep_tics = self.scheduling_interval
+            elapsed_loop_time = time.time() - start_loop_time
+            log.verbose("Scheduler loop time: %s" % str(elapsed_loop_time))
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -565,7 +577,7 @@ class Scheduler(threading.Thread):
         resources to give them to increase that share, this will allow other users to
         continue to use other remaining resources that the underallocated user is unable to use."""
         allow = False
-        retiring = self.resource_pool.retiring_vms_of_usertype(job.uservmtype)
+        #retiring = self.resource_pool.retiring_vms_of_usertype(job.uservmtype)
         userjoblimits = self.job_pool.get_usertype_limits()
         if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] > 0:
             over_allocate = True
@@ -943,9 +955,8 @@ class Cleanup(threading.Thread):
     def run(self):
         log.info("Starting Cleanup Thread...")
 
-        prevMachineList = []
-
         while not self.quit:
+            start_loop_time = time.time()
             self.check_destroy_threads()
             if config.retire_before_lifetime:
                 # Check for VMs near max lifetime 
@@ -995,6 +1006,8 @@ class Cleanup(threading.Thread):
 
             log.verbose("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
+            elapsed_loop_time = time.time() - start_loop_time
+            log.verbose("Cleanup thread loop time: %s" % str(elapsed_loop_time))
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
