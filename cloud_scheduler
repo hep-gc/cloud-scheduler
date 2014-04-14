@@ -1197,13 +1197,8 @@ class Cleanup(threading.Thread):
 
             log.verbose("Ready to balance via configured method")
             if config.graceful_shutdown:
-                if config.graceful_shutdown_method == 'hold':
-                    # balance using condor_hold and condor_release - may be bugged with recent
-                    # changes to how held jobs are accounted for
-                    self.graceful_shutdown_condor_hold(diff_types, machineList, num_to_change)
-                else:
-                    # shutdown using condor_off
-                    self.graceful_shutdown_condor_off(machineList, num_to_change)
+                # shutdown using condor_off
+                self.graceful_shutdown_condor_off(machineList, num_to_change)
             else:
                 # shutdown after the previous job has finished executing
                 # interupts the new running job and will be rescheduled by condor
