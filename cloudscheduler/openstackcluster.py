@@ -39,7 +39,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled)
         try:
             import novaclient.v1_1.client as nvclient
-            import keystoneclient.v2_0.client as ksclient
+            #import keystoneclient.v2_0.client as ksclient
         except:
                 print "Unable to import novaclient - cannot use native openstack cloudtypes"
                 sys.exit(1)
