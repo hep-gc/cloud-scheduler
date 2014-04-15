@@ -52,13 +52,13 @@ class OpenStackCluster(cluster_tools.ICluster):
                       "because you haven't specified an access_key_id or "
                       "a secret_access_key" % self.name)
 
-        self.access_key_id = access_key_id
-        self.secret_access_key = secret_access_key
-        self.username = username
-        self.password = password
-        self.tenant_name = tenant_name
-        self.auth_url = auth_url
-        self.key_name = key_name
+        self.access_key_id = access_key_id if access_key else ""
+        self.secret_access_key = secret_access_key if secret_access_key else ""
+        self.username = username if username else ""
+        self.password = password if password else ""
+        self.tenant_name = tenant_name if tenant_name else ""
+        self.auth_url = auth_url if auth_url else ""
+        self.key_name = key_name if key_name else ""
         self.secure_connection = secure_connection in ['True', 'true', 'TRUE']
         self.total_cpu_cores = -1
         self.regions = regions
