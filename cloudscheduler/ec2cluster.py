@@ -113,7 +113,7 @@ class EC2Cluster(cluster_tools.ICluster):
         return connection
 
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
-                 memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
+                 memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, access_key_id=None, secret_access_key=None,
                  security_group=None, hypervisor='xen', key_name=None, 
                  boot_timeout=None, secure_connection="", regions=[], vm_domain_name="",
@@ -121,7 +121,7 @@ class EC2Cluster(cluster_tools.ICluster):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
-                         memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
+                         memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled)
 
@@ -144,7 +144,7 @@ class EC2Cluster(cluster_tools.ICluster):
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
 
-    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   pre_customization=None, vm_keepalive=0, instance_type="", 
                   maximum_price=0, job_per_core=False, securitygroup=[],
@@ -312,7 +312,7 @@ class EC2Cluster(cluster_tools.ICluster):
         new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
-                    cpuarch = vm_cpuarch, image= vm_ami,
+                    image= vm_ami,
                     memory = vm_mem, mementry = vm_mementry,
                     cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive, job_per_core = job_per_core)

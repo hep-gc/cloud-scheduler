@@ -102,7 +102,6 @@ class VM:
         self.clusterport = clusterport
         self.cloudtype = cloudtype
         self.network = network
-        self.cpuarch = cpuarch
         self.image = image
         self.memory = memory
         self.mementry = mementry
@@ -291,7 +290,7 @@ class ICluster:
     """
 
     def __init__(self, name="Dummy Cluster", host="localhost",
-                 cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
+                 cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
                  vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None, enabled=True):
         self.name = name
         self.network_address = host
@@ -299,7 +298,6 @@ class ICluster:
         self.memory = memory
         self.max_mem = tuple(memory)
         self.max_vm_mem = max_vm_mem
-        self.cpu_archs = cpu_archs
         self.network_pools = networks
         self.vm_slots = vm_slots
         self.max_slots = vm_slots
@@ -351,7 +349,6 @@ class ICluster:
             "CPU Cores:\t%s\n"     % self.cpu_cores +
             "Storage:\t%s\n"       % self.storageGB +
             "Memory:\t\t%s\n"      % self.memory +
-            "CPU Archs:\t%s\n"     % string.join(self.cpu_archs, ", ") +
             "Network Pools:\t%s\n" % string.join(self.network_pools, ", ") +
             "-" * 30)
 

@@ -25,7 +25,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             "ERROR" : "Error",
     }
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
-                 memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
+                 memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0,
                  access_key_id=None, secret_access_key=None, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
@@ -34,7 +34,7 @@ class OpenStackCluster(cluster_tools.ICluster):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
-                         memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
+                         memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled)
         try:
@@ -52,7 +52,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                       "because you haven't specified an access_key_id or "
                       "a secret_access_key" % self.name)
 
-        self.access_key_id = access_key_id if access_key else ""
+        self.access_key_id = access_key_id if access_key_id else ""
         self.secret_access_key = secret_access_key if secret_access_key else ""
         self.username = username if username else ""
         self.password = password if password else ""
@@ -66,7 +66,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
     
-    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", job_per_core=False, 
                   securitygroup=[],key_name="", pre_customization=None):
@@ -132,7 +132,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                         clusteraddr = self.network_address, hostname = name,
                         cloudtype = self.cloud_type, network = vm_networkassoc,
-                        cpuarch = vm_cpuarch, image= vm_image,
+                        image= vm_image,
                         memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
                         keep_alive = vm_keepalive, job_per_core = job_per_core)
     
