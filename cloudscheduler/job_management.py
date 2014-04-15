@@ -70,8 +70,7 @@ class Job:
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
              JobStatus=0, ClusterId=0, ProcId=0, VMType=None, VMNetwork=None,
              VMCPUArch=None, VMName=None, VMLoc=None, VMAMI=None, VMMem=None,
-             VMCPUCores=None, VMStorage=None,
-             VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
+             VMStorage=None, VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
@@ -121,8 +120,6 @@ class Job:
             VMType = config.default_VMType
         if not VMNetwork:
             VMNetwork = config.default_VMNetwork
-        if not VMCPUArch:
-            VMCPUArch = config.default_VMCPUArch
         if not VMHypervisor:
             VMHypervisor = config.default_VMHypervisor
         if not VMName:
@@ -155,7 +152,6 @@ class Job:
         self.proc_id      = int(ProcId)
         self.req_vmtype   = VMType
         self.req_network  = VMNetwork
-        self.req_cpuarch  = VMCPUArch
         self.req_image    = VMName
         self.req_imageloc = VMLoc
         self.req_ami      = VMAMI
@@ -250,12 +246,12 @@ class Job:
     
     def log(self):
         """Log a short string representing the job."""
-        log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
+        log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def log_dbg(self):
         """Log a longer string representing the job."""
-        log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
+        log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def get_job_info(self):
         """Formatted job info output for cloud_status -q."""
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
