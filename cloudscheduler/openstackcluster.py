@@ -194,8 +194,11 @@ class OpenStackCluster(cluster_tools.ICluster):
         except:
                 print "Unable to import novaclient - cannot use native openstack cloudtypes"
                 sys.exit(1)
-
-        return nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name)
+        try:
+            client = nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name)
+        except Exception as e:
+            log.error("Unable to create connection to %s: Reason: %s" % (self.name, e))
+        return client 
     def _get_creds_nova_alt(self):
         """Get an auth token to Nova."""
         try:
