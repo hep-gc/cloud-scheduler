@@ -37,16 +37,6 @@ import subprocess
 from urllib2 import URLError
 from StringIO import StringIO
 from collections import defaultdict
-try:
-    from lxml import etree
-except:
-    print >> sys.stderr, "Couldn't import lxml. You should install it from http://codespeak.net/lxml/, or your package manager."
-    sys.exit(1)
-try:
-    from suds.client import Client
-except:
-    print >> sys.stderr, "Couldn't import Suds. You should install it from https://fedorahosted.org/suds/, or your package manager"
-    sys.exit(1)
 
 import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
@@ -486,14 +476,6 @@ class JobPool:
         self.name = name
         self.last_query = None
         self.write_lock = threading.RLock()
-
-        _schedd_wsdl  = "file://" + determine_path() \
-                        + "/wsdl/condorSchedd.wsdl"
-        self.condor_schedd = Client(_schedd_wsdl,
-                                    location=config.condor_webservice_url)
-        self.condor_schedd_as_xml = Client(_schedd_wsdl,
-                                    location=config.condor_webservice_url,
-                                    retxml=True, timeout=self.CONDOR_TIMEOUT)
 
         if not condor_query_type:
             condor_query_type = config.condor_retrieval_method
@@ -1059,116 +1041,6 @@ class JobPool:
             if job.usertype_limit > -1:
                 limits[job.uservmtype] = job.usertype_limit
         return limits
-
-
-    # Attempts to place a list of jobs into a Hold Status to prevent running
-    # If a job fails to be held it is placed in a list and failed jobs are returned
-    def hold_jobSOAP(self, jobs):
-        """Attempt to plate a list of jobs into a Hold status in Condor.
-
-            Returns a list of any job that fails to Hold.
-        """
-        log.verbose("Holding %i Jobs via Condor SOAP API" % len(jobs))
-        failed = []
-        for job in jobs:
-            try:
-                job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, "CloudSchedulerHold", False, False, True)
-                if job_ret.code != "SUCCESS":
-                    failed.append(job)
-                else:
-                    log.debug("Held %s 's job %s. " % (job.user, job.id))
-            except URLError, e:
-                log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason: %s"
-                      % (config.condor_webservice_url, e.reason))
-                return None
-            except:
-                log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s). Unknown reason."
-                      % (config.condor_webservice_url))
-                return None
-        return failed
-
-    def release_jobSOAP(self, jobs):
-        """Attempt to release a list of jobs that are in the Held state.
-        
-        Returns a list of jobs that fail to release.
-        """
-        log.verbose("Releasing Jobs via Condor SOAP API")
-        failed = []
-        for job in jobs:
-            try:
-                job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, "CloudSchedulerRelease", False, False)
-                if job_ret.code != "SUCCESS":
-                    failed.append(job)
-            except URLError, e:
-                log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason: %s"
-                      % (config.condor_webservice_url, e.reason))
-                return None
-            except:
-                log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s). Unknown reason."
-                      % (config.condor_webservice_url))
-                return None
-        return failed
-
-    # Deprecated
-    def hold_user(self, user):
-        """Hold all jobs for a specified user.
-        
-            Keywords:
-                user - the user whom jobs will be held
-        """
-        jobs = []
-        for job in self.job_container.get_jobs_for_user(user):
-            if job.job_status != self.RUNNING:
-                jobs.append(job)
-        return self.hold_jobSOAP(jobs)
-
-
-    # Deprecated
-    def release_user(self, user):
-        """Release all jobs for a specified user.
-        
-            Keywords:
-                user - the user whom jobs will be released
-        """
-        jobs = []
-        for job in self.job_container.get_jobs_for_user(user):
-            if job.job_status == self.HELD:
-                jobs.append(job)
-        return self.release_jobSOAP(jobs)
-
-    # Deprecated
-    def hold_vmtype(self, vmtype):
-        """Hold all jobs for a specified vmtype.
-        
-            Keywords:
-                vmtype - the vmtype of jobs to hold
-        """
-        jobs = []
-        for job in self.job_container.get_all_jobs():
-            if job.req_vmtype == vmtype and job.job_status != self.RUNNING:
-                jobs.append(job)
-        ret = self.hold_jobSOAP(jobs)
-        return ret
-
-    # Deprecated
-    def release_vmtype(self, vmtype):
-        """Release all jobs for a specified vmtype.
-        
-            Keywords:
-                vmtype - the vmtype of jobs to release
-        """
-        jobs = []
-        for job in self.job_container.get_all_jobs():
-            if job.req_vmtype == vmtype and job.job_status == self.HELD:
-                jobs.append(job)
-        ret = self.release_jobSOAP(jobs)
-        return ret
 
     def job_hold_local(self, jobs):
         """job_query_local -- query and parse condor_q for job information."""

@@ -27,10 +27,8 @@ import threading
 import subprocess
 import ConfigParser
 
-from suds.client import Client
 from urllib2 import URLError
 from decimal import *
-from lxml import etree
 from StringIO import StringIO
 from collections import defaultdict
 
@@ -100,23 +98,18 @@ class ResourcePool:
 
     ## Instance methods
 
-    def __init__(self, config_file, name="Resources", condor_query_type=""):
+    def __init__(self, config_file, name="Resources", condor_query_type="local"):
         """ Constructor.
         
         Keywords:
             name   - The name of the ResourcePool being created
-            condor_query_type - type of query to do on condor, either local or soap
+            condor_query_type - type of query to do on condor - local 
         """
         global log
         log = logging.getLogger("cloudscheduler")
 
         log.verbose("New ResourcePool %s created" %name)
         self.name = name
-
-        _collector_wsdl = "file://%s/wsdl/condorCollector.wsdl"%determine_path()
-        self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
-        self.condor_collector_as_xml = Client(_collector_wsdl, cache=None,
-                                              location=config.condor_collector_url, retxml=True)
 
         self.config_file = os.path.expanduser(config_file)
         self.ban_lock = threading.Lock()
@@ -133,11 +126,9 @@ class ResourcePool:
 
         if condor_query_type.lower() == "local":
             self.resource_query = self.resource_query_local
-        elif condor_query_type.lower() == "soap":
-            self.resource_query = self.resource_query_SOAP
         else:
-            log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
-            self.resource_query = self.resource_query_SOAP
+            log.error("Can't use '%s' retrieval method. Using local method." % condor_query_type)
+            self.resource_query = self.resource_query_local
             
         if config.scheduling_metric.lower() == "slot":
             self.vmtype_distribution = self.vmtype_slot_distribution
@@ -860,33 +851,6 @@ class ResourcePool:
 
         return machine_list
 
-
-    def resource_query_SOAP(self):
-        """
-        resource_query_SOAP -- does a SOAP Query to the condor collector
-
-        Returns a list of dictionaries with information about the machines
-        registered with condor.
-        """
-        log.verbose("Querying condor startd with SOAP API")
-        try:
-            machines_xml = self.condor_collector_as_xml.service.queryStartdAds()
-            machine_list = self._condor_machine_xml_to_machine_list(machines_xml)
-
-            return machine_list
-
-        except URLError, e:
-            log.exception("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason:"
-                      % config.condor_collector_url)
-            return []
-        except:
-            log.exception("There was a problem connecting to the "
-                      "Condor scheduler web service (%s)"
-                      % (config.condor_collector_url))
-            return []
-
     def master_resource_query_local(self):
         """
         master_resource_query_local -- does a Query to the condor collector about master daemons
@@ -939,44 +903,10 @@ class ResourcePool:
 
         return machines
 
-
-    @staticmethod
-    def _condor_machine_xml_to_machine_list(condor_xml):
-        """
-        _condor_machine_xml_to_machine_list - Converts Condor SOAP XML from Condor
-                to a list of dictionarties with the attributes from the Condor 
-                machine ad.
-
-                returns [] if there are no machines
-        """
-        def _item_attribute(xml, element):
-            try:
-                return xml.xpath(".//%s" % element)[0].text
-            except:
-                return ""
-
-        machines = []
-
-        context = etree.iterparse(StringIO(condor_xml))
-        for action, elem in context:
-            if elem.tag == "item" and elem.getparent().tag == "result":
-                xml_machine = elem
-                machine = {}
-                for item in xml_machine.iter("item"):
-                    name = _item_attribute(item, "name")
-                    value = _item_attribute(item, "value")
-                    machine[name] = value
-
-                machines.append(machine)
-                elem.clear()
-
-        return machines
-
-
     def get_vmtypes_count(self, machineList):
         """Get a Dictionary of required VM Types with how many of that type running.
         
-        Uses the dict-list structure returned by SOAP/local query
+        Uses the dict-list structure returned by local query
         """
         count = defaultdict(int)
         for vm in machineList:

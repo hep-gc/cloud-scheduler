@@ -1663,20 +1663,6 @@ class Cleanup(threading.Thread):
                     th.start()
                     self.destroy_threads["".join([cluster.name, vm.id])] = th
 
-    # Deprecated
-    def graceful_shutdown_condor_hold(self, diff_types, machineList, num_to_change):
-        """One of the old balancing methods for fairshare scheduling. Attempts to hold a 
-        users' idle jobs so that no more will start running thus allowing machines to
-        enter an idle state and be shutdown. This method is not recommended."""
-        log.verbose("Balancing via condor_hold.")
-        log.warning("This method is deprecated, change graceful_shutdown_method in the config.")
-        for vmtype in diff_types.keys():
-            if diff_types[vmtype] > Decimal('0.1'):
-                self.job_pool.hold_vmtype(vmtype)
-            else:
-                self.job_pool.release_vmtype(vmtype)
-        self.remove_idle_machines(machineList, num_to_change)
-
     def filter_fitting_resources(self, num_to_change):
         """Finds the clusters that are capable of booting VMs for a type of job."""
         vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
