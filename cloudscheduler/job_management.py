@@ -69,7 +69,7 @@ class Job:
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
              JobStatus=0, ClusterId=0, ProcId=0, VMType=None, VMNetwork=None,
-             VMCPUArch=None, VMName=None, VMLoc=None, VMAMI=None, VMMem=None,
+             VMCPUCores=None, VMName=None, VMLoc=None, VMAMI=None, VMMem=None,
              VMStorage=None, VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
