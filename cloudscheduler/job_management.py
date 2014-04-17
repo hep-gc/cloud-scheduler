@@ -193,6 +193,7 @@ class Job:
         self.x509userproxy = x509userproxy
         self.original_x509userproxy = SUBMIT_x509userproxy
         self.spool_dir = Iwd
+        self.req_cpuarch=None
         self.x509userproxy_expiry_time = None
         self.proxy_renew_time = CSMyProxyRenewalTime
         self.job_per_core = VMJobPerCore in ['true', "True", True]
