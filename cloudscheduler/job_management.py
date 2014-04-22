@@ -182,9 +182,9 @@ class Job:
             raise ValueError
         self.instance_type = VMInstanceType
         try:
-            self.maximum_price = int(VMMaximumPrice)
+            self.maximum_price = float(VMMaximumPrice)
         except:
-            log.exception("VMMaximumPrice not int: %s" % VMMaximumPrice)
+            log.exception("VMMaximumPrice not float: %s" % VMMaximumPrice)
             raise ValueError
         self.myproxy_server = CSMyProxyServer
         self.myproxy_server_port = CSMyProxyServerPort

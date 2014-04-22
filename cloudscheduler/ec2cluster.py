@@ -268,9 +268,8 @@ class EC2Cluster(cluster_tools.ICluster):
 
                 else: # get a spot instance of no more than maximum_price
                     try:
-                        price_in_dollars = str(float(maximum_price) / 100)
                         reservation = connection.request_spot_instances(
-                                                  price_in_dollars,
+                                                  maximum_price,
                                                   image.id,
                                                   key_name=key_name,
                                                   user_data=user_data,
@@ -280,7 +279,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                                   instance_type=instance_type)
                         spot_id = str(reservation[0].id)
                         instance_id = ""
-                        log.debug("Reserved instance %s at no more than %s" % (spot_id, price_in_dollars))
+                        log.debug("Reserved instance %s at no more than %s" % (spot_id, maximum_price))
                     except AttributeError:
                         log.exception("Your version of boto doesn't seem to support "\
                                   "spot instances. You need at least 1.9")
