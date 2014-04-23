@@ -71,7 +71,7 @@ def ws_epr_factory(workspace_id, nimbus_hostname, nimbus_port=8443):
         # Return the filename of the created metadata file
         return file_name
     else:
-        return none
+        return None
 
 
 def ws_epr(workspace_id, nimbus_hostname, nimbus_port=8443):
