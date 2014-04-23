@@ -126,11 +126,11 @@ class NimbusCluster(cluster_tools.ICluster):
         # Create a workspace metadata xml file
         if not self.temp_lease_storage:
             vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
-                self.cpu_archs, vm_image, vm_storage > 0, self.image_attach_device,
+                self.cpu_archs[0], vm_image, vm_storage > 0, self.image_attach_device,
                 self.scratch_attach_device,)
         else:
             vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
-                self.cpu_archs, vm_image, False, self.image_attach_device,
+                self.cpu_archs[0], vm_image, False, self.image_attach_device,
                 self.scratch_attach_device,)
 
 
