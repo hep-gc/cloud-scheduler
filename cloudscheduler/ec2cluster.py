@@ -377,8 +377,10 @@ class EC2Cluster(cluster_tools.ICluster):
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
 
+        if not instance:
+            return vm.status
         with self.vms_lock:
-            if vm.status != self.VM_STATES.get(instance.state, "Starting"):
+            if instance and vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.state, "Starting")))
