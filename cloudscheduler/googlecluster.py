@@ -41,7 +41,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
                  vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None,
-                 auth_dat_file=None, secret_file=None, security_group=None, project_id=None,enabled=True):
+                 auth_dat_file=None, secret_file=None, security_group=None, project_id=None,enabled=True, priority = 0):
 
         self.gce_hostname_prefix = 'gce-cs-vm'
         self.security_group = security_group
@@ -70,7 +70,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout,enabled=enabled)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout,enabled=enabled, priority=priority)
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,

@@ -59,13 +59,13 @@ class NimbusCluster(cluster_tools.ICluster):
                  netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
                  image_attach_device=config.image_attach_device,
                  scratch_attach_device=config.scratch_attach_device, boot_timeout=None, total_cpu_cores=-1,
-                 temp_lease_storage=False, enabled=True):
+                 temp_lease_storage=False, enabled=True, priority=0):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout= boot_timeout, enabled=enabled)
+                         storage=storage, hypervisor=hypervisor, boot_timeout= boot_timeout, enabled=enabled, priority=priority)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
         self.net_slots = netslots

@@ -281,6 +281,8 @@ class ResourcePool:
         max_vm_storage = int(max_vm_storage) if max_vm_storage != None else -1
         total_cpu_cores = get_or_none(config, cluster, "total_cpu_cores")
         total_cpu_cores = int(total_cpu_cores) if total_cpu_cores != None else -1
+        priority = get_or_none(config, cluster, "priority")
+        priority = int(priority) if priority != None else 0
         hypervisor = get_or_none(config, cluster, "hypervisor")
         if hypervisor == None:
             hypervisor = 'xen'
@@ -322,6 +324,7 @@ class ResourcePool:
                     total_cpu_cores = total_cpu_cores,
                     temp_lease_storage = get_or_none(config, cluster, "temp_lease_storage"),
                     enabled=enabled,
+                    priority = priority,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -346,6 +349,7 @@ class ResourcePool:
                     reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
                     placement_zone = get_or_none(config, cluster, "placement_zone"),
                     enabled=enabled,
+                    priority = priority,
                     )
 
         elif cloud_type == "StratusLab" and stratuslab_support:
@@ -361,6 +365,7 @@ class ResourcePool:
                     hypervisor = hypervisor,
                     contextualization = get_or_none(config, cluster, "contextualization"),
                     enabled=enabled,
+                    priority = priority,
                     )
 
         elif cloud_type.lower() == "ibmsmartcloud":
@@ -377,6 +382,7 @@ class ResourcePool:
                     username= get_or_none(config, cluster, "username"),
                     password= get_or_none(config, cluster, "password"),
                     enabled=enabled,
+                    priority = priority,
                     )
         elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce":
             return googlecluster.GoogleComputeEngineCluster(name = cluster,
@@ -393,6 +399,7 @@ class ResourcePool:
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     project_id = get_or_none(config, cluster, "project_id"),
                     enabled=enabled,
+                    priority = priority,
                     )
         elif cloud_type == "OpenStackNative":
             return openstackcluster.OpenStackCluster(name = cluster,
@@ -420,6 +427,7 @@ class ResourcePool:
                     reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
                     placement_zone = get_or_none(config, cluster, "placement_zone"),
                     enabled=enabled,
+                    priority = priority,
                     )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
@@ -681,6 +689,7 @@ class ResourcePool:
 
         # sort them based on how full and return the list
         fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio())
+        fitting_clusters.sort(key=lambda cluster: cluster.priority)
         return fitting_clusters
 
     def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):

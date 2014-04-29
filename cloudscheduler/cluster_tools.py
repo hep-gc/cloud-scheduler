@@ -291,7 +291,7 @@ class ICluster:
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None, enabled=True):
+                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None, enabled=True, priority=0):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
@@ -313,6 +313,7 @@ class ICluster:
         self.connection_fail_disable_time = config.connection_fail_disable_time
         self.connection_problem = False
         self.errorconnect = None
+        self.priority = priority
 
         self.setup_logging()
         log.debug("New cluster %s created" % self.name)
