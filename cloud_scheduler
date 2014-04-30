@@ -115,7 +115,7 @@ class VMPoller(threading.Thread):
 
                 # If the VM is in an error state, keep track of error and
                 # after passing some threshold destroy the machine.
-                if ret_state == "Error":
+                if ret_state == "Error" or ret_state == "Shutdown":
                     vm.errorcount += 1
                     log.verbose("Error in VM %s, increased counter to %s" % (str(vm.id), str(vm.errorcount)))
                 elif vm.errorcount > 0:
