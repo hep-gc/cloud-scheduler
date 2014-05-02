@@ -161,14 +161,16 @@ class OpenStackCluster(cluster_tools.ICluster):
     def vm_destroy(self, vm, return_resources=True, reason=""):
         """ Destroy a VM on OpenStack."""
         nova = self._get_creds_nova()
-        instance = nova.servers.get(vm.id)
+        import novaclient.exceptions
         try:
+            instance = nova.servers.get(vm.id)
             instance.delete()
+        except novaclient.exceptions.NotFound as e:
+            log.exception("VM %s not found on %s: removing from CS")
         except Exception as e:
             log.exception(e)
             return 1
 
-        
         # Delete references to this VM
         if return_resources:
             self.resource_return(vm)
