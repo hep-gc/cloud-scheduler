@@ -178,23 +178,28 @@ class OpenStackCluster(cluster_tools.ICluster):
         return 0
     def vm_poll(self, vm):
         """ Query OpenStack for status information of VMs."""
+        import novaclient.exceptions
         nova = self._get_creds_nova()
-        instance = nova.servers.get(vm.id)
+        instance = None
+        try:
+            instance = nova.servers.get(vm.id)
+        except novaclient.exceptions.NotFound as e:
+            log.exception("VM %s not found on %s: %s" % (vm.id, self.name, e))
+            vm.status = self.VM_STATES['ERROR']
         with self.vms_lock:
             #print instance.status
             if instance and vm.status != self.VM_STATES.get(instance.status, "Starting"):
 
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.status, "Starting")))
-            if instance.status in self.VM_STATES.keys():
+            if instance and instance.status in self.VM_STATES.keys():
                 vm.status = self.VM_STATES[instance.status]
-            else:
+            elif instance:
                 vm.status = instance.status
+            else:
+                vm.status = self.VM_STATES['ERROR']
         return vm.status
 
-    def _get_creds_ks(self):
-        """Get an auth token to Keystone."""
-        return ksclient.Client(username=self.username, password=self.password, auth_url=self.auth_url, tenant_name=self.tenant_name)
     def _get_creds_nova(self):
         """Get an auth token to Nova."""
         try:
