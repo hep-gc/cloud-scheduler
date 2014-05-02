@@ -39,6 +39,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled, priority=priority)
         try:
             import novaclient.v1_1.client as nvclient
+            import novaclient.exceptions
             #import keystoneclient.v2_0.client as ksclient
         except:
                 print "Unable to import novaclient - cannot use native openstack cloudtypes"
@@ -71,6 +72,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                   vm_keepalive=0, instance_type="", job_per_core=False, 
                   securitygroup=[],key_name="", pre_customization=None):
         """ Create a VM on OpenStack."""
+        import novaclient.exceptions
         nova = self._get_creds_nova()
         if len(key_name) > 0:
             if not nova.keypairs.findall(name=key_name):
@@ -119,31 +121,37 @@ class OpenStackCluster(cluster_tools.ICluster):
         flavor = nova.flavors.find(name=i_type)   
         # Need to get the rotating hostname from the google code to use for here.  
         name = self._generate_next_name()
+        instance = None
         if name:
             try:
                 instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name, userdata=user_data)
                 #print instance.__dict__
+            except novaclient.exceptions.OverLimit as e:
+                log.exception("Quota Exceeded on %s: %s" % (self.name, e.message))
             except Exception as e:
                 #print e
                 log.exception(e)
             if instance:
                 instance_id = instance.id
-            
-            new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
-                        clusteraddr = self.network_address, hostname = name,
-                        cloudtype = self.cloud_type, network = vm_networkassoc,
-                        image= vm_image,
-                        memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
-                        keep_alive = vm_keepalive, job_per_core = job_per_core)
+                
+                new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
+                            clusteraddr = self.network_address, hostname = name,
+                            cloudtype = self.cloud_type, network = vm_networkassoc,
+                            image= vm_image,
+                            memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
+                            keep_alive = vm_keepalive, job_per_core = job_per_core)
     
-            try:
-                self.resource_checkout(new_vm)
-            except:
-                log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-                self.vm_destroy(new_vm, reason="Failed Resource checkout")
+                try:
+                    self.resource_checkout(new_vm)
+                except:
+                    log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
+                    self.vm_destroy(new_vm, reason="Failed Resource checkout")
+                    return self.ERROR
+        
+                self.vms.append(new_vm)
+            else:
+                log.debug("Failed to create instance on %s" % self.name)
                 return self.ERROR
-    
-            self.vms.append(new_vm)
         else:
             log.debug("Unable to generate name for %" % self.name)
             return self.ERROR
