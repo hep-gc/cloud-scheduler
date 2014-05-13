@@ -1796,18 +1796,23 @@ class Cleanup(threading.Thread):
         done to prevent a job's execution from being interupted by Nimbus shutting
         down the VM at the maximum lifetime."""
         for cluster in self.resource_pool.resources:
-            for vm in cluster.vms:
-                # check job_run_times average run time against the vm lifetime
-                if vm.startup_time:
-                    if vm.job_run_times.average() * config.retire_before_lifetime_factor > (config.vm_lifetime*60 - (time.time() - vm.initialize_time)):
-                        # Next job submitted to this VM may not finish running before VM is shutdown
-                        if not vm.force_retire:
-                            (_, ret2, _, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
-                            if ret2 == 0 and ret22 == 0:
-                                vm.force_retire = True
-                                vm.override_status = 'Retiring'
-                            else:
-                                log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
+            try:
+                if cluster.vm_lifetime:
+                    for vm in cluster.vms:
+                        # check job_run_times average run time against the vm lifetime
+                        if vm.startup_time:
+                            if vm.job_run_times.average() * config.retire_before_lifetime_factor > (cluster.vm_lifetime*60 - (time.time() - vm.initialize_time)):
+                                # Next job submitted to this VM may not finish running before VM is shutdown
+                                if not vm.force_retire:
+                                    (_, ret2, _, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                                    if ret2 == 0 and ret22 == 0:
+                                        vm.force_retire = True
+                                        vm.override_status = 'Retiring'
+                                    else:
+                                        log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
+            except AttributeError:
+                # No vm lifetime for Non-Nimbus clouds move on to next 
+                continue
 
     def check_destroy(self, cluster, vm):
         """Make sure there is not already a destroy VM thread for this particular
