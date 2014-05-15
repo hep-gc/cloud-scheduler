@@ -555,6 +555,7 @@ class ResourcePool:
         for cluster in clusters:
             log.verbose("Trying with cluster %s (Name: %s)" % (str(cluster), cluster.name))
             if not cluster.enabled:
+                log.verbose("get_fitting_resources - %s is disabled - skipping" % cluster.name)
                 continue
             if cluster.name in blocked:
                 log.verbose("get_fitting_resources - %s is blocked." % cluster.name)
@@ -562,6 +563,7 @@ class ResourcePool:
             if cluster.__class__.__name__ == "NimbusCluster":
                 # If not valid image file to download
                 if imageloc == "":
+                    log.verbose("get_fitting_resources - No image location set: %s" % cluster.name)
                     continue
                 # If required network is NOT in cluster's network associations
                 # if network is undefined then it means pick whatever, so we
@@ -619,6 +621,7 @@ class ResourcePool:
                 continue
             # If request exceeds the max vm memory on cluster
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
+                log.verbose("get_fitting_resources - memory request exceeds max_vm_mem on %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
