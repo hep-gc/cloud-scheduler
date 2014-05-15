@@ -228,6 +228,7 @@ class Job:
             self.status = self.statuses[1]
         self.override_status = None
         self.block_time = None
+        self.failed_boot = 0
         self.blocked_clouds = []
         self.target_clouds = []
         try:

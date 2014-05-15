@@ -634,6 +634,7 @@ class Scheduler(threading.Thread):
         if create_ret == 0:
             # Mark job as scheduled
             self.job_pool.schedule(job)
+            job.failed_boot = 0
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, True)
         elif create_ret == -1: # proxy problem 
@@ -647,6 +648,10 @@ class Scheduler(threading.Thread):
                 log.info("Resources on cloud adjusted due to insufficient availability.")
             else:
                 log.debug("Insufficient resources to boot VM, will keep trying.")
+                job.failed_boot += 1
+            if job.failed_boot > 5:
+                log.debug("Repeatedly failed to boot VM for job %s blocking temporarily." % job.id)
+                job.block_time = int(time.time())
             return False
         elif create_ret == -3: # exceeded maximum or not authorized
             for cloud in good_resources:
