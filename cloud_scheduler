@@ -791,6 +791,7 @@ class Scheduler(threading.Thread):
         
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
+        cloud_name_file_dest = "/var/lib/cloud_name"
         for resource in good_resources:
             # Print details of the resource selected
             if resource == None:
@@ -802,6 +803,7 @@ class Scheduler(threading.Thread):
             #TODO: unify this
             if resource.__class__.__name__ == "NimbusCluster":
                 customizations.append(("nimbus", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
                 imageloc = job.req_imageloc
                 imagesplit = imageloc.split('/')
                 if '__hypervisor__' in imagesplit:
@@ -831,6 +833,7 @@ class Scheduler(threading.Thread):
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "EC2Cluster":
                 customizations.append((resource.cloud_type, cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
@@ -850,6 +853,7 @@ class Scheduler(threading.Thread):
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "IBMCluster":
                 customizations.append(("ibm", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
@@ -867,6 +871,7 @@ class Scheduler(threading.Thread):
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "StratusLabCluster":
                 customizations.append(("stratuslab", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
@@ -882,6 +887,7 @@ class Scheduler(threading.Thread):
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "GoogleComputeEngineCluster":
                 customizations.append(("gce", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
@@ -899,6 +905,7 @@ class Scheduler(threading.Thread):
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "OpenStackCluster":
                 customizations.append((resource.cloud_type, cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
                 args = {'vm_name':job.req_image,
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
