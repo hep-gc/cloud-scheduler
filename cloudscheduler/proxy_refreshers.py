@@ -29,6 +29,7 @@ class JobProxyRefresher(threading.Thread):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.job_pool = job_pool
         self.quit = False
+        self.heart_beat = time.time()
         self.polling_interval = config.job_proxy_refresher_interval # proxy expiry time poll interval, in seconds
 
     def stop(self):
@@ -76,6 +77,7 @@ class JobProxyRefresher(threading.Thread):
 
                 log.verbose("JobProxyRefresher waiting %ds..." % self.polling_interval)
                 sleep_tics = self.polling_interval
+                self.heart_beat = time.time()
                 while (not self.quit) and sleep_tics > 0:
                     time.sleep(1)
                     sleep_tics -= 1
@@ -96,6 +98,7 @@ class VMProxyRefresher(threading.Thread):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.cloud_resources = cloud_resources
         self.quit = False
+        self.heart_beat = time.time()
         self.polling_interval = config.vm_proxy_refresher_interval # proxy expiry time poll interval, in seconds
 
     def stop(self):
@@ -143,6 +146,7 @@ class VMProxyRefresher(threading.Thread):
 
                 log.verbose("VMProxyRefresher waiting %ds..." % self.polling_interval)
                 sleep_tics = self.polling_interval
+                self.heart_beat = time.time()
                 while (not self.quit) and sleep_tics > 0:
                     time.sleep(1)
                     sleep_tics -= 1
@@ -227,7 +231,7 @@ class MyProxyProxyRefresher():
                 # Don't forget to reset the proxy expiry time cache.
                 joborvm.reset_x509userproxy_expiry_time()
             else:
-                log.error("Error renewing proxy for job %s" % (job.id))
+                log.error("Error renewing proxy for job %s" % (joborvm.id))
         elif joborvm is isinstance(VM):
             if self.renew_proxy(joborvm.get_proxy_file(), joborvm.get_myproxy_creds_name(), joborvm.get_myproxy_server(), joborvm.get_myproxy_server_port()):
                 # Yay, proxy renewal worked! :-)

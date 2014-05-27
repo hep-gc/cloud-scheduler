@@ -71,6 +71,7 @@ class VMPoller(threading.Thread):
         self.running_poll_interval = 900 # 15 minutes
         self.run_interval = config.vm_poller_interval
         self.destroy_threads = {}
+        self.heart_beat = time.time()
 
     def stop(self):
         log.debug("Waiting for VM polling loop to end")
@@ -86,6 +87,7 @@ class VMPoller(threading.Thread):
             sleep_tics = self.run_interval
             elapsed_loop_time = time.time() - start_loop_time
             log.verbose("VMPoller thread loop time: %s" % str(elapsed_loop_time))
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -191,6 +193,7 @@ class JobPoller(threading.Thread):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.job_pool = job_pool
         self.quit = False
+        self.heart_beat = time.time()
         self.polling_interval = config.job_poller_interval
 
     def stop(self):
@@ -230,6 +233,7 @@ class JobPoller(threading.Thread):
                 sleep_tics = self.polling_interval
                 elapsed_loop_time = time.time() - start_loop_time
                 log.verbose("JobPoller loop time: %s" % elapsed_loop_time)
+                self.heart_beat = time.time()
                 while (not self.quit) and sleep_tics > 0:
                     time.sleep(1)
                     sleep_tics -= 1
@@ -247,6 +251,7 @@ class MachinePoller(threading.Thread):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.resource_pool = resource_pool
         self.quit = False
+        self.heart_beat = time.time()
         self.polling_interval = config.machine_poller_interval
 
     def stop(self):
@@ -275,6 +280,7 @@ class MachinePoller(threading.Thread):
             sleep_tics = self.polling_interval
             elapsed_loop_time = time.time() - start_loop_time
             log.verbose("MachinePoller loop time: %s" % str(elapsed_loop_time))
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -302,6 +308,7 @@ class Scheduler(threading.Thread):
         self.job_pool      = job_pool
         self.quit          = False
         self.quick_exit    = False
+        self.heart_beat = time.time()
         self.scheduling_interval = config.scheduler_interval
 
         if config.scheduling_algorithm.lower() == "fairshare":
@@ -341,6 +348,7 @@ class Scheduler(threading.Thread):
             sleep_tics = self.scheduling_interval
             elapsed_loop_time = time.time() - start_loop_time
             log.verbose("Scheduler loop time: %s" % str(elapsed_loop_time))
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -937,6 +945,7 @@ class Cleanup(threading.Thread):
         self.quit = False
         self.polling_interval = config.cleanup_interval
         self.destroy_threads = {}
+        self.heart_beat = time.time()
         
         #Different scheduling algorithms require different balancing
         if(config.scheduling_algorithm.lower() == "fifo"):
@@ -1007,6 +1016,7 @@ class Cleanup(threading.Thread):
             sleep_tics = self.polling_interval
             elapsed_loop_time = time.time() - start_loop_time
             log.verbose("Cleanup thread loop time: %s" % str(elapsed_loop_time))
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -1985,6 +1995,7 @@ class GetClouds(threading.Thread):
         self.resource_pool = resource_pool
         self.quit = False
         self.polling_interval = 10 # secondsgetCloudsClient
+        self.heart_beat = time.time()
         #self.getclouds = getCloudsClient()
 
     def stop(self):
@@ -2011,6 +2022,7 @@ class GetClouds(threading.Thread):
 
             log.verbose("getclouds waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -2182,11 +2194,15 @@ def main():
     try:
         die = False
         while not die:
+            now = time.time()
             for thread in service_threads:
                 if not thread.isAlive():
                     log.error("%s thread died!" % thread.name)
                     die = True
-            time.sleep(1)
+                if now - thread.heart_beat > 1800: # 30 minutes no update - make configureable
+                    # Thread has become unresponsive
+                    pass
+                time.sleep(1)
     except (SystemExit, KeyboardInterrupt):
         log.info("Caught a signal that someone wants me to quit!")
         should_be_running = False
