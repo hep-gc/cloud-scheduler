@@ -102,7 +102,11 @@ class OpenStackCluster(cluster_tools.ICluster):
                     except:
                         log.exception("Can't find a suitable AMI")
                         return
-        image = nova.images.find(name=image)
+        try:
+            image = nova.images.find(name=image)
+        except Exception as e:
+            log.exception("Exception occured while trying to fetch image: %s" % e)
+            return
         try:
             if self.name in instance_type.keys():
                 i_type = instance_type[self.name]
