@@ -74,9 +74,11 @@ class OpenStackCluster(cluster_tools.ICluster):
         """ Create a VM on OpenStack."""
         import novaclient.exceptions
         nova = self._get_creds_nova()
-        if len(key_name) > 0:
+        if key_name and len(key_name) > 0:
             if not nova.keypairs.findall(name=key_name):
                 key_name = ""
+        else:
+            key_name = ""
         if customization:
             user_data = nimbus_xml.ws_optional(customization)
         else:
