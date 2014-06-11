@@ -919,7 +919,8 @@ class Scheduler(threading.Thread):
                         'vm_keepalive':job.keep_alive,
                         'instance_type':job.instance_type,
                         'job_per_core':job.job_per_core,
-                        'securitygroup':job.req_security_group}
+                        'securitygroup':job.req_security_group,
+                        'key_name':job.key_name}
                 create_ret = resource.vm_create(**args)
 
             # If the VM create fails, try again on another resource
