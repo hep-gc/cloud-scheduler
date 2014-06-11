@@ -78,7 +78,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             if not nova.keypairs.findall(name=key_name):
                 key_name = ""
         else:
-            key_name = ""
+            key_name = self.key_name if self.key_name else ""
         if customization:
             user_data = nimbus_xml.ws_optional(customization)
         else:
