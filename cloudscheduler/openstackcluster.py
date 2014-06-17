@@ -123,8 +123,12 @@ class OpenStackCluster(cluster_tools.ICluster):
                     i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
             except:
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
-                i_type = self.DEFAULT_INSTANCE_TYPE   
-        flavor = nova.flavors.find(name=i_type)   
+                i_type = self.DEFAULT_INSTANCE_TYPE
+        try:   
+            flavor = nova.flavors.find(name=i_type)
+        except Exception as e:
+            log.exception("Exception ocurred while trying to get flavor: %s " % e)
+            return   
         # Need to get the rotating hostname from the google code to use for here.  
         name = self._generate_next_name()
         instance = None
