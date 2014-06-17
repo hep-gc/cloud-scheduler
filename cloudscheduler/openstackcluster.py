@@ -107,7 +107,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         try:
             image = nova.images.find(name=image)
         except Exception as e:
-            log.exception("Exception occured while trying to fetch image: %s" % e)
+            log.exception("Exception occurred while trying to fetch image: %s" % e)
             return
         try:
             if self.name in instance_type.keys():
