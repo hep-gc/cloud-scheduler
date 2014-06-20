@@ -171,7 +171,7 @@ class MyProxyProxyRefresher():
             return False
 
         if myproxy_creds_name == None:
-            log.error("Missing MyProxy credential name for job %s" % (job.id))
+            log.error("Missing MyProxy credential name for job.")
             return False
 
         if myproxy_server == None:
