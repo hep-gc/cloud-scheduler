@@ -207,7 +207,7 @@ class Job:
         self.ban_time = None
         self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
         self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
-        self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
+        self.proxy_non_boot = VMProxyNonBoot in ['true', 'True', True, 'TRUE']
         self.vmimage_proxy_file = VMImageProxyFile
         try:
             self.usertype_limit = int(VMTypeLimit)
@@ -221,7 +221,7 @@ class Job:
         self.req_security_group = splitnstrip(',', VMSecurityGroup)
         self.user_data = splitnstrip(',', VMUserData)
         self.ami_config = VMAMIConfig
-        self.use_cloud_init = VMUseCloudInit
+        self.use_cloud_init = VMUseCloudInit in ['true', 'True', True, 'TRUE']
 
         # Set the new job's status
         if self.job_status == 2:
