@@ -229,9 +229,9 @@ class EC2Cluster(cluster_tools.ICluster):
                 for item in pre_customization:
                     user_data = '\n'.join([item, user_data])
             else:
-                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
+                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)[0]
         elif use_cloud_init:
-            user_data = cloud_init_util.inject_customizations([], user_data)
+            user_data = cloud_init_util.inject_customizations([], user_data)[0]
 
         if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
             log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)
