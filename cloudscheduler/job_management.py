@@ -80,7 +80,7 @@ class Job:
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
-             VMSecurityGroup="", VMUserData="", VMAMIConfig=None, **kwargs):
+             VMSecurityGroup="", VMUserData="", VMAMIConfig=None, VMUseCloudInit=False **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -155,6 +155,7 @@ class Job:
         self.req_image    = VMName
         self.req_imageloc = VMLoc
         self.req_ami      = VMAMI
+
         try:
             self.req_memory   = int(VMMem)
         except:
@@ -220,6 +221,7 @@ class Job:
         self.req_security_group = splitnstrip(',', VMSecurityGroup)
         self.user_data = splitnstrip(',', VMUserData)
         self.ami_config = VMAMIConfig
+        self.use_cloud_init = VMUseCloudInit
 
         # Set the new job's status
         if self.job_status == 2:

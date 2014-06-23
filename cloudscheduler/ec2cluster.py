@@ -7,6 +7,7 @@ import logging
 import nimbus_xml
 import subprocess
 import cluster_tools
+import cloud_init_util
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.job_management import _attr_list_to_dict
@@ -148,7 +149,7 @@ class EC2Cluster(cluster_tools.ICluster):
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   pre_customization=None, vm_keepalive=0, instance_type="", 
                   maximum_price=0, job_per_core=False, securitygroup=[],
-                  key_name=""):
+                  key_name="",use_cloud_init=False):
         """Attempt to boot a new VM on the cluster."""
         #print vm_image
         #print instance_type
@@ -217,12 +218,20 @@ class EC2Cluster(cluster_tools.ICluster):
         if key_name == None:
             key_name = self.key_name
         if customization:
-            user_data = nimbus_xml.ws_optional(customization)
+            if not use_cloud_init:
+                user_data = nimbus_xml.ws_optional(customization)
+            else:
+                user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
             user_data = ""
         if pre_customization:
-            for item in pre_customization:
-                user_data = '\n'.join([item, user_data])
+            if not use_cloud_init:
+                for item in pre_customization:
+                    user_data = '\n'.join([item, user_data])
+            else:
+                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
+        elif use_cloud_init:
+            user_data = cloud_init_util.inject_customizations([], user_data)
 
         if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
             log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)

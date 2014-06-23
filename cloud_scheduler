@@ -677,8 +677,172 @@ class Scheduler(threading.Thread):
         """Helper function for performaing the creation calls to IaaS clouds."""
         # Create an optional customization metadata file
         log.verbose("Preparing to create vm for job '%s'." % job.id)
-        customizations = []
+        customizations = self.build_customizations_list(job)
         create_ret = None
+
+        pre_customizations = []
+        if job.ami_config:
+            try:
+                if job.ami_config.startswith('http'):
+                    file_content = urllib2.urlopen(job.ami_config).read()
+                elif os.path.isfile(job.ami_config):
+                    file_content = open(job.ami_config).read()
+                pre_customizations.append(file_content)
+            except:
+                log.error("Unable to read ami_config - check path or url: %s" % job.ami_config)               
+
+        log.verbose("Finished customizations for job '%s'" % job.id)
+        cloud_type_file_dest = "/var/lib/cloud_type"
+        cloud_name_file_dest = "/var/lib/cloud_name"
+        for resource in good_resources:
+            # Print details of the resource selected
+            if resource == None:
+                log.debug("None resource in good_resources ??")
+                continue
+            log.debug("Booting VM for job %s on: %s" % (job.id, resource.name))
+            resource.log()
+
+            #TODO: unify this
+            if resource.__class__.__name__ == "NimbusCluster":
+                customizations.append(("nimbus", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                imageloc = job.req_imageloc
+                imagesplit = imageloc.split('/')
+                if '__hypervisor__' in imagesplit:
+                    index = imagesplit.index('__hypervisor__')
+                    imagesplit[index] = resource.hypervisor
+                    imageloc = '/'.join(imagesplit)
+
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_cpuarch':job.req_cpuarch,
+                        'vm_image':imageloc,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'job_proxy_file_path':job.get_x509userproxy(),
+                        'myproxy_creds_name':job.get_myproxy_creds_name(), 
+                        'myproxy_server':job.get_myproxy_server(),
+                        'myproxy_server_port':job.get_myproxy_server_port(),
+                        'job_per_core':job.job_per_core,
+                        'proxy_non_boot':job.proxy_non_boot,
+                        'vmimage_proxy_file':job.vmimage_proxy_file,
+                        'vmimage_proxy_file_path':job.get_vmimage_proxy_file_path()}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "EC2Cluster":
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_ami,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'pre_customization': pre_customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':job.instance_type,
+                        'maximum_price':job.maximum_price,
+                        'job_per_core':job.job_per_core,
+                        'securitygroup':job.req_security_group,
+                        'key_name': job.key_name,
+                        'use_cloud_init': job.use_cloud_init}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "IBMCluster":
+                customizations.append(("ibm", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_image_id,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':job.req_instance_type_ibm,
+                        'location':job.location,
+                        'job_per_core':job.job_per_core,
+                        'vm_keyname':job.key_name}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "StratusLabCluster":
+                customizations.append(("stratuslab", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_image_id,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'job_per_core':job.job_per_core,
+                        'vm_loc':job.req_imageloc}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "GoogleComputeEngineCluster":
+                customizations.append(("gce", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_ami,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':job.instance_type,
+                        'maximum_price':job.maximum_price,
+                        'job_per_core':job.job_per_core,
+                        'securitygroup':job.req_security_group}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "OpenStackCluster":
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_ami,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'pre_customization':pre_customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':job.instance_type,
+                        'job_per_core':job.job_per_core,
+                        'securitygroup':job.req_security_group,
+                        'key_name':job.key_name,
+                        'use_cloud_init': job.use_cloud_init}
+                create_ret = resource.vm_create(**args)
+
+            # If the VM create fails, try again on another resource
+            if (create_ret != 0):
+                log.debug("Creating VM for job %s failed on %s. " % (job.id, resource.name))
+                continue
+
+            # If the vm create didn't fail, break out of the loop
+            break
+
+        # If VM creation fails for user-job on all resources move to next user
+        if create_ret != 0:
+            log.debug("None of the resources could boot a vm for job %s. " % job.id + \
+                      "Leaving %s's job unscheduled." % job.user)
+        return create_ret
+
+    def build_customizations_list(self, job):
+        customizations = []
         if config.condor_host != "localhost" and config.condor_context_file:
             customizations.append((config.condor_host, config.condor_context_file))
 
@@ -777,165 +941,7 @@ class Scheduler(threading.Thread):
                         customizations.append((file_content, destination, executable)) 
                     except:
                         log.error('Error reading userdata %s' % (userdata))
-        
-        pre_customizations = []
-        if job.ami_config:
-            try:
-                if job.ami_config.startswith('http'):
-                    file_content = urllib2.urlopen(job.ami_config).read()
-                elif os.path.isfile(job.ami_config):
-                    file_content = open(job.ami_config).read()
-                pre_customizations.append(file_content)
-            except:
-                log.error("Unable to read ami_config - check path or url: %s" % job.ami_config)               
-        
-        log.verbose("Finished customizations for job '%s'" % job.id)
-        cloud_type_file_dest = "/var/lib/cloud_type"
-        cloud_name_file_dest = "/var/lib/cloud_name"
-        for resource in good_resources:
-            # Print details of the resource selected
-            if resource == None:
-                log.debug("None resource in good_resources ??")
-                continue
-            log.debug("Booting VM for job %s on: %s" % (job.id, resource.name))
-            resource.log()
-
-            #TODO: unify this
-            if resource.__class__.__name__ == "NimbusCluster":
-                customizations.append(("nimbus", cloud_type_file_dest))
-                customizations.append((resource.name, cloud_name_file_dest))
-                imageloc = job.req_imageloc
-                imagesplit = imageloc.split('/')
-                if '__hypervisor__' in imagesplit:
-                    index = imagesplit.index('__hypervisor__')
-                    imagesplit[index] = resource.hypervisor
-                    imageloc = '/'.join(imagesplit)
-
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_cpuarch':job.req_cpuarch,
-                        'vm_image':imageloc,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'job_proxy_file_path':job.get_x509userproxy(),
-                        'myproxy_creds_name':job.get_myproxy_creds_name(), 
-                        'myproxy_server':job.get_myproxy_server(),
-                        'myproxy_server_port':job.get_myproxy_server_port(),
-                        'job_per_core':job.job_per_core,
-                        'proxy_non_boot':job.proxy_non_boot,
-                        'vmimage_proxy_file':job.vmimage_proxy_file,
-                        'vmimage_proxy_file_path':job.get_vmimage_proxy_file_path()}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "EC2Cluster":
-                customizations.append((resource.cloud_type, cloud_type_file_dest))
-                customizations.append((resource.name, cloud_name_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_image':job.req_ami,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'pre_customization': pre_customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type,
-                        'maximum_price':job.maximum_price,
-                        'job_per_core':job.job_per_core,
-                        'securitygroup':job.req_security_group,
-                        'key_name': job.key_name}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "IBMCluster":
-                customizations.append(("ibm", cloud_type_file_dest))
-                customizations.append((resource.name, cloud_name_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_image':job.req_image_id,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'instance_type':job.req_instance_type_ibm,
-                        'location':job.location,
-                        'job_per_core':job.job_per_core,
-                        'vm_keyname':job.key_name}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "StratusLabCluster":
-                customizations.append(("stratuslab", cloud_type_file_dest))
-                customizations.append((resource.name, cloud_name_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_image':job.req_image_id,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'job_per_core':job.job_per_core,
-                        'vm_loc':job.req_imageloc}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "GoogleComputeEngineCluster":
-                customizations.append(("gce", cloud_type_file_dest))
-                customizations.append((resource.name, cloud_name_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_image':job.req_ami,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type,
-                        'maximum_price':job.maximum_price,
-                        'job_per_core':job.job_per_core,
-                        'securitygroup':job.req_security_group}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "OpenStackCluster":
-                customizations.append((resource.cloud_type, cloud_type_file_dest))
-                customizations.append((resource.name, cloud_name_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_image':job.req_ami,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'pre_customization':pre_customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type,
-                        'job_per_core':job.job_per_core,
-                        'securitygroup':job.req_security_group,
-                        'key_name':job.key_name}
-                create_ret = resource.vm_create(**args)
-
-            # If the VM create fails, try again on another resource
-            if (create_ret != 0):
-                log.debug("Creating VM for job %s failed on %s. " % (job.id, resource.name))
-                continue
-
-            # If the vm create didn't fail, break out of the loop
-            break
-
-        # If VM creation fails for user-job on all resources move to next user
-        if create_ret != 0:
-            log.debug("None of the resources could boot a vm for job %s. " % job.id + \
-                      "Leaving %s's job unscheduled." % job.user)
-        return create_ret
+        return customizations
 
 class Cleanup(threading.Thread):
     """
