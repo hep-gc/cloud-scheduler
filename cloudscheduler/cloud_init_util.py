@@ -42,8 +42,8 @@ def build_write_files_cloud_init(custom_tasks):
     for task in custom_tasks:
         if not task[1][0] or task[1][0] != '/':
             continue
-        cloud_init.append('content: |')
-        cloud_init.append(task[0])
-        cloud_init.append('path: %s' % task[1])
+        cloud_init.append('-   content: |')
+        cloud_init.append(''.join(['        ', task[0]]))
+        cloud_init.append('    path: %s' % task[1])
     return cloud_init
         
