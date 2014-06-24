@@ -8,6 +8,7 @@ import logging
 import nimbus_xml
 import subprocess
 import cluster_tools
+import cloud_init_util
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.job_management import _attr_list_to_dict
@@ -70,7 +71,7 @@ class OpenStackCluster(cluster_tools.ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", job_per_core=False, 
-                  securitygroup=[],key_name="", pre_customization=None):
+                  securitygroup=[],key_name="", pre_customization=None, use_cloud_init=False):
         """ Create a VM on OpenStack."""
         import novaclient.exceptions
         nova = self._get_creds_nova()
@@ -80,12 +81,21 @@ class OpenStackCluster(cluster_tools.ICluster):
         else:
             key_name = self.key_name if self.key_name else ""
         if customization:
-            user_data = nimbus_xml.ws_optional(customization)
+            if not use_cloud_init:
+                user_data = nimbus_xml.ws_optional(customization)
+            else:
+                user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
             user_data = ""
         if pre_customization:
-            for item in pre_customization:
-                user_data = '\n'.join([item, user_data])
+            if not use_cloud_init:
+                for item in pre_customization:
+                    user_data = '\n'.join([item, user_data])
+            else:
+                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)[0]
+        elif use_cloud_init:
+            user_data = cloud_init_util.inject_customizations([], user_data)[0]
+        
         try:
             image = vm_image[self.name]
         except:
