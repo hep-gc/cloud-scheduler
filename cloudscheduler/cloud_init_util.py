@@ -12,28 +12,28 @@ def inject_customizations(pre_init, cloud_init):
     found_write_files = False
     found_cloud_init = False
     index_of_write_files = 0
-    index_pre = 0
-    for k, initscript in enumerate(pre_init):
-        for i, line in enumerate(initscript): # need to iterate with index counts as well
+    for initscript in pre_init:
+        splitscript = initscript.split('\n')
+        
+        for i, line in enumerate(splitscript): # need to iterate with index counts as well
             if line == '#cloud-config':
                 found_cloud_init = True
             if line == 'write_files:':
                 found_write_files = True
                 index_of_write_files = i # save the index to insert at later
-                index_pre = k
                 break
-        if found_write_files:
-            break
+            if found_write_files:
+                break
     if not found_write_files:
         # no writes_files found - inject one at end and do customizations
         cloud_init.insert(0, 'write_files:')
         pre_init.append('\n'.join(cloud_init))
     else:
         # need to insert at the index
-        pre_init[index_pre].insert(index_of_write_files+1, '\n'.join(cloud_init))
+        splitscript.insert(index_of_write_files+1, '\n'.join(cloud_init))
     if not found_cloud_init:
-        pre_init[index_pre] = ''.join(['#cloud-config\n', pre_init[index_pre]])
-    return pre_init
+        splitscript.insert(0, '#cloud-config')
+    return '\n'.join(splitscript)
     
 def build_write_files_cloud_init(custom_tasks):
     """

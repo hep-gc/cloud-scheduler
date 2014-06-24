@@ -92,7 +92,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                 for item in pre_customization:
                     user_data = '\n'.join([item, user_data])
             else:
-                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)[0]
+                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
         elif use_cloud_init:
             user_data = cloud_init_util.inject_customizations([], user_data)[0]
         
