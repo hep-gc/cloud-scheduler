@@ -1230,7 +1230,10 @@ class ResourcePool:
             log.exception("Unknown problem opening persistence file!")
             return
         persistence_file.close()
-
+        
+        empty_vm = cluster_tools.VM()
+        empty_vm_key_set = set(empty_vm.__dict__)
+        
         for old_cluster in old_resources:
             old_cluster.setup_logging()
 
@@ -1241,6 +1244,14 @@ class ResourcePool:
                 if new_cluster:
                     try:
                         new_cluster.resource_checkout(vm)
+                        try:
+                            # Add any new attributes to VM object loaded from pickle
+                            vm_key_set = set(vm.__dict__)
+                            key_diff = empty_vm_key_set - vm_key_set
+                            while len(key_diff) > 0:
+                                vm.__dict__[key_diff.pop()] = None
+                        except Exception as e:
+                            log.exception("Exception appending new keys %s" % e)
                         new_cluster.vms.append(vm)
                         log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
                     except cluster_tools.NoResourcesError, e:
