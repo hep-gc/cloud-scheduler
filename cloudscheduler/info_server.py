@@ -207,13 +207,12 @@ class InfoServer(threading.Thread,):
             def get_job(self, jobid):
                 output = "Job not found."
                 job = job_pool.job_container.get_job_by_id(jobid)
-                if job != null:
-                    output = job_match.get_job_info_pretty()
+                if job != None:
+                    output = job.get_job_info_pretty()
                 return output
             def get_json_job(self, jobid):
-                output = '{}'
                 job_match = job_pool.job_container.get_job_by_id(jobid)
-                return JobJSONEncoder().encode(job)
+                return JobJSONEncoder().encode(job_match)
             def get_json_jobpool(self):
                 return JobPoolJSONEncoder().encode(job_pool)
             def get_ips_munin(self):
@@ -384,7 +383,7 @@ class VMJSONEncoder(json.JSONEncoder):
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
                 'ipaddress': vm.ipaddress,
                 'cloudtype': vm.cloudtype, 'network': vm.network, 
-                'cpuarch': vm.cpuarch, 'image': vm.image,
+                'image': vm.image,
                 'memory': vm.memory, 'mementry': vm.mementry, 
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status, 'condoraddr': vm.condoraddr,
@@ -415,7 +414,6 @@ class ClusterJSONEncoder(json.JSONEncoder):
             vmDecodes.append(json.loads(vm))
         return {'name': cluster.name, 'network_address': cluster.network_address,
                 'cloud_type': cluster.cloud_type, 'memory': cluster.memory, 
-                'cpu_archs': cluster.cpu_archs, 
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
                 'storageGB': cluster.storageGB, 'vms': vmDecodes, 'enabled':cluster.enabled,
@@ -447,7 +445,7 @@ class JobJSONEncoder(json.JSONEncoder):
         return {'id': job.id, 'user': job.user, 'priority': job.priority,
                 'job_status': job.job_status, 'cluster_id': job.cluster_id,
                 'proc_id': job.proc_id, 'req_vmtype': job.req_vmtype,
-                'req_network': job.req_network, 'req_cpuarch': job.req_cpuarch,
+                'req_network': job.req_network,
                 'req_image': job.req_image, 'req_imageloc': job.req_imageloc,
                 'req_ami': job.req_ami, 'req_memory': job.req_memory,
                 'req_cpucores': job.req_cpucores, 'req_storage': job.req_storage,
