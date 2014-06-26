@@ -383,7 +383,7 @@ class VMJSONEncoder(json.JSONEncoder):
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
                 'ipaddress': vm.ipaddress,
                 'cloudtype': vm.cloudtype, 'network': vm.network, 
-                'image': vm.image,
+                'image': vm.image, 'alt_hostname': vm.alt_hostname,
                 'memory': vm.memory, 'mementry': vm.mementry, 
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status, 'condoraddr': vm.condoraddr,
