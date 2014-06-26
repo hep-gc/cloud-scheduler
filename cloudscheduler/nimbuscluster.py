@@ -76,7 +76,7 @@ class NimbusCluster(cluster_tools.ICluster):
         self.max_slots = total_pool_slots
         self.max_vm_storage = max_vm_storage
         self.total_cpu_cores = total_cpu_cores
-        self.vm_lifetime = vm_lifetime if vm_lifetime != None else config.vm_lifetime
+        self.vm_lifetime = int(vm_lifetime) if vm_lifetime != None else config.vm_lifetime
         self.scratch_attach_device = scratch_attach_device if scratch_attach_device != None else config.scratch_attach_device
         self.image_attach_device = image_attach_device if image_attach_device != None else config.image_attach_device
         self.temp_lease_storage = temp_lease_storage if temp_lease_storage != None else False
