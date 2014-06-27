@@ -875,7 +875,7 @@ class Scheduler(threading.Thread):
             customizations.append((file_contents, file_location))
 
         # Copy CA root certs and signing policies if needed.
-        if config.ca_root_certs:
+        if config.ca_root_certs and job.inject_ca:
             for entry in config.ca_root_certs:
                 source = entry.split(':')[0]
                 if entry.find(':') != -1:
@@ -888,7 +888,7 @@ class Scheduler(threading.Thread):
                 except:
                     log.error('Error reading %s' % (source))
 
-        if config.ca_signing_policies:
+        if config.ca_signing_policies and job.inject_ca:
             for entry in config.ca_signing_policies:
                 source = entry.split(':')[0]
                 if entry.find(':') != -1:
