@@ -1020,7 +1020,7 @@ class JobPool:
             type_desired[vmtype] *= num_users
         return type_desired
 
-    def get_jobs_of_type_for_user(self, type, user):
+    def get_jobs_of_type_for_user(self, vmtype, user):
         """
         get_jobs_of_type_for_user -- get a list of jobs of a VMtype for a user
 
