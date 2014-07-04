@@ -151,9 +151,8 @@ class EC2Cluster(cluster_tools.ICluster):
                   maximum_price=0, job_per_core=False, securitygroup=[],
                   key_name="",use_cloud_init=False):
         """Attempt to boot a new VM on the cluster."""
-        #print vm_image
-        #print instance_type
-        #print securitygroup
+
+        use_cloud_init = use_cloud_init or config.use_cloud_init
         log.verbose("Trying to boot %s on %s" % (vm_type, self.network_address))
         if len(securitygroup) != 0:
             sec_group = []

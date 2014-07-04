@@ -73,7 +73,9 @@ class OpenStackCluster(cluster_tools.ICluster):
                   vm_keepalive=0, instance_type="", job_per_core=False, 
                   securitygroup=[],key_name="", pre_customization=None, use_cloud_init=False):
         """ Create a VM on OpenStack."""
+
         import novaclient.exceptions
+        use_cloud_init = use_cloud_init or config.use_cloud_init
         nova = self._get_creds_nova()
         if key_name and len(key_name) > 0:
             if not nova.keypairs.findall(name=key_name):
@@ -234,16 +236,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         except Exception as e:
             log.error("Unable to create connection to %s: Reason: %s" % (self.name, e))
         return client 
-    def _get_creds_nova_alt(self):
-        """Get an auth token to Nova."""
-        try:
-            import novaclient.v1_1.client as nvclient
-        except:
-                print "Unable to import novaclient - cannot use native openstack cloudtypes"
-                sys.exit(1)
 
-        return nvclient.Client(username=self.access_key_id, api_key=self.secret_access_key, auth_url=self.auth_url, project_id=self.tenant_name)
-    
     def _generate_next_name(self):
         name = ''.join([self.name.replace('_', '-'), '-', str(uuid.uuid4())])
         collision = False
