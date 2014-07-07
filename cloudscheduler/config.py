@@ -111,6 +111,7 @@ default_VMProxyNonBoot = False
 default_VMUserData = []
 default_TargetClouds = []
 default_VMAMIConfig = ""
+default_VMInjectCA = True
 
 log_level = "INFO"
 log_location = None
@@ -220,6 +221,7 @@ def setup(path=None):
     global default_VMUserData
     global default_TargetClouds
     global default_VMAMIConfig
+    global default_VMInjectCA
 
     global log_level
     global log_location
@@ -819,6 +821,13 @@ def setup(path=None):
 
     if config_file.has_option("job", "default_VMAMIConfig"):
         default_VMAMIConfig = config_file.get("job", "default_VMAMIConfig")
+
+    if config_file.has_option("job", "default_VMInjectCA"):
+        try:
+            default_VMInjectCA = config_file.getboolean("global", "default_VMInjectCA")
+        except ValueError:
+            print "Configuration file problem: default_VMInjectCA must be a" \
+                  " Boolean value."
     
     # Derived options
     if condor_host_on_vm:
