@@ -1911,7 +1911,6 @@ class Cleanup(threading.Thread):
                         log.debug("VM %s Still has non-idle slots." % vm.name)
                         continue
 
-                    vmtype = vm.vmtype
                     vmuser = None
                     try:
                         vmuser = re.search('(?<=Owner == ")\w+', vm.start_req).group(0)
