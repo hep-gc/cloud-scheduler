@@ -824,7 +824,7 @@ def setup(path=None):
 
     if config_file.has_option("job", "default_VMInjectCA"):
         try:
-            default_VMInjectCA = config_file.getboolean("global", "default_VMInjectCA")
+            default_VMInjectCA = config_file.getboolean("job", "default_VMInjectCA")
         except ValueError:
             print "Configuration file problem: default_VMInjectCA must be a" \
                   " Boolean value."
