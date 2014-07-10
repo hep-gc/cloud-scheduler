@@ -1705,7 +1705,7 @@ class Cleanup(threading.Thread):
     def want_to_balance(self, num_to_change):
         """Checks is balancing is necessary."""
         balance = False
-        for key, val in num_to_change.iteritems():
+        for key in num_to_change.keys():
             if num_to_change[key] < 0:
                 balance = True
                 break
