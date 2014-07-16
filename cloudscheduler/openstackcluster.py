@@ -210,6 +210,8 @@ class OpenStackCluster(cluster_tools.ICluster):
         except novaclient.exceptions.NotFound as e:
             log.exception("VM %s not found on %s: %s" % (vm.id, self.name, e))
             vm.status = self.VM_STATES['ERROR']
+        except Exception as e:
+            log.exception("Unexpected exception occurred polling vm %s: %s" % (vm.id, e))
         with self.vms_lock:
             #print instance.status
             if instance and vm.status != self.VM_STATES.get(instance.status, "Starting"):
