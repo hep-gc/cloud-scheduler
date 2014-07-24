@@ -1618,10 +1618,10 @@ class Cleanup(threading.Thread):
                                 log.verbose("VM %s still Starting, not going to shutdown" % unused_vms_of_type[x].machine_name)
                                 break
                             # Verify that all slots of this VM are idle
-                            is_part_of_machine = {'machine_name': vm.hostname}
+                            is_part_of_machine = {'machine_name': unused_vms_of_type[x].machine_name}
                             slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
-                            is_part_of_machine = {'machine_name': vm.alt_hostname}
-                            slots_of_machine.extend(self.resource_pool.find_in_where(machineList, is_part_of_machine))
+                            if slots_of_machine:
+                                log.verbose("Machine has %i slots, checking if all idle" % len(slots_of_machine))
                             all_slots_idle = True
                             for slot in slots_of_machine:
                                 if slot.state != 'Unclaimed' or slot.activity != 'Idle':
