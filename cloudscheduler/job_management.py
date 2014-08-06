@@ -142,6 +142,8 @@ class Job:
             VMAMIConfig = config.default_VMAMIConfig
         if not VMMaximumPrice:
             VMMaximumPrice = config.default_VMMaximumPrice
+        if not VMJobPerCore:
+            VMJobPerCore = config.default_VMJobPerCore
     
         self.id           = GlobalJobId
         self.user         = Owner
