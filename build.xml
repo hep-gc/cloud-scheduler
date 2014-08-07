@@ -1,0 +1,12 @@
+<project>
+
+    <target name="deploy to gcecs">
+    	<scp   port="3121"
+    	       todir="root@gcecs.heprc.uvic.ca:/root/cloud-scheduler-dev-gcecs" 
+    	       keyfile="${user.home}/.ssh/priv_key_django">
+    	<fileset dir="." />
+    	</scp>
+    </target>
+
+	
+</project>
