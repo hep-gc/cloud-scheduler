@@ -220,7 +220,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         try:
             response = request.execute(http=self.auth_http)
             response = self._blocking_call(self.gce_service, self.auth_http, response)
-            log.info('Created VM ')
+            #log.info('Created VM ')
         except Exception, e:
             log.error("Error creating VM on gce: %s" % e)
             pass
