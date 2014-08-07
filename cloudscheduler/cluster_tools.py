@@ -481,7 +481,7 @@ class ICluster:
         Raises NoResourcesError if there are not enough available resources
         to check out.
         """
-        log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
+        #log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
         with self.res_lock:
 
             remaining_vm_slots = self.vm_slots - 1
@@ -507,7 +507,7 @@ class ICluster:
         Parameters: (as for checkout() )
         Notes: (as for checkout)
         """
-        log.debug("Returning resources used by VM %s to Cluster %s" % (vm.id, self.name))
+        #log.debug("Returning resources used by VM %s to Cluster %s" % (vm.name, self.name))
         with self.res_lock:
             self.vm_slots += 1
             self.storageGB += vm.storage

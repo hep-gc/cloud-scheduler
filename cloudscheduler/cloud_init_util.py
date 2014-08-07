@@ -12,6 +12,7 @@ def inject_customizations(pre_init, cloud_init):
     found_write_files = False
     found_cloud_init = False
     index_of_write_files = 0
+    splitscript = []
     for initscript in pre_init:
         splitscript = initscript.split('\n')
         

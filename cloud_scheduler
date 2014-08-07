@@ -681,6 +681,7 @@ class Scheduler(threading.Thread):
         create_ret = None
 
         pre_customizations = []
+        
         if job.ami_config:
             try:
                 if job.ami_config.startswith('http'):
@@ -804,7 +805,9 @@ class Scheduler(threading.Thread):
                         'instance_type':job.instance_type,
                         'maximum_price':job.maximum_price,
                         'job_per_core':job.job_per_core,
-                        'securitygroup':job.req_security_group}
+                        'securitygroup':job.req_security_group,
+                        "pre_customization":pre_customizations,
+                        "use_cloud_init":True}
                 create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "OpenStackCluster":
                 customizations.append((resource.cloud_type, cloud_type_file_dest))
