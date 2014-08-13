@@ -194,10 +194,14 @@ class OpenStackCluster(cluster_tools.ICluster):
             return 1
 
         # Delete references to this VM
-        if return_resources:
-            self.resource_return(vm)
-        with self.vms_lock:
-            self.vms.remove(vm)
+        try:
+            if return_resources:
+                self.resource_return(vm)
+            with self.vms_lock:
+                self.vms.remove(vm)
+        except Exception as e:
+            log.exception("Error removing vm from list: %s" % e)
+            return 1
 
         return 0
     def vm_poll(self, vm):
