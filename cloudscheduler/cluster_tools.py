@@ -127,7 +127,7 @@ class VM:
         self.failed_retire = False
         self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
         self.x509userproxy_expiry_time = None
-
+        
         # Set a status variable on new creation
         self.status = "Starting"
 
@@ -135,6 +135,7 @@ class VM:
         log = logging.getLogger("cloudscheduler")
         log.verbose("New VM Object - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
           % (name, id, clusteraddr, image, memory))
+        log.info("Created VM cluster address %s name %s"%(clusteraddr,name))
 
     def log(self):
         """Log the VM to the info level."""

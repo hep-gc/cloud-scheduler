@@ -432,6 +432,7 @@ class Scheduler(threading.Thread):
         if len(lookahead_jobs):
             for machine in machine_list:
                 #find the VM object that corresponds with the machine (actual Nimbus VM)
+                log.debug("cloud_scheduler.py::435::do_condor_off::Name %s, addr %s"%(machine.machine_name,machine.address_startd))
                 matching_vm = None
                 for vm in vm_list:
                     if utilities.match_host_with_condor_host(vm.hostname, machine.name) \
@@ -1449,7 +1450,7 @@ class Cleanup(threading.Thread):
                         if vm.override_status == 'Retiring':
                             retiredvms.append(vm)
                         elif vm.condorname != None:
-                            log.debug("VM %s on Name %s has previously registered with condor but is now missing - caught mid stale refresh?" % (vm.id, vm.condorname))
+                            log.debug("Set CondorName to None - VM %s on Name %s has previously registered with condor but is now missing - caught mid stale refresh?" % (vm.id, vm.condorname))
                             # As a temp hack I'm going to reset the last_state_change to give the VM the register time limit to come back
                             # as well as reset the condorname to None
                             vm.last_state_change = int(time.time())
@@ -1487,6 +1488,7 @@ class Cleanup(threading.Thread):
                                 #if slot['State'] != 'Unclaimed' or slot['Activity'] != 'Idle':
                                     #all_slots_idle = False
         for machine in machineList:
+            log.debug("cloud_scheduler.py::1491::do_condor_off::Name %s, addr %s"%(machine.machine_name,machine.address_startd))
             if machine.has_key('CSManagedVM'):
                 vm = self.resource_pool.find_vm_with_name(machine.machine_name)
                 if not vm:

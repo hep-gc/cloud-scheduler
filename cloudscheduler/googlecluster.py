@@ -24,6 +24,15 @@ log = utilities.get_cloudscheduler_logger()
 
 
 class GoogleComputeEngineCluster(cluster_tools.ICluster):
+    VM_STATES = {
+            "RUNNING" : "Running",
+            "Starting" : "Starting",
+            "shutting-down" : "Shutdown",
+            "terminated" : "Shutdown",
+            "PROVISIONING" : "Provisioning",
+            "error" : "Error",
+    }
+    
     GCE_SCOPE = 'https://www.googleapis.com/auth/compute'
     
     API_VERSION = 'v1'
@@ -132,7 +141,6 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         #zone_url = '%s/zones/%s' % (self.project_url, self.DEFAULT_ZONE)
         network_url = '%s/global/networks/%s' % (self.project_url, self.DEFAULT_NETWORK)
         
-        log.info("create disk using snapshot storage req %s and name %s"%(vm_storage,vm_image_name))
         # Construct the request body
         disk = {
                'name': self.DEFAULT_ROOT_PD_NAME,
@@ -145,9 +153,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             request = self.gce_service.disks().insert(project=self.project_id, body=disk, zone=self.DEFAULT_ZONE)
             response = request.execute(http=self.auth_http)
             response = self._blocking_call(self.gce_service, self.auth_http, response)
-            log.info('disk created')
         except:
-            log.info('Error Trying to create disk, one already exists ... returning ')
+            log.exception('Error Trying to create disk, one already exists ... returning ')
             return
         use_cloud_init = use_cloud_init or config.use_cloud_init
         if customization:
@@ -170,7 +177,6 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
        
         next_instance_name = self.generate_next_instance_name()
         
-        log.info("create instance with recently created disk from snapshot")
         instance = {
           'name': next_instance_name,
           'machineType': machine_type_url,
@@ -227,7 +233,6 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
         if response and 'targetId' in response:
             target_id = response['targetId']
-            log.info('Created VM with target id %s'%target_id)
         elif response:
             return
         else:
@@ -261,7 +266,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
         # Delete an Instance
-        #log.info('Destroy vm, instance name %s '%(vm.name))
+        log.info("googlecluster::destroy vm::%s"%vm.name)
         request = self.gce_service.instances().delete(
             project=self.project_id, instance=vm.name, zone=self.DEFAULT_ZONE)
         try:
@@ -273,16 +278,19 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             log.error("Failure while destroying VM %s. return leaving with removing resource from cloud sched" % (vm.name))
             return
         #log.info("Destroy VM %s, check response %s"%(vm.name,response))
-        if response and response['status'] == 'DONE':
-            # Delete references to this VM
-            #log.info("Return Resource %s with_lock %s for vm %s"%(return_resources,self.vms_lock,vm.name))
-            if return_resources:
-                self.resource_return(vm)
-            with self.vms_lock:
-                self.vms.remove(vm)
-            return 0
-        else:
-            log.debug("Error Destroying GCE VM: %s" % (vm.name))
+        try:
+            if response and response['status'] == 'DONE':
+                # Delete references to this VM
+                if return_resources:
+                    self.resource_return(vm)
+                with self.vms_lock:
+                    self.vms.remove(vm)
+                return 0
+            else:
+                log.debug("Error Destroying GCE VM: %s" % (vm.name))
+                return 1
+        except:
+            log.exception("Error removing vm, possibly already removed")
             return 1
 
     def vm_poll(self, vm):
@@ -297,9 +305,15 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
         if response and 'items' in response:
             instances = response['items']
+            
             for instance in instances:
+                
                 if 'id' in instance and instance['id'] == vm.id:
-                    vm.status = instance['status']
+                    if instance and hasattr(vm, 'status') and vm.status != self.VM_STATES.get(instance['status'], "Starting"):
+                        vm.last_state_change = int(time.time())
+                        
+                
+                    vm.status = self.VM_STATES[instance['status']]
                     vm.ipaddress = instance['networkInterfaces'][0]['accessConfigs'][0]['natIP']
                 
         else:
