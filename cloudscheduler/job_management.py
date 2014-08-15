@@ -234,6 +234,8 @@ class Job:
         self.override_status = None
         self.block_time = None
         self.failed_boot = 0
+        self.failed_boot_reason = set()
+        self.last_boot_attempt = None
         self.blocked_clouds = []
         self.target_clouds = []
         try:
