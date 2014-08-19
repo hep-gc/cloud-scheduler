@@ -244,7 +244,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         return client 
 
     def _generate_next_name(self):
-        name = ''.join([self.name.replace('_', '-'), '-', str(uuid.uuid4())])
+        name = ''.join([self.name.replace('_', '-').lower(), '-', str(uuid.uuid4())])
         collision = False
         for vm in self.vms:
             if name == vm.hostname:
