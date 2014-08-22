@@ -1691,6 +1691,8 @@ class ResourcePool:
             outputlist.append(cluster)
             outputlist.append(' ')
             for item in items:
+                if item[0] in ['password', 'access_key_id', 'secret_access_key', 'username']:
+                    continue
                 outputlist.append('[')
                 outputlist.append(','.join(item))
                 outputlist.append(']')
