@@ -841,6 +841,8 @@ class Scheduler(threading.Thread):
                 failure_reasons = {"-1": "Proxy/Auth related issue",
                                    "-2": "Resource Availability / Quota Problem",
                                    "-3": "Other VM Create Error"}
+                if create_ret == None:
+                    create_ret = -3
                 job.failed_boot_reason.add(failure_reasons[str(create_ret)])
                 continue
 
