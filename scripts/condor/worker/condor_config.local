@@ -7,11 +7,11 @@ VMType = "your.vm.type"
 CONDOR_HOST=your.central.manager
 
 ## Execute spool directory. - Verify that these directory's exist - or change to desired location
-EXECUTE=/var/condor/execute
-LOCK=/var/condor/lock
-LOG=/var/condor/log
-RUN=/var/condor/run
-SPOOL=/var/condor/spool
+EXECUTE=/var/lib/condor/execute
+LOCK=/var/lock/condor
+LOG=/var/log/condor
+RUN=/var/run/condor
+SPOOL=/var/lib/condor/spool
 
 SEC_DAEMON_AUTHENTICATION =
 SEC_DAEMON_AUTHENTICATION_METHODS =

@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+# vim: set expandtab ts=4 sw=4:
+#
+# contexthelper - writes nimbus context data to disk from ec2 user-data
+#
+# An example:
+#
+#<OptionalParameters>
+#    <filewrite>
+#        <content>These are the contents</content>
+#        <pathOnVM>/tmp/custom</pathOnVM>
+#        <executable>False</executable>
+#    </filewrite>
+#    <filewrite>
+#        <content>These are the contents</content>
+#        <pathOnVM>/tmp/custom0</pathOnVM>
+#        <executable>True</executable>
+#    </filewrite>
+#</OptionalParameters>
+
+import os
+import sys
+import stat
+from xml.dom import minidom
+import urllib2
+
+#USER_DATA_URL = "http://169.254.169.254/latest/user-data"
+USER_DATA_URL ="http://metadata/computeMetadata/v1beta1/instance/attributes/user-data"
+#USER_DATA_URL = "/tmp/xmltest.txt"
+
+try:
+    user_data_xml = urllib2.urlopen(USER_DATA_URL).read()
+except:
+    print >>sys.stderr, "Couldn't read userdata! - check path."
+    sys.exit(0)
+
+# the user data is single string, break up the newlines
+lines = user_data_xml.split('\n')
+# Find where the xml starts and set that aside
+xml_stuff = []
+startxml = False
+for line in lines:
+    if line.startswith('<?xml'):
+        startxml=True
+    if startxml:
+        xml_stuff.append(line)
+# put the new lines back 
+xml_merge = '\n'.join(xml_stuff)
+# parse the xml with any preceding user_data removed
+user_data = minidom.parseString(xml_merge)
+
+for file_tag in user_data.getElementsByTagName("filewrite"):
+    path = file_tag.getElementsByTagName("pathOnVM")[0].firstChild.nodeValue
+    content = file_tag.getElementsByTagName("content")[0].firstChild.nodeValue
+    executable = file_tag.getElementsByTagName("executable")[0].firstChild.nodeValue
+
+    try:
+        f = open(path, "w")
+        f.write(content)
+        f.close()
+        if executable.lower() == 'true':
+            # update script permission
+            st = os.stat(path)
+            os.chmod(path, st.st_mode | stat.S_IEXEC)
+            # execute the script
+            os.system(path)
+    except:
+        print >>sys.stderr, "Couldn't write file %s" % path
+        sys.exit(1)
+
+sys.exit(0)
+

@@ -92,12 +92,13 @@ class StratusLabCluster(cluster_tools.ICluster):
     def __init__(self, name = "Dummy StratusLab Cluster", host = "localhost", cloud_type = "StratusLab",
                  memory = [], max_vm_mem = -1, cpu_archs = [], networks = [], vm_slots = 0,
                  cpu_cores = 0, storage = 0, access_key_id = None, secret_access_key = None,
-                 hypervisor = 'xen', key_name = None, vm_loc = '', contextualization = ''):
+                 hypervisor = 'xen', key_name = None, vm_loc = '', contextualization = '', enabled=True, priority=0):
 
         # Call super class' init
         cluster_tools.ICluster.__init__(self, name = name, host = host, cloud_type = cloud_type,
                          memory = memory, max_vm_mem = max_vm_mem, cpu_archs = cpu_archs, networks = networks,
-                         vm_slots = vm_slots, cpu_cores = cpu_cores, storage = storage, hypervisor = hypervisor)
+                         vm_slots = vm_slots, cpu_cores = cpu_cores, storage = storage, hypervisor = hypervisor,
+                         enabled=enabled, priority=priority)
 
         try:
             f = open(contextualization, 'r')

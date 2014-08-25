@@ -37,16 +37,6 @@ import subprocess
 from urllib2 import URLError
 from StringIO import StringIO
 from collections import defaultdict
-try:
-    from lxml import etree
-except:
-    print >> sys.stderr, "Couldn't import lxml. You should install it from http://codespeak.net/lxml/, or your package manager."
-    sys.exit(1)
-try:
-    from suds.client import Client
-except:
-    print >> sys.stderr, "Couldn't import Suds. You should install it from https://fedorahosted.org/suds/, or your package manager"
-    sys.exit(1)
 
 import cloudscheduler.config as config
 from cloudscheduler.utilities import determine_path
@@ -79,19 +69,18 @@ class Job:
 
     def __init__(self, GlobalJobId="None", Owner="Default-User", JobPrio=1,
              JobStatus=0, ClusterId=0, ProcId=0, VMType=None, VMNetwork=None,
-             VMCPUArch=None, VMName=None, VMLoc=None, VMAMI=None, VMMem=None,
-             VMCPUCores=None, VMStorage=None,
-             VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
+             VMCPUCores=None, VMName=None, VMLoc=None, VMAMI=None, VMMem=None,
+             VMStorage=None, VMKeepAlive=0, VMHighPriority=0, RemoteHost=None,
              CSMyProxyCredsName=None, CSMyProxyServer=None, CSMyProxyServerPort=None,
              x509userproxysubject=None, x509userproxy=None,
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
              VMInstanceType=None, 
-             VMMaximumPrice=config.default_VMMaximumPrice, VMJobPerCore=False,
-             TargetClouds="", ServerTime=0, JobStartDate=0, VMHypervisor=None,
+             VMMaximumPrice=None, VMJobPerCore=False,
+             TargetClouds=None, ServerTime=0, JobStartDate=0, VMHypervisor=None,
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
-             VMSecurityGroup="", VMUserData="", **kwargs):
+             VMSecurityGroup="", VMUserData="", VMAMIConfig=None, VMUseCloudInit=False, VMInjectCA=config.default_VMInjectCA, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -111,6 +100,7 @@ class Job:
      VMInstanceType - (str) The EC2 instance type of the VM requested
      VMMaximumPrice - (str) The maximum price in cents per hour for a VM (EC2 Only)
      VMUserData - (str) The EC2 user data passed into VM
+     VMAMIConfig - (str) AMI Config file to use as part of contextualization
      CSMyProxyCredsName - (str) The name of the credentials to retreive from the myproxy server
      CSMyProxyServer - (str) The hostname of the myproxy server to retreive user creds from
      CSMyProxyServerPort - (str) The port of the myproxy server to retreive user creds from
@@ -130,8 +120,6 @@ class Job:
             VMType = config.default_VMType
         if not VMNetwork:
             VMNetwork = config.default_VMNetwork
-        if not VMCPUArch:
-            VMCPUArch = config.default_VMCPUArch
         if not VMHypervisor:
             VMHypervisor = config.default_VMHypervisor
         if not VMName:
@@ -150,6 +138,12 @@ class Job:
             VMStorage = config.default_VMStorage
         if not TargetClouds:
             TargetClouds = config.default_TargetClouds
+        if not VMAMIConfig:
+            VMAMIConfig = config.default_VMAMIConfig
+        if not VMMaximumPrice:
+            VMMaximumPrice = config.default_VMMaximumPrice
+        if not VMJobPerCore:
+            VMJobPerCore = config.default_VMJobPerCore
     
         self.id           = GlobalJobId
         self.user         = Owner
@@ -160,10 +154,10 @@ class Job:
         self.proc_id      = int(ProcId)
         self.req_vmtype   = VMType
         self.req_network  = VMNetwork
-        self.req_cpuarch  = VMCPUArch
         self.req_image    = VMName
         self.req_imageloc = VMLoc
         self.req_ami      = VMAMI
+
         try:
             self.req_memory   = int(VMMem)
         except:
@@ -191,9 +185,9 @@ class Job:
             raise ValueError
         self.instance_type = VMInstanceType
         try:
-            self.maximum_price = int(VMMaximumPrice)
+            self.maximum_price = float(VMMaximumPrice)
         except:
-            log.exception("VMMaximumPrice not int: %s" % VMMaximumPrice)
+            log.exception("VMMaximumPrice not float: %s" % VMMaximumPrice)
             raise ValueError
         self.myproxy_server = CSMyProxyServer
         self.myproxy_server_port = CSMyProxyServerPort
@@ -202,6 +196,7 @@ class Job:
         self.x509userproxy = x509userproxy
         self.original_x509userproxy = SUBMIT_x509userproxy
         self.spool_dir = Iwd
+        self.req_cpuarch=None
         self.x509userproxy_expiry_time = None
         self.proxy_renew_time = CSMyProxyRenewalTime
         self.job_per_core = VMJobPerCore in ['true', "True", True]
@@ -214,7 +209,7 @@ class Job:
         self.ban_time = None
         self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
         self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
-        self.proxy_non_boot = VMProxyNonBoot in ['true', "True", True]
+        self.proxy_non_boot = VMProxyNonBoot in ['true', 'True', True, 'TRUE']
         self.vmimage_proxy_file = VMImageProxyFile
         try:
             self.usertype_limit = int(VMTypeLimit)
@@ -227,6 +222,9 @@ class Job:
         self.key_name = VMKeyName
         self.req_security_group = splitnstrip(',', VMSecurityGroup)
         self.user_data = splitnstrip(',', VMUserData)
+        self.ami_config = VMAMIConfig
+        self.use_cloud_init = VMUseCloudInit in ['true', 'True', True, 'TRUE']
+        self.inject_ca = VMInjectCA in ['true', 'True', True, 'TRUE']
 
         # Set the new job's status
         if self.job_status == 2:
@@ -235,10 +233,13 @@ class Job:
             self.status = self.statuses[1]
         self.override_status = None
         self.block_time = None
+        self.failed_boot = 0
+        self.failed_boot_reason = set()
+        self.last_boot_attempt = None
         self.blocked_clouds = []
         self.target_clouds = []
         try:
-            if len(TargetClouds) != 0:
+            if TargetClouds and len(TargetClouds) != 0:
                 for cloud in TargetClouds.split(','):
                     self.target_clouds.append(cloud.strip())
         except:
@@ -254,12 +255,12 @@ class Job:
     
     def log(self):
         """Log a short string representing the job."""
-        log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
+        log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def log_dbg(self):
         """Log a longer string representing the job."""
-        log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, CPU: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
-          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_cpuarch, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
+        log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s" \
+          % (self.id, self.user, self.priority, self.req_vmtype, self.req_imageloc, self.req_memory, self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port))
     def get_job_info(self):
         """Formatted job info output for cloud_status -q."""
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
@@ -481,24 +482,14 @@ class JobPool:
         self.last_query = None
         self.write_lock = threading.RLock()
 
-        _schedd_wsdl  = "file://" + determine_path() \
-                        + "/wsdl/condorSchedd.wsdl"
-        self.condor_schedd = Client(_schedd_wsdl,
-                                    location=config.condor_webservice_url)
-        self.condor_schedd_as_xml = Client(_schedd_wsdl,
-                                    location=config.condor_webservice_url,
-                                    retxml=True, timeout=self.CONDOR_TIMEOUT)
-
         if not condor_query_type:
             condor_query_type = config.condor_retrieval_method
 
         if condor_query_type.lower() == "local":
             self.job_query = self.job_query_local
-        elif condor_query_type.lower() == "soap":
-            self.job_query = self.job_query_SOAP
         else:
-            log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
-            self.job_query = self.job_query_SOAP
+            log.error("Can't use '%s' retrieval method. Using local method." % condor_query_type)
+            self.job_query = self.job_query_local
             
         if config.job_distribution_type.lower() == "normal":
             #self.job_type_distribution = self.job_type_distribution_normal
@@ -543,35 +534,6 @@ class JobPool:
         job_ads = self._condor_q_to_job_list(condor_out)
         self.last_query = datetime.datetime.now()
         return job_ads
-
-
-    def job_query_SOAP(self):
-        """job_qury_SOAP - query and parse condor for job information via SOAP API."""
-        log.verbose("Querying Condor scheduler daemon (schedd)")
-
-        # Get job classAds from the condor scheduler
-        try:
-            job_ads = self.condor_schedd_as_xml.service.getJobAds(None, None)
-        except URLError, e:
-            log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason: %s"
-                      % (config.condor_webservice_url, e.reason))
-            return None
-        except:
-            log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s). Unknown reason."
-                      % (config.condor_webservice_url))
-            return None
-
-        # Create the condor_jobs list to store jobs
-        condor_jobs = self._condor_job_xml_to_job_list(job_ads)
-        del job_ads
-        # When querying finishes successfully, reset last query timestamp
-        self.last_query = datetime.datetime.now()
-
-        # Return condor_jobs list
-        return condor_jobs
 
     @staticmethod
     def _condor_q_to_job_list(condor_q_output):
@@ -663,109 +625,6 @@ class JobPool:
             except:
                 log.exception("Failed to add job: %s due to unspecified exception." % classad["GlobalJobId"])
         return jobs
-
-    @staticmethod
-    def _condor_job_xml_to_job_list(condor_xml):
-        """
-        _condor_job_xml_to_job_list - Converts Condor SOAP XML from Condor
-                to a list of Job Objects
-
-                returns [] if there are no jobs
-        """
-        def _job_attribute(xml, element):
-            try:
-                return xml.xpath(".//item[name='%s']/value" % element)[0].text
-            except:
-                return ""
-
-        def _add_if_exists(xml, dictionary, attribute):
-            job_value = string.strip(_job_attribute(xml, attribute))
-            if job_value:
-                dictionary[attribute] = job_value
-
-        def _add_dict_if_exists(xml, dictionary, attribute):
-            attr_list = _job_attribute(xml_job, attribute)
-            if attr_list:
-                try:
-                    attr_dict = _attr_list_to_dict(attr_list)
-                    dictionary[attribute] = attr_dict
-                except:
-                    log.exception("Problem extracting %s attribute '%s'" % (attribute, attr_list))
-
-        def _attribute_from_requirements(requirements, attribute):
-            regex = "%s\s=\?=\s\"(?P<value>.+?)\"" % attribute
-            match = re.search(regex, requirements)
-            if match:
-                return match.group("value")
-            else:
-                return ""
-
-        jobs = []
-
-        context = etree.iterparse(StringIO(condor_xml))
-        for action, elem in context:
-            if elem.tag == "item" and elem.getparent().tag == "classAdArray":
-                xml_job = elem
-                job_dictionary = {}
-                # Mandatory parameters
-                job_dictionary['GlobalJobId'] = _job_attribute(xml_job, "GlobalJobId")
-                job_dictionary['Owner'] = _job_attribute(xml_job, "Owner")
-                job_dictionary['JobPrio'] = _job_attribute(xml_job, "JobPrio")
-                job_dictionary['JobStatus'] = _job_attribute(xml_job, "JobStatus")
-                job_dictionary['ClusterId'] = _job_attribute(xml_job, "ClusterId")
-                job_dictionary['ProcId'] = _job_attribute(xml_job, "ProcId")
-                job_dictionary['ServerTime'] = _job_attribute(xml_job, "ServerTime")
-
-                # Optional parameters
-                _add_if_exists(xml_job, job_dictionary, "VMNetwork")
-                _add_if_exists(xml_job, job_dictionary, "VMCPUArch")
-                _add_if_exists(xml_job, job_dictionary, "VMName")
-                _add_if_exists(xml_job, job_dictionary, "VMLoc")
-                _add_if_exists(xml_job, job_dictionary, "VMMem")
-                _add_if_exists(xml_job, job_dictionary, "VMCPUCores")
-                _add_if_exists(xml_job, job_dictionary, "VMStorage")
-                _add_if_exists(xml_job, job_dictionary, "VMKeepAlive")
-                _add_if_exists(xml_job, job_dictionary, "VMMaximumPrice")
-                _add_if_exists(xml_job, job_dictionary, "CSMyProxyCredsName")
-                _add_if_exists(xml_job, job_dictionary, "CSMyProxyServer")
-                _add_if_exists(xml_job, job_dictionary, "CSMyProxyServerPort")
-                _add_if_exists(xml_job, job_dictionary, "CSMyProxyRenewalTime")
-                _add_if_exists(xml_job, job_dictionary, "x509userproxysubject")
-                _add_if_exists(xml_job, job_dictionary, "x509userproxy")
-                _add_if_exists(xml_job, job_dictionary, "VMHighPriority")
-                _add_if_exists(xml_job, job_dictionary, "VMJobPerCore")
-                _add_if_exists(xml_job, job_dictionary, "RemoteHost")
-                _add_if_exists(xml_job, job_dictionary, "TargetClouds")
-                _add_if_exists(xml_job, job_dictionary, "JobStartDate")
-                _add_if_exists(xml_job, job_dictionary, "Iwd")
-                _add_if_exists(xml_job, job_dictionary, "SUBMIT_x509userproxy")
-                _add_if_exists(xml_job, job_dictionary, "VMHypervisor")
-                _add_if_exists(xml_job, job_dictionary, "VMProxyNonBoot")
-                _add_if_exists(xml_job, job_dictionary, "VMImageProxyFile")
-                _add_if_exists(xml_job, job_dictionary, "VMTypeLimit")
-                _add_if_exists(xml_job, job_dictionary, "VMLocation")
-                _add_if_exists(xml_job, job_dictionary, "VMImageID")
-                _add_if_exists(xml_job, job_dictionary, "VMKeyName")
-                _add_if_exists(xml_job, job_dictionary, "VMInstanceTypeIBM")
-                _add_if_exists(xml_job, job_dictionary, "VMSecurityGroup")
-
-                # Requirements requires special fiddling
-                requirements = _job_attribute(xml_job, "Requirements")
-                if requirements:
-                    vmtype = _attribute_from_requirements(requirements, "VMType")
-                    if vmtype:
-                        job_dictionary['VMType'] = vmtype
-
-                # VMAMI requires special fiddling
-                _add_dict_if_exists(xml_job, job_dictionary, "VMAMI")
-                _add_dict_if_exists(xml_job, job_dictionary, "VMInstanceType")
-
-                jobs.append(Job(**job_dictionary))
-
-                elem.clear()
-        return jobs
-
-
  
     def update_jobs(self, query_jobs):
         """Updates the system jobs:
@@ -1165,7 +1024,7 @@ class JobPool:
             type_desired[vmtype] *= num_users
         return type_desired
 
-    def get_jobs_of_type_for_user(self, type, user):
+    def get_jobs_of_type_for_user(self, vmtype, user):
         """
         get_jobs_of_type_for_user -- get a list of jobs of a VMtype for a user
 
@@ -1187,116 +1046,6 @@ class JobPool:
             if job.usertype_limit > -1:
                 limits[job.uservmtype] = job.usertype_limit
         return limits
-
-
-    # Attempts to place a list of jobs into a Hold Status to prevent running
-    # If a job fails to be held it is placed in a list and failed jobs are returned
-    def hold_jobSOAP(self, jobs):
-        """Attempt to plate a list of jobs into a Hold status in Condor.
-
-            Returns a list of any job that fails to Hold.
-        """
-        log.verbose("Holding %i Jobs via Condor SOAP API" % len(jobs))
-        failed = []
-        for job in jobs:
-            try:
-                job_ret = self.condor_schedd.service.holdJob(None, job.cluster_id, job.proc_id, "CloudSchedulerHold", False, False, True)
-                if job_ret.code != "SUCCESS":
-                    failed.append(job)
-                else:
-                    log.debug("Held %s 's job %s. " % (job.user, job.id))
-            except URLError, e:
-                log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason: %s"
-                      % (config.condor_webservice_url, e.reason))
-                return None
-            except:
-                log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s). Unknown reason."
-                      % (config.condor_webservice_url))
-                return None
-        return failed
-
-    def release_jobSOAP(self, jobs):
-        """Attempt to release a list of jobs that are in the Held state.
-        
-        Returns a list of jobs that fail to release.
-        """
-        log.verbose("Releasing Jobs via Condor SOAP API")
-        failed = []
-        for job in jobs:
-            try:
-                job_ret = self.condor_schedd.service.releaseJob(None, job.cluster_id, job.proc_id, "CloudSchedulerRelease", False, False)
-                if job_ret.code != "SUCCESS":
-                    failed.append(job)
-            except URLError, e:
-                log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason: %s"
-                      % (config.condor_webservice_url, e.reason))
-                return None
-            except:
-                log.error("There was a problem connecting to the "
-                      "Condor scheduler web service (%s). Unknown reason."
-                      % (config.condor_webservice_url))
-                return None
-        return failed
-
-    # Deprecated
-    def hold_user(self, user):
-        """Hold all jobs for a specified user.
-        
-            Keywords:
-                user - the user whom jobs will be held
-        """
-        jobs = []
-        for job in self.job_container.get_jobs_for_user(user):
-            if job.job_status != self.RUNNING:
-                jobs.append(job)
-        return self.hold_jobSOAP(jobs)
-
-
-    # Deprecated
-    def release_user(self, user):
-        """Release all jobs for a specified user.
-        
-            Keywords:
-                user - the user whom jobs will be released
-        """
-        jobs = []
-        for job in self.job_container.get_jobs_for_user(user):
-            if job.job_status == self.HELD:
-                jobs.append(job)
-        return self.release_jobSOAP(jobs)
-
-    # Deprecated
-    def hold_vmtype(self, vmtype):
-        """Hold all jobs for a specified vmtype.
-        
-            Keywords:
-                vmtype - the vmtype of jobs to hold
-        """
-        jobs = []
-        for job in self.job_container.get_all_jobs():
-            if job.req_vmtype == vmtype and job.job_status != self.RUNNING:
-                jobs.append(job)
-        ret = self.hold_jobSOAP(jobs)
-        return ret
-
-    # Deprecated
-    def release_vmtype(self, vmtype):
-        """Release all jobs for a specified vmtype.
-        
-            Keywords:
-                vmtype - the vmtype of jobs to release
-        """
-        jobs = []
-        for job in self.job_container.get_all_jobs():
-            if job.req_vmtype == vmtype and job.job_status == self.HELD:
-                jobs.append(job)
-        ret = self.release_jobSOAP(jobs)
-        return ret
 
     def job_hold_local(self, jobs):
         """job_query_local -- query and parse condor_q for job information."""

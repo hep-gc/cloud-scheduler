@@ -71,6 +71,7 @@ class VMPoller(threading.Thread):
         self.running_poll_interval = 900 # 15 minutes
         self.run_interval = config.vm_poller_interval
         self.destroy_threads = {}
+        self.heart_beat = time.time()
 
     def stop(self):
         log.debug("Waiting for VM polling loop to end")
@@ -80,9 +81,13 @@ class VMPoller(threading.Thread):
         log.info("Starting VM polling...")
 
         while not self.quit:
+            start_loop_time = time.time()
             self.poll_all_machines()
             self.check_destroy_threads()
             sleep_tics = self.run_interval
+            elapsed_loop_time = time.time() - start_loop_time
+            log.verbose("VMPoller thread loop time: %s" % str(elapsed_loop_time))
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -112,7 +117,7 @@ class VMPoller(threading.Thread):
 
                 # If the VM is in an error state, keep track of error and
                 # after passing some threshold destroy the machine.
-                if ret_state == "Error":
+                if ret_state == "Error" or ret_state == "Shutdown":
                     vm.errorcount += 1
                     log.verbose("Error in VM %s, increased counter to %s" % (str(vm.id), str(vm.errorcount)))
                 elif vm.errorcount > 0:
@@ -188,6 +193,7 @@ class JobPoller(threading.Thread):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.job_pool = job_pool
         self.quit = False
+        self.heart_beat = time.time()
         self.polling_interval = config.job_poller_interval
 
     def stop(self):
@@ -200,6 +206,7 @@ class JobPoller(threading.Thread):
             prev_req_vmtypes = []
             new_req_vmtypes = []
             while not self.quit:
+                start_loop_time = time.time()
                 log.verbose("Polling job scheduler")
 
                 ## Query the job pool to get new unscheduled jobs
@@ -224,6 +231,9 @@ class JobPoller(threading.Thread):
                 log.verbose("Job Poller waiting %ds..." % self.polling_interval)
                 prev_req_vmtypes = new_req_vmtypes
                 sleep_tics = self.polling_interval
+                elapsed_loop_time = time.time() - start_loop_time
+                log.verbose("JobPoller loop time: %s" % elapsed_loop_time)
+                self.heart_beat = time.time()
                 while (not self.quit) and sleep_tics > 0:
                     time.sleep(1)
                     sleep_tics -= 1
@@ -241,6 +251,7 @@ class MachinePoller(threading.Thread):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.resource_pool = resource_pool
         self.quit = False
+        self.heart_beat = time.time()
         self.polling_interval = config.machine_poller_interval
 
     def stop(self):
@@ -251,6 +262,7 @@ class MachinePoller(threading.Thread):
         log.info("Starting machine polling...")
         zero_len_count = 0
         while not self.quit:
+            start_loop_time = time.time()
             log.verbose("Polling machine scheduler")
 
             self.resource_pool.prev_machine_list = self.resource_pool.machine_list
@@ -266,6 +278,9 @@ class MachinePoller(threading.Thread):
                 zero_len_count = 0
             log.verbose("Machine Poller waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
+            elapsed_loop_time = time.time() - start_loop_time
+            log.verbose("MachinePoller loop time: %s" % str(elapsed_loop_time))
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -293,6 +308,7 @@ class Scheduler(threading.Thread):
         self.job_pool      = job_pool
         self.quit          = False
         self.quick_exit    = False
+        self.heart_beat = time.time()
         self.scheduling_interval = config.scheduler_interval
 
         if config.scheduling_algorithm.lower() == "fairshare":
@@ -320,6 +336,7 @@ class Scheduler(threading.Thread):
         ## Full scheduler loop
         ########################################################################
         while not self.quit:
+            start_loop_time = time.time()
             log.verbose("### Scheduler Cycle:")
 
             self.scheduling_method()
@@ -329,6 +346,9 @@ class Scheduler(threading.Thread):
             ## Wait for a number of seconds
             log.verbose("Scheduler - Waiting %ss" % self.scheduling_interval)
             sleep_tics = self.scheduling_interval
+            elapsed_loop_time = time.time() - start_loop_time
+            log.verbose("Scheduler loop time: %s" % str(elapsed_loop_time))
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -412,9 +432,11 @@ class Scheduler(threading.Thread):
         if len(lookahead_jobs):
             for machine in machine_list:
                 #find the VM object that corresponds with the machine (actual Nimbus VM)
+                log.debug("cloud_scheduler.py::435::do_condor_off::Name %s, addr %s"%(machine.machine_name,machine.address_startd))
                 matching_vm = None
                 for vm in vm_list:
-                    if utilities.match_host_with_condor_host(vm.hostname, machine.name):
+                    if utilities.match_host_with_condor_host(vm.hostname, machine.name) \
+                    or utilities.match_host_with_condor_host(vm.alt_hostname, machine.name):
                         matching_vm = vm
                         break
                 #If no matching VM or a machine hasn't been assigned a job, we don't want to retire it yet. Same if already retired.
@@ -430,7 +452,7 @@ class Scheduler(threading.Thread):
                 if not retire_machine:
                     log.verbose("No need to retire machine with job:  %s" % machine.job_id)
                     continue
-                (_, ret2, _, ret22) = self.resource_pool.do_condor_off(machine.machine_name, machine.address_startd, mataching_vm.condormasteraddr)
+                (_, ret2, _, ret22) = self.resource_pool.do_condor_off(machine.machine_name, machine.address_startd, matching_vm.condormasteraddr)
                 if ret2 == 0 and ret22 == 0:
                     log.debug("Set %s to die after completing current job: %s" % (machine.name,machine.job_id))
                     matching_vm.force_retire = True
@@ -564,7 +586,7 @@ class Scheduler(threading.Thread):
         resources to give them to increase that share, this will allow other users to
         continue to use other remaining resources that the underallocated user is unable to use."""
         allow = False
-        retiring = self.resource_pool.retiring_vms_of_usertype(job.uservmtype)
+        #retiring = self.resource_pool.retiring_vms_of_usertype(job.uservmtype)
         userjoblimits = self.job_pool.get_usertype_limits()
         if job.uservmtype in diff_types.keys() and diff_types[job.uservmtype] > 0:
             over_allocate = True
@@ -621,6 +643,8 @@ class Scheduler(threading.Thread):
         if create_ret == 0:
             # Mark job as scheduled
             self.job_pool.schedule(job)
+            job.failed_boot = 0
+            job.failed_boot_reason.clear()
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, True)
         elif create_ret == -1: # proxy problem 
@@ -634,6 +658,12 @@ class Scheduler(threading.Thread):
                 log.info("Resources on cloud adjusted due to insufficient availability.")
             else:
                 log.debug("Insufficient resources to boot VM, will keep trying.")
+                job.failed_boot += 1
+                job.failed_boot_reason = "Insufficient Resources on cloud"
+                job.last_boot_attempt = time.time()
+            if job.failed_boot > 5:
+                log.debug("Repeatedly failed to boot VM for job %s blocking temporarily." % job.id)
+                job.block_time = int(time.time())
             return False
         elif create_ret == -3: # exceeded maximum or not authorized
             for cloud in good_resources:
@@ -651,8 +681,182 @@ class Scheduler(threading.Thread):
         """Helper function for performaing the creation calls to IaaS clouds."""
         # Create an optional customization metadata file
         log.verbose("Preparing to create vm for job '%s'." % job.id)
-        customizations = []
+        customizations = self.build_customizations_list(job)
         create_ret = None
+
+        pre_customizations = []
+        
+        if job.ami_config:
+            try:
+                if job.ami_config.startswith('http'):
+                    file_content = urllib2.urlopen(job.ami_config).read()
+                elif os.path.isfile(job.ami_config):
+                    file_content = open(job.ami_config).read()
+                pre_customizations.append(file_content)
+            except:
+                log.error("Unable to read ami_config - check path or url: %s" % job.ami_config)               
+
+        log.verbose("Finished customizations for job '%s'" % job.id)
+        cloud_type_file_dest = "/var/lib/cloud_type"
+        cloud_name_file_dest = "/var/lib/cloud_name"
+        for resource in good_resources:
+            # Print details of the resource selected
+            if resource == None:
+                log.debug("None resource in good_resources ??")
+                continue
+            log.debug("Booting VM for job %s on: %s" % (job.id, resource.name))
+            resource.log()
+
+            #TODO: unify this
+            if resource.__class__.__name__ == "NimbusCluster":
+                customizations.append(("nimbus", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                imageloc = job.req_imageloc
+                imagesplit = imageloc.split('/')
+                if '__hypervisor__' in imagesplit:
+                    index = imagesplit.index('__hypervisor__')
+                    imagesplit[index] = resource.hypervisor
+                    imageloc = '/'.join(imagesplit)
+
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_cpuarch':job.req_cpuarch,
+                        'vm_image':imageloc,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'job_proxy_file_path':job.get_x509userproxy(),
+                        'myproxy_creds_name':job.get_myproxy_creds_name(), 
+                        'myproxy_server':job.get_myproxy_server(),
+                        'myproxy_server_port':job.get_myproxy_server_port(),
+                        'job_per_core':job.job_per_core,
+                        'proxy_non_boot':job.proxy_non_boot,
+                        'vmimage_proxy_file':job.vmimage_proxy_file,
+                        'vmimage_proxy_file_path':job.get_vmimage_proxy_file_path()}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "EC2Cluster":
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_ami,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'pre_customization': pre_customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':job.instance_type,
+                        'maximum_price':job.maximum_price,
+                        'job_per_core':job.job_per_core,
+                        'securitygroup':job.req_security_group,
+                        'key_name': job.key_name,
+                        'use_cloud_init': job.use_cloud_init}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "IBMCluster":
+                customizations.append(("ibm", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_image_id,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':job.req_instance_type_ibm,
+                        'location':job.location,
+                        'job_per_core':job.job_per_core,
+                        'vm_keyname':job.key_name}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "StratusLabCluster":
+                customizations.append(("stratuslab", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_image_id,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'job_per_core':job.job_per_core,
+                        'vm_loc':job.req_imageloc}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "GoogleComputeEngineCluster":
+                customizations.append(("gce", cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_ami,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':job.instance_type,
+                        'maximum_price':job.maximum_price,
+                        'job_per_core':job.job_per_core,
+                        'securitygroup':job.req_security_group,
+                        "pre_customization":pre_customizations,
+                        "use_cloud_init":True}
+                create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "OpenStackCluster":
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':job.req_ami,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'pre_customization':pre_customizations,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':job.instance_type,
+                        'job_per_core':job.job_per_core,
+                        'securitygroup':job.req_security_group,
+                        'key_name':job.key_name,
+                        'use_cloud_init': job.use_cloud_init}
+                create_ret = resource.vm_create(**args)
+
+            # If the VM create fails, try again on another resource
+            if (create_ret != 0):
+                log.debug("Creating VM for job %s failed on %s. " % (job.id, resource.name))
+                job.last_boot_attempt = time.time()
+                failure_reasons = {"-1": "Proxy/Auth related issue",
+                                   "-2": "Resource Availability / Quota Problem",
+                                   "-3": "Other VM Create Error"}
+                if create_ret == None:
+                    create_ret = -3
+                job.failed_boot_reason.add(failure_reasons[str(create_ret)])
+                continue
+
+            # If the vm create didn't fail, break out of the loop
+            break
+
+        # If VM creation fails for user-job on all resources move to next user
+        if create_ret != 0:
+            log.debug("None of the resources could boot a vm for job %s. " % job.id + \
+                      "Leaving %s's job unscheduled." % job.user)
+        return create_ret
+
+    def build_customizations_list(self, job):
+        customizations = []
         if config.condor_host != "localhost" and config.condor_context_file:
             customizations.append((config.condor_host, config.condor_context_file))
 
@@ -662,7 +866,7 @@ class Scheduler(threading.Thread):
         #local_modifications += 'STARTD_ATTRS = COLLECTOR_HOST_STRING VMType CSManagedVM\n'
 
         if config.override_vmtype:
-            local_modifications += "VMType = %s\n" % job.req_vmtype
+            local_modifications += 'VMType = "%s"\n' % job.req_vmtype
 
         if config.cert_file:
             file_contents = open(config.cert_file).read()
@@ -685,7 +889,7 @@ class Scheduler(threading.Thread):
             customizations.append((file_contents, file_location))
 
         # Copy CA root certs and signing policies if needed.
-        if config.ca_root_certs:
+        if config.ca_root_certs and job.inject_ca:
             for entry in config.ca_root_certs:
                 source = entry.split(':')[0]
                 if entry.find(':') != -1:
@@ -698,7 +902,7 @@ class Scheduler(threading.Thread):
                 except:
                     log.error('Error reading %s' % (source))
 
-        if config.ca_signing_policies:
+        if config.ca_signing_policies and job.inject_ca:
             for entry in config.ca_signing_policies:
                 source = entry.split(':')[0]
                 if entry.find(':') != -1:
@@ -739,161 +943,19 @@ class Scheduler(threading.Thread):
         # Read and add user's user data scripts which must be accessible via http 
         if job.user_data:
             for userdata in job.user_data:
-                try:
-                    file_content = urllib2.urlopen(userdata).read()
-                    basename = os.path.basename(userdata)
-                    filename = "user_userdata_%s" % (basename) 
-                    destination = "/etc/condor/%s" % (filename)
-                    executable = False
-                    if re.match('^#!/.*', file_content):
-                        executable = True
-                    customizations.append((file_content, destination, executable)) 
-                except:
-                    log.error('Error reading userdata %s' % (userdata))               
-        
-        log.verbose("Finished customizations for job '%s'" % job.id)
-        cloud_type_file_dest = "/var/lib/cloud_type"
-        for resource in good_resources:
-            # Print details of the resource selected
-            if resource == None:
-                log.debug("None resource in good_resources ??")
-                continue
-            log.debug("Booting VM for job %s on: %s" % (job.id, resource.name))
-            resource.log()
-
-            #TODO: unify this
-            if resource.__class__.__name__ == "NimbusCluster":
-                customizations.append(("nimbus", cloud_type_file_dest))
-                imageloc = job.req_imageloc
-                imagesplit = imageloc.split('/')
-                if '__hypervisor__' in imagesplit:
-                    index = imagesplit.index('__hypervisor__')
-                    imagesplit[index] = resource.hypervisor
-                    imageloc = '/'.join(imagesplit)
-
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_cpuarch':job.req_cpuarch,
-                        'vm_image':imageloc,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'job_proxy_file_path':job.get_x509userproxy(),
-                        'myproxy_creds_name':job.get_myproxy_creds_name(), 
-                        'myproxy_server':job.get_myproxy_server(),
-                        'myproxy_server_port':job.get_myproxy_server_port(),
-                        'job_per_core':job.job_per_core,
-                        'proxy_non_boot':job.proxy_non_boot,
-                        'vmimage_proxy_file':job.vmimage_proxy_file,
-                        'vmimage_proxy_file_path':job.get_vmimage_proxy_file_path()}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "EC2Cluster":
-                customizations.append((resource.cloud_type, cloud_type_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_cpuarch':job.req_cpuarch,
-                        'vm_image':job.req_ami,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type,
-                        'maximum_price':job.maximum_price,
-                        'job_per_core':job.job_per_core,
-                        'securitygroup':job.req_security_group,
-                        'key_name': job.key_name}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "IBMCluster":
-                customizations.append(("ibm", cloud_type_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_cpuarch':job.req_cpuarch,
-                        'vm_image':job.req_image_id,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'instance_type':job.req_instance_type_ibm,
-                        'location':job.location,
-                        'job_per_core':job.job_per_core,
-                        'vm_keyname':job.key_name}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "StratusLabCluster":
-                customizations.append(("stratuslab", cloud_type_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_cpuarch':job.req_cpuarch,
-                        'vm_image':job.req_image_id,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'job_per_core':job.job_per_core,
-                        'vm_loc':job.req_imageloc}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "GoogleComputeEngineCluster":
-                customizations.append(("gce", cloud_type_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_cpuarch':job.req_cpuarch,
-                        'vm_image':job.req_ami,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type,
-                        'maximum_price':job.maximum_price,
-                        'job_per_core':job.job_per_core,
-                        'securitygroup':job.req_security_group}
-                create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "OpenStackCluster":
-                customizations.append((resource.cloud_type, cloud_type_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_cpuarch':job.req_cpuarch,
-                        'vm_image':job.req_ami,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type,
-                        'maximum_price':job.maximum_price,
-                        'job_per_core':job.job_per_core,
-                        'securitygroup':job.req_security_group}
-                create_ret = resource.vm_create(**args)
-
-            # If the VM create fails, try again on another resource
-            if (create_ret != 0):
-                log.debug("Creating VM for job %s failed on %s. " % (job.id, resource.name))
-                continue
-
-            # If the vm create didn't fail, break out of the loop
-            break
-
-        # If VM creation fails for user-job on all resources move to next user
-        if create_ret != 0:
-            log.debug("None of the resources could boot a vm for job %s. " % job.id + \
-                      "Leaving %s's job unscheduled." % job.user)
-        return create_ret
+                if userdata:
+                    try:
+                        file_content = urllib2.urlopen(userdata).read()
+                        basename = os.path.basename(userdata)
+                        filename = "user_userdata_%s" % (basename) 
+                        destination = "/etc/condor/%s" % (filename)
+                        executable = False
+                        if re.match('^#!/.*', file_content):
+                            executable = True
+                        customizations.append((file_content, destination, executable)) 
+                    except:
+                        log.error('Error reading userdata %s' % (userdata))
+        return customizations
 
 class Cleanup(threading.Thread):
     """
@@ -911,6 +973,7 @@ class Cleanup(threading.Thread):
         self.quit = False
         self.polling_interval = config.cleanup_interval
         self.destroy_threads = {}
+        self.heart_beat = time.time()
         
         #Different scheduling algorithms require different balancing
         if(config.scheduling_algorithm.lower() == "fifo"):
@@ -928,9 +991,8 @@ class Cleanup(threading.Thread):
     def run(self):
         log.info("Starting Cleanup Thread...")
 
-        prevMachineList = []
-
         while not self.quit:
+            start_loop_time = time.time()
             self.check_destroy_threads()
             if config.retire_before_lifetime:
                 # Check for VMs near max lifetime 
@@ -980,6 +1042,9 @@ class Cleanup(threading.Thread):
 
             log.verbose("Cleanup waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
+            elapsed_loop_time = time.time() - start_loop_time
+            log.verbose("Cleanup thread loop time: %s" % str(elapsed_loop_time))
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -1073,7 +1138,7 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     diff_types[vmtype] = -desired_types[vmtype]
-            log.debug("Diff Types Before Limits: %s" % str(diff_types))
+            log.verbose("Diff Types Before Limits: %s" % str(diff_types))
 
             # With user limiting will need to reset any users that are at their limits
             # so they will not interfere with scheduling
@@ -1106,7 +1171,7 @@ class Cleanup(threading.Thread):
             for usertype in diff_types.keys():
                 if usertype not in limited_users:
                     diff_types[usertype] += adjustby # the 'extra' will be negative so add it
-            log.debug("Diff Types After Limits: %s" % str(diff_types))
+            log.verbose("Diff Types After Limits: %s" % str(diff_types))
             num_to_change = self.clean_determine_num_to_change(diff_types, required_vmtypes_dict)
 
             next_diff_types = {}
@@ -1123,7 +1188,7 @@ class Cleanup(threading.Thread):
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     next_diff_types[vmtype] = -desired_types[vmtype]
-            log.debug("Next Diff Types: %s" % str(next_diff_types))
+            log.verbose("Next Diff Types: %s" % str(next_diff_types))
             
             #       determine new num_to_change based on updated diff_types
             next_num_to_change = self.clean_determine_num_to_change(next_diff_types, required_vmtypes_dict)
@@ -1135,7 +1200,7 @@ class Cleanup(threading.Thread):
                         # Has fliped, adjust num_to_change to prevent flipflop
                         num_to_change[vmtype] = num_to_change[vmtype] + next_num_to_change[vmtype]
             
-            log.debug("Pre-User-Throttling values: %s" % str(num_to_change))
+            log.verbose("Pre-User-Throttling values: %s" % str(num_to_change))
             # Make sure not going to retire too many machines if some are throttled
             adjust_num_total = 0
             total_pos_num = 0
@@ -1169,13 +1234,8 @@ class Cleanup(threading.Thread):
 
             log.verbose("Ready to balance via configured method")
             if config.graceful_shutdown:
-                if config.graceful_shutdown_method == 'hold':
-                    # balance using condor_hold and condor_release - may be bugged with recent
-                    # changes to how held jobs are accounted for
-                    self.graceful_shutdown_condor_hold(diff_types, machineList, num_to_change)
-                else:
-                    # shutdown using condor_off
-                    self.graceful_shutdown_condor_off(machineList, num_to_change)
+                # shutdown using condor_off
+                self.graceful_shutdown_condor_off(machineList, num_to_change)
             else:
                 # shutdown after the previous job has finished executing
                 # interupts the new running job and will be rescheduled by condor
@@ -1191,7 +1251,7 @@ class Cleanup(threading.Thread):
         vm_count = self.resource_pool.vm_count()
         for vmtype, val in diff_types.iteritems():
             num_to_change[vmtype] = int(round(val * vm_count))
-        log.debug("Initial num to change: %s adjust for queued jobs." % str(num_to_change))
+        log.verbose("Initial num to change: %s adjust for queued jobs." % str(num_to_change))
         excess_diff = 0
         positive_types = []
         # check if there are fewer jobs in queue than trying to adjust VM count by
@@ -1216,7 +1276,7 @@ class Cleanup(threading.Thread):
 
         # Postive num_to_change is how many CS going to try and shutdown
         # Negative is how many it wants to start
-        log.debug("Midway num to change: %s adjusting for free resources." % str(num_to_change))
+        log.verbose("Midway num to change: %s adjusting for free resources." % str(num_to_change))
         pos_change_types = []
         for vmtype, val in num_to_change.iteritems():
             if val > 0:
@@ -1305,7 +1365,7 @@ class Cleanup(threading.Thread):
                             num_to_change[postype] -= adjustby
                             if num_to_change[postype] < 0:
                                     num_to_change[postype] = 0
-        log.debug("End num to change: %s" % str(num_to_change))
+        log.verbose("End num to change: %s" % str(num_to_change))
         free_space = True
         for vmtype in free_space_for_vmtype.keys():
             if not free_space_for_vmtype[vmtype]:
@@ -1323,13 +1383,15 @@ class Cleanup(threading.Thread):
         req_vmtypes = self.job_pool.get_required_uservmtypes()
         for cluster in self.resource_pool.resources:
             for vm in reversed(cluster.vms):
-                if vm.uservmtype not in req_vmtypes and (vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
-                    if vm.override_status != "Retiring":
-                        if not self.resource_pool.force_retire_vm(vm):
-                            if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
-                                th = VMDestroyCmd(cluster, vm, reason="VMType %s is no longer required." % vm.vmtype)
-                                th.start()
-                                self.destroy_threads["".join([cluster.name, vm.id])] = th
+                if vm.uservmtype not in req_vmtypes and (vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive) or not vm.idle_start):
+                    #if vm.override_status != "Retiring":
+                    self.resource_pool.force_retire_vm(vm)
+                    if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
+                        th = VMDestroyCmd(cluster, vm, reason="VMType %s is no longer required." % vm.vmtype)
+                        th.start()
+                        self.destroy_threads["".join([cluster.name, vm.id])] = th
+                    else:
+                        log.verbose("Already a thread for vm: %s" % vm.id)
 
     def clean_scheduled_unscheduled(self):
         """Moves any running jobs into the scheduled state.
@@ -1368,7 +1430,8 @@ class Cleanup(threading.Thread):
                 foundvm = False
                 if vm.status == 'Running' and machineList != None:
                     for machine in machineList:
-                        if utilities.match_host_with_condor_host(vm.hostname, machine.machine_name):
+                        if utilities.match_host_with_condor_host(vm.hostname, machine.machine_name) \
+                        or utilities.match_host_with_condor_host(vm.alt_hostname, machine.machine_name):
                             if vm.condorname == None:
                                 vm.condorname = machine.machine_name
                             if machine.address_startd != "":
@@ -1380,7 +1443,8 @@ class Cleanup(threading.Thread):
                                     vm.idle_start = int(time.time())
                             foundvm = True
                             break
-                        if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name):
+                        if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name) \
+                        or utilities.match_host_with_condor_host_master(vm.alt_hostname, machine.machine_name):
                             if vm.condorname == None:
                                 vm.condorname = machine.machine_name
                             if machine.address_startd != "":
@@ -1396,7 +1460,7 @@ class Cleanup(threading.Thread):
                         if vm.override_status == 'Retiring':
                             retiredvms.append(vm)
                         elif vm.condorname != None:
-                            log.debug("VM %s on Name %s has previously registered with condor but is now missing - caught mid stale refresh?" % (vm.id, vm.condorname))
+                            log.debug("Set CondorName to None - VM %s on Name %s has previously registered with condor but is now missing - caught mid stale refresh?" % (vm.id, vm.condorname))
                             # As a temp hack I'm going to reset the last_state_change to give the VM the register time limit to come back
                             # as well as reset the condorname to None
                             vm.last_state_change = int(time.time())
@@ -1413,7 +1477,8 @@ class Cleanup(threading.Thread):
                 foundvm = False
                 if vm.status == 'Running' and masterList:
                     for machine in masterList:
-                        if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name):
+                        if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name) \
+                        or utilities.match_host_with_condor_host_master(vm.alt_hostname, machine.machine_name):
                             vm.condormasteraddr = machine.address_master
                             foundvm = True
                             break
@@ -1433,6 +1498,7 @@ class Cleanup(threading.Thread):
                                 #if slot['State'] != 'Unclaimed' or slot['Activity'] != 'Idle':
                                     #all_slots_idle = False
         for machine in machineList:
+            log.debug("cloud_scheduler.py::1491::do_condor_off::Name %s, addr %s"%(machine.machine_name,machine.address_startd))
             if machine.has_key('CSManagedVM'):
                 vm = self.resource_pool.find_vm_with_name(machine.machine_name)
                 if not vm:
@@ -1557,7 +1623,8 @@ class Cleanup(threading.Thread):
                 found_vm = False
                 for cluster in self.resource_pool.resources:
                     for vm in cluster.vms:
-                        if utilities.match_host_with_condor_host(vm.hostname, condor_name):
+                        if utilities.match_host_with_condor_host(vm.hostname, condor_name) \
+                        or utilities.match_host_with_condor_host(vm.alt_hostname, condor_name):
                             found_vm = True
                         if vm.uservmtype == vmtype and found_vm:
                             log.verbose("Located %s in VM list." % unused_vms_of_type[x].machine_name)
@@ -1566,8 +1633,10 @@ class Cleanup(threading.Thread):
                                 log.verbose("VM %s still Starting, not going to shutdown" % unused_vms_of_type[x].machine_name)
                                 break
                             # Verify that all slots of this VM are idle
-                            is_part_of_machine = {'machine_name': vm.hostname}
+                            is_part_of_machine = {'machine_name': unused_vms_of_type[x].machine_name}
                             slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
+                            if slots_of_machine:
+                                log.verbose("Machine has %i slots, checking if all idle" % len(slots_of_machine))
                             all_slots_idle = True
                             for slot in slots_of_machine:
                                 if slot.state != 'Unclaimed' or slot.activity != 'Idle':
@@ -1579,19 +1648,20 @@ class Cleanup(threading.Thread):
                                 # Check that enough time has passed to shutdown
                                 now = int(time.time())
                                 if vm.keep_alive == 0 or now - vm.idle_start > vm.keep_alive:
-                                    if vm.override_status != "Retiring":
-                                        if not self.resource_pool.force_retire_vm(vm):
-                                            if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
-                                                log.verbose("Starting Destroy of VM: %s" % (vm.id))
-                                                th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
-                                                th.start()
-                                                self.destroy_threads["".join([cluster.name, vm.id])] = th
+                                    #if vm.override_status != "Retiring":
+                                    self.resource_pool.force_retire_vm(vm)
+                                    if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
+                                        log.verbose("Starting Destroy of VM: %s" % (vm.id))
+                                        th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
+                                        th.start()
+                                        self.destroy_threads["".join([cluster.name, vm.id])] = th
                                 else:
                                     log.verbose('waiting on keep_alive: %s current: %s' % (vm.keep_alive, now-vm.idle_start))
                             else:
                                 vm.idle_start = int(time.time())
                                 break
                     if found_vm:
+                        log.verbose('vm: %s found matching: %s stopping search. Types %s and %s' % (vm.hostname, unused_vms_of_type[x].machine_name, vm.uservmtype, vmtype))
                         break
                 if not found_vm:
                     log.debug("Unable to find Condor Machine %s in VM list" % unused_vms_of_type[x].machine_name)
@@ -1631,20 +1701,6 @@ class Cleanup(threading.Thread):
                     th.start()
                     self.destroy_threads["".join([cluster.name, vm.id])] = th
 
-    # Deprecated
-    def graceful_shutdown_condor_hold(self, diff_types, machineList, num_to_change):
-        """One of the old balancing methods for fairshare scheduling. Attempts to hold a 
-        users' idle jobs so that no more will start running thus allowing machines to
-        enter an idle state and be shutdown. This method is not recommended."""
-        log.verbose("Balancing via condor_hold.")
-        log.warning("This method is deprecated, change graceful_shutdown_method in the config.")
-        for vmtype in diff_types.keys():
-            if diff_types[vmtype] > Decimal('0.1'):
-                self.job_pool.hold_vmtype(vmtype)
-            else:
-                self.job_pool.release_vmtype(vmtype)
-        self.remove_idle_machines(machineList, num_to_change)
-
     def filter_fitting_resources(self, num_to_change):
         """Finds the clusters that are capable of booting VMs for a type of job."""
         vmtypes_jobs = self.job_pool.job_container.get_unscheduled_jobs_by_usertype()
@@ -1664,7 +1720,7 @@ class Cleanup(threading.Thread):
     def want_to_balance(self, num_to_change):
         """Checks is balancing is necessary."""
         balance = False
-        for key, val in num_to_change.iteritems():
+        for key in num_to_change.keys():
             if num_to_change[key] < 0:
                 balance = True
                 break
@@ -1784,18 +1840,23 @@ class Cleanup(threading.Thread):
         done to prevent a job's execution from being interupted by Nimbus shutting
         down the VM at the maximum lifetime."""
         for cluster in self.resource_pool.resources:
-            for vm in cluster.vms:
-                # check job_run_times average run time against the vm lifetime
-                if vm.startup_time:
-                    if vm.job_run_times.average() * config.retire_before_lifetime_factor > (config.vm_lifetime*60 - (time.time() - vm.initialize_time)):
-                        # Next job submitted to this VM may not finish running before VM is shutdown
-                        if not vm.force_retire:
-                            (_, ret2, _, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
-                            if ret2 == 0 and ret22 == 0:
-                                vm.force_retire = True
-                                vm.override_status = 'Retiring'
-                            else:
-                                log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
+            try:
+                if cluster.vm_lifetime:
+                    for vm in cluster.vms:
+                        # check job_run_times average run time against the vm lifetime
+                        if vm.startup_time:
+                            if vm.job_run_times.average() * config.retire_before_lifetime_factor > (cluster.vm_lifetime*60 - (time.time() - vm.initialize_time)):
+                                # Next job submitted to this VM may not finish running before VM is shutdown
+                                if not vm.force_retire:
+                                    (_, ret2, _, ret22) = self.resource_pool.do_condor_off(vm.condorname, vm.condoraddr, vm.condormasteraddr)
+                                    if ret2 == 0 and ret22 == 0:
+                                        vm.force_retire = True
+                                        vm.override_status = 'Retiring'
+                                    else:
+                                        log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
+            except AttributeError:
+                # No vm lifetime for Non-Nimbus clouds move on to next 
+                continue
 
     def check_destroy(self, cluster, vm):
         """Make sure there is not already a destroy VM thread for this particular
@@ -1855,6 +1916,8 @@ class Cleanup(threading.Thread):
                     # Verify that all slots of this VM are idle
                     is_part_of_machine = {'machine_name': internal_vm.hostname}
                     slots_of_machine = self.resource_pool.find_in_where(self.resource_pool.machine_list, is_part_of_machine)
+                    is_part_of_machine = {'machine_name': internal_vm.alt_hostname}
+                    slots_of_machine.extend(self.resource_pool.find_in_where(self.resource_pool.machine_list, is_part_of_machine))
                     all_slots_idle = True
                     for slot in slots_of_machine:
                         if slot.state != 'Unclaimed' or slot.activity != 'Idle' or (int(vm.current_time) - int(vm.entered_state_time) > config.vm_idle_threshold):
@@ -1863,7 +1926,6 @@ class Cleanup(threading.Thread):
                         log.debug("VM %s Still has non-idle slots." % vm.name)
                         continue
 
-                    vmtype = vm.vmtype
                     vmuser = None
                     try:
                         vmuser = re.search('(?<=Owner == ")\w+', vm.start_req).group(0)
@@ -1961,6 +2023,7 @@ class GetClouds(threading.Thread):
         self.resource_pool = resource_pool
         self.quit = False
         self.polling_interval = 10 # secondsgetCloudsClient
+        self.heart_beat = time.time()
         #self.getclouds = getCloudsClient()
 
     def stop(self):
@@ -1987,6 +2050,7 @@ class GetClouds(threading.Thread):
 
             log.verbose("getclouds waiting %ds..." % self.polling_interval)
             sleep_tics = self.polling_interval
+            self.heart_beat = time.time()
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
@@ -2158,11 +2222,15 @@ def main():
     try:
         die = False
         while not die:
+            now = time.time()
             for thread in service_threads:
                 if not thread.isAlive():
                     log.error("%s thread died!" % thread.name)
                     die = True
-            time.sleep(1)
+                if now - thread.heart_beat > 1800: # 30 minutes no update - make configureable
+                    # Thread has become unresponsive
+                    pass
+                time.sleep(1)
     except (SystemExit, KeyboardInterrupt):
         log.info("Caught a signal that someone wants me to quit!")
         should_be_running = False

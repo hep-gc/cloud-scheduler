@@ -92,6 +92,7 @@ override_vmtype = False
 vm_reqs_from_condor_reqs = False
 adjust_insufficient_resources = False
 connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
+use_cloud_init = False
 
 default_VMType= "default"
 default_VMNetwork= ""
@@ -109,6 +110,9 @@ default_VMMaximumPrice= 0
 default_VMProxyNonBoot = False
 default_VMUserData = []
 default_TargetClouds = []
+default_VMAMIConfig = ""
+default_VMInjectCA = True
+default_VMJobPerCore = False
 
 log_level = "INFO"
 log_location = None
@@ -199,6 +203,7 @@ def setup(path=None):
     global override_vmtype
     global vm_reqs_from_condor_reqs
     global adjust_insufficient_resources
+    global use_cloud_init
 
     global default_VMType
     global default_VMNetwork
@@ -216,6 +221,9 @@ def setup(path=None):
     global default_VMProxyNonBoot
     global default_VMUserData
     global default_TargetClouds
+    global default_VMAMIConfig
+    global default_VMInjectCA
+    global default_VMJobPerCore
 
     global log_level
     global log_location
@@ -707,6 +715,12 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "use_cloud_init"):
+        try:
+            use_cloud_init = config_file.getboolean("global", "use_cloud_init")
+        except ValueError:
+            print "Configuration file problem: use_cloud_init must be a" \
+                  " Boolean value."
 
 
     # Default Logging options
@@ -788,10 +802,10 @@ def setup(path=None):
 
     if config_file.has_option("job", "default_VMMaximumPrice"):
         try:
-            default_VMMaximumPrice = config_file.getint("job", "default_VMMaximumPrice")
+            default_VMMaximumPrice = config_file.getfloat("job", "default_VMMaximumPrice")
         except ValueError:
             print "Configuration file problem: default_VMMaximumPrice must be an " \
-                  "integer value."
+                  "floating point value."
             sys.exit(1)
 
     if config_file.has_option("job", "default_VMProxyNonBoot"):
@@ -805,7 +819,24 @@ def setup(path=None):
         default_VMUserData = config_file.get("job", "default_VMUserData").replace(' ', '').strip('"').split(',')
     
     if config_file.has_option("job", "default_TargetClouds"):
-        default_TargetClouds = config_file.get("job", "default_TargetClouds").replace(' ', '').strip('"').split(',')
+        default_TargetClouds = config_file.get("job", "default_TargetClouds")
+
+    if config_file.has_option("job", "default_VMAMIConfig"):
+        default_VMAMIConfig = config_file.get("job", "default_VMAMIConfig")
+
+    if config_file.has_option("job", "default_VMInjectCA"):
+        try:
+            default_VMInjectCA = config_file.getboolean("job", "default_VMInjectCA")
+        except ValueError:
+            print "Configuration file problem: default_VMInjectCA must be a" \
+                  " Boolean value."
+
+    if config_file.has_option("job", "default_VMJobPerCore"):
+        try:
+            default_VMJobPerCore = config_file.getboolean("job", "default_VMJobPerCore")
+        except ValueError:
+            print "Configuration file problem: default_VMJobPerCore must be a" \
+                  " Boolean value."    
 
     # Derived options
     if condor_host_on_vm:

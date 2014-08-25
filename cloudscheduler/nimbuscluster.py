@@ -10,7 +10,7 @@ import nimbus_xml
 import config
 import logging
 import string
-import datetime
+#import datetime
 import tempfile
 import subprocess
 from subprocess import Popen
@@ -59,23 +59,24 @@ class NimbusCluster(cluster_tools.ICluster):
                  netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
                  image_attach_device=config.image_attach_device,
                  scratch_attach_device=config.scratch_attach_device, boot_timeout=None, total_cpu_cores=-1,
-                 temp_lease_storage=False):
+                 temp_lease_storage=False, enabled=True, priority=0):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
-                         memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
+                         memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout= boot_timeout)
+                         storage=storage, hypervisor=hypervisor, boot_timeout= boot_timeout, enabled=enabled, priority=priority)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
         self.net_slots = netslots
+        self.cpu_archs = cpu_archs
         total_pool_slots = 0
         for pool in self.net_slots.keys():
             total_pool_slots += self.net_slots[pool]
         self.max_slots = total_pool_slots
         self.max_vm_storage = max_vm_storage
         self.total_cpu_cores = total_cpu_cores
-        self.vm_lifetime = vm_lifetime if vm_lifetime != None else config.vm_lifetime
+        self.vm_lifetime = int(vm_lifetime) if vm_lifetime != None else config.vm_lifetime
         self.scratch_attach_device = scratch_attach_device if scratch_attach_device != None else config.scratch_attach_device
         self.image_attach_device = image_attach_device if image_attach_device != None else config.image_attach_device
         self.temp_lease_storage = temp_lease_storage if temp_lease_storage != None else False
@@ -125,11 +126,11 @@ class NimbusCluster(cluster_tools.ICluster):
         # Create a workspace metadata xml file
         if not self.temp_lease_storage:
             vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
-                vm_cpuarch, vm_image, vm_storage > 0, self.image_attach_device,
+                self.cpu_archs[0], vm_image, vm_storage > 0, self.image_attach_device,
                 self.scratch_attach_device,)
         else:
             vm_metadata = nimbus_xml.ws_metadata_factory(vm_name, vm_networkassoc, \
-                vm_cpuarch, vm_image, False, self.image_attach_device,
+                self.cpu_archs[0], vm_image, False, self.image_attach_device,
                 self.scratch_attach_device,)
 
 
@@ -172,7 +173,7 @@ class NimbusCluster(cluster_tools.ICluster):
 
 
         # Set a timestamp for VM creation
-        now = datetime.datetime.now()
+        #now = datetime.datetime.now()
 
         # Create an EPR file name (unique with timestamp)
         (epr_handle, vm_epr) = tempfile.mkstemp(suffix=".vm_epr")
@@ -283,13 +284,12 @@ class NimbusCluster(cluster_tools.ICluster):
             myproxy_server_port = myproxy_server_port, job_per_core = job_per_core)
 
         # Add the new VM object to the cluster's vms list And check out required resources
-        self.vms.append(new_vm)
         try:
             self.resource_checkout(new_vm)
         except:
             log.exception("Unexpected error checking out resources when creating a VM. Programming error?")
             return self.ERROR
-
+        self.vms.append(new_vm)
         log.info("Started vm %s on %s using image at %s" % (new_vm.id, new_vm.clusteraddr, new_vm.image))
         return create_return
 

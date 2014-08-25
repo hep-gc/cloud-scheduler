@@ -7,6 +7,7 @@ import logging
 import nimbus_xml
 import subprocess
 import cluster_tools
+import cloud_init_util
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.job_management import _attr_list_to_dict
@@ -99,6 +100,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                    region=region,
                                    port=8773,
                                    path="/services/Cloud",
+                                   validate_certs=False
                                    )
                 log.verbose("Created a connection to OpenStack (%s)" % self.name)
 
@@ -112,17 +114,17 @@ class EC2Cluster(cluster_tools.ICluster):
         return connection
 
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
-                 memory=[], max_vm_mem= -1, cpu_archs=[], networks=[], vm_slots=0,
-                 cpu_cores=0, storage=0,
-                 access_key_id=None, secret_access_key=None, security_group=None,
-                 hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
-                 regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None):
+                 memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
+                 cpu_cores=0, storage=0, access_key_id=None, secret_access_key=None,
+                 security_group=None, hypervisor='xen', key_name=None, 
+                 boot_timeout=None, secure_connection="", regions=[], vm_domain_name="",
+                  reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
-                         memory=memory, max_vm_mem=max_vm_mem, cpu_archs=cpu_archs, networks=networks,
+                         memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled, priority=priority)
 
         if not security_group:
             security_group = ["default"]
@@ -143,14 +145,14 @@ class EC2Cluster(cluster_tools.ICluster):
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
 
-    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc, vm_cpuarch,
+    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
-                  vm_keepalive=0, instance_type="", maximum_price=0,
-                  job_per_core=False, securitygroup=[],key_name=""):
+                  pre_customization=None, vm_keepalive=0, instance_type="", 
+                  maximum_price=0, job_per_core=False, securitygroup=[],
+                  key_name="",use_cloud_init=False):
         """Attempt to boot a new VM on the cluster."""
-        #print vm_image
-        #print instance_type
-        #print securitygroup
+
+        use_cloud_init = use_cloud_init or config.use_cloud_init
         log.verbose("Trying to boot %s on %s" % (vm_type, self.network_address))
         if len(securitygroup) != 0:
             sec_group = []
@@ -158,7 +160,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 if group in self.security_groups:
                     sec_group.append(group)
             if len(sec_group) == 0:
-                log.warning("No matching security groups - trying default config")
+                log.debug("No matching security groups - trying default config")
                 sec_group = self.security_groups
                 #sec_group.append("default") - don't just append default use what is in cloud_resources.conf for this cloud
         else:
@@ -191,8 +193,10 @@ class EC2Cluster(cluster_tools.ICluster):
         try:
             if self.name in instance_type.keys():
                 i_type = instance_type[self.name]
-            else:
+            elif self.network_address in instance_type.keys():
                 i_type = instance_type[self.network_address]
+            else:
+                i_type = instance_type["default"]
         except:
             log.debug("No instance type for %s, trying default" % self.network_address)
             #try:
@@ -213,10 +217,22 @@ class EC2Cluster(cluster_tools.ICluster):
         if key_name == None:
             key_name = self.key_name
         if customization:
-            user_data = nimbus_xml.ws_optional(customization)
+            if not use_cloud_init:
+                user_data = nimbus_xml.ws_optional(customization)
+            else:
+                user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
             user_data = ""
 
+        if pre_customization:
+            if not use_cloud_init:
+                for item in pre_customization:
+                    user_data = '\n'.join([item, user_data])
+            else:
+                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
+        elif use_cloud_init:
+            user_data = cloud_init_util.inject_customizations([], user_data)[0]
+        
         if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
             log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)
             addressing_type = "public"
@@ -242,7 +258,7 @@ class EC2Cluster(cluster_tools.ICluster):
                         break
 
             if image:
-                if maximum_price is 0: # don't request a spot instance
+                if maximum_price is 0 or self.cloud_type == "OpenStack": # don't request a spot instance
                     try:
                         reservation = image.run(1,1, key_name=key_name,
                                                 addressing_type=addressing_type,
@@ -252,31 +268,36 @@ class EC2Cluster(cluster_tools.ICluster):
                                                 instance_type=instance_type)
                         instance_id = reservation.instances[0].id
                         log.debug("Booted VM %s" % instance_id)
-                    except:
-                        log.exception("There was a problem creating an EC2 instance...")
+                    except boto.exception.EC2ResponseError, e:
+                        log.exception("There was a problem creating an EC2 instance: %s" % e)
+                        return self.ERROR
+                    except Exception, e:
+                        log.exception("There was an unexpected problem creating an EC2 instance: %s" % e)
                         return self.ERROR
 
                 else: # get a spot instance of no more than maximum_price
                     try:
-                        price_in_dollars = str(float(maximum_price) / 100)
                         reservation = connection.request_spot_instances(
-                                                  price_in_dollars,
+                                                  maximum_price,
                                                   image.id,
                                                   key_name=key_name,
                                                   user_data=user_data,
                                                   placement=self.placement_zone,
                                                   addressing_type=addressing_type,
-                                                  security_groups=self.sec_group,
+                                                  security_groups=sec_group,
                                                   instance_type=instance_type)
                         spot_id = str(reservation[0].id)
                         instance_id = ""
-                        log.debug("Reserved instance %s at no more than %s" % (spot_id, price_in_dollars))
+                        log.debug("Reserved instance %s at no more than %s" % (spot_id, maximum_price))
                     except AttributeError:
                         log.exception("Your version of boto doesn't seem to support "\
                                   "spot instances. You need at least 1.9")
                         return self.ERROR
-                    except:
-                        log.exception("Problem creating an EC2 spot instance...")
+                    except boto.exception.EC2ResponseError, e:
+                        log.exception("There was a problem creating an EC2 spot instance: %s" % e)
+                        return self.ERROR
+                    except Exception, e:
+                        log.exception("Problem an unexpected error creating an EC2 spot instance: %s" % e)
                         return self.ERROR
 
 
@@ -284,8 +305,8 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.error("Couldn't find image %s on %s" % (vm_image, self.name))
                 return self.ERROR
 
-        except:
-            log.exception("Problem creating EC2 instance on on %s" % self.name)
+        except Exception, e:
+            log.exception("Problem creating EC2 instance on %s: %s" % (self.name, e))
             return self.ERROR
 
         vm_mementry = self.find_mementry(vm_mem)
@@ -299,7 +320,7 @@ class EC2Cluster(cluster_tools.ICluster):
         new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
-                    cpuarch = vm_cpuarch, image= vm_image,
+                    image= vm_ami,
                     memory = vm_mem, mementry = vm_mementry,
                     cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive, job_per_core = job_per_core)
@@ -350,18 +371,25 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.status = self.VM_STATES['error']
                 vm.last_state_change = int(time.time())
                 return vm.status
-            except Exception, e:
+            except boto.exception.EC2ResponseError, e:
                 log.exception("Unexpected error polling %s: %s" % (vm.id, e))
                 if e.status == 400 and e.error_code == 'InstanceNotFound':
                     vm.status = self.VM_STATES['error']
+                elif e.status == 404:
+                    vm.status = self.VM_STATES['error']
+                return vm.status
+            except Exception, e:
+                log.exception("Unexpected exception polling vm: %s on: %s: %s" % (vm.id, self.name, e))
                 return vm.status
 
         except boto.exception.EC2ResponseError, e:
             log.error("Couldn't update status because: %s" % e.error_message)
             return vm.status
 
+        if not instance:
+            return vm.status
         with self.vms_lock:
-            if vm.status != self.VM_STATES.get(instance.state, "Starting"):
+            if instance and vm.status != self.VM_STATES.get(instance.state, "Starting"):
 
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.state, "Starting")))
@@ -373,9 +401,21 @@ class EC2Cluster(cluster_tools.ICluster):
                 # extract the hostname from dig -x output
                 vm.hostname = self._extract_host_from_dig(dig_out)
             elif self.cloud_type == "OpenStack":
-                vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
+                if len(instance.public_dns_name) > 0:
+                    vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
+                else:
+                    vm.hostname = ''.join([instance.private_dns_name, self.vm_domain_name])
             else:
+                if len(instance.public_dns_name) > 0:
+                    vm.hostname = instance.public_dns_name
+                else:
+                    vm.hostname = instance.private_dns_name
+            if len(instance.public_dns_name) > 0 and len(instance.private_dns_name) > 0:
                 vm.hostname = instance.public_dns_name
+                vm.alt_hostname = instance.private_dns_name
+                if self.cloud_type == "OpenStack":
+                    vm.hostname = ''.join([vm.hostname, self.vm_domain_name])
+                    vm.alt_hostname = ''.join([vm.alt_hostname, self.vm_domain_name])
             vm.lastpoll = int(time.time())
         return vm.status
 
@@ -407,7 +447,10 @@ class EC2Cluster(cluster_tools.ICluster):
             returnError = True
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
             if e.status == 400 and e.error_code == 'InstanceNotFound':
-                log.exception("VM %s no longer exists... removing from system")
+                log.exception("VM %s no longer exists... removing from system" % vm.id)
+                returnError = False
+            if e.status == 404:
+                log.exception("VM %s not found... removing from system" % vm.id)
                 returnError = False
             if returnError:
                 return self.ERROR
@@ -418,7 +461,10 @@ class EC2Cluster(cluster_tools.ICluster):
         if return_resources:
             self.resource_return(vm)
         with self.vms_lock:
-            self.vms.remove(vm)
+            try:
+                self.vms.remove(vm)
+            except Exception as e:
+                log.error("Unable to remove VM %s on %s: %s" % (vm.id, self.name, e))
 
         return 0
 

@@ -1,4 +1,4 @@
-# Cloud Scheduler 1.6 README
+# Cloud Scheduler 1.7 README
 
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
@@ -17,9 +17,7 @@ For more documentation on Cloud Scheduler, please refer to:
 * A working Condor 7.5.x or later install (details below)
 * Nimbus Cloud Client tools (details below)
 * [Python 2.6+](http://www.python.org/)
-* [Suds 0.3.9+](https://fedorahosted.org/suds/)
 * [boto](http://code.google.com/p/boto/)
-* [lxml](http://codespeak.net/lxml/)
 * redhat-lsb 
 
 ## Optional Prerequisites
@@ -114,20 +112,10 @@ To install without using pip, run:
 
 ## Condor Install
 Cloud Scheduler works with [Condor](http://www.cs.wisc.edu/condor/), which needs
-to be installed and able to manage resources. You can install it on the same
-machine that runs Cloud Scheduler (or not). You need to enable SOAP to allow
-Cloud Scheduler to communicate with Condor. You can do this by adding the
-following to your Condor config file, which is usually located at:
-/etc/condor/condor_config:
+to be installed and able to manage resources. You must install it on the same
+machine that runs Cloud Scheduler.
 
-    ## CLOUD SCHEDULER SETTINGS
-    ENABLE_SOAP = TRUE
-    ENABLE_WEB_SERVER = TRUE
-    WEB_ROOT_DIR=$(RELEASE_DIR)/web
-    ALLOW_SOAP=localhost, 127.0.0.1
-    SCHEDD_ARGS = -p 8080
-
-We also recommend the following settings, especially if you're planning on
+We recommend the following settings, especially if you're planning on
 using Condor CCB:
 
     UPDATE_COLLECTOR_WITH_TCP=True
@@ -138,7 +126,7 @@ using Condor CCB:
 We have also placed an example Condor config in scripts/condor/manager
 
 Make sure you can run condor_status and condor_q, and make sure your
-ALLOW_WRITE will permit the VMs you will start to add themselves to your Condor
+[HOST]ALLOW_WRITE will permit the VMs you will start to add themselves to your Condor
 Pool.
 
 ## Preparing VM Images

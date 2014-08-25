@@ -93,6 +93,7 @@ class VM:
         self.user = user
         self.uservmtype = ':'.join([user,vmtype])
         self.hostname = hostname
+        self.alt_hostname = None
         self.ipaddress = ipaddress
         self.condorname = None
         self.condoraddr = None
@@ -101,7 +102,6 @@ class VM:
         self.clusterport = clusterport
         self.cloudtype = cloudtype
         self.network = network
-        self.cpuarch = cpuarch
         self.image = image
         self.memory = memory
         self.mementry = mementry
@@ -127,7 +127,7 @@ class VM:
         self.failed_retire = False
         self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
         self.x509userproxy_expiry_time = None
-
+        
         # Set a status variable on new creation
         self.status = "Starting"
 
@@ -135,6 +135,7 @@ class VM:
         log = logging.getLogger("cloudscheduler")
         log.verbose("New VM Object - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
           % (name, id, clusteraddr, image, memory))
+        log.info("Created VM cluster address %s name %s"%(clusteraddr,name))
 
     def log(self):
         """Log the VM to the info level."""
@@ -160,8 +161,8 @@ class VM:
 
     def get_vm_info_pretty(self):
         """Header + VM info formatted output."""
-        output = get_vm_info_header()
-        output += get_vm_info()
+        output = self.get_vm_info_header()
+        output += self.get_vm_info()
         return output
 
     def get_proxy_file(self):
@@ -290,15 +291,14 @@ class ICluster:
     """
 
     def __init__(self, name="Dummy Cluster", host="localhost",
-                 cloud_type="Dummy", memory=[], max_vm_mem= -1, cpu_archs=[], networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None):
+                 cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
+                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None, enabled=True, priority=0):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
         self.memory = memory
         self.max_mem = tuple(memory)
         self.max_vm_mem = max_vm_mem
-        self.cpu_archs = cpu_archs
         self.network_pools = networks
         self.vm_slots = vm_slots
         self.max_slots = vm_slots
@@ -308,12 +308,13 @@ class ICluster:
         self.vms = [] # List of running VMs
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
-        self.enabled = True
+        self.enabled = enabled
         self.hypervisor = hypervisor
         self.boot_timeout = int(boot_timeout) if boot_timeout != None else config.vm_start_running_timeout
         self.connection_fail_disable_time = config.connection_fail_disable_time
         self.connection_problem = False
         self.errorconnect = None
+        self.priority = priority
 
         self.setup_logging()
         log.debug("New cluster %s created" % self.name)
@@ -350,7 +351,6 @@ class ICluster:
             "CPU Cores:\t%s\n"     % self.cpu_cores +
             "Storage:\t%s\n"       % self.storageGB +
             "Memory:\t\t%s\n"      % self.memory +
-            "CPU Archs:\t%s\n"     % string.join(self.cpu_archs, ", ") +
             "Network Pools:\t%s\n" % string.join(self.network_pools, ", ") +
             "-" * 30)
 
@@ -482,7 +482,7 @@ class ICluster:
         Raises NoResourcesError if there are not enough available resources
         to check out.
         """
-        log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
+        #log.debug("Checking out resources for VM %s from Cluster %s" % (vm.name, self.name))
         with self.res_lock:
 
             remaining_vm_slots = self.vm_slots - 1
@@ -508,7 +508,7 @@ class ICluster:
         Parameters: (as for checkout() )
         Notes: (as for checkout)
         """
-        log.debug("Returning resources used by VM %s to Cluster %s" % (vm.id, self.name))
+        #log.debug("Returning resources used by VM %s to Cluster %s" % (vm.name, self.name))
         with self.res_lock:
             self.vm_slots += 1
             self.storageGB += vm.storage

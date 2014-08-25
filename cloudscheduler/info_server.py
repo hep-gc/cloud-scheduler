@@ -207,13 +207,12 @@ class InfoServer(threading.Thread,):
             def get_job(self, jobid):
                 output = "Job not found."
                 job = job_pool.job_container.get_job_by_id(jobid)
-                if job != null:
-                    output = job_match.get_job_info_pretty()
+                if job != None:
+                    output = job.get_job_info_pretty()
                 return output
             def get_json_job(self, jobid):
-                output = '{}'
                 job_match = job_pool.job_container.get_job_by_id(jobid)
-                return JobJSONEncoder().encode(job)
+                return JobJSONEncoder().encode(job_match)
             def get_json_jobpool(self):
                 return JobPoolJSONEncoder().encode(job_pool)
             def get_ips_munin(self):
@@ -378,13 +377,13 @@ class InfoServer(threading.Thread,):
 class VMJSONEncoder(json.JSONEncoder):
     def default(self, vm):
         if not isinstance (vm, VM):
-            log.error("Cannot use VMJSONEncoder on non VM object")
+            log.error("Cannot use VMJSONEncoder on non VM object of type %s, %s" % (type(vm), vm))
             return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
                 'ipaddress': vm.ipaddress,
                 'cloudtype': vm.cloudtype, 'network': vm.network, 
-                'cpuarch': vm.cpuarch, 'image': vm.image,
+                'image': vm.image, 'alt_hostname': vm.alt_hostname,
                 'memory': vm.memory, 'mementry': vm.mementry, 
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status, 'condoraddr': vm.condoraddr,
@@ -399,7 +398,7 @@ class VMJSONEncoder(json.JSONEncoder):
                 'myproxy_server': vm.myproxy_server, 'myproxy_server_port': vm.myproxy_server_port,
                 'myproxy_renew_time': vm.myproxy_renew_time, 'override_status': vm.override_status,
                 'job_per_core': vm.job_per_core, 'force_retire': vm.force_retire,
-                'failed_retire': vm.failed_retire, 'x509userproxy_expiry_time': vm.x509userproxy_expiry_time,
+                'failed_retire': vm.failed_retire, 'x509userproxy_expiry_time': str(vm.x509userproxy_expiry_time),
                 'job_run_times': vm.job_run_times.data}
 
 class ClusterJSONEncoder(json.JSONEncoder):
@@ -415,7 +414,6 @@ class ClusterJSONEncoder(json.JSONEncoder):
             vmDecodes.append(json.loads(vm))
         return {'name': cluster.name, 'network_address': cluster.network_address,
                 'cloud_type': cluster.cloud_type, 'memory': cluster.memory, 
-                'cpu_archs': cluster.cpu_archs, 
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
                 'storageGB': cluster.storageGB, 'vms': vmDecodes, 'enabled':cluster.enabled,
@@ -447,7 +445,7 @@ class JobJSONEncoder(json.JSONEncoder):
         return {'id': job.id, 'user': job.user, 'priority': job.priority,
                 'job_status': job.job_status, 'cluster_id': job.cluster_id,
                 'proc_id': job.proc_id, 'req_vmtype': job.req_vmtype,
-                'req_network': job.req_network, 'req_cpuarch': job.req_cpuarch,
+                'req_network': job.req_network,
                 'req_image': job.req_image, 'req_imageloc': job.req_imageloc,
                 'req_ami': job.req_ami, 'req_memory': job.req_memory,
                 'req_cpucores': job.req_cpucores, 'req_storage': job.req_storage,
@@ -458,7 +456,7 @@ class JobJSONEncoder(json.JSONEncoder):
                 'high_priority': job.high_priority, 'instance_type': job.instance_type,
                 'maximum_price': job.maximum_price, 'spool_dir': job.spool_dir,
                 'myproxy_server': job.myproxy_server, 'myproxy_server_port': job.myproxy_server_port,
-                'myproxy_creds_name': job.myproxy_creds_name, 'running_vm': self.running_vm,
+                'myproxy_creds_name': job.myproxy_creds_name, 'running_vm': job.running_vm,
                 'x509userproxysubject': job.x509userproxysubject, 'x509userproxy': job.x509userproxy,
                 'original_x509userproxy': job.original_x509userproxy,
                 'x509userproxy_expiry_time': job.x509userproxy_expiry_time,

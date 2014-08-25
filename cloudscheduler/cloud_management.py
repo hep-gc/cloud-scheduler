@@ -27,10 +27,8 @@ import threading
 import subprocess
 import ConfigParser
 
-from suds.client import Client
 from urllib2 import URLError
 from decimal import *
-from lxml import etree
 from StringIO import StringIO
 from collections import defaultdict
 
@@ -100,23 +98,18 @@ class ResourcePool:
 
     ## Instance methods
 
-    def __init__(self, config_file, name="Resources", condor_query_type=""):
+    def __init__(self, config_file, name="Resources", condor_query_type="local"):
         """ Constructor.
         
         Keywords:
             name   - The name of the ResourcePool being created
-            condor_query_type - type of query to do on condor, either local or soap
+            condor_query_type - type of query to do on condor - local 
         """
         global log
         log = logging.getLogger("cloudscheduler")
 
         log.verbose("New ResourcePool %s created" %name)
         self.name = name
-
-        _collector_wsdl = "file://%s/wsdl/condorCollector.wsdl"%determine_path()
-        self.condor_collector = Client(_collector_wsdl, cache=None, location=config.condor_collector_url)
-        self.condor_collector_as_xml = Client(_collector_wsdl, cache=None,
-                                              location=config.condor_collector_url, retxml=True)
 
         self.config_file = os.path.expanduser(config_file)
         self.ban_lock = threading.Lock()
@@ -133,11 +126,9 @@ class ResourcePool:
 
         if condor_query_type.lower() == "local":
             self.resource_query = self.resource_query_local
-        elif condor_query_type.lower() == "soap":
-            self.resource_query = self.resource_query_SOAP
         else:
-            log.error("Can't use '%s' retrieval method. Using SOAP method." % condor_query_type)
-            self.resource_query = self.resource_query_SOAP
+            log.error("Can't use '%s' retrieval method. Using local method." % condor_query_type)
+            self.resource_query = self.resource_query_local
             
         if config.scheduling_metric.lower() == "slot":
             self.vmtype_distribution = self.vmtype_slot_distribution
@@ -276,14 +267,13 @@ class ResourcePool:
     @staticmethod
     def _cluster_from_config(config, cluster):
         """Create a new cluster object from a config file's specification."""
+        enabled = True
         if config.has_option(cluster, "enabled"):
             try:
                 enabled = config.getboolean(cluster, "enabled")
             except ValueError:
                 log.error("Error reading config - cluster %s disabled" % cluster)
                 enabled = False
-            if not enabled:
-                return None
         cloud_type = get_or_none(config, cluster, "cloud_type")
         max_vm_mem = get_or_none(config, cluster, "max_vm_mem")
         max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
@@ -291,6 +281,8 @@ class ResourcePool:
         max_vm_storage = int(max_vm_storage) if max_vm_storage != None else -1
         total_cpu_cores = get_or_none(config, cluster, "total_cpu_cores")
         total_cpu_cores = int(total_cpu_cores) if total_cpu_cores != None else -1
+        priority = get_or_none(config, cluster, "priority")
+        priority = int(priority) if priority != None else 0
         hypervisor = get_or_none(config, cluster, "hypervisor")
         if hypervisor == None:
             hypervisor = 'xen'
@@ -331,6 +323,8 @@ class ResourcePool:
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     total_cpu_cores = total_cpu_cores,
                     temp_lease_storage = get_or_none(config, cluster, "temp_lease_storage"),
+                    enabled=enabled,
+                    priority = priority,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -339,7 +333,6 @@ class ResourcePool:
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
-                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
@@ -355,6 +348,8 @@ class ResourcePool:
                     vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
                     reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
                     placement_zone = get_or_none(config, cluster, "placement_zone"),
+                    enabled=enabled,
+                    priority = priority,
                     )
 
         elif cloud_type == "StratusLab" and stratuslab_support:
@@ -363,13 +358,14 @@ class ResourcePool:
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
-                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
                     hypervisor = hypervisor,
-                    contextualization = get_or_none(config, cluster, "contextualization")
+                    contextualization = get_or_none(config, cluster, "contextualization"),
+                    enabled=enabled,
+                    priority = priority,
                     )
 
         elif cloud_type.lower() == "ibmsmartcloud":
@@ -378,7 +374,6 @@ class ResourcePool:
                     cloud_type= get_or_none(config, cluster, "cloud_type"),
                     memory= map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem= max_vm_mem if max_vm_mem != None else -1,
-                    cpu_archs= splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks= splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots= int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores= int(get_or_none(config, cluster, "cpu_cores")),
@@ -386,13 +381,14 @@ class ResourcePool:
                     hypervisor= hypervisor,
                     username= get_or_none(config, cluster, "username"),
                     password= get_or_none(config, cluster, "password"),
+                    enabled=enabled,
+                    priority = priority,
                     )
         elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce":
             return googlecluster.GoogleComputeEngineCluster(name = cluster,
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
-                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
@@ -402,6 +398,8 @@ class ResourcePool:
                     security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
                     boot_timeout = get_or_none(config, cluster, "boot_timeout"),
                     project_id = get_or_none(config, cluster, "project_id"),
+                    enabled=enabled,
+                    priority = priority,
                     )
         elif cloud_type == "OpenStackNative":
             return openstackcluster.OpenStackCluster(name = cluster,
@@ -409,7 +407,6 @@ class ResourcePool:
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
-                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
                     networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
@@ -429,6 +426,8 @@ class ResourcePool:
                     vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
                     reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
                     placement_zone = get_or_none(config, cluster, "placement_zone"),
+                    enabled=enabled,
+                    priority = priority,
                     )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
@@ -454,12 +453,12 @@ class ResourcePool:
     def get_pool_info(self, ):
         """Print the name and address of every cluster in the resource pool."""
         output = "Resource pool %s:\n" %self.name
-        output += "%-15s  %-10s %-15s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS")
+        output += "%-15s  %-10s %-30s %-10s \n" % ("NAME", "CLOUD TYPE", "NETWORK ADDRESS", "ENABLED")
         if len(self.resources) == 0:
             output += "Pool is empty..."
         else:
             for cluster in self.resources:
-                output += "%-15s  %-10s %-15s %-10s\n" % (cluster.name, cluster.cloud_type, cluster.network_address, cluster.hypervisor)
+                output += "%-15s  %-10s %-30s %-10s\n" % (cluster.name, cluster.cloud_type, cluster.network_address, cluster.enabled)
         return output
 
     def get_resource(self, ):
@@ -499,9 +498,6 @@ class ResourcePool:
             # If the cluster has no open VM slots
             if (cluster.vm_slots <= 0):
                 continue
-            # If the cluster does not have the required CPU architecture
-            #if not (cpuarch in cluster.cpu_archs):
-            #    continue
             # If required network is NOT in cluster's network associations
             if not (network in cluster.network_pools):
                 continue
@@ -559,6 +555,7 @@ class ResourcePool:
         for cluster in clusters:
             log.verbose("Trying with cluster %s (Name: %s)" % (str(cluster), cluster.name))
             if not cluster.enabled:
+                log.verbose("get_fitting_resources - %s is disabled - skipping" % cluster.name)
                 continue
             if cluster.name in blocked:
                 log.verbose("get_fitting_resources - %s is blocked." % cluster.name)
@@ -566,6 +563,7 @@ class ResourcePool:
             if cluster.__class__.__name__ == "NimbusCluster":
                 # If not valid image file to download
                 if imageloc == "":
+                    log.verbose("get_fitting_resources - No image location set: %s" % cluster.name)
                     continue
                 # If required network is NOT in cluster's network associations
                 # if network is undefined then it means pick whatever, so we
@@ -621,12 +619,9 @@ class ResourcePool:
             if (cluster.vm_slots <= 0):
                 log.verbose("get_fitting_resources - No free slots in %s" % cluster.name)
                 continue
-            # If the cluster does not have the required CPU architecture
-            #if (cpuarch not in cluster.cpu_archs):
-                #log.verbose("get_fitting_resources - No matching CPU archs in %s" % cluster.name)
-                #continue
             # If request exceeds the max vm memory on cluster
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
+                log.verbose("get_fitting_resources - memory request exceeds max_vm_mem on %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
             if (cluster.find_mementry(memory) < 0):
@@ -697,6 +692,7 @@ class ResourcePool:
 
         # sort them based on how full and return the list
         fitting_clusters.sort(key=lambda cluster: cluster.slot_fill_ratio())
+        fitting_clusters.sort(key=lambda cluster: cluster.priority)
         return fitting_clusters
 
     def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
@@ -717,9 +713,6 @@ class ResourcePool:
         for cluster in self.resources:
             if not cluster.enabled:
                 continue
-            # If the cluster does not have the required CPU architecture
-            #if not (cpuarch in cluster.cpu_archs):
-                #continue
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
                 continue
@@ -766,8 +759,6 @@ class ResourcePool:
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
                 continue
-            #if not (cpuarch in cluster.cpu_archs):
-                #continue
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
                 continue
@@ -855,33 +846,6 @@ class ResourcePool:
 
         return machine_list
 
-
-    def resource_query_SOAP(self):
-        """
-        resource_query_SOAP -- does a SOAP Query to the condor collector
-
-        Returns a list of dictionaries with information about the machines
-        registered with condor.
-        """
-        log.verbose("Querying condor startd with SOAP API")
-        try:
-            machines_xml = self.condor_collector_as_xml.service.queryStartdAds()
-            machine_list = self._condor_machine_xml_to_machine_list(machines_xml)
-
-            return machine_list
-
-        except URLError, e:
-            log.exception("There was a problem connecting to the "
-                      "Condor scheduler web service (%s) for the following "
-                      "reason:"
-                      % config.condor_collector_url)
-            return []
-        except:
-            log.exception("There was a problem connecting to the "
-                      "Condor scheduler web service (%s)"
-                      % (config.condor_collector_url))
-            return []
-
     def master_resource_query_local(self):
         """
         master_resource_query_local -- does a Query to the condor collector about master daemons
@@ -934,44 +898,10 @@ class ResourcePool:
 
         return machines
 
-
-    @staticmethod
-    def _condor_machine_xml_to_machine_list(condor_xml):
-        """
-        _condor_machine_xml_to_machine_list - Converts Condor SOAP XML from Condor
-                to a list of dictionarties with the attributes from the Condor 
-                machine ad.
-
-                returns [] if there are no machines
-        """
-        def _item_attribute(xml, element):
-            try:
-                return xml.xpath(".//%s" % element)[0].text
-            except:
-                return ""
-
-        machines = []
-
-        context = etree.iterparse(StringIO(condor_xml))
-        for action, elem in context:
-            if elem.tag == "item" and elem.getparent().tag == "result":
-                xml_machine = elem
-                machine = {}
-                for item in xml_machine.iter("item"):
-                    name = _item_attribute(item, "name")
-                    value = _item_attribute(item, "value")
-                    machine[name] = value
-
-                machines.append(machine)
-                elem.clear()
-
-        return machines
-
-
     def get_vmtypes_count(self, machineList):
         """Get a Dictionary of required VM Types with how many of that type running.
         
-        Uses the dict-list structure returned by SOAP/local query
+        Uses the dict-list structure returned by local query
         """
         count = defaultdict(int)
         for vm in machineList:
@@ -1300,7 +1230,10 @@ class ResourcePool:
             log.exception("Unknown problem opening persistence file!")
             return
         persistence_file.close()
-
+        
+        empty_vm = cluster_tools.VM()
+        empty_vm_key_set = set(empty_vm.__dict__)
+        
         for old_cluster in old_resources:
             old_cluster.setup_logging()
 
@@ -1311,6 +1244,14 @@ class ResourcePool:
                 if new_cluster:
                     try:
                         new_cluster.resource_checkout(vm)
+                        try:
+                            # Add any new attributes to VM object loaded from pickle
+                            vm_key_set = set(vm.__dict__)
+                            key_diff = empty_vm_key_set - vm_key_set
+                            while len(key_diff) > 0:
+                                vm.__dict__[key_diff.pop()] = None
+                        except Exception as e:
+                            log.exception("Exception appending new keys %s" % e)
                         new_cluster.vms.append(vm)
                         log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
                     except cluster_tools.NoResourcesError, e:
@@ -1508,25 +1449,30 @@ class ResourcePool:
         Return:
             a 3 tuple of the returncodes from the 2 commands used and a return code
         """
-        cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
+        log.info("cloud_management.py::do_condor_off: %s, addr: %s, master_addr: %s"%(machine_name,machine_addr,master_addr))
+        #cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
         cmd2 = '%s -peaceful -addr "%s" -subsystem startd' % (config.condor_off_command, machine_addr)
         cmd3 = '%s -peaceful -addr "%s" -subsystem master' % (config.condor_off_command, master_addr)
-        args = []
+        #args = []
         args2 = []
         args3 = []
         if machine_name == None:
             machine_name = 'NoneType'
         if machine_addr == None:
             machine_addr = 'NoneType'
+            log.debug("Start Addr is None for Machine: %s cannot do condor_off." % machine_name)
+            return (-1,-1,-1,-1)
         if master_addr == None:
             master_addr = 'NoneType'
+            log.debug("Master Addr is None for Machine: %s cannot do condor_off." % machine_name)
+            return (-1,-1,-1,-1)
         if config.cloudscheduler_ssh_key:
-            args.append(config.ssh_path)
-            args.append('-i')
-            args.append(config.cloudscheduler_ssh_key)
+            #args.append(config.ssh_path)
+            #args.append('-i')
+            #args.append(config.cloudscheduler_ssh_key)
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
-            args.append(central_address)
-            args.append(cmd)
+            #args.append(central_address)
+            #args.append(cmd)
             
             args2.append(config.ssh_path)
             args2.append('-i')
@@ -1540,12 +1486,12 @@ class ResourcePool:
             args3.append(central_address)
             args3.append(cmd3)
         else:
-            args.append(config.condor_off_command)
-            args.append('-peaceful')
-            args.append('-name')
-            args.append(machine_name)
-            args.append('-subsystem')
-            args.append('startd')
+            #args.append(config.condor_off_command)
+            #args.append('-peaceful')
+            #args.append('-name')
+            #args.append(machine_name)
+            #args.append('-subsystem')
+            #args.append('startd')
             
             args2.append(config.condor_off_command)
             args2.append('-peaceful')
@@ -1600,7 +1546,6 @@ class ResourcePool:
             return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % ' '.join(args3))
-            print args
             return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
 
@@ -1746,6 +1691,8 @@ class ResourcePool:
             outputlist.append(cluster)
             outputlist.append(' ')
             for item in items:
+                if item[0] in ['password', 'access_key_id', 'secret_access_key', 'username']:
+                    continue
                 outputlist.append('[')
                 outputlist.append(','.join(item))
                 outputlist.append(']')
@@ -1902,7 +1849,7 @@ class ResourcePool:
         if cluster:
             vm = cluster.get_vm(vmid)
             if vm:
-                vm.override_status = ""
+                vm.override_status = None
                 vm.force_retire = False
                 output = "Reset state of %s on %s" % (clustername, vmid)
             else:

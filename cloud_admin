@@ -58,7 +58,12 @@ def main(argv=None):
     parser.add_option("-t", "--reload-target-alias", dest="alias", action="store_true", default=False, help="Reload the Target Cloud Alias file.")
     parser.add_option("-y", "--list-alias", dest="list_alias", action="store_true", default=False, help="List the current cloud aliases.")
 
-    (cli_options, args) = parser.parse_args()
+    try:
+        (cli_options, _) = parser.parse_args()
+    except Exception as e:
+        print "Failed to parse options does some value need to be wrapped in quotes?"
+        print e
+        sys.exit(-1)
 
     # Initialize config
     if cli_options.config_file:
@@ -93,7 +98,7 @@ def main(argv=None):
                     print "Must provide a -n [VM ID] or -a to kill all VMs on this cloud."
             else:
                 print "Must Provide the cloud name to kill VMs on and the VM ID or all flag."
-        if cli_options.remove:
+        elif cli_options.remove:
             if cli_options.cloud_name:
                 if cli_options.vm_id:
                     print s.delete_vm_entry(cli_options.cloud_name, cli_options.vm_id)
