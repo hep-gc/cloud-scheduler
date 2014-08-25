@@ -1761,6 +1761,7 @@ class ResourcePool:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
+                log.debug(output)
             else:
                 output = "Could not find VM ID." % vmid
         else:
@@ -1777,6 +1778,7 @@ class ResourcePool:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
             output = "Removed all VMs from %s." % clustername
+            log.debug(output)
         else:
             output = "Could not find Cloud %s." % clustername
         return output
@@ -1799,6 +1801,7 @@ class ResourcePool:
             if vm:
                 if self.force_retire_vm(vm):
                     output = "Retired VM %s on %s." % (vmid, clustername)
+                    log.debug(output)
                 else:
                     output = "Unable to retire VM."
             else:
@@ -1817,6 +1820,7 @@ class ResourcePool:
                 else:
                     output += "Unable to retire VM %s\n" % vm.id
             output = "Retired all VMs in %s." % cloudname
+            log.debug(output)
         else:
             output = "Cloud not find Cloud %s." % cloudname
         return output
@@ -1828,6 +1832,7 @@ class ResourcePool:
         if cluster:
             cluster.enabled = False
             ret = "Cloud: %s disabled." % clustername
+            log.debug(ret)
         else:
             ret = "Could not find cloud %s." % clustername
         return ret
@@ -1839,6 +1844,7 @@ class ResourcePool:
         if cluster:
             cluster.enabled = True
             ret = "Cloud: %s enabled." % clustername
+            log.debug(ret)
         else:
             ret = "Could not find cloud %s." % clustername
         return ret
@@ -1852,6 +1858,7 @@ class ResourcePool:
                 vm.override_status = None
                 vm.force_retire = False
                 output = "Reset state of %s on %s" % (clustername, vmid)
+                log.debug(output)
             else:
                 output = "Could not find VM ID %s." % vmid
         else:
