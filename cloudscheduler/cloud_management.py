@@ -1864,6 +1864,14 @@ class ResourcePool:
         else:
             output = "Could not find Cloud %s." % clustername
         return output
+    
+    def fetch_missing_vm_list(self):
+        """Report missing_vm_condor_machines list to cloud_admin."""
+        log.debug("Fetching list of Condor Entries with no match in CS.")
+        output = "List of Condor Entries with no match in Cloud Scheduler:\n"
+        for machine in self.missing_vm_condor_machines:
+            output += ':'.join([machine.machine_name, machine.address_startd])
+        return output
 
     def user_at_limit(self, user):
         """Check if a user has met their throttled limit."""
