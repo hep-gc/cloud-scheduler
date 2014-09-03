@@ -840,10 +840,14 @@ class Scheduler(threading.Thread):
                 job.last_boot_attempt = time.time()
                 failure_reasons = {"-1": "Proxy/Auth related issue",
                                    "-2": "Resource Availability / Quota Problem",
-                                   "-3": "Other VM Create Error"}
+                                   "-3": "Other VM Create Error",
+                                   "2": "Resource Request Denied"}
                 if create_ret == None:
                     create_ret = -3
-                job.failed_boot_reason.add(failure_reasons[str(create_ret)])
+                try:
+                    job.failed_boot_reason.add(failure_reasons[str(create_ret)])
+                except Exception as e:
+                    log.exception("Unable to set failure reason: %s" % e)
                 continue
 
             # If the vm create didn't fail, break out of the loop
