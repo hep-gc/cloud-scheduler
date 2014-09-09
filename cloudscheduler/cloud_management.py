@@ -1412,6 +1412,7 @@ class ResourcePool:
             try:
                 user_limits = json.loads(limit_file.read(), encoding='ascii')
                 limit_file.close()
+                log.debug("User limit file loaded.")
             except:
                 log.exception("Unknown problem opening user limit file!")
                 return {}
@@ -1432,6 +1433,7 @@ class ResourcePool:
             try:
                 cloud_alias = json.loads(alias_file.read(), encoding='ascii')
                 alias_file.close()
+                log.debug("Cloud Alias file loaded.")
             except:
                 log.exception("Unknown problem parsing cloud alias file!")
                 return {}
