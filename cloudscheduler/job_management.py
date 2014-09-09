@@ -241,7 +241,7 @@ class Job:
         try:
             if TargetClouds and len(TargetClouds) != 0:
                 for cloud in TargetClouds.split(','):
-                    self.target_clouds.append(cloud.strip())
+                    self.target_clouds.append(cloud.strip().strip('"').strip("'"))
         except:
             log.error("Failed to parse TargetClouds - use a comma separated list")
 
