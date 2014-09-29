@@ -840,10 +840,14 @@ class Scheduler(threading.Thread):
                 job.last_boot_attempt = time.time()
                 failure_reasons = {"-1": "Proxy/Auth related issue",
                                    "-2": "Resource Availability / Quota Problem",
-                                   "-3": "Other VM Create Error"}
+                                   "-3": "Other VM Create Error",
+                                   "2": "Resource Request Denied"}
                 if create_ret == None:
                     create_ret = -3
-                job.failed_boot_reason.add(failure_reasons[str(create_ret)])
+                try:
+                    job.failed_boot_reason.add(failure_reasons[str(create_ret)])
+                except Exception as e:
+                    log.exception("Unable to set failure reason: %s" % e)
                 continue
 
             # If the vm create didn't fail, break out of the loop
@@ -1486,39 +1490,24 @@ class Cleanup(threading.Thread):
                         log.verbose("Could not find Running VM %s in master list, may be Retiring" % vm.id)
 
     def clean_check_vms_extra_machines(self, machineList, masterList):
-        """Figure out which entries in condor_status are missing from CS. Unused/Unimplemented"""        
+        """Figure out which entries in condor_status are missing from CS."""        
         missing_vms = []
-        non_cs_vms = []
-        
-                            ## Verify that all slots of this VM are idle
-                            #is_part_of_machine = {'Machine': vm.hostname}
-                            #slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
-                            #all_slots_idle = True
-                            #for slot in slots_of_machine:
-                                #if slot['State'] != 'Unclaimed' or slot['Activity'] != 'Idle':
-                                    #all_slots_idle = False
         for machine in machineList:
-            log.debug("cloud_scheduler.py::1491::do_condor_off::Name %s, addr %s"%(machine.machine_name,machine.address_startd))
-            if machine.has_key('CSManagedVM'):
-                vm = self.resource_pool.find_vm_with_name(machine.machine_name)
-                if not vm:
-                    vm = self.resource_pool.find_vm_with_addr(machine.address_startd)
-                if not vm:
-                    missing_vms.append(machine)
-            else:
-                # This Machine not owned by CS
-                non_cs_vms.append(machine)
+            vm = self.resource_pool.find_vm_with_name(machine.machine_name)
+            if not vm:
+                vm = self.resource_pool.find_vm_with_addr(machine.address_startd)
+            if not vm:
+                missing_vms.append(machine)
         # Update the resource_pools sets of missing / non cs VMs - this is ignoring slot@ currently
+        self.resource_pool.missing_vm_condor_machines.clear()
         for machine in missing_vms:
             log.verbose("VM %s Could not be located within CS, may be lost." % machine.machine_name)
             self.resource_pool.missing_vm_condor_machines.add(machine.machine_name)
-            if config.retire_missing_vms:
-                if machine.activity != 'Retiring':
-                    for master in masterList:
-                        if master.machine_name == machine.machine_name:
-                            self.resource_pool.do_condor_off(machine.machine_name, machine.address_startd, machine.address_master)
-        for machine in non_cs_vms:
-            self.resource_pool.non_cs_condor_machines.add(machine.name)
+            #if config.retire_missing_vms:
+                #if machine.activity != 'Retiring':
+                    #for master in masterList:
+                        #if master.machine_name == machine.machine_name:
+                            #self.resource_pool.do_condor_off(machine.machine_name, machine.address_startd, machine.address_master)
 
     def clean_kill_unregistered_vms(self, unregisteredvms, retired = False):
         """Checks to see if an unregistered VM is eligible for shutdown."""

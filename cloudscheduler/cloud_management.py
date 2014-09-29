@@ -1412,6 +1412,7 @@ class ResourcePool:
             try:
                 user_limits = json.loads(limit_file.read(), encoding='ascii')
                 limit_file.close()
+                log.debug("User limit file loaded.")
             except:
                 log.exception("Unknown problem opening user limit file!")
                 return {}
@@ -1432,6 +1433,7 @@ class ResourcePool:
             try:
                 cloud_alias = json.loads(alias_file.read(), encoding='ascii')
                 alias_file.close()
+                log.debug("Cloud Alias file loaded.")
             except:
                 log.exception("Unknown problem parsing cloud alias file!")
                 return {}
@@ -1761,6 +1763,7 @@ class ResourcePool:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
+                log.debug(output)
             else:
                 output = "Could not find VM ID." % vmid
         else:
@@ -1777,6 +1780,7 @@ class ResourcePool:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
             output = "Removed all VMs from %s." % clustername
+            log.debug(output)
         else:
             output = "Could not find Cloud %s." % clustername
         return output
@@ -1799,6 +1803,7 @@ class ResourcePool:
             if vm:
                 if self.force_retire_vm(vm):
                     output = "Retired VM %s on %s." % (vmid, clustername)
+                    log.debug(output)
                 else:
                     output = "Unable to retire VM."
             else:
@@ -1817,6 +1822,7 @@ class ResourcePool:
                 else:
                     output += "Unable to retire VM %s\n" % vm.id
             output = "Retired all VMs in %s." % cloudname
+            log.debug(output)
         else:
             output = "Cloud not find Cloud %s." % cloudname
         return output
@@ -1828,6 +1834,7 @@ class ResourcePool:
         if cluster:
             cluster.enabled = False
             ret = "Cloud: %s disabled." % clustername
+            log.debug(ret)
         else:
             ret = "Could not find cloud %s." % clustername
         return ret
@@ -1839,6 +1846,7 @@ class ResourcePool:
         if cluster:
             cluster.enabled = True
             ret = "Cloud: %s enabled." % clustername
+            log.debug(ret)
         else:
             ret = "Could not find cloud %s." % clustername
         return ret
@@ -1852,10 +1860,19 @@ class ResourcePool:
                 vm.override_status = None
                 vm.force_retire = False
                 output = "Reset state of %s on %s" % (clustername, vmid)
+                log.debug(output)
             else:
                 output = "Could not find VM ID %s." % vmid
         else:
             output = "Could not find Cloud %s." % clustername
+        return output
+    
+    def fetch_missing_vm_list(self):
+        """Report missing_vm_condor_machines list to cloud_admin."""
+        log.debug("Fetching list of Condor Entries with no match in CS.")
+        output = "List of Condor Entries with no match in Cloud Scheduler:\n"
+        for machine in self.missing_vm_condor_machines:
+            output += ':'.join([machine.machine_name, machine.address_startd])
         return output
 
     def user_at_limit(self, user):
