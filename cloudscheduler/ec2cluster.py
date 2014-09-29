@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import string
+import json
 import shutil
 import logging
 import nimbus_xml
@@ -10,6 +11,7 @@ import cluster_tools
 import cloud_init_util
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
+import datetime as dt
 from cloudscheduler.job_management import _attr_list_to_dict
 log = utilities.get_cloudscheduler_logger()
 try:
@@ -214,6 +216,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
                 i_type = self.DEFAULT_INSTANCE_TYPE
         instance_type = i_type
+        log.debug("Testing EC2 with User Data %s"%customization)
         if key_name == None:
             key_name = self.key_name
         if customization:
@@ -277,6 +280,18 @@ class EC2Cluster(cluster_tools.ICluster):
 
                 else: # get a spot instance of no more than maximum_price
                     try:
+                        # try to get a better maximum_price
+                        log.info("vm_inst: %s  vm_type: %s  vm_image:%s"%(instance_type,vm_type,vm_image))
+                        spot_price = self.get_current_us_west_2_spot_price(instance_type,connection)
+                        log.info("Compare max_price %s with curr_price %s"%(maximum_price,spot_price))   
+                        
+                        if maximum_price == 0 and isinstance(spot_price,float):
+                            maximum_price = spot_price
+                        
+                        if isinstance(spot_price,float) and maximum_price > spot_price:
+                            maximum_price = spot_price
+                            
+                        log.info("New max_price is %s",maximum_price)
                         reservation = connection.request_spot_instances(
                                                   maximum_price,
                                                   image.id,
@@ -516,3 +531,177 @@ class EC2Cluster(cluster_tools.ICluster):
             except:
                 log.error("Problem running command, unexpected error.")
             return (-1, "", "")
+
+        
+    """ These methods relate to inquiring on EC2 spot pricing methods """
+    
+    """ img_type examples 't1.micro','m3.medium','c3.2xlarge','m3.large','cc2.8xlarge','m1.medium' """
+    def get_current_us_west_2_spot_price(self,img_type,connection):
+        result=self._get_current_spot_price(["Linux/UNIX"], [img_type], ["us-west-2"], [], "none", "json",connection)
+        return result[0]['price']
+
+    """ Support Methods for spot pricing methods described above - methods can be used to answer spot pricing questions"""
+    
+    def _get_current_spot_price(self,image_type,instance_type,regions,zones,filter_type,response_type,connection):
+        """API function
+        image_type $string see help -h 
+        instance_type $string see help -h 
+        regions @array of strings see help -h 
+        zones @array of strings see help -h 
+        filter_type $string see help -h 
+        response_type $string see help -h 
+        """
+        args = []
+        args.append( {"ImageTypes":image_type} )  
+        args.append({"InstanceTypes":  instance_type })
+        args.append({"Regions": regions})
+        args.append({"ZONES": zones })
+        json_req = self._create_request('current_spot_price',filter_type,response_type,{},args)
+        json_req['start_time'] = dt.datetime.now().isoformat()
+        json_req['end_time'] = dt.datetime.now().isoformat()
+        json_response_data = self.__get_current_spot_price(json_req,connection)
+        json_response_data = self.filter_response(json_response_data, json_req['filter_type'])
+        return json_response_data
+    
+    def _create_request(self,req_type,filter_type,response_type,other_args,args):
+        if req_type == 'current_spot_price' or req_type == 'list_all_spot_price' or req_type == 'periodic_spot_price':
+            msg = {}
+            msg['filter_type']=filter_type
+            msg['response_type']=response_type
+            msg['request']=req_type
+            msg['other_args']=other_args
+            msg['request_args']=args
+            return msg
+        
+    def __get_current_spot_price(self,json_req,connection):
+        req_args_array = json_req['request_args']
+        regions=[]
+        inst_types=[]
+        image_types=[]
+        zones = []
+        
+        json_response_data = []
+        
+        for obj in req_args_array:
+            for obj_key in obj.keys():
+                if obj_key == 'Regions':
+                    regions = obj[obj_key];
+                if obj_key == 'ZONES':
+                    zones = obj[obj_key];
+                if obj_key == 'InstanceTypes':
+                    inst_types = obj[obj_key];
+                if obj_key == 'ImageTypes':
+                    image_types = obj[obj_key];
+        
+        for region in regions:
+            #check zones 
+            #conn = boto.ec2.connect_to_region(self.access_key_id,self.secret_access_key,region)
+            region = boto.ec2.regioninfo.RegionInfo(name='us-west-2',
+                                                 endpoint='ec2.us-west-2.amazonaws.com')
+            conn = boto.connect_ec2(
+                                   aws_access_key_id=self.access_key_id,
+                                   aws_secret_access_key=self.secret_access_key,
+                                   region=region)
+            
+            #conn = connection
+            if len(zones) > 0:
+                #for each zone do calls for each image and eash instance type   
+                for zone in zones:
+                    for inst in inst_types:
+                        for img in image_types:
+                            
+                            start_time = json_req['start_time']
+                            end_time = json_req['end_time']
+                            
+                            instance_type=inst
+                            product_description = img
+                            availability_zone = zone
+                            dry_run = False
+                            max_results = 100
+                            next_token = None
+                            filters = None
+                            price = conn.get_spot_price_history(start_time, end_time, instance_type, product_description, availability_zone, dry_run, max_results, next_token, filters)
+                            #price_obj = price.pop()
+                            for price_obj in price:
+                                #pprint("%s : %s "%(price_obj,price_obj.price))
+                                json_data = {}
+                                json_data['region']=region
+                                json_data['instance_type']=inst
+                                json_data['image_type']=img
+                                json_data['zone']=zone
+                                json_data['price']=price_obj.price
+                                json_data['timestamp']=price_obj.timestamp
+                                json_response_data.append(json_data)
+                                #price_obj = price.pop()
+                            
+            else:
+                #for each region get their zones and do calles for each instance type and image type
+                #conn = boto.ec2.connect_to_region(region)
+                reg_zones = conn.get_all_zones()
+                for zone in reg_zones:
+                    for inst in inst_types:
+                        for img in image_types:
+                            start_time = json_req['start_time']
+                            end_time = json_req['end_time']
+                            instance_type=inst
+                            product_description = img
+                            availability_zone = zone.name
+                            dry_run = False
+                            max_results = 100
+                            next_token = None
+                            filters = None
+                            price = conn.get_spot_price_history(start_time, end_time, instance_type, product_description, availability_zone, dry_run, max_results, next_token, filters)
+                            
+                            for price_obj in price:
+                                json_data = {}
+                                json_data['region']=region
+                                json_data['instance_type']=inst
+                                json_data['image_type']=img
+                                json_data['zone']=zone.name
+                                json_data['price']=price_obj.price
+                                json_data['timestamp']=price_obj.timestamp
+                                json_response_data.append(json_data)
+        
+        return json_response_data
+    
+    def filter_response(self,json_resp, filter_type):
+        if filter_type == "none":
+            return json_resp
+        elif filter_type == "highest":
+            highest=0.0
+            highest_idx=-1;
+            remove_idx=[]
+            
+            for idx,entry in enumerate(json_resp):
+                if entry['price'] <= highest:
+                    remove_idx.append(idx)
+                else:
+                    remove_idx.append(idx)
+                    highest_idx=idx
+                    highest=entry['price']
+            
+            if highest_idx != -1:
+                del remove_idx[highest_idx]
+            while len(remove_idx)>0:
+                idx = remove_idx.pop()
+                del json_resp[idx]
+                
+            return json_resp
+        elif filter_type == "average":
+            total=0.0
+            idx=0
+            remove_idx=[]
+           
+            for idx,entry in enumerate(json_resp):
+                total=total+entry['price']
+                remove_idx.append(idx)
+            average=total/(1+idx)
+            while len(remove_idx)>0:
+                idx = remove_idx.pop()
+                del json_resp[idx]
+            json_str = '{"zone":"","image_type":"","timestamp":"","region":"","instance_type":"","price":%s}'%average
+            
+            json_obj = json.loads(json_str)
+            json_resp.append(json_obj)   
+                
+            return json_resp

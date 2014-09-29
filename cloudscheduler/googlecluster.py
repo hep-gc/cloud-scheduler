@@ -73,7 +73,10 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         http = httplib2.Http()
         self.auth_http = credentials.authorize(http)
 
-
+        #if not security_group:
+        #    security_group = ["default"]
+        #self.security_groups = security_group
+        
         # Build service object
         self.gce_service = build('compute', self.API_VERSION)
         self.project_url = '%s%s' % (self.GCE_URL, self.project_id)
@@ -309,6 +312,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             for instance in instances:
                 
                 if 'id' in instance and instance['id'] == vm.id:
+                    log.info("googlecluster::state::%s::inst %s::vm %s"%(vm.name,instance['status'],vm.status))
                     if instance and hasattr(vm, 'status') and vm.status != self.VM_STATES.get(instance['status'], "Starting"):
                         vm.last_state_change = int(time.time())
                         
