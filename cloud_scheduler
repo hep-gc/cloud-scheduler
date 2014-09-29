@@ -644,6 +644,7 @@ class Scheduler(threading.Thread):
             # Mark job as scheduled
             self.job_pool.schedule(job)
             job.failed_boot = 0
+            job.failed_boot_reason.clear()
             if config.ban_tracking:
                 self.resource_pool.track_failures(job, good_resources, True)
         elif create_ret == -1: # proxy problem 
@@ -658,6 +659,8 @@ class Scheduler(threading.Thread):
             else:
                 log.debug("Insufficient resources to boot VM, will keep trying.")
                 job.failed_boot += 1
+                job.failed_boot_reason = "Insufficient Resources on cloud"
+                job.last_boot_attempt = time.time()
             if job.failed_boot > 5:
                 log.debug("Repeatedly failed to boot VM for job %s blocking temporarily." % job.id)
                 job.block_time = int(time.time())
@@ -834,6 +837,13 @@ class Scheduler(threading.Thread):
             # If the VM create fails, try again on another resource
             if (create_ret != 0):
                 log.debug("Creating VM for job %s failed on %s. " % (job.id, resource.name))
+                job.last_boot_attempt = time.time()
+                failure_reasons = {"-1": "Proxy/Auth related issue",
+                                   "-2": "Resource Availability / Quota Problem",
+                                   "-3": "Other VM Create Error"}
+                if create_ret == None:
+                    create_ret = -3
+                job.failed_boot_reason.add(failure_reasons[str(create_ret)])
                 continue
 
             # If the vm create didn't fail, break out of the loop

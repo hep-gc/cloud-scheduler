@@ -1450,25 +1450,29 @@ class ResourcePool:
             a 3 tuple of the returncodes from the 2 commands used and a return code
         """
         log.info("cloud_management.py::do_condor_off: %s, addr: %s, master_addr: %s"%(machine_name,machine_addr,master_addr))
-        cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
+        #cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
         cmd2 = '%s -peaceful -addr "%s" -subsystem startd' % (config.condor_off_command, machine_addr)
         cmd3 = '%s -peaceful -addr "%s" -subsystem master' % (config.condor_off_command, master_addr)
-        args = []
+        #args = []
         args2 = []
         args3 = []
         if machine_name == None:
             machine_name = 'NoneType'
         if machine_addr == None:
             machine_addr = 'NoneType'
+            log.debug("Start Addr is None for Machine: %s cannot do condor_off." % machine_name)
+            return (-1,-1,-1,-1)
         if master_addr == None:
             master_addr = 'NoneType'
+            log.debug("Master Addr is None for Machine: %s cannot do condor_off." % machine_name)
+            return (-1,-1,-1,-1)
         if config.cloudscheduler_ssh_key:
-            args.append(config.ssh_path)
-            args.append('-i')
-            args.append(config.cloudscheduler_ssh_key)
+            #args.append(config.ssh_path)
+            #args.append('-i')
+            #args.append(config.cloudscheduler_ssh_key)
             central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
-            args.append(central_address)
-            args.append(cmd)
+            #args.append(central_address)
+            #args.append(cmd)
             
             args2.append(config.ssh_path)
             args2.append('-i')
@@ -1482,12 +1486,12 @@ class ResourcePool:
             args3.append(central_address)
             args3.append(cmd3)
         else:
-            args.append(config.condor_off_command)
-            args.append('-peaceful')
-            args.append('-name')
-            args.append(machine_name)
-            args.append('-subsystem')
-            args.append('startd')
+            #args.append(config.condor_off_command)
+            #args.append('-peaceful')
+            #args.append('-name')
+            #args.append(machine_name)
+            #args.append('-subsystem')
+            #args.append('startd')
             
             args2.append(config.condor_off_command)
             args2.append('-peaceful')
@@ -1542,7 +1546,6 @@ class ResourcePool:
             return (-1, -1, -1, -1)
         except:
             log.error("Problem running %s, unexpected error" % ' '.join(args3))
-            print args
             return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
 
@@ -1688,6 +1691,8 @@ class ResourcePool:
             outputlist.append(cluster)
             outputlist.append(' ')
             for item in items:
+                if item[0] in ['password', 'access_key_id', 'secret_access_key', 'username']:
+                    continue
                 outputlist.append('[')
                 outputlist.append(','.join(item))
                 outputlist.append(']')

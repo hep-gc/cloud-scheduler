@@ -157,7 +157,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                 instance_id = instance.id
                 
                 new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
-                            clusteraddr = self.network_address, hostname = name,
+                            clusteraddr = self.network_address, hostname = ''.join([name, self.vm_domain_name]),
                             cloudtype = self.cloud_type, network = vm_networkassoc,
                             image= vm_image,
                             memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
@@ -244,7 +244,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         return client 
 
     def _generate_next_name(self):
-        name = ''.join([self.name.replace('_', '-'), '-', str(uuid.uuid4()), self.vm_domain_name])
+        name = ''.join([self.name.replace('_', '-').lower(), '-', str(uuid.uuid4())])
         collision = False
         for vm in self.vms:
             if name == vm.hostname:
