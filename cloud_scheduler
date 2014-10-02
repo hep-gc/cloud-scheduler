@@ -890,7 +890,7 @@ class Scheduler(threading.Thread):
             else:
                 file_location = config.key_file
 
-            customizations.append((file_contents, file_location))
+            customizations.append((file_contents, file_location, '0600'))
 
         # Copy CA root certs and signing policies if needed.
         if config.ca_root_certs and job.inject_ca:
