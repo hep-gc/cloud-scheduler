@@ -57,7 +57,6 @@ def build_write_files_cloud_init(custom_tasks):
         cloud_init.append('\n'.join(formatted_task))
         cloud_init.append('    path: %s' % task[1])
         if len(task) > 2:
-            cloud_init.append('\n'.join(formatted_task))
             cloud_init.append('    permissions: %s' % task[2])
     return cloud_init
         
