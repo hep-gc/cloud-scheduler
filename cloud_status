@@ -67,6 +67,8 @@ def main(argv=None):
                       help="Output the total VMs in CloudScheduler or on a cloud(-c)")
     parser.add_option("-u", "--vm-status", dest="status", action="store_true", default=False,
                       help="Condensed VM Status information, use -c to limit to single cloud.")
+    parser.add_option("-r", "--missing-vms", dest="missing_vms", action="store_true", default=False,
+                      help="Print a list of Condor class ads CS has no matching VM for.")
 
     (cli_options, args) = parser.parse_args()
 
@@ -159,6 +161,8 @@ def main(argv=None):
             print s.get_total_vms_cloud(cli_options.cluster_name)
         elif cli_options.totals:
             print s.get_total_vms()
+        elif cli_options.missing_vms:
+            print s.get_missing_vm_list()
         else:
             print s.get_cloud_resources()
 

@@ -354,6 +354,8 @@ class InfoServer(threading.Thread,):
                     if count > 0:
                         output.extend([str(count), ' ', state, ','])
                 return ''.join(output)
+            def get_missing_vm_list(self):
+                return cloud_resources.fetch_missing_vm_list()
 
         self.server.register_instance(externalFunctions())
 
