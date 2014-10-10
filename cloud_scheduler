@@ -1322,7 +1322,7 @@ class Cleanup(threading.Thread):
                         for mement in cloud.memory:
                             nummem += (mement / job.req_memory)
                         numcpu = 0
-                        if cloud.total_cpu_cores == -1:
+                        if cloud.total_cpu_cores and cloud.total_cpu_cores == -1:
                             numcpu = -1
                         else:
                             if job.req_cpucores != 0:
