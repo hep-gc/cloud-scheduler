@@ -194,8 +194,13 @@ class OpenStackCluster(cluster_tools.ICluster):
         except novaclient.exceptions.NotFound as e:
             log.exception("VM %s not found on %s: removing from CS")
         except Exception as e:
-            log.exception(e)
-            return 1
+            try:
+                log.exception(e)
+                return 1
+            except:
+                log.exception("Failed to log exception properly?")
+                return 1
+            
 
         # Delete references to this VM
         try:
@@ -219,7 +224,10 @@ class OpenStackCluster(cluster_tools.ICluster):
             log.exception("VM %s not found on %s: %s" % (vm.id, self.name, e))
             vm.status = self.VM_STATES['ERROR']
         except Exception as e:
-            log.exception("Unexpected exception occurred polling vm %s: %s" % (vm.id, e))
+            try:
+                log.exception("Unexpected exception occurred polling vm %s: %s" % (vm.id, e))
+            except:
+                log.exception("Failed to log exception properly: %s" % vm.id)
         with self.vms_lock:
             #print instance.status
             if instance and vm.status != self.VM_STATES.get(instance.status, "Starting"):
