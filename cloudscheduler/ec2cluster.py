@@ -24,6 +24,8 @@ except ImportError:
 
 from subprocess import Popen
 from urlparse import urlparse
+from cStringIO import StringIO
+import gzip
 
 
 class EC2Cluster(cluster_tools.ICluster):
@@ -259,6 +261,15 @@ class EC2Cluster(cluster_tools.ICluster):
                     if potential_match.id == vm_ami:
                         image = potential_match
                         break
+
+            # Compress the user data to try and get under the amazon limit
+            udbuf = StringIO()
+            udf = gzip.GzipFile(mode='wb', fileobj=udbuf)
+            try:
+                udf.write(user_data)
+            finally:
+                udf.close()
+            user_data = udbuf.getvalue() 
 
             if image:
                 if maximum_price is 0 or self.cloud_type == "OpenStack": # don't request a spot instance
