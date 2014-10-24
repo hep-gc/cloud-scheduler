@@ -537,8 +537,12 @@ class EC2Cluster(cluster_tools.ICluster):
     
     """ img_type examples 't1.micro','m3.medium','c3.2xlarge','m3.large','cc2.8xlarge','m1.medium' """
     def get_current_us_west_2_spot_price(self,img_type,connection):
-        result=self._get_current_spot_price(["Linux/UNIX"], [img_type], ["us-west-2"], [], "none", "json",connection)
-        return result[0]['price']
+        result=self._get_current_spot_price(["Linux/UNIX"], [img_type], [self.regions], [], "none", "json",connection)
+        lowest_price = result[0]['price']
+        for idx,price in enumerate(result):
+            if lowest_price>result[idx]['price']:
+                lowest_price=result[idx]['price']
+        return lowest_price*1.1
 
     """ Support Methods for spot pricing methods described above - methods can be used to answer spot pricing questions"""
     
@@ -596,7 +600,7 @@ class EC2Cluster(cluster_tools.ICluster):
         for region in regions:
             #check zones 
             #conn = boto.ec2.connect_to_region(self.access_key_id,self.secret_access_key,region)
-            region = boto.ec2.regioninfo.RegionInfo(name='us-west-2',
+            region = boto.ec2.regioninfo.RegionInfo(name=self.regions,
                                                  endpoint='ec2.us-west-2.amazonaws.com')
             conn = boto.connect_ec2(
                                    aws_access_key_id=self.access_key_id,
