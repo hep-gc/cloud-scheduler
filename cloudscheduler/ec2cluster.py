@@ -292,17 +292,17 @@ class EC2Cluster(cluster_tools.ICluster):
                 else: # get a spot instance of no more than maximum_price
                     try:
                         # try to get a better maximum_price
-                        log.info("vm_inst: %s  vm_type: %s  vm_image:%s"%(instance_type,vm_type,vm_image))
-                        spot_price = self.get_current_us_west_2_spot_price(instance_type,connection)
-                        log.info("Compare max_price %s with curr_price %s"%(maximum_price,spot_price))   
+                        #log.info("vm_inst: %s  vm_type: %s  vm_image:%s"%(instance_type,vm_type,vm_image))
+                        #spot_price = self.get_current_us_west_2_spot_price(instance_type,connection)
+                        #log.info("Compare max_price %s with curr_price %s"%(maximum_price,spot_price))   
                         
-                        if maximum_price == 0 and isinstance(spot_price,float):
-                            maximum_price = spot_price
+                        #if maximum_price == 0 and isinstance(spot_price,float):
+                        #    maximum_price = spot_price
                         
-                        if isinstance(spot_price,float) and maximum_price > spot_price:
-                            maximum_price = spot_price
+                        #if isinstance(spot_price,float) and maximum_price > spot_price:
+                        #    maximum_price = spot_price
                             
-                        log.info("New max_price is %s",maximum_price)
+                        #log.info("New max_price is %s",maximum_price)
                         reservation = connection.request_spot_instances(
                                                   maximum_price,
                                                   image.id,
