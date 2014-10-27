@@ -385,11 +385,8 @@ class ICluster:
     def get_cluster_info_short(self):
         """Return a short form of cluster information."""
         output = "Cluster: %s \n" % self.name
-        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "HYPERVISOR", "ENABLED")
-        if self.cloud_type == 'Nimbus':
-            output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.hypervisor, self.enabled)
-        else:
-            output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, " ", self.enabled)
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % ("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "PRIORITY", "ENABLED")
+        output += "%-25s  %-15s  %-10s  %-10s %-10s %-10s %-10s\n" % (self.network_address, self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.priority, self.enabled)
         return output
 
     def get_cluster_vms_info(self):
