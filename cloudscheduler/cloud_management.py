@@ -400,6 +400,7 @@ class ResourcePool:
                     project_id = get_or_none(config, cluster, "project_id"),
                     enabled=enabled,
                     priority = priority,
+                    total_cpu_cores = total_cpu_cores,
                     )
         elif cloud_type == "OpenStackNative":
             return openstackcluster.OpenStackCluster(name = cluster,

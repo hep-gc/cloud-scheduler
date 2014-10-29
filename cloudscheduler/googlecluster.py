@@ -52,13 +52,15 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
                  vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None,
-                 auth_dat_file=None, secret_file=None, security_group=None, project_id=None,enabled=True, priority = 0):
+                 auth_dat_file=None, secret_file=None, security_group=None, project_id=None,enabled=True, priority = 0,
+                 total_cpu_cores=-1):
         log.debug("Init GCE cores %s, storage %s"%(cpu_cores,storage))
         self.gce_hostname_prefix = 'gce-cs-vm'
         self.security_group = security_group
         self.auth_dat_file_path = auth_dat_file
         self.secret_file_path = secret_file
         self.project_id = project_id
+        self.total_cpu_cores = total_cpu_cores
         if not project_id:
             return None
         
