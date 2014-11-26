@@ -1017,7 +1017,7 @@ class Cleanup(threading.Thread):
                 log.verbose("Clearing all un-needed VMs from the system")
                 self.clean_unneeded_vms()
                 ## See if any stray entries in condor_status - incomplete feature
-                #self.clean_check_vms_extra_machines(machineList)
+                self.clean_check_vms_extra_machines(self.resource_pool.vm_machine_list)
                 # Make sure VMs have registered with Condor
                 # Check if any retiring VMs have Retired
                 unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(self.resource_pool.vm_machine_list)
@@ -1489,7 +1489,7 @@ class Cleanup(threading.Thread):
                     if not foundvm:
                         log.verbose("Could not find Running VM %s in master list, may be Retiring" % vm.id)
 
-    def clean_check_vms_extra_machines(self, machineList, masterList):
+    def clean_check_vms_extra_machines(self, machineList):
         """Figure out which entries in condor_status are missing from CS."""        
         missing_vms = []
         for machine in machineList:
@@ -1502,7 +1502,7 @@ class Cleanup(threading.Thread):
         self.resource_pool.missing_vm_condor_machines.clear()
         for machine in missing_vms:
             log.verbose("VM %s Could not be located within CS, may be lost." % machine.machine_name)
-            self.resource_pool.missing_vm_condor_machines.add(machine.machine_name)
+            self.resource_pool.missing_vm_condor_machines.add(machine)
             #if config.retire_missing_vms:
                 #if machine.activity != 'Retiring':
                     #for master in masterList:
