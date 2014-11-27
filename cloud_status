@@ -69,6 +69,8 @@ def main(argv=None):
                       help="Condensed VM Status information, use -c to limit to single cloud.")
     parser.add_option("-r", "--missing-vms", dest="missing_vms", action="store_true", default=False,
                       help="Print a list of Condor class ads CS has no matching VM for.")
+    parser.add_option("-x", "--heart-beats", dest="heart_beats", action="store_true", default=False,
+                      help="Print thread heart beat times since thread last completed cycle.")
 
     (cli_options, args) = parser.parse_args()
 
@@ -163,6 +165,8 @@ def main(argv=None):
             print s.get_total_vms()
         elif cli_options.missing_vms:
             print s.get_missing_vm_list()
+        elif cli_options.heart_beats:
+            print s.get_thread_heart_beats()
         else:
             print s.get_cloud_resources()
 
