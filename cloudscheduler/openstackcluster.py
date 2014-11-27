@@ -77,6 +77,16 @@ class OpenStackCluster(cluster_tools.ICluster):
         import novaclient.exceptions
         use_cloud_init = use_cloud_init or config.use_cloud_init
         nova = self._get_creds_nova()
+        if len(securitygroup) != 0:
+            sec_group = []
+            for group in securitygroup:
+                if group in self.security_groups:
+                    sec_group.append(group)
+            if len(sec_group) == 0:
+                log.debug("No matching security groups - trying default config")
+                sec_group = self.security_groups
+        else:
+            sec_group = self.security_groups
         if key_name and len(key_name) > 0:
             if not nova.keypairs.findall(name=key_name):
                 key_name = ""
@@ -150,7 +160,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         instance = None
         if name:
             try:
-                instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name, userdata=user_data)
+                instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name, userdata=user_data, security_groups=sec_group)
                 #print instance.__dict__
             except novaclient.exceptions.OverLimit as e:
                 log.exception("Quota Exceeded on %s: %s" % (self.name, e.message))
