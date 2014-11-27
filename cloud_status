@@ -71,8 +71,10 @@ def main(argv=None):
                       help="Print a list of Condor class ads CS has no matching VM for.")
     parser.add_option("-x", "--heart-beats", dest="heart_beats", action="store_true", default=False,
                       help="Print thread heart beat times since thread last completed cycle.")
-    parser.add_option("-x", "--boot-failures", dest="boot_failures", action="store_true", default=False,
+    parser.add_option("-z", "--boot-failures", dest="boot_failures", action="store_true", default=False,
                       help="Print list of reasons jobs have not booted a VM.")
+    parser.add_option("-w", "--image-failures", dest="image_failures", action="store_true", default=False,
+                      help="Print list of images failing to properly boot.")
 
     (cli_options, args) = parser.parse_args()
 
@@ -170,6 +172,8 @@ def main(argv=None):
         elif cli_options.heart_beats:
             print s.get_thread_heart_beats()
         elif cli_options.boot_failures:
+            print "Placeholder value"
+        elif cli_options.image_failures:
             print "Placeholder value"
         else:
             print s.get_cloud_resources()
