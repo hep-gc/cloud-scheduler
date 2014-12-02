@@ -172,7 +172,7 @@ def main(argv=None):
         elif cli_options.heart_beats:
             print s.get_thread_heart_beats()
         elif cli_options.boot_failures:
-            print "Placeholder value"
+            print s.get_job_failure_reasons()
         elif cli_options.image_failures:
             print "Placeholder value"
         else:

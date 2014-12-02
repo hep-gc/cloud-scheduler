@@ -1107,6 +1107,15 @@ class JobPool:
                     if job.running_vm != None:
                         job.running_vm.job_run_times.append(int(job.servertime) - int(job.jobstarttime))
 
+    def fetch_job_failure_reasons(self):
+        reasons = []
+        for job in self.job_container.get_all_jobs():
+            if job.failed_boot_reason and len(job.failed_boot_reason) > 0:
+                reasons.append(job)
+        return reasons
+    
+        
+
     ##
     ## JobPool Private methods (Support methods)
     ##

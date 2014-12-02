@@ -366,6 +366,15 @@ class InfoServer(threading.Thread,):
                 output.append("   JobPoller Thread(%s): %s\n" % (job_poller.polling_interval, str(int(now - job_poller.heart_beat))))
                 output.append("   MachinePoller Thread(%s): %s\n" % (machine_poller.polling_interval, str(int(now - machine_poller.heart_beat))))
                 return ''.join(output)
+            def get_job_failure_reasons(self):
+                output = []
+                output.append("Job Failure Reasons:\n")
+                reasons = job_pool.fetch_job_failure_reasons()
+                for job in reasons:
+                    output.append("   Job ID: %s\n" % job.id)
+                    for reason in job.failed_boot_reason:
+                        output.append("      %s\n" % reason)
+                return ''.join(output)
 
         self.server.register_instance(externalFunctions())
 
