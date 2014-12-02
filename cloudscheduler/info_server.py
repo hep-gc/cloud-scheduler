@@ -360,11 +360,11 @@ class InfoServer(threading.Thread,):
                 now = time.time()
                 output = []
                 output.append("Thread Heart beat times:\n")
-                output.append("Scheduler Thread(%s): %s\n" % (scheduler.scheduling_interval, str(int(now - scheduler.heart_beat))))
-                output.append("Cleanup Thread(%s): %s\n" % (cleaner.polling_interval, str(int(now - cleaner.heart_beat))))
-                output.append("VMPoller Thread(%s): %s\n" % (vm_poller.run_interval, str(int(now - vm_poller.heart_beat))))
-                output.append("JobPoller Thread(%s): %s\n" % (job_poller.polling_interval, str(int(now - job_poller.heart_beat))))
-                output.append("MachinePoller Thread(%s): %s\n" % (machine_poller.polling_interval, str(int(now - machine_poller.heart_beat))))
+                output.append("   Scheduler Thread(%s): %s\n" % (scheduler.scheduling_interval, str(int(now - scheduler.heart_beat))))
+                output.append("   Cleanup Thread(%s): %s\n" % (cleaner.polling_interval, str(int(now - cleaner.heart_beat))))
+                output.append("   VMPoller Thread(%s): %s\n" % (vm_poller.run_interval, str(int(now - vm_poller.heart_beat))))
+                output.append("   JobPoller Thread(%s): %s\n" % (job_poller.polling_interval, str(int(now - job_poller.heart_beat))))
+                output.append("   MachinePoller Thread(%s): %s\n" % (machine_poller.polling_interval, str(int(now - machine_poller.heart_beat))))
                 return ''.join(output)
 
         self.server.register_instance(externalFunctions())
