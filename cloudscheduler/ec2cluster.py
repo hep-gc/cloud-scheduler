@@ -219,7 +219,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
                 i_type = self.DEFAULT_INSTANCE_TYPE
         instance_type = i_type
-        log.debug("Testing EC2 with User Data %s"%customization)
+
         if key_name == None:
             key_name = self.key_name
         if customization:
