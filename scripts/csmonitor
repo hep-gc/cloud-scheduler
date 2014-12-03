@@ -1,0 +1,32 @@
+#!/bin/bash
+#   cloud_status -r    - list of entries in condor with no matching vm in CS
+#   cloud_status -x   - thread heart beat info
+#   cloud_status -z    - reasons jobs not booting ( no matched clouds, no resources, etc.)
+#   cloud_status -w   - list of images failing in some way (ie not booting, not found) 
+
+    # Validate timeout parameter.
+    re='^[0-9]+$'
+    if [ ! $1 ]; then
+        # Set the default of 10 seconds.
+        n=10
+    elif ! [[ $1 =~ $re ]] ; then
+        # Must be an integer; print the help.
+        echo -e "\nUsage: watchCS <n>\n\nwhere \"<n>\" is an optional timeout value in seconds. The default is 10 seconds.\n"
+        exit
+    else 
+        # User specified timeout.
+        n=$1
+    fi
+
+    # Watch CloudScheduler diagnostics.
+    watch -n $n -t ' 
+        echo -e `date` "CloudScheduler monitor (CTL-C to exit):\n";
+
+        cloud_status -x;
+
+        cloud_status -w;
+        echo "";
+
+        cloud_status -z;
+
+        cloud_status -r;'
