@@ -379,9 +379,10 @@ class InfoServer(threading.Thread,):
                 output = []
                 output.append("Image Failure List\n")
                 for cloud in cloud_resources.resources:
-                    output.append("   Cloud: %s\n" % cloud.name)
-                    for image in cloud.failed_image_set:
-                        output.append("      Image: %s\n" % image)
+                    if len(cloud.failed_image_set) > 0:
+                        output.append("   Cloud: %s\n" % cloud.name)
+                        for image in cloud.failed_image_set:
+                            output.append("      Image: %s\n" % image)
                 return ''.join(output)
 
         self.server.register_instance(externalFunctions())
