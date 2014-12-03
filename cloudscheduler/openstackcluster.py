@@ -134,6 +134,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                 image = nova.images.get(image)
             except Exception as e:
                 log.exception("Unable to fetch image via uuid: %s" % e)
+                self.failed_image_set.add(image)
                 return
         try:
             if self.name in instance_type.keys():

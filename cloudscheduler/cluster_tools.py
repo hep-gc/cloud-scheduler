@@ -315,6 +315,7 @@ class ICluster:
         self.connection_problem = False
         self.errorconnect = None
         self.priority = priority
+        self.failed_image_set = set()
 
         self.setup_logging()
         log.debug("New cluster %s created" % self.name)

@@ -1533,6 +1533,7 @@ class Cleanup(threading.Thread):
                 if not cluster.connection_problem:
                     for vm in cluster.vms:
                         if vm == machine:
+                            cluster.failed_image_set.add(vm.image)
                             cluster.vm_destroy(machine, return_resources=(not retired), reason="Has not registered with Condor after %i seconds." % config.condor_register_time_limit)
                             killedIt = True
                             break
@@ -1547,6 +1548,7 @@ class Cleanup(threading.Thread):
                 for vm in cluster.vms:
                     if vm.status == "Starting" or vm.status == "Unpropagated":
                         if int(time.time() - vm.initialize_time) > cluster.boot_timeout and not cluster.connection_problem:
+                            cluster.failed_image_set.add(vm.image)
                             cluster.vm_destroy(vm, reason="Has not reached Running state after %i seconds." % config.vm_start_running_timeout)
 
     def clean_retired_vms(self, retiredvms, retired = False):

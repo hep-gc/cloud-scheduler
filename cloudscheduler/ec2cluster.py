@@ -192,6 +192,7 @@ class EC2Cluster(cluster_tools.ICluster):
                     vm_ami = vm_default_ami["default"]
                 except:
                     log.exception("Can't find a suitable AMI")
+                    self.failed_image_set.add(vm_ami)
                     return
 
         try:
@@ -329,10 +330,13 @@ class EC2Cluster(cluster_tools.ICluster):
 
             else:
                 log.error("Couldn't find image %s on %s" % (vm_image, self.name))
+                self.failed_image_set.add(vm_ami)
                 return self.ERROR
 
         except Exception, e:
             log.exception("Problem creating EC2 instance on %s: %s" % (self.name, e))
+            if e.errors and len(e.errors) > 0 and len(e.errors[0]) > 0 and e.errors[0][0] == "ImageNotFound":
+                self.failed_image_set.add(vm_ami)
             return self.ERROR
 
         vm_mementry = self.find_mementry(vm_mem)

@@ -1952,7 +1952,8 @@ class ResourcePool:
                 expanded_targets.append(cloud)
         trimmed_targets = list(set(expanded_targets))
         return trimmed_targets
-    
+
+
 class VMDestroyCmd(threading.Thread):
     """
     VMCmd - passing shutdown and destroy requests to a separate thread 
