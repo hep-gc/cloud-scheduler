@@ -375,6 +375,8 @@ class InfoServer(threading.Thread,):
                     for reason in job.failed_boot_reason:
                         output.append("      %s\n" % reason)
                 return ''.join(output)
+            def get_image_failures(self):
+                return "Image Failure Reasons:\n"
 
         self.server.register_instance(externalFunctions())
 
