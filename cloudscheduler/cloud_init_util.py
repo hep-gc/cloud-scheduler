@@ -42,7 +42,7 @@ def build_write_files_cloud_init(custom_tasks):
     custom_tasks -- A list of tuples were the first item is the file to edit
                     and the second is the string to place there. In these
                     tuples, the first element is the content, and the second
-                    is the location
+                    is the location. 3rd if present, is the permissions
     """
     cloud_init = []
     for task in custom_tasks:
@@ -59,4 +59,33 @@ def build_write_files_cloud_init(custom_tasks):
         if len(task) > 2:
             cloud_init.append('    permissions: %s' % task[2])
     return cloud_init
-        
+
+def build_multi_mime_message(content_type_pairs, file_type_pairs):
+    """
+    Argument:
+    content_type_pairs - A list of tuples [(content, mime-type, filename)]
+    file_type_pairs -- A list of strings formatted as file-path : mime-type
+    """
+    import sys
+
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    
+    if len(file_type_pairs) == 0:
+        return ""
+    
+    combined_message = MIMEMultipart()
+    for i in file_type_pairs:
+        (filename, format_type) = i.split(":", 1)
+        with open(filename) as fh:
+            contents = fh.read()
+        sub_message = MIMEText(contents, format_type, sys.getdefaultencoding())
+        sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (filename))
+        combined_message.attach(sub_message)
+    for i in content_type_pairs:
+        sub_message = MIMEText(i[0], i[1], sys.getdefaultencoding())
+        sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (i[2]))
+        combined_message.attach(sub_message)
+    
+    return combined_message
+
