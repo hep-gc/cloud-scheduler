@@ -92,7 +92,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
-                  job_per_core=False, securitygroup=[],pre_customization=None,use_cloud_init=False):
+                  job_per_core=False, securitygroup=[],pre_customization=None,use_cloud_init=False, extra_userdata=[]):
         
         try:
             if self.network_address in vm_image.keys():

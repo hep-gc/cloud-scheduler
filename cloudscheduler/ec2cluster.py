@@ -153,7 +153,7 @@ class EC2Cluster(cluster_tools.ICluster):
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   pre_customization=None, vm_keepalive=0, instance_type="", 
                   maximum_price=0, job_per_core=False, securitygroup=[],
-                  key_name="",use_cloud_init=False):
+                  key_name="",use_cloud_init=False, extra_userdata=[]):
         """Attempt to boot a new VM on the cluster."""
 
         use_cloud_init = use_cloud_init or config.use_cloud_init

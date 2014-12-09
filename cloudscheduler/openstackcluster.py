@@ -71,7 +71,7 @@ class OpenStackCluster(cluster_tools.ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", job_per_core=False, 
-                  securitygroup=[],key_name="", pre_customization=None, use_cloud_init=False):
+                  securitygroup=[],key_name="", pre_customization=None, use_cloud_init=False, extra_userdata=[]):
         """ Create a VM on OpenStack."""
 
         import novaclient.exceptions
