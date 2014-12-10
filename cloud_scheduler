@@ -698,8 +698,8 @@ class Scheduler(threading.Thread):
                     for conf in amiconfigs:
                         try:
                             # find the cloud-config one that CS shares
-                            if conf.split(':')[1] == "cloud-config":
-                                job_ami_config = conf.split(':')[0]
+                            if conf.split(':')[1].strip() == "cloud-config":
+                                job_ami_config = conf.split(':')[0].strip()
                             else:
                                 extra_userdata.append(conf)
                         except:

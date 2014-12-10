@@ -77,14 +77,16 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
     combined_message = MIMEMultipart()
     for i in file_type_pairs:
         (filename, format_type) = i.split(":", 1)
+        filename = filename.strip()
+        format_type = format_type.strip()
         with open(filename) as fh:
             contents = fh.read()
         sub_message = MIMEText(contents, format_type, sys.getdefaultencoding())
         sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (filename))
         combined_message.attach(sub_message)
     for i in content_type_pairs:
-        sub_message = MIMEText(i[0], i[1], sys.getdefaultencoding())
-        sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (i[2]))
+        sub_message = MIMEText(i[0], i[1].strip(), sys.getdefaultencoding())
+        sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (i[2].strip()))
         combined_message.attach(sub_message)
     
     return combined_message
