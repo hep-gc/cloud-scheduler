@@ -694,6 +694,8 @@ class Scheduler(threading.Thread):
                 if len(amiconfigs) == 1:
                     if len(amiconfigs[0].split(':')) == 1: # no mime types
                         job_ami_config = job.ami_config
+                    else:
+                        job_ami_config = amiconfigs[0].split(':')[0]
                 elif len(amiconfigs) > 1:
                     for conf in amiconfigs:
                         try:
