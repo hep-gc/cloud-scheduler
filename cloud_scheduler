@@ -1236,7 +1236,7 @@ class Cleanup(threading.Thread):
             adjust_num_total = 0
             total_pos_num = 0
             for uservmtype in num_to_change.keys():
-                user = uservmtype.split(':')[0]
+                user = uservmtype.split(':', 1)[0]
                 if user in self.resource_pool.user_vm_limits.keys():
                     if num_to_change[uservmtype] < 0:
                         if self.resource_pool.get_vm_count_user(user) + abs(num_to_change[uservmtype]) > self.resource_pool.user_vm_limits[user]:
@@ -1611,19 +1611,19 @@ class Cleanup(threading.Thread):
         """Checks for idle machines to shutdown that are no longer required."""
         for vmtype, count in to_remove.iteritems():
             log.debug("Attempting to remove %i VMs of type %s" % (count, vmtype))
-            criteria = {'vmtype': vmtype.split(':')[1], 'state': 'Unclaimed', 'activity': 'Idle'}
+            criteria = {'vmtype': vmtype.split(':', 1)[1], 'state': 'Unclaimed', 'activity': 'Idle'}
             unused_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
             num_to_shutdown = 0
             len_unused = len(unused_vms_of_type)
             # Make sure we don't try to shutdown more than is possible
             if len_unused == 0:
                 log.debug("Could not find any idle VMs to shutdown")
-                criteria = {'vmtype': vmtype.split(':')[1], 'state': 'Claimed', 'activity': 'Busy'}
+                criteria = {'vmtype': vmtype.split(':', 1)[1], 'state': 'Claimed', 'activity': 'Busy'}
                 busy_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
                 if len(busy_vms_of_type) != 0:
                     log.debug("Looks like some registered VMs are still running jobs")
                 else:
-                    criteria = {'VMType': vmtype.split(':')[1]}
+                    criteria = {'VMType': vmtype.split(':', 1)[1]}
                     any_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
                     if len(any_vms_of_type) != 0:
                         log.debug("Registered VM in mystery state - maybe Retiring?")
@@ -1765,7 +1765,7 @@ class Cleanup(threading.Thread):
                     retiring_vms_of_type.remove(vm)
             adjusted_val = val - len(retiring_vms_of_type)
             if adjusted_val > 0:
-                criteria = {'vmtype': vmtype.split(':')[1]}
+                criteria = {'vmtype': vmtype.split(':', 1)[1]}
                 tot_vms_of_type = self.resource_pool.find_in_where(machineList, criteria)
                 if vmtype in internal_vms.keys() and internal_vms[vmtype] > len(tot_vms_of_type):
                     # There are Starting or Unregistered VMs of this type - may not want to Retire yet
@@ -1814,7 +1814,7 @@ class Cleanup(threading.Thread):
                         adjusted_val -= successful_destroy
                         if adjusted_val <= 0:
                             continue
-                criteria = {'vmtype': vmtype.split(':')[1], 'activity': 'Busy'}
+                criteria = {'vmtype': vmtype.split(':', 1)[1], 'activity': 'Busy'}
                 busy_vms = self.resource_pool.find_in_where(machineList, criteria)
                 for busy_vm in reversed(busy_vms):
                     vm_in_cluster = None
