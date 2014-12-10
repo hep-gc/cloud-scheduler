@@ -109,7 +109,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             user_data = cloud_init_util.inject_customizations([], user_data)[0]
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
-            user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config')], extra_userdata)
+            user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
         
         try:
             image = vm_image[self.name]
