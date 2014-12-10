@@ -1557,7 +1557,7 @@ class Cleanup(threading.Thread):
                 if not cluster.connection_problem:
                     for vm in cluster.vms:
                         if vm == machine:
-                            cluster.failed_image_set.add(vm.image)
+                            cluster.failed_image_set.add(str(vm.image))
                             cluster.vm_destroy(machine, return_resources=(not retired), reason="Has not registered with Condor after %i seconds." % config.condor_register_time_limit)
                             killedIt = True
                             break
