@@ -157,7 +157,12 @@ class OpenStackCluster(cluster_tools.ICluster):
         try:   
             flavor = nova.flavors.find(name=i_type)
         except Exception as e:
-            log.exception("Exception ocurred while trying to get flavor: %s " % e)
+            log.error("Exception occurred while trying to get flavor by name - trying as uuid: %s " % e)
+            try:
+                flavor = nova.flavors.get(i_type)
+            except Exception as ex:
+                log.error("Exception occurred trying to get flavor by uuid: %s" % ex)
+            
             return   
         # Need to get the rotating hostname from the google code to use for here.  
         name = self._generate_next_name()
