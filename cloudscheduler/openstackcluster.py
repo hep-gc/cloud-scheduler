@@ -207,6 +207,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         """ Destroy a VM on OpenStack."""
         nova = self._get_creds_nova()
         import novaclient.exceptions
+        log.info("Destroying VM: %s Name: %s Reason: %s" % (vm.id, vm.hostname, reason))
         try:
             instance = nova.servers.get(vm.id)
             instance.delete()
