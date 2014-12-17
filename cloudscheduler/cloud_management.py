@@ -508,13 +508,13 @@ class ResourcePool:
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
             # If the cluster has no sufficient memory entries for the VM
-            if (cluster.find_mementry(memory) < 0):
+            if cluster.__class__.__name__ == "NimbusCluster" and (cluster.find_mementry(memory) < 0):
                 continue
             # If the cluster does not have sufficient CPU cores
             if (cpucores > cluster.cpu_cores):
                 continue
             # If the cluster does not have sufficient storage capacity
-            if (storage > cluster.storageGB):
+            if cluster.__class__.__name__ == "NimbusCluster" and (storage > cluster.storageGB):
                 continue
             if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
                 continue
