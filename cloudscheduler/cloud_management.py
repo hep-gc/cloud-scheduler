@@ -1511,6 +1511,7 @@ class ResourcePool:
             args3.append('master')
         # Send condor_off to startd first
         try:
+            log.debug(" ".join(args2))
             sp1 = subprocess.Popen(args2, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if not utilities.check_popen_timeout(sp1):
@@ -1521,9 +1522,7 @@ class ResourcePool:
             if sp1.returncode == 0 and ret1 == 0:
                 log.debug("Successfuly sent condor_off startd to %s" % (machine_name))
             else:
-                log.debug("Failed to send condor_off startd to %s" % (machine_name))
-                log.debug("Reason: %s" % out) 
-                log.debug("Error: %s" % err)
+                log.debug("Failed to send condor_off startd to %s: Reason: %s. Err: %s" % (machine_name, out, err))
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args2), e.errno, e.strerror))
             return (-1, -1, -1, -1)
@@ -1532,6 +1531,7 @@ class ResourcePool:
             return (-1, -1, -1, -1)
         # Now send the master off
         try:
+            log.debug(" ".join(args3))
             sp2 = subprocess.Popen(args3, shell=False,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if not utilities.check_popen_timeout(sp2):
@@ -1542,8 +1542,7 @@ class ResourcePool:
             if sp2.returncode == 0 and ret2 == 0:
                 log.verbose("Successfuly sent condor_off master to %s" % (machine_name))
             else:
-                log.debug("Failed to send condor_off master to %s" % (machine_name))
-                log.debug("Reason: %s \n Error: %s" % (out, err))
+                log.debug("Failed to send condor_off master to %s : Reason: %s : Error: %s" % (machine_name, out, err))
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args3), e.errno, e.strerror))
             return (-1, -1, -1, -1)
