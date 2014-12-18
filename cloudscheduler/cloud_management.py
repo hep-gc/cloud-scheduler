@@ -832,20 +832,16 @@ class ResourcePool:
         """
         log.verbose("Querying Condor Collector with %s" % config.condor_status_command)
 
-        machine_list = []
         try:
             condor_status = shlex.split(config.condor_status_command)
             sp = subprocess.Popen(condor_status, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (condor_out, condor_err) = sp.communicate(input=None)
         except:
-            log.exception("Problem running %s, unexpected error" % string.join(condor_status, " "))
+            log.exception("Problem running %s, unexpected error: %s" % (string.join(condor_status, " "), condor_err))
             return []
 
-
-        machine_list = self._condor_status_to_machine_list(condor_out)
-
-        return machine_list
+        return self._condor_status_to_machine_list(condor_out)
 
     def master_resource_query_local(self):
         """
@@ -856,18 +852,16 @@ class ResourcePool:
         """
         log.verbose("Querying Condor Collector with %s" % config.condor_status_master_command)
 
-        master_list = []
         try:
             condor_status = shlex.split(config.condor_status_master_command)
             sp = subprocess.Popen(condor_status, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (condor_out, condor_err) = sp.communicate(input=None)
         except:
-            log.exception("Problem running %s, unexpected error" % string.join(condor_status, " "))
+            log.exception("Problem running %s, unexpected error: %s" % (string.join(condor_status, " "), condor_err))
             return []
 
-        master_list = self._condor_status_to_machine_list(condor_out)
-        return master_list
+        return self._condor_status_to_machine_list(condor_out)
 
     @staticmethod
     def _condor_status_to_machine_list(condor_status_output):
