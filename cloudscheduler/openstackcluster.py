@@ -192,10 +192,10 @@ class OpenStackCluster(cluster_tools.ICluster):
                                                nics =netid, userdata=user_data, security_groups=sec_group)
                 #print instance.__dict__
             except novaclient.exceptions.OverLimit as e:
-                log.exception("Quota Exceeded on %s: %s" % (self.name, e.message))
+                log.error("Quota Exceeded on %s: %s" % (self.name, e.message))
             except Exception as e:
                 #print e
-                log.exception(e)
+                log.error(e)
             if instance:
                 instance_id = instance.id
                 
@@ -209,7 +209,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                 try:
                     self.resource_checkout(new_vm)
                 except:
-                    log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
+                    log.error("Unexpected Error checking out resources when creating a VM. Programming error?")
                     self.vm_destroy(new_vm, reason="Failed Resource checkout")
                     return self.ERROR
         
