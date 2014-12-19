@@ -167,8 +167,22 @@ class OpenStackCluster(cluster_tools.ICluster):
             
             return
         # find the network id to use if more than one network
-        network = self._find_network(self.networks[0])
-        netid = [{'net-id': network.id}] if network else []
+        if vm_networkassoc:
+            network = self._find_network(vm_networkassoc)
+            if network:
+                netid = [{'net-id': network.id}]
+            else:
+                log.debug("Unable to find network named: %s on %s" % (vm_networkassoc, self.name))
+                netid = []
+        elif self.networks and len(self.networks) > 0:
+            network = self._find_network(self.networks[0])
+            if network:
+                netid = [{'net-id': network.id}]
+            else:
+                log.debug("Unable to find network named: %s on %s" % (self.networks[0], self.name))
+                netid = []
+        else:
+            netid = []
         # Need to get the rotating hostname from the google code to use for here.  
         name = self._generate_next_name()
         instance = None
