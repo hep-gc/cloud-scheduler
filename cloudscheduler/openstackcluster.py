@@ -132,7 +132,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         try:
             imageobj = nova.images.find(name=image)
         except Exception as e:
-            log.exception("Exception occurred while trying to fetch image via name: %s" % e)
+            log.warning("Exception occurred while trying to fetch image via name: %s" % e)
             try:
                 imageobj = nova.images.get(image)
                 log.debug("Got image via uuid: %s" % image)
@@ -158,7 +158,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         try:   
             flavor = nova.flavors.find(name=i_type)
         except Exception as e:
-            log.error("Exception occurred while trying to get flavor by name: %s - will attempt to use name value as a uuid." % e)
+            log.warning("Exception occurred while trying to get flavor by name: %s - will attempt to use name value as a uuid." % e)
             try:
                 flavor = nova.flavors.get(i_type)
                 log.debug("Got flavor via uuid: %s" % i_type)
