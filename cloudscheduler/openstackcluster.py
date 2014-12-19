@@ -165,13 +165,17 @@ class OpenStackCluster(cluster_tools.ICluster):
             except Exception as ex:
                 log.error("Exception occurred trying to get flavor by uuid: %s" % ex)
             
-            return   
+            return
+        # find the network id to use if more than one network
+        network = self._find_network(self.networks[0])
+        netid = [{'net-id': network.id}] if network else []
         # Need to get the rotating hostname from the google code to use for here.  
         name = self._generate_next_name()
         instance = None
         if name:
             try:
-                instance = nova.servers.create(name=name, image=imageobj, flavor=flavor, key_name=key_name, userdata=user_data, security_groups=sec_group)
+                instance = nova.servers.create(name=name, image=imageobj, flavor=flavor, key_name=key_name, 
+                                               nics =netid, userdata=user_data, security_groups=sec_group)
                 #print instance.__dict__
             except novaclient.exceptions.OverLimit as e:
                 log.exception("Quota Exceeded on %s: %s" % (self.name, e.message))
@@ -287,4 +291,13 @@ class OpenStackCluster(cluster_tools.ICluster):
         if collision:
             name = None
         return name
+    
+    def _find_network(self, name):
+        nova = self._get_creds_nova()
+        networks = nova.networks.list()
+        network = None
+        for net in networks:
+            if net.label == name:
+                network = net
+        return network
 
