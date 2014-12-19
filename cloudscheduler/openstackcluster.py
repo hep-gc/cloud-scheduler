@@ -130,11 +130,12 @@ class OpenStackCluster(cluster_tools.ICluster):
                         log.exception("Can't find a suitable AMI")
                         return
         try:
-            image = nova.images.find(name=image)
+            imageobj = nova.images.find(name=image)
         except Exception as e:
             log.exception("Exception occurred while trying to fetch image via name: %s" % e)
             try:
-                image = nova.images.get(image)
+                imageobj = nova.images.get(image)
+                log.debug("Got image via uuid: %s" % image)
             except Exception as e:
                 log.exception("Unable to fetch image via uuid: %s" % e)
                 self.failed_image_set.add(image)
@@ -157,9 +158,10 @@ class OpenStackCluster(cluster_tools.ICluster):
         try:   
             flavor = nova.flavors.find(name=i_type)
         except Exception as e:
-            log.error("Exception occurred while trying to get flavor by name - trying as uuid: %s " % e)
+            log.error("Exception occurred while trying to get flavor by name: %s - will attempt to use name value as a uuid." % e)
             try:
                 flavor = nova.flavors.get(i_type)
+                log.debug("Got flavor via uuid: %s" % i_type)
             except Exception as ex:
                 log.error("Exception occurred trying to get flavor by uuid: %s" % ex)
             
@@ -169,7 +171,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         instance = None
         if name:
             try:
-                instance = nova.servers.create(name=name, image=image, flavor=flavor, key_name=key_name, userdata=user_data, security_groups=sec_group)
+                instance = nova.servers.create(name=name, image=imageobj, flavor=flavor, key_name=key_name, userdata=user_data, security_groups=sec_group)
                 #print instance.__dict__
             except novaclient.exceptions.OverLimit as e:
                 log.exception("Quota Exceeded on %s: %s" % (self.name, e.message))
