@@ -67,7 +67,6 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
-        self.networks = networks
     
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
@@ -175,12 +174,12 @@ class OpenStackCluster(cluster_tools.ICluster):
             else:
                 log.debug("Unable to find network named: %s on %s" % (vm_networkassoc, self.name))
                 netid = []
-        elif self.networks and len(self.networks) > 0:
-            network = self._find_network(self.networks[0])
+        elif self.network_pools and len(self.network_pools) > 0:
+            network = self._find_network(self.network_pools[0])
             if network:
                 netid = [{'net-id': network.id}]
             else:
-                log.debug("Unable to find network named: %s on %s" % (self.networks[0], self.name))
+                log.debug("Unable to find network named: %s on %s" % (self.network_pools[0], self.name))
                 netid = []
         else:
             netid = []
