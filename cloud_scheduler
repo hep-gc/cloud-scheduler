@@ -1129,8 +1129,6 @@ class Cleanup(threading.Thread):
         # Count the number of jobs that require a certain VM type,
         # and then destroy the EXCESS VMs in that type TODO: leave a few for spare?
         log.verbose("Gathering required VM types.")
-        required_vmtypes = self.job_pool.get_required_uservmtypes()
-
         machineList = self.resource_pool.vm_machine_list
         if machineList:
 
