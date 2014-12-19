@@ -164,8 +164,8 @@ class OpenStackCluster(cluster_tools.ICluster):
                 log.debug("Got flavor via uuid: %s" % i_type)
             except Exception as ex:
                 log.error("Exception occurred trying to get flavor by uuid: %s" % ex)
-            
-            return
+                return
+
         # find the network id to use if more than one network
         if vm_networkassoc:
             network = self._find_network(vm_networkassoc)
