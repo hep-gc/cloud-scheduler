@@ -308,10 +308,13 @@ class OpenStackCluster(cluster_tools.ICluster):
     
     def _find_network(self, name):
         nova = self._get_creds_nova()
-        networks = nova.networks.list()
-        network = None
-        for net in networks:
-            if net.label == name:
-                network = net
+        try:
+            networks = nova.networks.list()
+            network = None
+            for net in networks:
+                if net.label == name:
+                    network = net
+        except Exception as e:
+            log.error("Unable to list networks on %s Exception: %s" % (self.name, e))
         return network
 
