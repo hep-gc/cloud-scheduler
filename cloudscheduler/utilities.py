@@ -62,9 +62,9 @@ def get_or_none(config, section, value):
     else:
         return None
 
-def splitnstrip(sep, str):
+def splitnstrip(sep, val):
     """Return a list of items trimed of excess whitespace from a string(typically comma separated)."""
-    return [x.strip() for x in str.split(sep)];
+    return [x.strip() for x in val.split(sep)];
 
 
 def get_globus_path(executable="grid-proxy-init"):
