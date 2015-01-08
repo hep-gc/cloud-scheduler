@@ -5,7 +5,6 @@ import os
 import sys
 import socket
 import logging
-import ConfigParser
 import subprocess
 import time
 import errno
@@ -271,7 +270,7 @@ class CircleQueue():
         length, default 10
         
         """
-        self.data = [None for x in range(0, length)]
+        self.data = [None for _ in range(0, length)]
 
     def append(self, x):
         """Append item to the end of the queue while removing the head."""
@@ -284,7 +283,7 @@ class CircleQueue():
 
     def clear(self):
         """Resets the queue to empty state filled with None values."""
-        self.data = [None for x in range(0, len(self.data))]
+        self.data = [None for _ in range(0, len(self.data))]
 
     def min_use(self):
         """Checks the head of the queue for a None value to determine if is queue full."""
