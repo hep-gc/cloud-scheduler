@@ -1945,6 +1945,12 @@ class ResourcePool:
                 expanded_targets.append(cloud)
         trimmed_targets = list(set(expanded_targets))
         return trimmed_targets
+    
+    def resolve_vmami_cloud_alias(self, vmamis=None):
+        pass
+
+    def resolve_vminstancetype_cloud_alias(self, vminstancetypes=None):
+        pass
 
 
 class VMDestroyCmd(threading.Thread):
