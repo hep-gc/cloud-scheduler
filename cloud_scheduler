@@ -35,6 +35,7 @@ import threading
 import traceback
 import ConfigParser
 import logging.handlers
+import multiprocessing
 from itertools import islice
 from optparse import OptionParser
 from decimal import *
@@ -1894,7 +1895,7 @@ class Cleanup(threading.Thread):
             if not thread.is_alive():
                 if thread.get_result() != 0:
                     log.error("Destroying VM %s failed. Leaving it for now." % thread.get_vm().id)
-                thread.join()
+                thread.join(timeout=1)
                 to_remove.append(k)
         for key in to_remove:
             del self.destroy_threads[key]

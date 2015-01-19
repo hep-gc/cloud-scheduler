@@ -26,11 +26,13 @@ import logging
 import threading
 import subprocess
 import ConfigParser
+import multiprocessing
 
 from urllib2 import URLError
 from decimal import *
 from StringIO import StringIO
 from collections import defaultdict
+import multiprocessing
 
 try:
     import cPickle as pickle
@@ -1964,6 +1966,7 @@ class VMDestroyCmd(threading.Thread):
         self.vm = vm
         self.result = None
         self.reason = reason
+        self.init_time = time.time()
     def run(self):
         self.result = self.cluster.vm_destroy(self.vm, reason=self.reason)
         if self.result != 0:
@@ -1972,6 +1975,30 @@ class VMDestroyCmd(threading.Thread):
         return self.result
     def get_vm(self):
         return self.vm
+
+#class VMDestroyCmd(multiprocessing.Process):
+    """
+    VMCmd - passing shutdown and destroy requests to a separate thread 
+    """
+
+#    def __init__(self, cluster, vm, reason=""):
+#        multiprocessing.Process.__init__(self, name=self.__class__.__name__)
+#        self.cluster = cluster
+#        self.vm = vm
+#        self.result = None
+#        self.reason = reason
+#        self.init_time = time.time()
+#        print "Created a vmdestroy process"
+#    def run(self):
+#        print 'exec the vm_destroy call'
+#        self.result = self.cluster.vm_destroy(self.vm, reason=self.reason)
+#        if self.result != 0:
+#            log.error("Failed to destroy vm %s on %s" % (self.vm.id, self.vm.clusteraddr))
+#       print 'done destroy'
+#    def get_result(self):
+#       return self.result
+#    def get_vm(self):
+#        return self.vm
 
 class VMMachine():
     """
