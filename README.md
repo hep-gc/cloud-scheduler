@@ -17,6 +17,7 @@ For more documentation on Cloud Scheduler, please refer to:
 * A working Condor 7.5.x or later install (details below)
 * [Python 2.6+](http://www.python.org/)
 * [boto](http://code.google.com/p/boto/)
+* [OpenStack novaclient](https://pypi.python.org/pypi/python-novaclient/)
 * redhat-lsb 
 
 ## Optional Prerequisites
