@@ -3,8 +3,8 @@
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
 
-Cloud Scheduler manages virtual machines on clouds configured with Nimbus,
-Eucalyptus, or Amazon EC2 to create an environment for HTC batch job execution.
+Cloud Scheduler manages virtual machines on clouds configured with OpenStack,
+Google Compute Engine, or Amazon EC2 to create an environment for HTC batch job execution.
 Users submit their jobs to a Condor job queue, and Cloud Scheduler boots VMs to
 suit those jobs. 
 
@@ -15,7 +15,6 @@ For more documentation on Cloud Scheduler, please refer to:
 ## Prerequisites
 
 * A working Condor 7.5.x or later install (details below)
-* Nimbus Cloud Client tools (details below)
 * [Python 2.6+](http://www.python.org/)
 * [boto](http://code.google.com/p/boto/)
 * redhat-lsb 
@@ -145,29 +144,6 @@ image, ensure you place the central_manager file from scripts/condor/worker into
 /etc/condor as the init script will read the value of the CONDOR_HOST from
 this file.
 
-## Installing Nimbus Cloud Client
-
-The Nimbus Cloud Client is the standard client used to connect to Nimbus
-clouds. Cloud Scheduler uses this client to communicate with Nimbus.
-
-We assume you want to install Cloud Client to /opt.
-
-    $ wget http://www.nimbusproject.org/downloads/nimbus-cloud-client-017.tar.gz
-    $ tar xzf nimbus-cloud-client-017.tar.gz
-
-Normally, the workspace reference client, workspace.sh, isn't executable. The
-way Cloud Scheduler uses it makes this neccessary. 
-
-    $ chmod +x nimbus-cloud-client-017/lib/workspace.sh
-
-You'll need to point your Cloud Scheduler install to this client. Set the
-workspace_path option to point there.
-
-Be sure that you have a valid x509 proxy available before starting Cloud
-Scheduler. You can create one with:
-
-    $ nimbus-cloud-client-017/bin/grid-proxy-init.sh
-
 ## Configuration
 
 ### cloud_scheduler.conf
@@ -235,6 +211,7 @@ To Reload the cloud_resources.conf without restarting Cloud Scheduler
 
 ## Configuring a VM for EC2 / Eucalyptus
 
+(Deprecated - use cloud-init and amiconfig files)
 The way Cloud Scheduler manipulates Condor to connect to the correct central
 manager is by writing files which are read by the Condor init script to
 configure itself. Nimbus supports this out of the box, but EC2 requires a 
