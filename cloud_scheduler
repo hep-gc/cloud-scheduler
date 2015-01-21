@@ -879,6 +879,19 @@ class Scheduler(threading.Thread):
                 continue
 
             # If the vm create didn't fail, break out of the loop
+            if job.job_per_core:
+                if job.req_cpucores == config.default_VMJobPerCore:
+                    flav_names = [f.name for f in resource.flavor_set]
+                    fl = None
+                    for _,v in job.instance_type.iteritems():
+                        if v in flav_names:
+                            fl = v
+                    for f in resource.flavor_set:
+                        if f.name == fl:
+                            job.req_cpucores = f.cores
+                    pass
+                pass
+
             break
 
         # If VM creation fails for user-job on all resources move to next user

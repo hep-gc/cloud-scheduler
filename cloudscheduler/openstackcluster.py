@@ -67,6 +67,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
+        self.flavor_set = set()
     
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
@@ -165,7 +166,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             except Exception as ex:
                 log.error("Exception occurred trying to get flavor by uuid: %s" % ex)
                 return
-
+        self.flavor_set.add(flavor)
         # find the network id to use if more than one network
         if vm_networkassoc:
             network = self._find_network(vm_networkassoc)
