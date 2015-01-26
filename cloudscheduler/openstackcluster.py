@@ -69,6 +69,17 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.placement_zone = placement_zone
         self.flavor_set = set()
     
+    def __getstate__(self):
+        """Override to work with pickle module."""
+        state = cluster_tools.ICluster.__getstate__()
+        del state['flavor_set']
+        return state
+
+    def __setstate__(self, state):
+        """Override to work with pickle module."""
+        cluster_tools.ICluster.__setstate__(state)
+        self.flavor_set = set()
+    
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", job_per_core=False, 
