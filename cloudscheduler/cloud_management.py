@@ -833,7 +833,7 @@ class ResourcePool:
         registered with condor.
         """
         log.verbose("Querying Condor Collector with %s" % config.condor_status_command)
-
+        condor_out=condor_err=""
         try:
             condor_status = shlex.split(config.condor_status_command)
             sp = subprocess.Popen(condor_status, shell=False,
