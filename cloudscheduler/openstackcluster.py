@@ -71,7 +71,7 @@ class OpenStackCluster(cluster_tools.ICluster):
     
     def __getstate__(self):
         """Override to work with pickle module."""
-        state = cluster_tools.ICluster.__getstate__()
+        state = cluster_tools.ICluster.__getstate__(self)
         del state['flavor_set']
         return state
 
