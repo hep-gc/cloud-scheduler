@@ -77,7 +77,7 @@ class OpenStackCluster(cluster_tools.ICluster):
 
     def __setstate__(self, state):
         """Override to work with pickle module."""
-        cluster_tools.ICluster.__setstate__(state)
+        cluster_tools.ICluster.__setstate__(self, state)
         self.flavor_set = set()
     
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
@@ -99,6 +99,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                 sec_group = self.security_groups
         else:
             sec_group = self.security_groups
+        log.debug("Using security group: %s" % str(sec_group))
         if key_name and len(key_name) > 0:
             if not nova.keypairs.findall(name=key_name):
                 key_name = ""
