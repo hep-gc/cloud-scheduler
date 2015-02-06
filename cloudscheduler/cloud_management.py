@@ -286,6 +286,11 @@ class ResourcePool:
         priority = get_or_none(config, cluster, "priority")
         priority = int(priority) if priority != None else 0
         hypervisor = get_or_none(config, cluster, "hypervisor")
+        if config.has_option(cluster, "networks"):
+            try:
+                networks = splitnstrip(",", get_or_none(config, cluster, "networks"))
+            except:
+                networks = []
         if hypervisor == None:
             hypervisor = 'xen'
         else:
@@ -335,7 +340,7 @@ class ResourcePool:
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
-                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    networks = networks,
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
@@ -360,7 +365,7 @@ class ResourcePool:
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
-                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    networks = networks,
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
@@ -376,7 +381,7 @@ class ResourcePool:
                     cloud_type= get_or_none(config, cluster, "cloud_type"),
                     memory= map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem= max_vm_mem if max_vm_mem != None else -1,
-                    networks= splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    networks= networks,
                     vm_slots= int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores= int(get_or_none(config, cluster, "cpu_cores")),
                     storage= int(get_or_none(config, cluster, "storage")),
@@ -391,7 +396,7 @@ class ResourcePool:
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
-                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    networks = networks,
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
@@ -410,7 +415,7 @@ class ResourcePool:
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
-                    networks = splitnstrip(",", get_or_none(config, cluster, "networks")),
+                    networks = networks,
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
@@ -1949,10 +1954,26 @@ class ResourcePool:
         return trimmed_targets
     
     def resolve_vmami_cloud_alias(self, vmamis=None):
-        pass
+        expanded_amis = {}
+        for k, v in vmamis.iteritems():
+            if k in self.target_cloud_aliases.keys():
+                exp = self.target_cloud_aliases[k]
+                for cloud in exp:
+                    expanded_amis[cloud] = v
+            else:
+                expanded_amis[k] = v
+        return expanded_amis
 
     def resolve_vminstancetype_cloud_alias(self, vminstancetypes=None):
-        pass
+        expanded_types = {}
+        for k, v in vminstancetypes.iteritems():
+            if k in self.target_cloud_aliases.keys():
+                exp = self.target_cloud_aliases[k]
+                for cloud in exp:
+                    expanded_types[cloud] = v
+            else:
+                expanded_types[k] = v
+        return expanded_types
 
 
 class VMDestroyCmd(threading.Thread):

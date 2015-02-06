@@ -723,6 +723,8 @@ class Scheduler(threading.Thread):
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
         cloud_name_file_dest = "/var/lib/cloud_name"
+        vmimage_expanded = self.resource_pool.resolve_vmami_cloud_alias(job.req_ami)
+        vminstancetype_expanded = self.resource_pool.resolve_vminstancetype_cloud_alias(job.instance_type)
         for resource in good_resources:
             # Print details of the resource selected
             if resource == None:
@@ -769,7 +771,7 @@ class Scheduler(threading.Thread):
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
                         'vm_networkassoc':job.req_network,
-                        'vm_image':job.req_ami,
+                        'vm_image':vmimage_expanded,
                         'vm_mem':job.req_memory,
                         'vm_cores':job.req_cpucores,
                         'vm_storage':job.req_storage,
@@ -777,7 +779,7 @@ class Scheduler(threading.Thread):
                         'pre_customization': pre_customizations,
                         'extra_userdata': extra_userdata,
                         'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type,
+                        'instance_type':vminstancetype_expanded,
                         'maximum_price':job.maximum_price,
                         'job_per_core':job.job_per_core,
                         'securitygroup':job.req_security_group,
@@ -825,13 +827,13 @@ class Scheduler(threading.Thread):
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
                         'vm_networkassoc':job.req_network,
-                        'vm_image':job.req_ami,
+                        'vm_image':vmimage_expanded,
                         'vm_mem':job.req_memory,
                         'vm_cores':job.req_cpucores,
                         'vm_storage':job.req_storage,
                         'customization':customizations,
                         'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type,
+                        'instance_type':vminstancetype_expanded,
                         'maximum_price':job.maximum_price,
                         'job_per_core':job.job_per_core,
                         'securitygroup':job.req_security_group,
@@ -846,7 +848,7 @@ class Scheduler(threading.Thread):
                         'vm_type':job.req_vmtype,
                         'vm_user':job.user,
                         'vm_networkassoc':job.req_network,
-                        'vm_image':job.req_ami,
+                        'vm_image':vmimage_expanded,
                         'vm_mem':job.req_memory,
                         'vm_cores':job.req_cpucores,
                         'vm_storage':job.req_storage,
@@ -854,7 +856,7 @@ class Scheduler(threading.Thread):
                         'pre_customization':pre_customizations,
                         'extra_userdata': extra_userdata,
                         'vm_keepalive':job.keep_alive,
-                        'instance_type':job.instance_type,
+                        'instance_type':vminstancetype_expanded,
                         'job_per_core':job.job_per_core,
                         'securitygroup':job.req_security_group,
                         'key_name':job.key_name,
