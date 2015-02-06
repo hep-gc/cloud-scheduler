@@ -286,11 +286,12 @@ class ResourcePool:
         priority = get_or_none(config, cluster, "priority")
         priority = int(priority) if priority != None else 0
         hypervisor = get_or_none(config, cluster, "hypervisor")
+        networks = []
         if config.has_option(cluster, "networks"):
             try:
                 networks = splitnstrip(",", get_or_none(config, cluster, "networks"))
             except:
-                networks = []
+                log.error("No networks specified for %s, will use the default" % cluster)
         if hypervisor == None:
             hypervisor = 'xen'
         else:
