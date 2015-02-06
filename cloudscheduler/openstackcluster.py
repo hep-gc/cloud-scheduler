@@ -48,12 +48,6 @@ class OpenStackCluster(cluster_tools.ICluster):
         if not security_group:
             security_group = ["default"]
         self.security_groups = security_group
-
-        if not access_key_id or not secret_access_key:
-            log.error("Cannot connect to cluster %s "
-                      "because you haven't specified an access_key_id or "
-                      "a secret_access_key" % self.name)
-
         self.access_key_id = access_key_id if access_key_id else ""
         self.secret_access_key = secret_access_key if secret_access_key else ""
         self.username = username if username else ""
