@@ -89,7 +89,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                 if group in self.security_groups:
                     sec_group.append(group)
             if len(sec_group) == 0:
-                log.debug("No matching security groups - trying default config")
+                log.debug("No defined security groups for job - trying default value from cloud_resources.conf")
                 sec_group = self.security_groups
         else:
             sec_group = self.security_groups
