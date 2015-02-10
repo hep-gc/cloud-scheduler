@@ -412,7 +412,6 @@ class ResourcePool:
                     )
         elif cloud_type == "OpenStackNative":
             return openstackcluster.OpenStackCluster(name = cluster,
-                    host = get_or_none(config, cluster, "host"),
                     cloud_type = get_or_none(config, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,

@@ -25,7 +25,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             "PAUSED": "Paused",
             "ERROR" : "Error",
     }
-    def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
+    def __init__(self, name="Dummy Cluster", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
@@ -33,7 +33,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                  regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0):
 
         # Call super class's init
-        cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
+        cluster_tools.ICluster.__init__(self,name=name, host=auth_url, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled, priority=priority)
