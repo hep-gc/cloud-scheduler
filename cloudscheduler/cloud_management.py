@@ -420,8 +420,6 @@ class ResourcePool:
                     vm_slots = int(get_or_none(config, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
                     storage = int(get_or_none(config, cluster, "storage")),
-                    access_key_id = get_or_none(config, cluster, "access_key_id"),
-                    secret_access_key = get_or_none(config, cluster, "secret_access_key"),
                     username = get_or_none(config, cluster, "username"),
                     password = get_or_none(config, cluster, "password"),
                     tenant_name = get_or_none(config, cluster, "tenant_name"),

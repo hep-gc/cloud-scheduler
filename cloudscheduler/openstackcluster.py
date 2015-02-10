@@ -27,8 +27,7 @@ class OpenStackCluster(cluster_tools.ICluster):
     }
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
-                 cpu_cores=0, storage=0,
-                 access_key_id=None, secret_access_key=None, security_group=None,
+                 cpu_cores=0, storage=0, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
                  regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0):
