@@ -47,8 +47,6 @@ class OpenStackCluster(cluster_tools.ICluster):
         if not security_group:
             security_group = ["default"]
         self.security_groups = security_group
-        self.access_key_id = access_key_id if access_key_id else ""
-        self.secret_access_key = secret_access_key if secret_access_key else ""
         self.username = username if username else ""
         self.password = password if password else ""
         self.tenant_name = tenant_name if tenant_name else ""
