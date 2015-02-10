@@ -202,7 +202,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                 log.error("Quota Exceeded on %s: %s" % (self.name, e.message))
             except Exception as e:
                 #print e
-                log.error(e)
+                log.error("Unhandled exception while creating vm on %s: %s" %(self.name, e))
             if instance:
                 instance_id = instance.id
                 
@@ -242,7 +242,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             log.error("VM %s not found on %s: removing from CS" % (vm.id, self.name))
         except Exception as e:
             try:
-                log.error(e)
+                log.error("Unhandled exception while destroying VM on %s : %s" % (self.name,e))
                 return 1
             except:
                 log.error("Failed to log exception properly?")
