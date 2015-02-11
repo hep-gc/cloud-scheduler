@@ -21,7 +21,8 @@ except ImportError:
     log.error("To use EC2-style clouds, you need to have boto " \
             "installed. You can install it from your package manager, " \
             "or get it from http://code.google.com/p/boto/")
-
+    
+from httplib import BadStatusLine
 from subprocess import Popen
 from urlparse import urlparse
 from cStringIO import StringIO
@@ -335,7 +336,10 @@ class EC2Cluster(cluster_tools.ICluster):
                 log.error("Couldn't find image %s on %s" % (vm_image, self.name))
                 self.failed_image_set.add(vm_ami)
                 return self.ERROR
-
+        
+        except BadStatusLine, e:
+            log.exception("Bad Status Line exception: %s" % e)
+            return self.ERROR
         except Exception, e:
             log.exception("Problem creating EC2 instance on %s: %s" % (self.name, e))
             if e.errors and len(e.errors) > 0 and len(e.errors[0]) > 0 and e.errors[0][0] == "ImageNotFound":
