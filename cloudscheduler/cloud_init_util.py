@@ -92,5 +92,5 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
             sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % ("cs-cloud-init.yaml"))
         combined_message.attach(sub_message)
     
-    return combined_message
+    return str(combined_message)
 

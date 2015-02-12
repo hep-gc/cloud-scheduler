@@ -190,6 +190,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         # Need to get the rotating hostname from the google code to use for here.  
         name = self._generate_next_name()
         instance = None
+
         if name:
             try:
                 instance = nova.servers.create(name=name, image=imageobj, flavor=flavor, key_name=key_name, 
