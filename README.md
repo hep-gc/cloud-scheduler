@@ -16,8 +16,8 @@ For more documentation on Cloud Scheduler, please refer to:
 
 * A working Condor 7.5.x or later install (details below)
 * [Python 2.6+](http://www.python.org/)
-* [boto](http://code.google.com/p/boto/)
-* [OpenStack novaclient](https://pypi.python.org/pypi/python-novaclient/)
+* [boto](http://code.google.com/p/boto/) for using EC2 API clouds (Amazon, OpenStack)
+* [OpenStack novaclient](https://pypi.python.org/pypi/python-novaclient/) for using the native OpenStack APIs
 * redhat-lsb 
 
 ## Optional Prerequisites
@@ -37,6 +37,7 @@ For more documentation on Cloud Scheduler, please refer to:
 
     # pip install cloud-scheduler
 
+* This will install the latest master release, latest dev release available through github
 
 ### Special help for RHEL 5
 
@@ -106,9 +107,14 @@ And Cloud Scheduler and its dependencies:
     # pip install cloud-scheduler
 
 ## Install without pip
-To install without using pip, run:
+To install without using pip:
 
-    # python setup.py install
+Download the zip from github
+	
+	# wget https://github.com/hep-gc/cloud-scheduler/archive/master.zip
+	# unzip master.zip
+	# cd cloud_scheduler
+   	# python setup.py install
 
 ## Condor Install
 Cloud Scheduler works with [Condor](http://www.cs.wisc.edu/condor/), which needs
