@@ -836,12 +836,14 @@ class ResourcePool:
         registered with condor.
         """
         log.verbose("Querying Condor Collector with %s" % config.condor_status_command)
-        condor_out=condor_err=""
+        condor_status=condor_out=condor_err=""
         try:
             condor_status = shlex.split(config.condor_status_command)
             sp = subprocess.Popen(condor_status, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (condor_out, condor_err) = sp.communicate(input=None)
+        except OSError:
+            log.error("OSError occured while doing condor_status - will try again next cycle.")
         except:
             log.exception("Problem running %s, unexpected error: %s" % (string.join(condor_status, " "), condor_err))
             return []
@@ -856,12 +858,14 @@ class ResourcePool:
         registered with condor.
         """
         log.verbose("Querying Condor Collector with %s" % config.condor_status_master_command)
-
+        condor_status=condor_out=condor_err=""
         try:
             condor_status = shlex.split(config.condor_status_master_command)
             sp = subprocess.Popen(condor_status, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (condor_out, condor_err) = sp.communicate(input=None)
+        except OSError:
+            log.error("OSError occured while doing condor_status -master - will try again next cycle.")
         except:
             log.exception("Problem running %s, unexpected error: %s" % (string.join(condor_status, " "), condor_err))
             return []
