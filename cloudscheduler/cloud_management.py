@@ -844,6 +844,7 @@ class ResourcePool:
             (condor_out, condor_err) = sp.communicate(input=None)
         except OSError:
             log.error("OSError occured while doing condor_status - will try again next cycle.")
+            return []
         except:
             log.exception("Problem running %s, unexpected error: %s" % (string.join(condor_status, " "), condor_err))
             return []
@@ -866,6 +867,7 @@ class ResourcePool:
             (condor_out, condor_err) = sp.communicate(input=None)
         except OSError:
             log.error("OSError occured while doing condor_status -master - will try again next cycle.")
+            return []
         except:
             log.exception("Problem running %s, unexpected error: %s" % (string.join(condor_status, " "), condor_err))
             return []
