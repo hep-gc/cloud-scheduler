@@ -1124,9 +1124,19 @@ class Cleanup(threading.Thread):
                     continue
             if job.target_clouds:
                 unrolled_targets = self.resource_pool.resolve_target_cloud_alias(job.target_clouds)
-                if not set(unrolled_targets).intersection(set(cloud_names)):
+                target_matchset = set(unrolled_targets).intersection(set(cloud_names))
+                if not target_matchset:
                     bad_jobs.append(job)
                     log.debug("No matching target cloud for job %s" % job.id)
+                    continue
+                all_match_disabled = True
+                for cloudname in target_matchset:
+                    cloud = self.resource_pool.get_cluster(cloudname)
+                    if cloud.enabled:
+                        all_match_disabled = False
+                if all_match_disabled:
+                    bad_jobs.append(job)
+                    log.debug("All matching targets are disabled for job %s" % job.id)
                     continue
         failedhold = []
         if len(bad_jobs) > 0:
