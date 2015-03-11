@@ -342,8 +342,11 @@ class EC2Cluster(cluster_tools.ICluster):
             return self.ERROR
         except Exception, e:
             log.exception("Problem creating EC2 instance on %s: %s" % (self.name, e))
-            if e.errors and len(e.errors) > 0 and len(e.errors[0]) > 0 and e.errors[0][0] == "ImageNotFound":
-                self.failed_image_set.add(vm_ami)
+            try:
+                if e.errors and len(e.errors) > 0 and len(e.errors[0]) > 0 and e.errors[0][0] == "ImageNotFound":
+                    self.failed_image_set.add(vm_ami)
+            except:
+                return self.ERROR
             return self.ERROR
 
         vm_mementry = self.find_mementry(vm_mem)
