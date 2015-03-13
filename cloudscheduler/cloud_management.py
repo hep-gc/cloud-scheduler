@@ -1910,7 +1910,7 @@ class ResourcePool:
             try:
                 name = machine_name = job_id = global_job_id = address_startd = \
                      address_master = state = activity = vmtype = start_req = \
-                     remote_owner = ""
+                     remote_owner = slot_type = total_slots = ""
                 current_time = entered_state_time = -1
                 if machine.has_key('Name'):
                     name = machine['Name']
@@ -1938,10 +1938,14 @@ class ResourcePool:
                     remote_owner = machine['RemoteOwner']
                 if master_machine_ips.has_key(machine['Machine']):
                     address_master = master_machine_ips[machine['Machine']]
+                if machine.has_key('SlotType'):
+                    slot_type = machine['SlotType']
+                if machine.has_key('TotalSlots'):
+                    total_slots = machine['TotalSlots']
                 vmmachine = VMMachine(name=name, machine_name=machine_name, job_id=job_id, global_job_id=global_job_id,
                  address_startd=address_startd, address_master=address_master, state=state, activity=activity,
                  vmtype=vmtype, current_time=current_time, entered_state_time=entered_state_time,
-                 start_req=start_req, remote_owner=remote_owner)
+                 start_req=start_req, remote_owner=remote_owner, slot_type=slot_type, total_slots=total_slots)
                 vm_machine_list.append(vmmachine)
             except:
                 log.warning("Failed to create VMMachine Obj")
@@ -2047,7 +2051,7 @@ class VMMachine():
     def __init__(self, name="", machine_name="", job_id="", global_job_id="",
                  address_startd="", address_master="", state="", activity="",
                  vmtype="", current_time=0, entered_state_time=0, start_req="",
-                 remote_owner="",):
+                 remote_owner="", slot_type="", total_slots = ""):
         self.name = name
         self.machine_name = machine_name
         self.job_id = job_id
@@ -2061,6 +2065,8 @@ class VMMachine():
         self.entered_state_time = entered_state_time
         self.start_req = start_req
         self.remote_owner = remote_owner
+        self.slot_type = slot_type
+        self.total_slots = total_slots
     
     def get_uservmtype(self):
         return ''.join([self.remote_owner, self.vmtype])
