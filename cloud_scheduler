@@ -1489,7 +1489,7 @@ class Cleanup(threading.Thread):
                         if utilities.match_host_with_condor_host(vm.hostname, machine.machine_name) \
                             or utilities.match_host_with_condor_host(vm.alt_hostname, machine.machine_name):
                             
-                            if vm.condorname == None:
+                            if vm.condorname == None or vm.condorname == "":
                                 vm.condorname = machine.machine_name
                             if machine.address_startd != "":
                                 vm.condoraddr = machine.address_startd
@@ -1513,7 +1513,7 @@ class Cleanup(threading.Thread):
                         elif utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name) \
                             or utilities.match_host_with_condor_host_master(vm.alt_hostname, machine.machine_name):
                             
-                            if vm.condorname == None:
+                            if vm.condorname == None or vm.condorname == "":
                                 vm.condorname = machine.machine_name
                             if machine.address_startd != "":
                                 vm.condoraddr = machine.address_startd
@@ -1537,7 +1537,7 @@ class Cleanup(threading.Thread):
                     if not foundvm:
                         if vm.override_status == 'Retiring':
                             retiredvms.append(vm)
-                        elif vm.condorname != None:
+                        elif vm.condorname != None and vm.condorname != "":
                             log.debug("Set CondorName to None - VM %s on Name %s has previously registered with condor but is now missing - caught mid stale refresh?" % (vm.id, vm.condorname))
                             # As a temp hack I'm going to reset the last_state_change to give the VM the register time limit to come back
                             # as well as reset the condorname to None
