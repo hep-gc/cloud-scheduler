@@ -1489,6 +1489,7 @@ class Cleanup(threading.Thread):
                         if utilities.match_host_with_condor_host(vm.hostname, machine.machine_name) \
                             or utilities.match_host_with_condor_host(vm.alt_hostname, machine.machine_name):
                             
+                            foundvm = True
                             if vm.condorname == None or vm.condorname == "":
                                 vm.condorname = machine.machine_name
                             if machine.address_startd != "":
@@ -1507,12 +1508,14 @@ class Cleanup(threading.Thread):
                                     vm.idle_start = int(time.time())
                             if check_next > 0:
                                 check_next -= 1
+                                if check_next == 0:
+                                    break
                                 continue
-                            foundvm = True
                             break
                         elif utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name) \
                             or utilities.match_host_with_condor_host_master(vm.alt_hostname, machine.machine_name):
                             
+                            foundvm = True
                             if vm.condorname == None or vm.condorname == "":
                                 vm.condorname = machine.machine_name
                             if machine.address_startd != "":
@@ -1531,8 +1534,9 @@ class Cleanup(threading.Thread):
                                     vm.idle_start = int(time.time())
                             if check_next > 0:
                                 check_next -= 1
+                                if check_next == 0:
+                                    break
                                 continue
-                            foundvm = True
                             break
                     if not foundvm:
                         if vm.override_status == 'Retiring':
