@@ -498,7 +498,7 @@ class EC2Cluster(cluster_tools.ICluster):
             log.exception("Unexpected error destroying VM: %s!" % vm.id)
 
         # Delete references to this VM
-        if return_resources:
+        if return_resources and vm.return_resources:
             self.resource_return(vm)
         with self.vms_lock:
             try:

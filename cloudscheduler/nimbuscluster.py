@@ -366,7 +366,7 @@ class NimbusCluster(cluster_tools.ICluster):
             except ValueError:
                 log.error("Attempted to remove vm from list that was already removed.")
                 return_resources = False
-        if return_resources:
+        if return_resources and vm.return_resources:
             self.resource_return(vm)
 
         # Delete EPR

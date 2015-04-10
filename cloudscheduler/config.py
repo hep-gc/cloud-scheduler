@@ -93,6 +93,7 @@ vm_reqs_from_condor_reqs = False
 adjust_insufficient_resources = False
 connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
 use_cloud_init = False
+retire_reallocate = True
 
 default_VMType= "default"
 default_VMNetwork= ""
@@ -204,6 +205,7 @@ def setup(path=None):
     global vm_reqs_from_condor_reqs
     global adjust_insufficient_resources
     global use_cloud_init
+    global retire_reallocate
 
     global default_VMType
     global default_VMNetwork
@@ -720,6 +722,13 @@ def setup(path=None):
             use_cloud_init = config_file.getboolean("global", "use_cloud_init")
         except ValueError:
             print "Configuration file problem: use_cloud_init must be a" \
+                  " Boolean value."
+
+    if config_file.has_option("global", "retire_reallocate"):
+        try:
+            retire_reallocate = config_file.getboolean("global", "retire_reallocate")
+        except ValueError:
+            print "Configuration file problem: retire_reallocate must be a" \
                   " Boolean value."
 
 

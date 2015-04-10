@@ -86,6 +86,7 @@ class VM:
         myproxy_server_port - (str) The port of the myproxy server to retreive user creds from
         errorcount   - (int) Number of Polling Errors VM has had
         force_retire - (bool) Flag to prevent a retiring VM from being turned back on
+        return_resources - (bool) Flag to set if resources from this VM should be returned to cluster
         """
         self.name = name
         self.id = id
@@ -124,6 +125,7 @@ class VM:
         self.override_status = None
         self.job_per_core = job_per_core
         self.force_retire = False
+        self.return_resources = True
         self.failed_retire = False
         self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
         self.x509userproxy_expiry_time = None

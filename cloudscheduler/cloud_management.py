@@ -20,6 +20,7 @@ import re
 import sys
 import json
 import time
+import copy
 import shlex
 import string
 import logging
@@ -1261,9 +1262,24 @@ class ResourcePool:
                         new_cluster.vms.append(vm)
                         log.info("Persisted VM %s on %s." % (vm.id, new_cluster.name))
                     except cluster_tools.NoResourcesError, e:
-                        new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s left on %s" %(e.resource, new_cluster.name))
+                        if config.retire_reallocate:
+                            if old_cluster not in self.retired_resources:
+                                old_cluster_copy = copy.deepcopy(old_cluster)
+                                old_cluster_copy.vms = []
+                                old_cluster_copy.vms.append(vm)
+                                self.retired_resources.append(old_cluster_copy)
+                            else:
+                                old_copy = self.retired_resources.get_cluster(old_cluster.name)
+                                old_copy.vms.append(vm)
+                            vm.return_resources = False
+                            self.force_retire_vm(vm)
+                        else:
+                            new_cluster.vm_destroy(vm, return_resources=False, reason="Not enough %s left on %s" %(e.resource, new_cluster.name))
                     except:
-                        new_cluster.vm_destroy(vm, return_resources=False, reason="Unexpected error checking out resources.")
+                        if config.retire_reallocate:
+                            self.force_retire_vm(vm)
+                        else:
+                            new_cluster.vm_destroy(vm, return_resources=False, reason="Unexpected error checking out resources.")
                 else:
                     log.info("%s doesn't seem to exist, so destroying vm %s." %
                              (old_cluster.name, vm.id))
@@ -2070,3 +2086,5 @@ class VMMachine():
     
     def get_uservmtype(self):
         return ''.join([self.remote_owner, self.vmtype])
+    def __repr__(self):
+        return "MachineName: %s, State: %s, Activity: %s, VMType: %s, SlotType: %s, TotalSlots: %s" % (self.machine_name, self.state, self.activity, self.vmtype, self.slot_type, self.total_slots)

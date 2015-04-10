@@ -249,7 +249,7 @@ class OpenStackCluster(cluster_tools.ICluster):
 
         # Delete references to this VM
         try:
-            if return_resources:
+            if return_resources and vm.return_resources:
                 self.resource_return(vm)
             with self.vms_lock:
                 self.vms.remove(vm)

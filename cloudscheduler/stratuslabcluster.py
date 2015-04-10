@@ -163,7 +163,7 @@ class StratusLabCluster(cluster_tools.ICluster):
         
         log.verbose('Cleaning caches for VM with id %s' % str(vm.id))
         
-        if return_resources:
+        if return_resources and vm.return_resources:
             self.resource_return(vm)
         
         with self.vms_lock:
