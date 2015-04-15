@@ -42,6 +42,8 @@ def main(argv=None):
                       help="Cloud name for operation.")
     parser.add_option("-n", "--vm-id", dest="vm_id", metavar="ID", 
                       help="The VM ID of VM for operation.")
+    parser.add_option("-b", "--number", dest="number", metavar="NUM", 
+                      help="Specify number of virtual machine to perform operation on.")
     parser.add_option("-p", "--refresh-proxy", metavar="PROXYTYPE", action="store",
                       dest="proxy_refresh", type="choice", choices=['vm','job'], help="Refresh Proxies for user")
     parser.add_option("-u", "--user", dest="user", action="store", metavar="USER", help="User to perform operation on")
@@ -94,10 +96,12 @@ def main(argv=None):
                     print s.shutdown_vm(cli_options.cloud_name, cli_options.vm_id)
                 elif cli_options.all:
                     print s.shutdown_cluster_all(cli_options.cloud_name)
+                elif cli_options.number:
+                    print s.shutdown_cluster_count(cli_options.cloud_name, cli_options.number)
                 else:
-                    print "Must provide a -n [VM ID] or -a to kill all VMs on this cloud."
+                    print "Must provide a -n [VM ID], -a to kill all VMs, or -b [count] to kill a set number on cloud."
             else:
-                print "Must Provide the cloud name to kill VMs on and the VM ID or all flag."
+                print "Must Provide the cloud name to kill VMs on and the VM ID, count, or all flag."
         elif cli_options.remove:
             if cli_options.cloud_name:
                 if cli_options.vm_id:
@@ -114,10 +118,12 @@ def main(argv=None):
                     print s.force_retire_vm(cli_options.cloud_name, cli_options.vm_id)
                 elif cli_options.all:
                     print s.force_retire_all_vm(cli_options.cloud_name)
+                elif cli_options.number:
+                    print s.force_retire_count_vm(cli_options.cloud_name, cli_options.number)
                 else:
-                    print "Must provide a -n [VM ID] or -a to force retire all VMs on this cloud."
+                    print "Must provide a -n [VM ID], -a (all), or -b [count] to force retire all or some VMs on this cloud."
             else:
-                print "Must Provide the cloud name to force retire VMs on and the VM ID or all flag."
+                print "Must Provide the cloud name to force retire VMs on and the VM ID, all or count flag."
         elif cli_options.reset_state:
             if cli_options.cloud_name:
                 if cli_options.vm_id:
