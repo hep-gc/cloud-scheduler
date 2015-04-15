@@ -256,11 +256,11 @@ class EC2Cluster(cluster_tools.ICluster):
             if not "Eucalyptus" == self.cloud_type:
                 image = connection.get_image(vm_ami)
 
-            else: #HACK: for some reason Eucalyptus won't respond properly to
-                  #      get_image("whateverimg"). Use a linear search until
-                  #      this is fixed
-                  # This is Eucalyptus bug #495670
-                  # https://bugs.launchpad.net/eucalyptus/+bug/495670
+            else:   #HACK: for some reason Eucalyptus won't respond properly to
+                    #      get_image("whateverimg"). Use a linear search until
+                    #      this is fixed
+                    # This is Eucalyptus bug #495670
+                    # https://bugs.launchpad.net/eucalyptus/+bug/495670
                 images = connection.get_all_images()
                 for potential_match in images:
                     if potential_match.id == vm_ami:
