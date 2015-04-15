@@ -54,7 +54,7 @@ class VM:
     def __init__(self, name="", id="", vmtype="", user="",
             hostname="", ipaddress="", clusteraddr="", clusterport="",
             cloudtype="", network="public", cpuarch="x86",
-            image="", memory=0, mementry=0,
+            image="", memory=0, mementry=0, flavor="",
             cpucores=0, storage=0, keep_alive=0, spot_id="",
             proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, 
             myproxy_renew_time="12", job_per_core=False):
@@ -80,6 +80,7 @@ class VM:
         memory       - (int) The memory used by the VM
         mementry     - (int) The index of the entry in the host cluster's memory list
                        from which this VM is taking memory
+        flavor       - (str) The flavor/instance_type of the VM
         proxy_file   - the proxy that was used to authenticate this VM's creation
         myproxy_creds_name - (str) The name of the credentials to retreive from the myproxy server
         myproxy_server - (str) The hostname of the myproxy server to retreive user creds from
@@ -106,6 +107,7 @@ class VM:
         self.image = image
         self.memory = memory
         self.mementry = mementry
+        self.flavor = flavor
         self.cpucores = cpucores
         self.storage = storage
         self.errorcount = 0

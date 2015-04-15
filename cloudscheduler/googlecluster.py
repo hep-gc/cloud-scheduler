@@ -255,7 +255,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                     clusteraddr = self.network_address, id = target_id,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     hostname = self.construct_hostname(next_instance_name),
-                    cpuarch = "x86", image= vm_image, mementry = vm_mementry,
+                    cpuarch = "x86", image= vm_image, mementry = vm_mementry, flavor=vm_instance_type,
                     memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive, job_per_core = job_per_core)
     
