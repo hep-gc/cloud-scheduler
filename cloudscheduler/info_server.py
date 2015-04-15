@@ -105,6 +105,12 @@ class InfoServer(threading.Thread,):
                     vm_count += len(cluster.vms)
                     output.append(cluster.get_cluster_vms_info())
                 output.append('\nTotal VMs: %i. Total Clouds: %i' % (vm_count, clusters))
+                extra_output = []
+                for cluster in cloud_resources.retired_resources:
+                    extra_output.append(cluster.get_cluster_vms_info())
+                if len(extra_output) > 0:
+                    output.append('\n\nRetiring VMs from removing resources:\n')
+                    output.extend(extra_output)
                 return ''.join(output)
             def get_cluster_info(self, cluster_name):
                 output = []
