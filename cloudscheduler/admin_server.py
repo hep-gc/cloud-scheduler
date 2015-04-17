@@ -93,7 +93,7 @@ class AdminServer(threading.Thread,):
             def shutdown_vm(self, cloudname, vmid):
                 return cloud_resources.shutdown_cluster_vm(cloudname, vmid)
             def shutdown_cluster_count(self, cloudname, number):
-                pass
+                return cloud_resources.shutdown_cluster_number(cloudname, number)
             def refresh_job_proxy_user(self, user):
                 return MyProxyProxyRefresher.renew_job_proxy_user(job_pool, user)
             def refresh_vm_proxy_user(self, user):
@@ -127,7 +127,7 @@ class AdminServer(threading.Thread,):
             def reset_override_state(self, cloudname, vmid):
                 return cloud_resources.reset_override_state(cloudname, vmid)
             def force_retire_count_vm(self, cloudname, number):
-                pass
+                return cloud_resources.force_retire_cluster_number(cloudname, number)
 
 
 

@@ -1722,6 +1722,32 @@ class ResourcePool:
             outputlist.append('\n')
         return "".join(outputlist)
 
+    def shutdown_cluster_number(self, cloudname, number):
+        output = ""
+        cluster = self.get_cluster(cloudname)
+        desthreads = []
+        if cluster:
+            if number > len(cluster.vms):
+                number = len(cluster.vms)
+            for x in range(0, number):
+                thread = VMDestroyCmd(cluster, cluster.vms[x], reason="Shutdown request from admin client.")
+                desthreads.append(thread)
+            for thread in desthreads:
+                thread.start()
+            while len(desthreads) > 0:
+                while desthreads[-1].is_alive():
+                    time.sleep(1)
+                if not desthreads[-1].is_alive():
+                    if desthreads[-1].get_result() != 0:
+                        output += "Destroying VM %s failed. Leaving it for now.\n" % desthreads[-1].get_vm().id
+                    else:
+                        output += "VM %s has been Destroyed.\n" % thread.get_vm().id
+                    desthreads[-1].join()
+                    desthreads.pop()
+        else:
+            output = "Could not find cloud named: %s" % cloudname
+        return output
+
     def shutdown_cluster_vm(self, clustername, vmid):
         """Manually shutdown a VM, for use by cloud_admin."""
         output = ""
@@ -1838,6 +1864,23 @@ class ResourcePool:
         output = ""
         if cluster:
             for vm in cluster.vms:
+                if self.force_retire_vm(vm):
+                    pass
+                else:
+                    output += "Unable to retire VM %s\n" % vm.id
+            output = "Retired all VMs in %s." % cloudname
+            log.debug(output)
+        else:
+            output = "Cloud not find Cloud %s." % cloudname
+        return output
+
+    def force_retire_cluster_number(self, cloudname, number):
+        cluster = self.get_cluster(cloudname)
+        output = ""
+        if cluster:
+            if number > len(cluster.vms):
+                number = len(cluster.vms)
+            for vm in cluster.vms[:number]:
                 if self.force_retire_vm(vm):
                     pass
                 else:
