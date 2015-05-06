@@ -1723,6 +1723,11 @@ class ResourcePool:
         return "".join(outputlist)
 
     def shutdown_cluster_number(self, cloudname, number):
+        try:
+            number = int(number)
+        except:
+            return "Unable to shutdown %s VMs, use a number." % number
+        
         output = ""
         cluster = self.get_cluster(cloudname)
         desthreads = []
@@ -1877,6 +1882,10 @@ class ResourcePool:
     def force_retire_cluster_number(self, cloudname, number):
         cluster = self.get_cluster(cloudname)
         output = ""
+        try:
+            number = int(number)
+        except:
+            return "Unable to retire %s VMs, use a number" % number
         if cluster:
             if number > len(cluster.vms):
                 number = len(cluster.vms)
@@ -1885,7 +1894,7 @@ class ResourcePool:
                     pass
                 else:
                     output += "Unable to retire VM %s\n" % vm.id
-            output = "Retired all VMs in %s." % cloudname
+            output = "Retired %s VM(s) in %s." % (str(number), cloudname)
             log.debug(output)
         else:
             output = "Cloud not find Cloud %s." % cloudname
