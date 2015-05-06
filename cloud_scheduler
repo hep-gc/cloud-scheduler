@@ -1483,11 +1483,13 @@ class Cleanup(threading.Thread):
         for cluster in resources:
             for vm in cluster.vms:
                 foundvm = False
-                check_next = 0 # count for dynamic slots in VM
                 if vm.status == 'Running' and machineList != None:
-                    for machine in machineList:
-                        if utilities.match_host_with_condor_host(vm.hostname, machine.machine_name) \
-                            or utilities.match_host_with_condor_host(vm.alt_hostname, machine.machine_name):
+                    check_next = 0 # count for dynamic slots in VM
+                    is_part_of_machine = {'machine_name': vm.hostname}
+                    slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
+                    for machine in slots_of_machine:
+                        #if utilities.match_host_with_condor_host(vm.hostname, machine.machine_name) \
+                        #    or utilities.match_host_with_condor_host(vm.alt_hostname, machine.machine_name):
                             
                             foundvm = True
                             if vm.condorname == None or vm.condorname == "":
@@ -1501,43 +1503,42 @@ class Cleanup(threading.Thread):
                                     try:
                                         check_next = int(machine.total_slots) - 1
                                     except:
-                                        log.error("Unable to cast int, problem parsing TotalSlots")
-                                        pass 
-                                    continue # need to check all slots of a VM
+                                        log.error("Unable to cast int, problem parsing TotalSlots") 
+                            #        continue # need to check all slots of a VM
                                 elif not vm.idle_start and machine.activity == 'Idle':
                                     vm.idle_start = int(time.time())
-                            if check_next > 0:
-                                check_next -= 1
-                                if check_next == 0:
-                                    break
-                                continue
-                            break
-                        elif utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name) \
-                            or utilities.match_host_with_condor_host_master(vm.alt_hostname, machine.machine_name):
-                            
-                            foundvm = True
-                            if vm.condorname == None or vm.condorname == "":
-                                vm.condorname = machine.machine_name
-                            if machine.address_startd != "":
-                                vm.condoraddr = machine.address_startd
-                            if machine.state != "":
-                                if vm.idle_start and machine.state == "Claimed":
-                                    vm.idle_start = None
-                                elif machine.slot_type == "Partitionable" and machine.total_slots != "1":
-                                    try:
-                                        check_next = int(machine.total_slots) - 1
-                                    except:
-                                        log.error("Unable to cast int, problem parsing TotalSlots")
-                                        pass 
-                                    continue
-                                elif not vm.idle_start and machine.activity == 'Idle':
-                                    vm.idle_start = int(time.time())
-                            if check_next > 0:
-                                check_next -= 1
-                                if check_next == 0:
-                                    break
-                                continue
-                            break
+                            #if check_next > 0:
+                            #    check_next -= 1
+                            #    if check_next == 0:
+                            #        break
+                            #    continue
+                            #break
+                        #elif utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name) \
+                        #    or utilities.match_host_with_condor_host_master(vm.alt_hostname, machine.machine_name):
+                        #    
+                        #    foundvm = True
+                        #    if vm.condorname == None or vm.condorname == "":
+                        #        vm.condorname = machine.machine_name
+                        #    if machine.address_startd != "":
+                        #        vm.condoraddr = machine.address_startd
+                        #    if machine.state != "":
+                        #        if vm.idle_start and machine.state == "Claimed":
+                        #            vm.idle_start = None
+                        #        elif machine.slot_type == "Partitionable" and machine.total_slots != "1":
+                        #            try:
+                        #                check_next = int(machine.total_slots) - 1
+                        #            except:
+                        #                log.error("Unable to cast int, problem parsing TotalSlots")
+                        #                pass 
+                        #            continue
+                        #        elif not vm.idle_start and machine.activity == 'Idle':
+                        #            vm.idle_start = int(time.time())
+                        #    if check_next > 0:
+                        #        check_next -= 1
+                        #        if check_next == 0:
+                        #            break
+                        #        continue
+                        #    break
                     if not foundvm:
                         if vm.override_status == 'Retiring':
                             retiredvms.append(vm)
