@@ -916,7 +916,10 @@ class Scheduler(threading.Thread):
             local_modifications += 'VMType = "%s"\n' % job.req_vmtype
 
         if config.cert_file:
-            file_contents = open(config.cert_file).read()
+            try:
+                file_contents = open(config.cert_file).read()
+            except IOError:
+                log.error("Unable to read cert file: %s VM may not be able to join condor pool." % config.cert_file)
 
             if config.cert_file_on_vm:
                 file_location = config.cert_file_on_vm
