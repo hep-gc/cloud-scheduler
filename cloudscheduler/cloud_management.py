@@ -923,6 +923,8 @@ class ResourcePool:
         """
         count = defaultdict(int)
         for vm in machineList:
+            if vm.slot_type == "Partitionable":
+                continue
             if vm.remote_owner:
                 try:
                     user = vm.remote_owner.split('@')[0]
