@@ -508,6 +508,16 @@ class EC2Cluster(cluster_tools.ICluster):
 
         return 0
 
+    def get_vm(self, vm_id):
+        """Get VM object with id value. Override to also check spot_id"""
+        for vm in self.vms:
+            if vm_id == vm.id:
+                return vm
+        for vm in self.vms:
+            if vm_id == vm.spot_id:
+                return vm
+        return None
+
     def _extract_host_from_dig(self, dig_out):
         at_answer_line = False
         hostname = ""
