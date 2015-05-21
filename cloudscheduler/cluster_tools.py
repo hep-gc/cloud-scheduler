@@ -153,9 +153,12 @@ class VM:
         nameout = self.hostname
         if self.hostname == "":
             nameout = self.ipaddress
-        output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, nameout, self.vmtype, self.user, self.status)
+        idout = self.id
+        if self.id == "":
+            idout = self.spot_id
+        output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout, self.vmtype, self.user, self.status)
         if self.override_status != None:
-            output = "%-6s %-25s %-20s %-10s %-12s\n" % (self.id, nameout, self.vmtype, self.user, self.override_status)
+            output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout, self.vmtype, self.user, self.override_status)
         return output
 
     @staticmethod
