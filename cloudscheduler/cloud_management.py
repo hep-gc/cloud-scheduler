@@ -435,6 +435,7 @@ class ResourcePool:
                     placement_zone = get_or_none(config, cluster, "placement_zone"),
                     enabled=enabled,
                     priority = priority,
+                    cacert = get_or_none(config, cluster, "cacert"),
                     )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)

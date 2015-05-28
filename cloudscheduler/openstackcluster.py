@@ -30,7 +30,8 @@ class OpenStackCluster(cluster_tools.ICluster):
                  cpu_cores=0, storage=0, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
-                 regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0):
+                 regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, 
+                 enabled=True, priority=0, cacert=None):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=auth_url, cloud_type=cloud_type,
@@ -59,6 +60,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
         self.flavor_set = set()
+        self.cacert = cacert
     
     def __getstate__(self):
         """Override to work with pickle module."""
@@ -296,7 +298,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                 sys.exit(1)
         try:
             client = nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name,
-                                    region_name=self.regions[0])
+                                    region_name=self.regions[0], self.cacert)
         except Exception as e:
             log.error("Unable to create connection to %s: Reason: %s" % (self.name, e))
         return client 
