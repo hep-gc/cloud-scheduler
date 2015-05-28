@@ -298,7 +298,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                 sys.exit(1)
         try:
             client = nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name,
-                                    region_name=self.regions[0], self.cacert)
+                                    region_name=self.regions[0], cacert=self.cacert)
         except Exception as e:
             log.error("Unable to create connection to %s: Reason: %s" % (self.name, e))
         return client 
