@@ -39,5 +39,6 @@ setup(name = "cloud-scheduler",
     packages = ['cloudscheduler'],
     package_data = {'cloudscheduler' : ["wsdl/*"] },
     data_files = data_files,
+    #data_files = ["cloud_scheduler.conf", "cloud_resources.conf"],
     scripts = ["cloud_scheduler", "cloud_status", "cloud_admin"],
 ) 
