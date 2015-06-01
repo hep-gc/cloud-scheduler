@@ -199,7 +199,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                                                nics =netid, userdata=user_data, security_groups=sec_group)
                 #print instance.__dict__
             except novaclient.exceptions.OverLimit as e:
-                log.error("Quota Exceeded on %s: %s" % (self.name, e.message))
+                log.info("Unable to create VM without exceeded quota on %s: %s" % (self.name, e.message))
             except Exception as e:
                 #print e
                 log.error("Unhandled exception while creating vm on %s: %s" %(self.name, e))
