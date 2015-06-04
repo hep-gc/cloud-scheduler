@@ -1085,7 +1085,7 @@ class JobPool:
             condor_release.extend(job_ids)
             sp = subprocess.Popen(condor_release, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            (condor_out, condor_err) = sp.communicate(input=None)
+            (_, condor_err) = sp.communicate(input=None)
             returncode = sp.returncode
         except:
             log.exception("Problem running %s, unexpected error" % string.join(condor_release, " "))
