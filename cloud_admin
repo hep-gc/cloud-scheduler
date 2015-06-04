@@ -59,6 +59,7 @@ def main(argv=None):
     parser.add_option("-x", "--reset-vm-state", dest="reset_state", action="store_true", default=False, help="Reset the override state of VM. Requires -c name and -n id.")
     parser.add_option("-t", "--reload-target-alias", dest="alias", action="store_true", default=False, help="Reload the Target Cloud Alias file.")
     parser.add_option("-y", "--list-alias", dest="list_alias", action="store_true", default=False, help="List the current cloud aliases.")
+    parser.add_option("-v", "--vm-allocation", dest="vm_allocation", action="store", metavar="NUM", help="Specify a new vm slot value for cloud")
 
     try:
         (cli_options, _) = parser.parse_args()
@@ -170,6 +171,12 @@ def main(argv=None):
         elif cli_options.quick:
             s.perform_quick_shutdown()
             print "Toggled Quick shutdown flag."
+        elif cli_options.vm_allocation:
+            if cli_options.cloud_name:
+                print 'Adjusting vm_slots on %s to %s' % (cli_options.cloud_name, cli_options.vm_allocation)
+                print s.adjust_cloud_allocation(cli_options.cloud_name, cli_options.vm_allocation)
+            else:
+                print "Change vm slot of cloud need '-c cloudname' for cloud to change allocation of"
         else:
             print "Run cloud_admin -h for help."
 

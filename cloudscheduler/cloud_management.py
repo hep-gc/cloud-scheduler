@@ -2054,6 +2054,39 @@ class ResourcePool:
                 expanded_types[k] = v
         return expanded_types
 
+    def adjust_cloud_allocation(self, cloud_name, number):
+        try:
+            number = int(number)
+        except:
+            return "Need to use an integer value for vm_allocation"
+        cluster = self.get_cluster(cloud_name)
+        if cluster:
+            with(cluster.res_lock):
+                # Determine current vm slot value - remaining+current vms
+                total_slots = cluster.vm_slots + len(cluster.vms)
+                # check if that is less than or greater than the new value
+                # if current < new  bump up the remaining with difference
+                if number > total_slots:
+                    cluster.vm_slots += (number - total_slots)
+                # if less need to subtract from remaining if remaining goes under 0, need to force retire 
+                # and move the excess VMs into the extra retiring area so their resources won't be returned.
+                elif number < total_slots:
+                    num_remove = total_slots - number
+                    # take it from vm_slots first
+                    if num_remove > cluster.vm_slots:
+                        # set slots to 0 and retire any remainder
+                        remainder = num_remove - cluster.vm_slots
+                        cluster.vm_slots = 0
+                        # now force retire remaider VMs removing them from cluster.vms
+                        for x in range(0, remainder):
+                            pass
+                        
+                else:
+                    return "VM slots already set at %s. Nothing to do." % total_slots
+        else:
+            return "Unable to find cluster with name: %s" % cloud_name
+        return "Attempt adjustment on cloud %s, change to %s slots" % (cloud_name, number)
+    
 
 class VMDestroyCmd(threading.Thread):
     """

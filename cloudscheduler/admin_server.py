@@ -128,6 +128,8 @@ class AdminServer(threading.Thread,):
                 return cloud_resources.reset_override_state(cloudname, vmid)
             def force_retire_count_vm(self, cloudname, number):
                 return cloud_resources.force_retire_cluster_number(cloudname, number)
+            def adjust_cloud_allocation(self, cloud_name, number):
+                return cloud_resources.adjust_cloud_allocation(cloud_name, number)
 
 
 
