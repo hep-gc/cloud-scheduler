@@ -2078,9 +2078,22 @@ class ResourcePool:
                         remainder = num_remove - cluster.vm_slots
                         cluster.vm_slots = 0
                         # now force retire remaider VMs removing them from cluster.vms
-                        for x in range(0, remainder):
-                            pass
-                        
+                        for _ in range(0, remainder):
+                            try:
+                                vm = cluster.vms.pop()
+                            except IndexError:
+                                log.error("VM list empty on cloud: %s. Can't retire any more." % cluster.name)
+                                break
+                            if cluster not in self.retired_resources:
+                                cluster_copy = copy.deepcopy(cluster)
+                                cluster_copy.vms = []
+                                cluster_copy.vms.append(vm)
+                                self.retired_resources.append(cluster_copy)
+                            else:
+                                copy = self.retired_resources.get_cluster(cluster.name)
+                                copy.vms.append(vm)
+                            vm.return_resources = False
+                            self.force_retire_vm(vm)
                 else:
                     return "VM slots already set at %s. Nothing to do." % total_slots
         else:
