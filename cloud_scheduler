@@ -84,6 +84,7 @@ class VMPoller(threading.Thread):
         while not self.quit:
             start_loop_time = time.time()
             self.poll_all_machines()
+            self.poll_all_machines(retired_resources=True)
             self.check_destroy_threads()
             sleep_tics = self.run_interval
             elapsed_loop_time = time.time() - start_loop_time
@@ -94,13 +95,18 @@ class VMPoller(threading.Thread):
                 sleep_tics -= 1
             
 
-    def poll_all_machines(self):
+    def poll_all_machines(self, retired_resources=False):
         """
         poll_all_machines - internal function to poll all running VMs,
                             and then update their status
         """
         log.verbose("Polling all running VMs...")
-        for cluster in self.resource_pool.resources:
+        if retired_resources:
+            resources = self.resource_pool.retired_resources
+        else:
+            resources = self.resource_pool.resources
+        
+        for cluster in resources:
             for vm in cluster.vms:
                 now = int(time.time())
 
@@ -136,7 +142,7 @@ class VMPoller(threading.Thread):
                         if time.time() - vm.errorconnect > config.vm_connection_fail_threshold:
                             #Have been unable to connect to service for extended period
                             #Assume that service is down - disable cloud for some period of time
-                            cluster = self.resource_pool.get_cluster_with_vm(vm)
+                            #cluster = self.resource_pool.get_cluster_with_vm(vm)
                             cluster.errorconnect = time.time()
                             cluster.enabled = False
                             cluster.connection_problem = True
