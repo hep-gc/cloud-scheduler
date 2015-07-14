@@ -2090,8 +2090,8 @@ class ResourcePool:
                                 cluster_copy.vms.append(vm)
                                 self.retired_resources.append(cluster_copy)
                             else:
-                                copy = self.retired_resources.get_cluster(cluster.name)
-                                copy.vms.append(vm)
+                                cluster_copy = self.retired_resources.get_cluster(cluster.name)
+                                cluster_copy.vms.append(vm)
                             vm.return_resources = False
                             self.force_retire_vm(vm)
                 else:
