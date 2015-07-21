@@ -196,7 +196,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         if name:
             try:
                 instance = nova.servers.create(name=name, image=imageobj, flavor=flavor, key_name=key_name, 
-                                               nics =netid, userdata=user_data, security_groups=sec_group)
+                                               availability_zone=self.placement_zone, nics =netid, userdata=user_data, security_groups=sec_group)
                 #print instance.__dict__
             except novaclient.exceptions.OverLimit as e:
                 log.info("Unable to create VM without exceeded quota on %s: %s" % (self.name, e.message))
