@@ -170,6 +170,7 @@ Cloud Scheduler checks for config files in the following order, and will use the
     [config specified with the -f option]
     ~/.cloudscheduler/cloud_scheduler.conf
     /etc/cloudscheduler/cloud_scheduler.conf
+    /usr/local/share/cloud-scheduler/cloud_scheduler.conf
 
 ### cloud_resources.conf
 
@@ -192,6 +193,12 @@ There is a cloud scheduler init script at scripts/cloud_scheduler. To install
 it on systems with System V style init scripts, you can do so with:
 
     # cp scripts/cloud_scheduler /etc/init.d/
+    
+
+if you've installed from pip
+
+	# cp /usr/local/share/cloud-scheduler/cloud_scheduler.init.d /etc/init.d/cloud_scheduler
+	# cp /usr/local/share/cloud-scheduler/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
 
 Start it with:
 
@@ -239,7 +246,7 @@ directory.
 
 ## Job Submission
 
-Submitting a job for use with Cloud Scheduler is very similar to submitting a
+Submitting a job for use with Cloud Scheduleris very similar to submitting a
 job for use with a regular Condor Scheduler. It would be helpful to read
 through Chapter 2 of the Condor Manual for help on submitting jobs to Condor.
 

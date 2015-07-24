@@ -243,6 +243,8 @@ def setup(path=None):
             path = homedir + "/.cloudscheduler/cloud_scheduler.conf"
         elif os.path.exists("/etc/cloudscheduler/cloud_scheduler.conf"):
             path = "/etc/cloudscheduler/cloud_scheduler.conf"
+        elif os.path.exists("/usr/local/share/cloud-scheduler/cloud_scheduler.conf"):
+            path = "/usr/local/share/cloud-scheduler/cloud_scheduler.conf"
         else:
             print >> sys.stderr, "Configuration file problem: There doesn't " \
                   "seem to be a configuration file. " \
