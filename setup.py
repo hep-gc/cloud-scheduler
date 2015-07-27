@@ -1,6 +1,4 @@
 # setup.py - standard distutils setup file for Cloud Scheduler
-import os
-import os.path
 import sys
 try:
     from setuptools import setup
