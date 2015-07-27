@@ -17,6 +17,7 @@ log = utilities.get_cloudscheduler_logger()
 
 class OpenStackCluster(cluster_tools.ICluster):
     ERROR = 1
+    DEFAULT_INSTANCE_TYPE = config.default_VMInstanceType if config.default_VMInstanceType else "m1.small"
     VM_STATES = {
             "BUILD" : "Starting",
             "ACTIVE" : "Running",
