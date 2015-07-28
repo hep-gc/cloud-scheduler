@@ -28,7 +28,7 @@ def inject_customizations(pre_init, cloud_init):
     if not found_write_files:
         # no writes_files found - inject one at end and do customizations
         cloud_init.insert(0, 'write_files:')
-        pre_init.append('\n'.join(cloud_init))
+        splitscript.append('\n'.join(cloud_init))
     else:
         # need to insert at the index
         splitscript.insert(index_of_write_files+1, '\n'.join(cloud_init))
