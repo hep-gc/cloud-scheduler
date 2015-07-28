@@ -704,13 +704,15 @@ class Scheduler(threading.Thread):
                     else:
                         job_ami_config = amiconfigs[0].split(':')[0]
                 elif len(amiconfigs) > 1:
+                    job_ami_config = None
                     for conf in amiconfigs:
                         try:
                             # find the cloud-config one that CS shares
                             if conf.split(':')[1].strip() == "cloud-config":
-                                job_ami_config = conf.split(':')[0].strip()
-                            else:
-                                extra_userdata.append(conf)
+                                if not job_ami_config:
+                                    job_ami_config = conf.split(':')[0].strip()
+                                else:
+                                    extra_userdata.append(conf)
                         except:
                             log.error("Problem parsing amiconfig pair, should be path:type - %s" % conf)
                 
