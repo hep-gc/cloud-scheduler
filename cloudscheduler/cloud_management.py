@@ -1250,6 +1250,7 @@ class ResourcePool:
             for vm in old_cluster.vms:
                 log.debug("Found VM %s on %s" % (vm.id, old_cluster.name))
                 new_cluster = self.get_cluster(old_cluster.name)
+                new_cluster.enabled = old_cluster.enabled
 
                 if new_cluster:
                     try:
