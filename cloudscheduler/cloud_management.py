@@ -1246,12 +1246,12 @@ class ResourcePool:
         
         for old_cluster in old_resources:
             old_cluster.setup_logging()
+            new_cluster = self.get_cluster(old_cluster.name)
+            if new_cluster:
+                new_cluster.enabled = old_cluster.enabled
 
             for vm in old_cluster.vms:
                 log.debug("Found VM %s on %s" % (vm.id, old_cluster.name))
-                new_cluster = self.get_cluster(old_cluster.name)
-                new_cluster.enabled = old_cluster.enabled
-
                 if new_cluster:
                     try:
                         new_cluster.resource_checkout(vm)
