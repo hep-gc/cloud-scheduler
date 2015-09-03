@@ -270,13 +270,7 @@ class ResourcePool:
     @staticmethod
     def _cluster_from_config(config, cluster):
         """Create a new cluster object from a config file's specification."""
-        enabled = True
-        if config.has_option(cluster, "enabled"):
-            try:
-                enabled = config.getboolean(cluster, "enabled")
-            except ValueError:
-                log.error("Error reading config - cluster %s disabled" % cluster)
-                enabled = False
+        enabled = False
         cloud_type = get_or_none(config, cluster, "cloud_type")
         max_vm_mem = get_or_none(config, cluster, "max_vm_mem")
         max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
