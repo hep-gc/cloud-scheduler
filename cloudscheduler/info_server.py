@@ -25,13 +25,13 @@ import platform
 import re
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
-
 import cloudscheduler.config as config
 from cluster_tools import ICluster
 from cluster_tools import VM
-from cloud_management import ResourcePool
 from job_management import Job
 from job_management import JobPool
+from cloud_management import ResourcePool
+from openstackcluster import OpenStackCluster
 # JSON lib included in 2.6+
 if sys.version_info < (2, 6):
     try:
@@ -448,7 +448,7 @@ class ClusterJSONEncoder(json.JSONEncoder):
         vmDecodes = []
         for vm in vmEncodes:
             vmDecodes.append(json.loads(vm))
-        return {'name': cluster.name, 'network_address': cluster.network_address,
+        cluster_dict = {'name': cluster.name, 'network_address': cluster.network_address,
                 'cloud_type': cluster.cloud_type, 'memory': cluster.memory, 
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
@@ -459,6 +459,9 @@ class ClusterJSONEncoder(json.JSONEncoder):
                 'connection_fail_disable_time': cluster.connection_fail_disable_time,
                 'connection_problem': cluster.connection_problem,
                 'errorconnect': cluster.errorconnect}
+        if isinstance(cluster, OpenStackCluster):
+            cluster_dict['tenant'] = cluster.tenant_name
+        return cluster_dict
 
 class ResourcePoolJSONEncoder(json.JSONEncoder):
     def default(self, res_pool):
