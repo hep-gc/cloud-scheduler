@@ -92,7 +92,8 @@ override_vmtype = False
 vm_reqs_from_condor_reqs = False
 adjust_insufficient_resources = False
 connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
-use_cloud_init = False
+use_cloud_init = True
+default_yaml = "/usr/local/share/cloud-scheduler/default.yaml"
 retire_reallocate = True
 
 default_VMType= "default"
@@ -205,6 +206,7 @@ def setup(path=None):
     global vm_reqs_from_condor_reqs
     global adjust_insufficient_resources
     global use_cloud_init
+    global default_yaml
     global retire_reallocate
 
     global default_VMType
@@ -725,6 +727,9 @@ def setup(path=None):
         except ValueError:
             print "Configuration file problem: use_cloud_init must be a" \
                   " Boolean value."
+
+    if config_file.has_option("global", "default_yaml"):
+        default_yaml = config_file.get("global", "default_yaml")
 
     if config_file.has_option("global", "retire_reallocate"):
         try:

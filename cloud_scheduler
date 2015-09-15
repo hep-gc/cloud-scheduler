@@ -726,7 +726,15 @@ class Scheduler(threading.Thread):
                     file_content = open(job_ami_config).read()
                 pre_customizations.append(file_content)
             except:
-                log.error("Unable to read ami_config - check path or url: %s" % job_ami_config)               
+                log.error("Unable to read ami_config - check path or url: %s" % job_ami_config)
+        elif config.use_cloud_init:
+            # no amiconfig given with job use the default
+            try:
+                file_content = open(config.default_yaml).read()
+                pre_customizations.append(file_content)
+            except:
+                log.error("Unable to read default yaml file - check path in cloud_scheduler.conf: %s" % config.default_yaml)
+
 
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
