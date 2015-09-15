@@ -693,48 +693,29 @@ class Scheduler(threading.Thread):
 
         pre_customizations = []
         extra_userdata = []
-        
-        if job.ami_config:
-            job_ami_config = ""
+
+        if config.use_cloud_init:
             try:
-                amiconfigs = job.ami_config.split(',')
-                if len(amiconfigs) == 1:
-                    if len(amiconfigs[0].split(':')) == 1: # no mime types
-                        job_ami_config = job.ami_config
-                    else:
-                        job_ami_config = amiconfigs[0].split(':')[0]
-                elif len(amiconfigs) > 1:
-                    job_ami_config = None
-                    for conf in amiconfigs:
-                        try:
-                            # find the cloud-config one that CS shares
-                            if conf.split(':')[1].strip() == "cloud-config":
-                                if not job_ami_config:
-                                    job_ami_config = conf.split(':')[0].strip()
-                                else:
-                                    extra_userdata.append(conf)
-                        except:
-                            log.error("Problem parsing amiconfig pair, should be path:type - %s" % conf)
-                
-            except:
-                log.error("Could not parse amiconfig: %s" % job.ami_config)
-                
-            try:
-                if job_ami_config.startswith('http'):
-                    file_content = urllib2.urlopen(job_ami_config).read()
-                elif os.path.isfile(job_ami_config):
-                    file_content = open(job_ami_config).read()
-                pre_customizations.append(file_content)
-            except:
-                log.error("Unable to read ami_config - check path or url: %s" % job_ami_config)
-        elif config.use_cloud_init:
-            # no amiconfig given with job use the default
-            try:
-                file_content = open(config.default_yaml).read()
+                if config.default_yaml.startswith('http'):
+                    file_content = urllib2.urlopen(config.default_yaml).read()
+                elif os.path.isfile(config.default_yaml):
+                    file_content = open(config.default_yaml).read()
                 pre_customizations.append(file_content)
             except:
                 log.error("Unable to read default yaml file - check path in cloud_scheduler.conf: %s" % config.default_yaml)
 
+        if job.ami_config:
+            job_ami_config = ""
+            try:
+                amiconfigs = job.ami_config.split(',')
+                for conf in amiconfigs:
+                    if len(conf.split(':')) == 1:
+                        job_ami_config = conf + ':cloud-config'
+                    else:
+                        job_ami_config = conf
+                    extra_userdata.append(conf)
+            except:
+                log.error("Could not parse amiconfig: %s" % job.ami_config)
 
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
