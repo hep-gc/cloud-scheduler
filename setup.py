@@ -22,6 +22,6 @@ setup(name = "cloud-scheduler",
     url = "http://github.com/hep-gc/cloud-scheduler",
     packages = ['cloudscheduler'],
     package_data = {'cloudscheduler' : ["wsdl/*"] },
-    data_files = [("share/cloud-scheduler/", ["cloud_scheduler.conf", "cloud_resources.conf", "scripts/cloud_scheduler.init.d", "scripts/cloud_scheduler.sysconf"])],
+    data_files = [("share/cloud-scheduler/", ["cloud_scheduler.conf", "cloud_resources.conf", "default.yaml","scripts/cloud_scheduler.init.d", "scripts/cloud_scheduler.sysconf"])],
     scripts = ["cloud_scheduler", "cloud_status", "cloud_admin"],
 ) 
