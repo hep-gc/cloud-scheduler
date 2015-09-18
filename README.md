@@ -172,6 +172,13 @@ Cloud Scheduler checks for config files in the following order, and will use the
     /etc/cloudscheduler/cloud_scheduler.conf
     /usr/local/share/cloud-scheduler/cloud_scheduler.conf
 
+#### cloud init files
+
+Cloud Scheduler has a default cloud config file included with the installation, it should be located
+in /usr/local/share/cloud-scheduler/default.yaml if you've installed from pip. The location can be set
+in the cloud_scheduler.conf file. Additional customization can be done by users by setting an AMIConfig list
+of cloud init files along with their jobs.
+
 ### cloud_resources.conf
 
 The cloud resource configuration file, cloud_resources.conf, is where you
@@ -223,7 +230,7 @@ To Reload the cloud_resources.conf without restarting Cloud Scheduler
 
     # /etc/init.d/cloud_scheduler reconfig
 
-## Configuring a VM for EC2 / Eucalyptus
+## Configuring a VM for EC2
 
 (Deprecated - use cloud-init and amiconfig files)
 The way Cloud Scheduler manipulates Condor to connect to the correct central
