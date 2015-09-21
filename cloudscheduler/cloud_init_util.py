@@ -3,6 +3,10 @@ Created on Jun 23, 2014
 
 @author: mhp
 '''
+import os
+import logging
+
+log = logging.getLogger("cloudscheduler")
 
 def inject_customizations(pre_init, cloud_init):
     """ Inject cloud init style customizations into an ami/cloud init script given by user
@@ -76,9 +80,16 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
     
     combined_message = MIMEMultipart()
     for i in file_type_pairs:
-        (filename, format_type) = i.split(":", 1)
-        filename = filename.strip()
-        format_type = format_type.strip()
+        try:
+            (filename, format_type) = i.split(":", 1)
+            filename = filename.strip()
+            format_type = format_type.strip()
+        except ValueError:
+            filename = i
+            format_type = "cloud-config"
+        if not os.path.exists(filename):
+            log.error("Unable to find file: %s skipping" % filename)
+            continue
         with open(filename) as fh:
             contents = fh.read()
         sub_message = MIMEText(contents, format_type, sys.getdefaultencoding())
