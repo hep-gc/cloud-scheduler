@@ -41,7 +41,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled, priority=priority)
         try:
-            import novaclient.v1_1.client as nvclient
+            import novaclient.v2.client as nvclient
             import novaclient.exceptions
             #import keystoneclient.v2_0.client as ksclient
         except:
@@ -294,7 +294,7 @@ class OpenStackCluster(cluster_tools.ICluster):
     def _get_creds_nova(self):
         """Get an auth token to Nova."""
         try:
-            import novaclient.v1_1.client as nvclient
+            import novaclient.v2.client as nvclient
         except:
                 print "Unable to import novaclient - cannot use native openstack cloudtypes"
                 sys.exit(1)
