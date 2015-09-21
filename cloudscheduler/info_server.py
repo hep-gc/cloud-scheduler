@@ -26,6 +26,7 @@ import re
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 import cloudscheduler.config as config
+import cloudscheduler.__version__ as version
 from cluster_tools import ICluster
 from cluster_tools import VM
 from job_management import Job
@@ -390,6 +391,8 @@ class InfoServer(threading.Thread,):
                         for image in cloud.failed_image_set:
                             output.append("      Image: %s\n" % image)
                 return ''.join(output)
+            def get_version(self):
+                return "Cloud Scheduler version: %s" % version.version
 
         self.server.register_instance(externalFunctions())
 

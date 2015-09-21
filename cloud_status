@@ -19,6 +19,7 @@ log = utilities.get_cloudscheduler_logger()
 
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.config as config
+import cloudscheduler.__version__ as version
 
 def main(argv=None):
 
@@ -75,7 +76,8 @@ def main(argv=None):
                       help="Print list of reasons jobs have not booted a VM.")
     parser.add_option("-w", "--image-failures", dest="image_failures", action="store_true", default=False,
                       help="Print list of images failing to properly boot.")
-
+    parser.add_option("-v", "--version", dest="version", action="store_true", default=False,
+                      help="Print version imformation.")
     (cli_options, args) = parser.parse_args()
 
     # Initialize config
@@ -175,6 +177,9 @@ def main(argv=None):
             print s.get_job_failure_reasons()
         elif cli_options.image_failures:
             print s.get_image_failures()
+        elif cli_options.version:
+            print s.get_version()
+            print "Cloud Status version: %s" % version.version
         else:
             print s.get_cloud_resources()
 
