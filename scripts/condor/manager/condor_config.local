@@ -1,5 +1,5 @@
 # Local config for Cloud Scheduler
-
+CONDOR_HOST = $(FULL_HOSTNAME)
 COLLECTOR_NAME = condor collector
 START = TRUE
 SUSPEND = FALSE
