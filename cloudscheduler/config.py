@@ -27,6 +27,7 @@ condor_hold_command = "condor_hold"
 condor_release_command = "condor_release"
 condor_off_command = "/usr/sbin/condor_off"
 condor_on_command = "/usr/sbin/condor_on"
+condor_advertise_command = "/usr/sbin/condor_advertise"
 ssh_path = "/usr/bin/ssh"
 openssl_path = "/usr/bin/openssl"
 condor_host = "localhost"
@@ -142,6 +143,7 @@ def setup(path=None):
     global condor_release_command
     global condor_off_command
     global condor_on_command
+    global condor_advertise_command
     global ssh_path
     global openssl_path
     global condor_context_file
@@ -311,6 +313,9 @@ def setup(path=None):
         condor_release_command = config_file.get("global",
                                                 "condor_release_command")
 
+    if config_file.has_option("global", "condor_advertise_command"):
+        condor_advertise_command = config_file.get("global",
+                                                "condor_advertise_command")
     if config_file.has_option("global", "condor_webservice_url"):
         condor_webservice_url = config_file.get("global",
                                                 "condor_webservice_url")
