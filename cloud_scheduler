@@ -1486,21 +1486,21 @@ class Cleanup(threading.Thread):
                     is_part_of_machine = {'machine_name': vm.hostname}
                     slots_of_machine = self.resource_pool.find_in_where(machineList, is_part_of_machine)
                     for machine in slots_of_machine:
-                            foundvm = True
-                            if vm.condorname == None or vm.condorname == "":
-                                vm.condorname = machine.machine_name
-                            if machine.address_startd != "":
-                                vm.condoraddr = machine.address_startd
-                            if machine.state != "":
-                                if vm.idle_start and machine.state == "Claimed":
-                                    vm.idle_start = None
-                                elif machine.slot_type == "Partitionable" and machine.total_slots != "1":
-                                    try:
-                                        check_next = int(machine.total_slots) - 1
-                                    except:
-                                        log.error("Unable to cast int, problem parsing TotalSlots")
-                                elif not vm.idle_start and machine.activity == 'Idle':
-                                    vm.idle_start = int(time.time())
+                        foundvm = True
+                        if vm.condorname == None or vm.condorname == "":
+                            vm.condorname = machine.machine_name
+                        if machine.address_startd != "":
+                            vm.condoraddr = machine.address_startd
+                        if machine.state != "":
+                            if vm.idle_start and machine.state == "Claimed":
+                                vm.idle_start = None
+                            elif machine.slot_type == "Partitionable" and machine.total_slots != "1":
+                                try:
+                                    check_next = int(machine.total_slots) - 1
+                                except:
+                                    log.error("Unable to cast int, problem parsing TotalSlots")
+                            elif not vm.idle_start and machine.activity == 'Idle':
+                                vm.idle_start = int(time.time())
                     if not foundvm:
                         if vm.override_status == 'Retiring':
                             retiredvms.append(vm)
