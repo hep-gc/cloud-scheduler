@@ -24,6 +24,7 @@ import copy
 import shlex
 import string
 import logging
+import tempfile
 import threading
 import subprocess
 import ConfigParser
@@ -1569,6 +1570,132 @@ class ResourcePool:
             log.error("Problem running %s, unexpected error" % ' '.join(args3))
             return (-1, -1, -1, -1)
         return (sp1.returncode, ret1, sp2.returncode, ret2)
+
+    def do_condor_advertise_master(self, target_file):
+        """Perform a condor_advertise INVALIDATE_MASTER_ADS on condor pool.
+
+        Attempts to remove a bad classad from the condor pool to improve job scheduling
+
+        Keywords:
+            target_file - path of the file containing the correct format for the classads to invalidate
+        Return:
+            a tuple of the returncodes from the command used and a return code
+        """
+        log.info("cloud_management.py::do_advertise_master - target_file: %s" % (target_file))
+
+        cmd = '%s INVALIDATE_MASTER_ADS "%s"' % (config.condor_advertise_command, target_file)
+        args = []
+
+        if target_file == None:
+            log.error("No target_file specified, cannot perform condor_advertise INVALIDATE_MASTER_ADS")
+            return (-1,-1)
+        if config.cloudscheduler_ssh_key:
+            central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
+            args.append(config.ssh_path)
+            args.append('-i')
+            args.append(config.cloudscheduler_ssh_key)
+            args.append(central_address)
+            args.append(cmd)
+        else:
+            args.append(config.condor_advertise_command)
+            args.append('INVALIDATE_MASTER_ADS')
+            args.append(target_file)
+        try:
+            log.debug(" ".join(args))
+            sp1 = subprocess.Popen(args, shell=False,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if not utilities.check_popen_timeout(sp1):
+                (out, err) = sp1.communicate(input=None)
+            ret1 = -1
+            if out.startswith("Sent"):
+                ret1 = 0
+            if sp1.returncode == 0:
+                log.verbose("Successfuly sent condor_advertise invalidate_master_ads %s" % (target_file))
+            else:
+                log.debug("Failed to send condor_advertise invalidate_master_ads %s: Reason: %s. Err: %s" % (target_file, out, err))
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args), e.errno, e.strerror))
+            return (-1, -1)
+        except:
+            log.error("Problem running %s, unexpected error" % ' '.join(args))
+            return (-1, -1)
+
+        return (sp1.returncode, ret1)
+
+    def do_condor_advertise_startd(self, target_file):
+        """Perform a condor_advertise INVALIDATE_STARTD_ADS on condor pool.
+
+        Attempts to remove a bad classad from the condor pool to improve job scheduling
+
+        Keywords:
+            target_file - path of the file containing the correct format for the classads to invalidate
+        Return:
+            a tuple of the returncodes from the command used and a return code
+        """
+        log.info("cloud_management.py::do_advertise_startd - target_file: %s" % (target_file))
+
+        cmd = '%s INVALIDATE_STARTD_ADS "%s"' % (config.condor_advertise_command, target_file)
+        args = []
+
+        if target_file == None:
+            log.error("No target_file specified, cannot perform condor_advertise INVALIDATE_STARTD_ADS")
+            return (-1,-1)
+        if config.cloudscheduler_ssh_key:
+            central_address = re.search('(?<=http://)(.*):', config.condor_webservice_url).group(1)
+            args.append(config.ssh_path)
+            args.append('-i')
+            args.append(config.cloudscheduler_ssh_key)
+            args.append(central_address)
+            args.append(cmd)
+        else:
+            args.append(config.condor_advertise_command)
+            args.append('INVALIDATE_STARTD_ADS')
+            args.append(target_file)
+        try:
+            log.debug(" ".join(args))
+            sp1 = subprocess.Popen(args, shell=False,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if not utilities.check_popen_timeout(sp1):
+                (out, err) = sp1.communicate(input=None)
+            ret1 = -1
+            if out.startswith("Sent"):
+                ret1 = 0
+            if sp1.returncode == 0:
+                log.verbose("Successfuly sent condor_advertise invalidate_startd_ads %s" % (target_file))
+            else:
+                log.debug("Failed to send condor_advertise invalidate_startd_ads %s: Reason: %s. Err: %s" % (target_file, out, err))
+        except OSError, e:
+            log.error("Problem running %s, got errno %d \"%s\"" % (' '.join(args), e.errno, e.strerror))
+            return (-1, -1)
+        except:
+            log.error("Problem running %s, unexpected error" % ' '.join(args))
+            return (-1, -1)
+
+        return (sp1.returncode, ret1)
+
+    def create_condor_advertise_target_file(self, names=[]):
+        """Creates a file with the correct format for condor_advertise to remove classads
+        File will contain:
+        MyType="Query"
+        TargetType="Machine"
+        Requirements=Name==<name of classad>
+
+        multiple can be specified by separating with a line
+
+        :return: path of the file created.
+        """
+        output = []
+        for name in names:
+            contents = """MyType="Query"\nTargetType="Machine"\nRequirements=Name==%s\n""" % name
+            output.append(contents)
+        strout = '\n'.join(output)
+        (fd, filepath) = tempfile.mkstemp(suffix='.cs', text=True)
+        try:
+            os.write(fd, strout)
+            os.close(fd)
+        except Exception as e:
+            log.error("Problem writing to temp file: %s Exception: %s" % (filepath, e))
+        return filepath
 
     def find_vm_with_name(self, condor_name):
         """Find a VM in cloudscheduler with the given condor machine name(hostname)."""
