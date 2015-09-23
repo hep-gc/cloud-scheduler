@@ -12,6 +12,8 @@ import cloud_init_util
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.job_management import _attr_list_to_dict
+from cStringIO import StringIO
+import gzip
 
 log = utilities.get_cloudscheduler_logger()
 
@@ -118,6 +120,15 @@ class OpenStackCluster(cluster_tools.ICluster):
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
+
+        # Compress the user data to try and get under the limit
+        udbuf = StringIO()
+        udf = gzip.GzipFile(mode='wb', fileobj=udbuf)
+        try:
+            udf.write(user_data)
+        finally:
+            udf.close()
+        user_data = udbuf.getvalue()
         
         try:
             image = vm_image[self.name]
