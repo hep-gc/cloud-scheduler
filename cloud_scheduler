@@ -1544,12 +1544,23 @@ class Cleanup(threading.Thread):
         for machine in missing_vms:
             log.verbose("VM %s Could not be located within CS, may be lost." % machine.machine_name)
             self.resource_pool.missing_vm_condor_machines.add(machine)
-        if config.retire_missing_vms: # TODO check config and change name to clean classads
+        if config.cleanup_missing_vms:
             # Will want to corralate the entries to get all the slots for a particular machine to minimize the condor_advertise calls
             machine_map = defaultdict(list)
             for machine in self.resource_pool.missing_vm_condor_machines:
                 machine_map[machine.machine_name].append(machine.name)
             # go through the keys in map and create files then do condor advertise then remove file
+            for k, v in machine_map.iteritems():
+                master_target_file = self.resource_pool.create_condor_advertise_target_file([k])
+                startd_target_file = self.resource_pool.create_condor_advertise_target_file(v)
+                (retm1, retm2) = self.resource_pool.do_condor_advertise_master(master_target_file)
+                (rets1, rets2) = self.resource_pool.do_condor_advertise_startd(startd_target_file)
+                if retm1 != 0 or retm2 !=0:
+                    log.error("Problem sending condor_advertise to master: %i %i" % (retm1, retm2))
+                if rets1 !=0 or rets2 != 0:
+                    log.error("Problem sending condor_advertise to startd: %i %i" % (retm1, retm2))
+                os.remove(master_target_file)
+                os.remove(startd_target_file)
 
             pass
 
