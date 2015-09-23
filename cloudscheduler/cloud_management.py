@@ -1686,7 +1686,7 @@ class ResourcePool:
         """
         output = []
         for name in names:
-            contents = """MyType="Query"\nTargetType="Machine"\nRequirements=Name==%s\n""" % name
+            contents = """MyType="Query"\nTargetType="Machine"\nRequirements=Name=="%s"\n""" % name
             output.append(contents)
         strout = '\n'.join(output)
         (fd, filepath) = tempfile.mkstemp(suffix='.cs', text=True)
