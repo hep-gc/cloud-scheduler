@@ -5,6 +5,7 @@ Created on Jun 23, 2014
 '''
 import os
 import logging
+import urllib2
 
 log = logging.getLogger("cloudscheduler")
 
@@ -80,20 +81,23 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
     
     combined_message = MIMEMultipart()
     for i in file_type_pairs:
-        try:
-            (filename, format_type) = i.split(":", 1)
-            filename = filename.strip()
-            format_type = format_type.strip()
-        except ValueError:
-            filename = i
-            format_type = "cloud-config"
-        if not os.path.exists(filename):
-            log.error("Unable to find file: %s skipping" % filename)
+        #try:
+        #    (filename, format_type) = i.split(":", 1)
+        #    filename = filename.strip()
+        #    format_type = format_type.strip()
+        #except ValueError:
+        #    filename = i
+        #    format_type = "cloud-config"
+        #if not os.path.exists(filename):
+        #    log.error("Unable to find file: %s skipping" % filename)
+        #    continue
+        #with open(filename) as fh:
+        #    contents = fh.read()
+        (contents, format_type) = read_file_type_pairs(i)
+        if contents or format_type == None:
             continue
-        with open(filename) as fh:
-            contents = fh.read()
         sub_message = MIMEText(contents, format_type, sys.getdefaultencoding())
-        sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (filename))
+        sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (i))
         combined_message.attach(sub_message)
     for i in content_type_pairs:
         sub_message = MIMEText(i[0], i[1].strip(), sys.getdefaultencoding())
@@ -104,4 +108,41 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
         combined_message.attach(sub_message)
     
     return str(combined_message)
+
+def read_file_type_pairs(file_type_pair):
+    """
+    :param file_type_pair: string in filepath:mimetype format - may be http:// based
+    :return: tuple with content of the file, and content mime type
+    """
+    content = None
+    format_type = None
+    if file_type_pair.startswith('http'):
+        try:
+            (pre, http_loc, format_type) = file_type_pair.split(":", 2)
+            http_loc = ''.join([pre, http_loc])
+            http_loc = http_loc.strip()
+            format_type = format_type.strip()
+        except ValueError:
+            if len(file_type_pair.split(":")) == 2: # missing the content type
+                http_loc = file_type_pair.strip()
+                format_type = "cloud-config"
+        try:
+            content = urllib2.urlopen(http_loc).read()
+        except Exception as e:
+            log.error("Unable to read url: %s" % http_loc)
+    else:
+        try:
+            (filename, format_type) = file_type_pair.split(":", 1)
+            filename = filename.strip()
+            format_type = format_type.strip()
+        except ValueError:
+            filename = file_type_pair
+            format_type = "cloud-config"
+        if not os.path.exists(filename):
+            log.error("Unable to find file: %s skipping" % filename)
+            return (None, None)
+        with open(filename) as fh:
+            content = fh.read()
+
+    return (content, format_type)
 

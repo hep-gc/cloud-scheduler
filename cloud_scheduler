@@ -709,11 +709,11 @@ class Scheduler(threading.Thread):
             try:
                 amiconfigs = job.ami_config.split(',')
                 for conf in amiconfigs:
-                    if len(conf.split(':')) == 1:
+                    if len(conf.split(':')) == 1 or ( len(conf.split(':')) == 2 and conf.startswith('http') ):
                         job_ami_config = conf + ':cloud-config'
                     else:
                         job_ami_config = conf
-                    extra_userdata.append(conf)
+                    extra_userdata.append(job_ami_config)
             except:
                 log.error("Could not parse amiconfig: %s" % job.ami_config)
 
