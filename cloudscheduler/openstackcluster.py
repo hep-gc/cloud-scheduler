@@ -65,6 +65,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.placement_zone = placement_zone
         self.flavor_set = set()
         self.cacert = cacert
+        self.session = self._get_keystone_session()
     
     def __getstate__(self):
         """Override to work with pickle module."""
@@ -310,11 +311,23 @@ class OpenStackCluster(cluster_tools.ICluster):
                 print "Unable to import novaclient - cannot use native openstack cloudtypes"
                 sys.exit(1)
         try:
-            client = nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name,
-                                    region_name=self.regions[0], cacert=self.cacert)
+            #client = nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name,
+            #                        region_name=self.regions[0], cacert=self.cacert)
+            client = nvclient.Client(session=self.session, region_name=self.regions[0])
         except Exception as e:
             log.error("Unable to create connection to %s: Reason: %s" % (self.name, e))
-        return client 
+        return client
+
+    def _get_keystone_session(self):
+        try:
+            from keystoneclient.auth.identity import v2
+            from keystoneclient import session
+            auth = v2.Password(auth_url=self.auth_url, username=self.username, password=self.password, tenant_name=self.tenant_name)
+            sess = session.Session(auth=auth, verify=self.cacert)
+        except Exception as e:
+            log.error("Problem importing keystone modules, and getting session: %s" % e)
+        log.debug("Session object for %s created" % self.name)
+        return sess
 
     def _generate_next_name(self):
         name = ''.join([self.name.replace('_', '-').lower(), '-', str(uuid.uuid4())])
