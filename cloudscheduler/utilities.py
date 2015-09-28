@@ -49,7 +49,6 @@ def get_cloudscheduler_logger():
 
     return log
 
-
 def get_hostname_from_url(url):
     """Return the hostname parsed from a full url."""
     return urlparse(url)[1].split(":")[0]

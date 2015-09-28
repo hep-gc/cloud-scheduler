@@ -119,6 +119,7 @@ default_VMJobPerCore = False
 
 log_level = "INFO"
 log_location = None
+log_location_cloud_admin = None
 log_stdout = False
 log_max_size = None
 log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
@@ -233,6 +234,7 @@ def setup(path=None):
 
     global log_level
     global log_location
+    global log_location_cloud_admin
     global log_stdout
     global log_max_size
     global log_format
@@ -750,6 +752,9 @@ def setup(path=None):
 
     if config_file.has_option("logging", "log_location"):
         log_location = os.path.expanduser(config_file.get("logging", "log_location"))
+
+    if config_file.has_option("logging", "log_location_cloud_admin"):
+        log_location_cloud_admin = os.path.expanduser(config_file.get("logging", "log_location_cloud_admin"))
 
     if config_file.has_option("logging", "log_stdout"):
         try:

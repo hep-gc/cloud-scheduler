@@ -15,8 +15,6 @@ import logging
 import platform
 
 import cloudscheduler.utilities as utilities 
-log = utilities.get_cloudscheduler_logger()
-
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.config as config
 
@@ -60,6 +58,7 @@ def main(argv=None):
     parser.add_option("-t", "--reload-target-alias", dest="alias", action="store_true", default=False, help="Reload the Target Cloud Alias file.")
     parser.add_option("-y", "--list-alias", dest="list_alias", action="store_true", default=False, help="List the current cloud aliases.")
     parser.add_option("-v", "--vm-allocation", dest="vm_allocation", action="store", metavar="NUM", help="Specify a new vm slot value for cloud")
+    parser.add_option("-C", "--comment", dest="comment", action="store", metavar="COM", help="Comment of why command being executed. Required for all commands")
 
     try:
         (cli_options, _) = parser.parse_args()
@@ -74,6 +73,39 @@ def main(argv=None):
     else:
         config.setup()
 
+    # Set up logging
+    log = logging.getLogger("cloudadmin")
+    logging._srcfile = None
+    logging.logProcesses = 0
+    log.setLevel(utilities.LEVELS[config.log_level])
+    log_formatter = logging.Formatter(config.log_format)
+    if config.log_stdout:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(log_formatter)
+        log.addHandler(stream_handler)
+
+    if config.log_location_cloud_admin:
+        file_handler = None
+        if config.log_max_size:
+            file_handler = logging.handlers.RotatingFileHandler(
+                                            config.log_location_cloud_admin,
+                                            maxBytes=config.log_max_size)
+        else:
+            try:
+                file_handler = logging.handlers.WatchedFileHandler(
+                                            config.log_location_cloud_admin,)
+            except AttributeError:
+                # Python 2.5 doesn't support WatchedFileHandler
+                file_handler = logging.handlers.RotatingFileHandler(
+                                            config.log_location_cloud_admin,)
+
+        file_handler.setFormatter(log_formatter)
+        log.addHandler(file_handler)
+
+    if not config.log_location_cloud_admin and not config.log_stdout:
+        null_handler = utilities.NullHandler()
+        log.addHandler(null_handler)
+    log.debug("cloud_admin invoked.")
 
     # Get port to connect to info server.
     #   Precedence: -p argument, then from config module
@@ -171,14 +203,18 @@ def main(argv=None):
         elif cli_options.quick:
             s.perform_quick_shutdown()
             print "Toggled Quick shutdown flag."
+            log.debug("Toggled quick shutdown flag.")
         elif cli_options.vm_allocation:
             if cli_options.cloud_name:
                 print 'Adjusting vm_slots on %s to %s' % (cli_options.cloud_name, cli_options.vm_allocation)
                 print s.adjust_cloud_allocation(cli_options.cloud_name, cli_options.vm_allocation)
+                log.debug("Attempting to adjust vm allocation on %s. Target: %s" % (cli_options.cloud_name, cli_options.vm_allocation))
             else:
                 print "Change vm slot of cloud need '-c cloudname' for cloud to change allocation of"
+                log.debug("Attempting to adjust vm allocation but missing cloud name.")
         else:
             print "Run cloud_admin -h for help."
+            log.debug("Invoked with no arguments. Printing help.")
 
 
     except socket.error:
