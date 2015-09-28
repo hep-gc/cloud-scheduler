@@ -94,7 +94,7 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
         #with open(filename) as fh:
         #    contents = fh.read()
         (contents, format_type) = read_file_type_pairs(i)
-        if contents or format_type == None:
+        if contents == None or format_type == None:
             continue
         sub_message = MIMEText(contents, format_type, sys.getdefaultencoding())
         sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (i))
@@ -130,6 +130,7 @@ def read_file_type_pairs(file_type_pair):
             content = urllib2.urlopen(http_loc).read()
         except Exception as e:
             log.error("Unable to read url: %s" % http_loc)
+            return (None, None)
     else:
         try:
             (filename, format_type) = file_type_pair.split(":", 1)
