@@ -119,7 +119,7 @@ def read_file_type_pairs(file_type_pair):
     if file_type_pair.startswith('http'):
         try:
             (pre, http_loc, format_type) = file_type_pair.split(":", 2)
-            http_loc = ''.join([pre, http_loc])
+            http_loc = ':'.join([pre, http_loc])
             http_loc = http_loc.strip()
             format_type = format_type.strip()
         except ValueError:
