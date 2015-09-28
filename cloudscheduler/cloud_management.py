@@ -1705,7 +1705,7 @@ class ResourcePool:
             condor_name = condor_name.split('@')[1]
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.condorname == condor_name:
+                if vm.condorname == condor_name or condor_name == vm.hostname or condor_name == vm.alt_hostname or condor_name == vm.condormasteraddr:
                     foundIt = True
                     vm_match = vm
                     break
