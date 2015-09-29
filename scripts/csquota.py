@@ -70,6 +70,6 @@ def main():
         sp1 = subprocess.Popen(adj_cmd, shell=False,
                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out, err) = sp1.communicate(input=None)
-        time.sleep(5)
+        time.sleep(1)
 
 main()
