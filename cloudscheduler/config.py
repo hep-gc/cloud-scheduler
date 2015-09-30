@@ -120,6 +120,7 @@ default_VMJobPerCore = False
 log_level = "INFO"
 log_location = None
 log_location_cloud_admin = None
+admin_log_comments = False
 log_stdout = False
 log_max_size = None
 log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
@@ -235,6 +236,7 @@ def setup(path=None):
     global log_level
     global log_location
     global log_location_cloud_admin
+    global admin_log_comments
     global log_stdout
     global log_max_size
     global log_format
@@ -755,6 +757,13 @@ def setup(path=None):
 
     if config_file.has_option("logging", "log_location_cloud_admin"):
         log_location_cloud_admin = os.path.expanduser(config_file.get("logging", "log_location_cloud_admin"))
+
+    if config_file.has_option("logging", "admin_log_comments"):
+        try:
+            admin_log_comments = config_file.getboolean("logging", "admin_log_comments")
+        except ValueError:
+            print "Configuration file problem: admin_log_comments must be a" \
+                  " Boolean value."
 
     if config_file.has_option("logging", "log_stdout"):
         try:

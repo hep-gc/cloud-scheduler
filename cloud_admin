@@ -58,7 +58,7 @@ def main(argv=None):
     parser.add_option("-t", "--reload-target-alias", dest="alias", action="store_true", default=False, help="Reload the Target Cloud Alias file.")
     parser.add_option("-y", "--list-alias", dest="list_alias", action="store_true", default=False, help="List the current cloud aliases.")
     parser.add_option("-v", "--vm-allocation", dest="vm_allocation", action="store", metavar="NUM", help="Specify a new vm slot value for cloud")
-    parser.add_option("-C", "--comment", dest="comment", action="store", metavar="COM", help="Comment of why command being executed. Required for all commands")
+    parser.add_option("-C", "--comment", dest="comment", action="store", default=None, metavar="COM", help="Comment of why command being executed. Required for all commands")
 
     try:
         (cli_options, _) = parser.parse_args()
@@ -105,8 +105,18 @@ def main(argv=None):
     if not config.log_location_cloud_admin and not config.log_stdout:
         null_handler = utilities.NullHandler()
         log.addHandler(null_handler)
-    log.debug("cloud_admin invoked.")
 
+    def _check_for_comment():
+            if config.admin_log_comments:
+                if not cli_options.comment:
+                    print "Admin comments being enforced. Please use -C 'reason for command' when performing this option."
+                    log.debug("Attempted to perform action without required comment.")
+                    return False
+                else:
+                    log.info("Comment: %s" % cli_options.comment)
+                    return True
+            else:
+                return True
     # Get port to connect to info server.
     #   Precedence: -p argument, then from config module
     if cli_options.port:
@@ -123,98 +133,129 @@ def main(argv=None):
     try:
         s = xmlrpclib.ServerProxy("http://%s:%s" %
                                   (server_hostname, server_port))
-        if cli_options.killvm:
+        if cli_options.killvm and _check_for_comment():
             if cli_options.cloud_name:
                 if cli_options.vm_id:
                     print s.shutdown_vm(cli_options.cloud_name, cli_options.vm_id)
+                    log.info("Shutting down VM: %s on: %s" % (cli_options.vm_id, cli_options.cloud_name))
                 elif cli_options.all:
                     print s.shutdown_cluster_all(cli_options.cloud_name)
+                    log.info("Shutting down all VMs on cloud: %s" % cli_options.cloud_name)
                 elif cli_options.number:
                     print s.shutdown_cluster_count(cli_options.cloud_name, cli_options.number)
+                    log.info("Shutting down %s VMs on cloud: %s" % (cli_options.number, cli_options.cloud_name))
                 else:
                     print "Must provide a -n [VM ID], -a to kill all VMs, or -b [count] to kill a set number on cloud."
+                    log.debug("Kill VMs called without valid vm id or all flag.")
             else:
                 print "Must Provide the cloud name to kill VMs on and the VM ID, count, or all flag."
-        elif cli_options.remove:
+                log.debug("Kill VMs called without valid cloud name.")
+        elif cli_options.remove and _check_for_comment():
             if cli_options.cloud_name:
                 if cli_options.vm_id:
                     print s.delete_vm_entry(cli_options.cloud_name, cli_options.vm_id)
+                    log.info("Removing VM entry: %s on: %s" % (cli_options.vm_id, cli_options.cloud_name))
                 elif cli_options.all:
                     print s.delete_all_vm_entry_cloud(cli_options.cloud_name)
+                    log.info("Removing all VM entries from Cloud Scheduler on cloud: %s" % cli_options.cloud_name)
                 else:
                     print "Must provide a -n [VM ID] or -a to remove all VMs on this cloud."
+                    log.debug("Remove VMs called without vm id or all flag.")
             else:
                 print "Must Provide the cloud name to remove VMs on and the VM ID or all flag."
-        elif cli_options.force_retire:
+                log.debug("Remove VMs called without cloud name.")
+        elif cli_options.force_retire and _check_for_comment():
             if cli_options.cloud_name:
                 if cli_options.vm_id:
                     print s.force_retire_vm(cli_options.cloud_name, cli_options.vm_id)
+                    log.info("Force retiring VM: %s on cloud: %s" % (cli_options.vm_id, cli_options.cloud_name))
                 elif cli_options.all:
                     print s.force_retire_all_vm(cli_options.cloud_name)
+                    log.info("Force retiring all VMs on: %s" % cli_options.cloud_name)
                 elif cli_options.number:
                     print s.force_retire_count_vm(cli_options.cloud_name, cli_options.number)
+                    log.info("Force retiring %s VMs, on cloud: %s" %(cli_options.number, cli_options.cloud_name))
                 else:
                     print "Must provide a -n [VM ID], -a (all), or -b [count] to force retire all or some VMs on this cloud."
+                    log.debug("Force retire called on cloud: %s, missing valid vm or option flag." % cli_options.cloud_name)
             else:
                 print "Must Provide the cloud name to force retire VMs on and the VM ID, all or count flag."
-        elif cli_options.reset_state:
+                log.debug("Force retire called without valid cloud name.")
+        elif cli_options.reset_state and _check_for_comment():
             if cli_options.cloud_name:
                 if cli_options.vm_id:
                     print s.reset_override_state(cli_options.cloud_name, cli_options.vm_id)
+                    log.info("Reset state of vm: %s on cloud: %s" % (cli_options.vm_id, cli_options.cloud_name))
                 else:
                     print "Must provide -n [VM ID] to reset state of VM."
+                    log.debug("Reset state attempted without valid vm id.")
             else:
                 print "Must provide the cloud name and VM ID to reset override state on."
+                log.debug("reset state attempted without valid cloud name.")
         elif cli_options.enable:
             print s.enable_cloud(cli_options.enable)
+            log.info("Cloud: %s enabled." % cli_options.enable)
         elif cli_options.disable:
             print s.disable_cloud(cli_options.disable)
+            log.info("Cloud: %s disabled." % cli_options.disable)
         elif cli_options.reconfig:
             print "Reconfig Disabled - use 'quickrestart'"
+            log.debug("Call to disabled reconfig option. service quickrestart suggested.")
             #print s.cloud_resources_reconfig()
-        elif cli_options.limits:
+        elif cli_options.limits and _check_for_comment():
             if s.user_limit_reload():
                 print "User-Limit file reloaded."
+                log.info("Reloaded the user limlt file.")
             else:
                 print "No Limits set - list empty or problem parsing file."
+                log.debug("Problem reloading user limits, check format, path, permissions.")
         elif cli_options.list_limits:
             print s.list_user_limits()
-        elif cli_options.alias:
+            log.debug("Listing the user limit file")
+        elif cli_options.alias and _check_for_comment():
             if s.cloud_alias_reload():
                 print "Target Cloud Alias file reloaded."
+                log.info("Reloaded the cloud_alias file")
             else:
                 print "Failed to load alias file - check json format, path, or permissions."
+                log.debug("Failed to reload cloud alias file, check format, path, permissions.")
         elif cli_options.list_alias:
             print s.list_cloud_alias()
-        elif cli_options.log_level:
+            log.debug("Listing cloud_alias contents")
+        elif cli_options.log_level and _check_for_comment():
             print s.change_log_level(cli_options.log_level)
-        elif cli_options.proxy_refresh:
+            log.info("Changed logging level to: %s" % cli_options.log_level)
+        elif cli_options.proxy_refresh and _check_for_comment():
             if cli_options.user:
                 if cli_options.proxy_refresh.startswith('v'):
                     print "Refreshing VM proxies for user %s." % cli_options.user
                     s.refresh_vm_proxy_user(cli_options.user)
+                    log.info("Refreshing VM proxies for user %s." % cli_options.user)
                 elif cli_options.proxy_refresh.startswith('j'):
                         print "Refreshing Job proxies for user %s." % cli_options.user
                         s.refresh_job_proxy_user(cli_options.user)
+                        log.info("Refresh job proxies for user %s" % cli_options.user)
                 else:
                     print "Unsupported Proxy type, enter 'job' or 'vm'."
+                    log.debug("Incorrect proxy type entered: valid options are job or vm")
             else:
                 print "Must Specify a user with -u or --user."
-        elif cli_options.quick:
+                log.debug("Attempting to refresh proxy, missing user flag.")
+        elif cli_options.quick and _check_for_comment():
             s.perform_quick_shutdown()
             print "Toggled Quick shutdown flag."
-            log.debug("Toggled quick shutdown flag.")
-        elif cli_options.vm_allocation:
+            log.info("Toggled quick shutdown flag.")
+        elif cli_options.vm_allocation and _check_for_comment():
             if cli_options.cloud_name:
                 print 'Adjusting vm_slots on %s to %s' % (cli_options.cloud_name, cli_options.vm_allocation)
                 print s.adjust_cloud_allocation(cli_options.cloud_name, cli_options.vm_allocation)
-                log.debug("Attempting to adjust vm allocation on %s. Target: %s" % (cli_options.cloud_name, cli_options.vm_allocation))
+                log.info("Attempting to adjust vm allocation on %s. Target: %s" % (cli_options.cloud_name, cli_options.vm_allocation))
             else:
                 print "Change vm slot of cloud need '-c cloudname' for cloud to change allocation of"
                 log.debug("Attempting to adjust vm allocation but missing cloud name.")
         else:
             print "Run cloud_admin -h for help."
-            log.debug("Invoked with no arguments. Printing help.")
+            log.debug("Invoked with no arguments or other error.")
 
 
     except socket.error:
@@ -224,6 +265,7 @@ def main(argv=None):
     except:
         print "Unexpected error: ", sys.exc_info()[0], sys.exc_info()[1]
         print "Is the cloud scheduler running on port %s?" % server_port
+
 
 
 if __name__ == "__main__":
