@@ -95,6 +95,7 @@ adjust_insufficient_resources = False
 connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
 use_cloud_init = True
 default_yaml = "/usr/local/share/cloud-scheduler/default.yaml"
+validate_yaml = False
 retire_reallocate = True
 
 default_VMType= "default"
@@ -211,6 +212,7 @@ def setup(path=None):
     global adjust_insufficient_resources
     global use_cloud_init
     global default_yaml
+    global validate_yaml
     global retire_reallocate
 
     global default_VMType
@@ -739,6 +741,13 @@ def setup(path=None):
 
     if config_file.has_option("global", "default_yaml"):
         default_yaml = config_file.get("global", "default_yaml")
+
+    if config_file.has_option("global", "validate_yaml"):
+        try:
+            validate_yaml = config_file.getboolean("global", "validate_yaml")
+        except ValueError:
+            print "Configuration file problem: validate_yaml must be a" \
+                  " Boolean value."
 
     if config_file.has_option("global", "retire_reallocate"):
         try:
