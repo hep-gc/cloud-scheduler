@@ -6,6 +6,7 @@ Created on Jun 23, 2014
 import os
 import logging
 import urllib2
+import cloudscheduler.config as config
 
 log = logging.getLogger("cloudscheduler")
 
@@ -147,3 +148,12 @@ def read_file_type_pairs(file_type_pair):
 
     return (content, format_type)
 
+def validate_yaml(content):
+    """ Try to load yaml to see if it passes basic validation."""
+    try:
+        import yaml
+        yaml.load(content)
+    except Exception as e:
+        log.error("Problem validating yaml: %s" % e)
+        return False
+    return True

@@ -49,6 +49,7 @@ import cloudscheduler.admin_server as admin_server
 import cloudscheduler.cloud_management as cloud_management
 import cloudscheduler.job_management as job_management
 import cloudscheduler.proxy_refreshers as proxy_refreshers
+import cloudscheduler.cloud_init_util as cloud_init_util
 
 from cloudscheduler.cloud_management import VMDestroyCmd
 from cloudscheduler.cloud_management import VMMachine
@@ -2173,6 +2174,17 @@ def main():
         print "ERROR - main - No cloud or cluster information sources provided"
         parser.print_help()
         sys.exit(1)
+
+    # See if yaml validation on and check the default yaml. exit if fails check
+    if config.validate_yaml:
+        with open(config.default_yaml) as fd:
+            if cloud_init_util.validate_yaml(fd):
+                log.debug("Default yaml validation passed.")
+            else:
+                print "ERROR - main - Failed to validate default yaml. Fix errors before running Cloud Scheduler."
+                print "See log for yaml validation error."
+                sys.exit(1)
+
 
     # Create a job pool
     job_pool = job_management.JobPool("Job Pool")
