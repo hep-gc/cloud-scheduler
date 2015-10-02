@@ -705,18 +705,35 @@ class Scheduler(threading.Thread):
             except:
                 log.error("Unable to read default yaml file - check path in cloud_scheduler.conf: %s" % config.default_yaml)
 
+        fileurls=[]
         if job.ami_config:
             job_ami_config = ""
             try:
                 amiconfigs = job.ami_config.split(',')
                 for conf in amiconfigs:
                     if len(conf.split(':')) == 1 or ( len(conf.split(':')) == 2 and conf.startswith('http') ):
+                        fileurls.append(conf)
                         job_ami_config = conf + ':cloud-config'
                     else:
                         job_ami_config = conf
+                        sconf = conf.split(':')
+                        if len(sconf) == 3 and conf.startswith('http'):
+                            fileurls.append(':'.join([sconf[0], sconf[1]]))
+                        elif len(sconf) == 2:
+                            fileurls.append(sconf[0])
                     extra_userdata.append(job_ami_config)
             except:
                 log.error("Could not parse amiconfig: %s" % job.ami_config)
+        if config.validate_yaml:
+            for f in fileurls:
+                if f.startswith('http'):
+                    file_content = urllib2.urlopen(f).read()
+                elif os.path.isfile(f):
+                    file_content = open(f).read()
+                valid_yaml_ret = cloud_init_util.validate_yaml(file_content)
+                if valid_yaml_ret:
+                    self.job_pool.job_hold_local(job, reason="Problem with yaml: %s" % valid_yaml_ret)
+                    # needto be able to set a reason on that command
 
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
@@ -2179,11 +2196,11 @@ def main():
     if config.validate_yaml:
         with open(config.default_yaml) as fd:
             if cloud_init_util.validate_yaml(fd):
-                log.debug("Default yaml validation passed.")
-            else:
                 print "ERROR - main - Failed to validate default yaml. Fix errors before running Cloud Scheduler."
                 print "See log for yaml validation error."
                 sys.exit(1)
+            else:
+                log.debug("Default yaml validation passed.")
 
 
     # Create a job pool

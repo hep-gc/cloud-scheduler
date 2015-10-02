@@ -155,5 +155,5 @@ def validate_yaml(content):
         yaml.load(content)
     except Exception as e:
         log.error("Problem validating yaml: %s" % e)
-        return False
-    return True
+        return e
+    return None
