@@ -1047,7 +1047,7 @@ class JobPool:
                 limits[job.uservmtype] = job.usertype_limit
         return limits
 
-    def job_hold_local(self, jobs):
+    def job_hold_local(self, jobs, reason=""):
         """job_query_local -- query and parse condor_q for job information."""
         log.verbose("Holding Condor jobs with %s" % config.condor_hold_command)
         try:
@@ -1055,6 +1055,14 @@ class JobPool:
             condor_err = ""
             log.verbose("Holding jobs via condor_hold.")
             condor_hold = shlex.split(config.condor_hold_command)
+            if reason:
+                try:
+                    ri = condor_hold.index('-reason')
+                    condor_hold[ri+1] = reason
+                except ValueError:
+                    condor_hold.append('-reason')
+                    condor_hold.append(reason)
+
             job_ids = [str(job.cluster_id)+"."+str(job.proc_id) for job in jobs]
             condor_hold.extend(job_ids)
             log.verbose("Popen condor_hold command")
