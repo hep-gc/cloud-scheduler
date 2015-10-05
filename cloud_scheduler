@@ -732,7 +732,7 @@ class Scheduler(threading.Thread):
                     file_content = open(f).read()
                 valid_yaml_ret = cloud_init_util.validate_yaml(file_content)
                 if valid_yaml_ret:
-                    self.job_pool.job_hold_local(job, reason="Problem with yaml: %s" % valid_yaml_ret)
+                    self.job_pool.job_hold_local([job], reason="Problem with yaml: %s" % valid_yaml_ret)
                     # needto be able to set a reason on that command
 
         log.verbose("Finished customizations for job '%s'" % job.id)

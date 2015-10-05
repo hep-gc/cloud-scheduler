@@ -1061,11 +1061,14 @@ class JobPool:
                     condor_hold[ri+1] = reason
                 except ValueError:
                     condor_hold.append('-reason')
-                    condor_hold.append(reason)
+                    reason = reason.strip('\n')
+                    reason = ' '.join(reason.split('\n'))
+                    condor_hold.append(''.join(['"',reason, '"']))
 
             job_ids = [str(job.cluster_id)+"."+str(job.proc_id) for job in jobs]
             condor_hold.extend(job_ids)
             log.verbose("Popen condor_hold command")
+            log.verbose(' '.join(condor_hold))
             sp = subprocess.Popen(condor_hold, shell=False,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             log.verbose("Popen communicate condor_hold.")
