@@ -1063,7 +1063,7 @@ class JobPool:
                     condor_hold.append('-reason')
                     reason = reason.strip('\n')
                     reason = ' '.join(reason.split('\n'))
-                    condor_hold.append(''.join(['"',reason, '"']))
+                    condor_hold.append(reason)
 
             job_ids = [str(job.cluster_id)+"."+str(job.proc_id) for job in jobs]
             condor_hold.extend(job_ids)
@@ -1085,6 +1085,7 @@ class JobPool:
             log.error("Got non-zero return code '%s' from '%s'. stderr was: %s" %
                               (returncode, string.join(condor_out, " "), condor_err))
             return None
+        log.debug("Out: %s, Err: %s" %(condor_out, condor_err))
         return returncode
 
     def job_release_local(self, jobs):
