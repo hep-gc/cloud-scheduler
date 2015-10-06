@@ -398,6 +398,11 @@ class EC2Cluster(cluster_tools.ICluster):
                 except AttributeError:
                     log.exception("Problem getting spot VM info. Do you have boto 2.0+?")
                     return vm.status
+                except boto.exception.EC2ResponseError, e:
+                    log.exception("Problem getting spot info %s: %s" % (vm.spot_id, e))
+                    if e.status == 400 and 'NotFound' in e.error_code:
+                        vm.status = self.VM_STATES['error']
+                        return vm.status
                 except:
                     log.exception("Problem getting information for spot vm %s" % vm.spot_id)
                     return vm.status
@@ -413,7 +418,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 return vm.status
             except boto.exception.EC2ResponseError, e:
                 log.exception("Unexpected error polling %s: %s" % (vm.id, e))
-                if e.status == 400 and e.error_code == 'InstanceNotFound':
+                if e.status == 400 and 'NotFound' in e.error_code:
                     vm.status = self.VM_STATES['error']
                 elif e.status == 404:
                     vm.status = self.VM_STATES['error']
