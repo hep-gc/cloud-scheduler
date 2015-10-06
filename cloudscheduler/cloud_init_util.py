@@ -155,5 +155,5 @@ def validate_yaml(content):
         yaml.load(content)
     except yaml.YAMLError as e:
         log.error("Problem validating yaml: %s" % e)
-        return ' '.join([e.problem_mark.name, 'Line: ', e.problem_mark.line, ' Col: ', e.problem_mark.column]) # use e.problem_mark.[name,column,line]
+        return ' '.join(['Line: ', str(e.problem_mark.line), ' Col: ', str(e.problem_mark.column)]) # use e.problem_mark.[name,column,line]
     return None
