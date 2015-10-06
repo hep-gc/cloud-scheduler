@@ -734,6 +734,7 @@ class Scheduler(threading.Thread):
                 if valid_yaml_ret:
                     self.job_pool.job_hold_local([job], reason="Problem with yaml: %s: %s" % (f, valid_yaml_ret))
                     # needto be able to set a reason on that command
+                    return None
 
         log.verbose("Finished customizations for job '%s'" % job.id)
         cloud_type_file_dest = "/var/lib/cloud_type"
