@@ -170,7 +170,7 @@ class VMPoller(threading.Thread):
                 job.override_status = "HTTPFail"
                 if job.job_status != HELD:
                     jobs_to_hold.append(job)
-        self.job_pool.job_hold_local(jobs_to_hold)
+        self.job_pool.job_hold_local(jobs_to_hold, reason="Failed to fetch image.")
 
     def check_destroy_threads(self):
         """Checks the  VM destroy thread list for threads that have finished
@@ -731,7 +731,8 @@ class Scheduler(threading.Thread):
                 elif os.path.isfile(f) and f.endswith('.yaml'):
                     file_content = open(f).read()
                 else:
-                    continue
+                    self.job_pool.job_hold_local([job], reason="Problem with yaml: %s: Unable to open file/url" % (f))
+                    return None
                 valid_yaml_ret = cloud_init_util.validate_yaml(file_content)
                 if valid_yaml_ret:
                     self.job_pool.job_hold_local([job], reason="Problem with yaml: %s: %s" % (f, valid_yaml_ret))
@@ -1159,7 +1160,7 @@ class Cleanup(threading.Thread):
                     continue
         failedhold = []
         if len(bad_jobs) > 0:
-            failedhold = self.job_pool.job_hold_local(bad_jobs)
+            failedhold = self.job_pool.job_hold_local(bad_jobs, reason="Failed to find matching cloud:check targetcloud, memory, etc.")
         if failedhold and len(failedhold) > 0:
             # failed to hold some of these jobs remove from container instead
             self.job_pool.job_container.remove_jobs(failedhold)
@@ -2046,7 +2047,7 @@ class Cleanup(threading.Thread):
         if len(to_hold) > 0:
             for job in to_hold:
                 job.override_status = 'HeldBadReqs'
-            failedhold = self.job_pool.job_hold_local(list(to_hold))
+            failedhold = self.job_pool.job_hold_local(list(to_hold), reason="Bad job requirements.")
             if failedhold and len(failedhold) > 0:
                 log.debug("Failed to hold %i jobs" % len(failedhold))
 
