@@ -731,12 +731,10 @@ class Scheduler(threading.Thread):
                 elif os.path.isfile(f) and f.endswith('.yaml'):
                     file_content = open(f).read()
                 else:
-                    self.job_pool.job_hold_local([job], reason="Problem with yaml: %s: Unable to open file/url" % (f))
-                    return None
+                    continue # not a yaml file - skip it
                 valid_yaml_ret = cloud_init_util.validate_yaml(file_content)
                 if valid_yaml_ret:
                     self.job_pool.job_hold_local([job], reason="Problem with yaml: %s: %s" % (f, valid_yaml_ret))
-                    # needto be able to set a reason on that command
                     return None
 
         log.verbose("Finished customizations for job '%s'" % job.id)
