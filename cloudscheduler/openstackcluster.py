@@ -132,23 +132,25 @@ class OpenStackCluster(cluster_tools.ICluster):
         user_data = udbuf.getvalue()
         
         try:
-            image = vm_image[self.name]
+            if self.name in vm_image.keys():
+                image = vm_image[self.name]
+            elif self.network_address in vm_image.keys():
+                image = vm_image[self.network_address]
+            else:
+                image = vm_image['default']
         except:
             try:
-                image = vm_image[self.network_address]
+                vm_default_ami = _attr_list_to_dict(config.default_VMAMI)
+                if self.name in vm_default_ami.keys():
+                    image = vm_default_ami[self.name]
+                else:
+                    image = vm_default_ami[self.network_address]
             except:
                 try:
-                    vm_default_ami = _attr_list_to_dict(config.default_VMAMI)
-                    if self.name in vm_default_ami.keys():
-                        image = vm_default_ami[self.name]
-                    else:
-                        image = vm_default_ami[self.network_address]
+                    image = vm_default_ami["default"]
                 except:
-                    try:
-                        image = vm_default_ami["default"]
-                    except:
-                        log.exception("Can't find a suitable AMI")
-                        return
+                    log.exception("Can't find a suitable AMI")
+                    return
         try:
             imageobj = nova.images.find(name=image)
         except Exception as e:
@@ -163,8 +165,10 @@ class OpenStackCluster(cluster_tools.ICluster):
         try:
             if self.name in instance_type.keys():
                 i_type = instance_type[self.name]
-            else:
+            elif self.network_address in instance_type.keys():
                 i_type = instance_type[self.network_address]
+            else:
+                i_type = instance_type['default']
         except:
             log.debug("No instance type for %s, trying default" % self.network_address)
             try:

@@ -157,7 +157,6 @@ class Job:
         self.req_image    = VMName
         self.req_imageloc = VMLoc
         self.req_ami      = VMAMI
-
         try:
             self.req_memory   = int(VMMem)
         except:
