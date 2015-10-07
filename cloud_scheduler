@@ -2195,7 +2195,7 @@ def main():
         sys.exit(1)
 
     # See if yaml validation on and check the default yaml. exit if fails check
-    if config.validate_yaml:
+    if config.validate_yaml and config.default_yaml:
         with open(config.default_yaml) as fd:
             if cloud_init_util.validate_yaml(fd):
                 print "ERROR - main - Failed to validate default yaml. Fix errors before running Cloud Scheduler."
