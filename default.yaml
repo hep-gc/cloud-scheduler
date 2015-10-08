@@ -792,6 +792,59 @@ write_files:
     permissions: '0755'
     path: /etc/init.d/condor
 
+groups:
+  - condor: [slot01,slot02,slot03,slot04,slot05,slot06,slot07,slot08,slot09,slot10,slot11,slot12,slot13,slot14,slot15,slot16]
+
+users:
+  - name: slot01
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot02
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot03
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot04
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot05
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot06
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot07
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot08
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot09
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot10
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot11
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot12
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot13
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot14
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot15
+    groups: condor
+    shell: /sbin/nologin
+  - name: slot16
+    groups: condor
+    shell: /sbin/nologin
+
 runcmd:
  - [ mv, /etc/localtime , /etc/localtime-old ]
  - [ ln, -sf, /usr/share/zoneinfo/UTC, /etc/localtime ]
