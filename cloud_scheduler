@@ -1074,10 +1074,7 @@ class Cleanup(threading.Thread):
             if self.job_pool.last_query:
                 ## Check that jobs are valid for the clusters available
                 self.clean_invalid_jobs()
-                ## Clear all un-needed VMs from the system
-                log.verbose("Clearing all un-needed VMs from the system")
-                self.clean_unneeded_vms()
-                ## See if any stray entries in condor_status - incomplete feature
+                ## See if any stray entries in condor_status
                 self.clean_check_vms_extra_machines(self.resource_pool.vm_machine_list)
                 # Make sure VMs have registered with Condor
                 # Check if any retiring VMs have Retired
@@ -1091,6 +1088,9 @@ class Cleanup(threading.Thread):
                 unregisteredvms, retiredvms = self.clean_check_diff_vms_machines(self.resource_pool.vm_machine_list, True)
                 self.clean_kill_unregistered_vms(unregisteredvms, True)
                 self.clean_retired_vms(retiredvms, True)
+                ## Clear all un-needed VMs from the system - moved down so other checks done first
+                log.verbose("Clearing all un-needed VMs from the system")
+                self.clean_unneeded_vms()
                 if config.clean_shutdown_idle:
                     # Check for Idle machines that cannot run any jobs
                     self.clean_verify_vm_job_reqs()
