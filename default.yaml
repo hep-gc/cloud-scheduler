@@ -846,9 +846,4 @@ users:
     shell: /sbin/nologin
 
 runcmd:
- - [ mv, /etc/localtime , /etc/localtime-old ]
- - [ ln, -sf, /usr/share/zoneinfo/UTC, /etc/localtime ]
- - [ fallocate, -l, 16G, /mnt/.rw/swap.1 ]
- - [ mkswap, /mnt/.rw/swap.1 ]
- - [ swapon, /mnt/.rw/swap.1 ]
  - [ service, condor, start ]
