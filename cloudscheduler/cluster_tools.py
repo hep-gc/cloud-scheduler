@@ -334,6 +334,7 @@ class ICluster:
         state = self.__dict__.copy()
         del state['vms_lock']
         del state['res_lock']
+        del state['failed_image_set']
         return state
 
     def __setstate__(self, state):
@@ -341,6 +342,7 @@ class ICluster:
         self.__dict__ = state
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
+        self.failed_image_set = set()
 
     def __repr__(self):
         return self.name
