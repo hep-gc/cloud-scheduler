@@ -1456,7 +1456,7 @@ class Cleanup(threading.Thread):
         req_vmtypes = self.job_pool.get_required_uservmtypes()
         for cluster in self.resource_pool.resources:
             for vm in reversed(cluster.vms):
-                if vm.uservmtype not in req_vmtypes and (vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive) or not vm.idle_start):
+                if vm.uservmtype not in req_vmtypes and (vm.idle_start and (int(time.time()) - vm.idle_start > vm.keep_alive)):
                     #if vm.override_status != "Retiring":
                     self.resource_pool.force_retire_vm(vm)
                     if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
