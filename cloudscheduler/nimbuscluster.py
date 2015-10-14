@@ -59,7 +59,7 @@ class NimbusCluster(cluster_tools.ICluster):
                  netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
                  image_attach_device=config.image_attach_device,
                  scratch_attach_device=config.scratch_attach_device, boot_timeout=None, total_cpu_cores=-1,
-                 temp_lease_storage=False, enabled=True, priority=0, keep_alive=keep_alive,):
+                 temp_lease_storage=False, enabled=True, priority=0, keep_alive=0,):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,

@@ -24,7 +24,7 @@ class IBMCluster(cluster_tools.ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, hypervisor='xen', username="", password="",enabled=True, priority = 0,
-                 keep_alive=keep_alive,):
+                 keep_alive=0,):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,

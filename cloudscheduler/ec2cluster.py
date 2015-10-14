@@ -124,7 +124,7 @@ class EC2Cluster(cluster_tools.ICluster):
                  security_group=None, hypervisor='xen', key_name=None, 
                  boot_timeout=None, secure_connection="", regions=[], vm_domain_name="",
                  reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0,
-                 keep_alive=keep_alive,):
+                 keep_alive=0,):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,

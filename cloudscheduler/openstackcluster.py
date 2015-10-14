@@ -35,7 +35,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                  username=None, password=None, tenant_name=None, auth_url=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
                  regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, 
-                 enabled=True, priority=0, cacert=None,keep_alive=keep_alive,):
+                 enabled=True, priority=0, cacert=None,keep_alive=0,):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=auth_url, cloud_type=cloud_type,

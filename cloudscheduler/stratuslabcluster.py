@@ -93,7 +93,7 @@ class StratusLabCluster(cluster_tools.ICluster):
                  memory = [], max_vm_mem = -1, cpu_archs = [], networks = [], vm_slots = 0,
                  cpu_cores = 0, storage = 0, access_key_id = None, secret_access_key = None,
                  hypervisor = 'xen', key_name = None, vm_loc = '', contextualization = '', enabled=True, priority=0,
-                 keep_alive=keep_alive,):
+                 keep_alive=0,):
 
         # Call super class' init
         cluster_tools.ICluster.__init__(self, name = name, host = host, cloud_type = cloud_type,

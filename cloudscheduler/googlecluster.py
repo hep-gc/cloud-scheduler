@@ -88,7 +88,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
                          storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout,enabled=enabled,
-                         priority=priority, keep_alive=keep_alive,)
+                         priority=priority, keep_alive=0,)
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
