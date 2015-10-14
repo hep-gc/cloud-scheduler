@@ -35,13 +35,14 @@ class OpenStackCluster(cluster_tools.ICluster):
                  username=None, password=None, tenant_name=None, auth_url=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
                  regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, 
-                 enabled=True, priority=0, cacert=None):
+                 enabled=True, priority=0, cacert=None,keep_alive=keep_alive,):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=auth_url, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled, priority=priority)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled,
+                         priority=priority, keep_alive=keep_alive,)
         try:
             import novaclient.v2.client as nvclient
             import novaclient.exceptions
@@ -223,7 +224,9 @@ class OpenStackCluster(cluster_tools.ICluster):
                 log.error("Unhandled exception while creating vm on %s: %s" %(self.name, e))
             if instance:
                 instance_id = instance.id
-                
+                if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
+                    vm_keepalive = self.keep_alive
+
                 new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                             clusteraddr = self.network_address, hostname = ''.join([name, self.vm_domain_name]),
                             cloudtype = self.cloud_type, network = vm_networkassoc,

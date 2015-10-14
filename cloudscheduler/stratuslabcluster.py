@@ -92,13 +92,14 @@ class StratusLabCluster(cluster_tools.ICluster):
     def __init__(self, name = "Dummy StratusLab Cluster", host = "localhost", cloud_type = "StratusLab",
                  memory = [], max_vm_mem = -1, cpu_archs = [], networks = [], vm_slots = 0,
                  cpu_cores = 0, storage = 0, access_key_id = None, secret_access_key = None,
-                 hypervisor = 'xen', key_name = None, vm_loc = '', contextualization = '', enabled=True, priority=0):
+                 hypervisor = 'xen', key_name = None, vm_loc = '', contextualization = '', enabled=True, priority=0,
+                 keep_alive=keep_alive,):
 
         # Call super class' init
         cluster_tools.ICluster.__init__(self, name = name, host = host, cloud_type = cloud_type,
                          memory = memory, max_vm_mem = max_vm_mem, cpu_archs = cpu_archs, networks = networks,
                          vm_slots = vm_slots, cpu_cores = cpu_cores, storage = storage, hypervisor = hypervisor,
-                         enabled=enabled, priority=priority)
+                         enabled=enabled, priority=priority,keep_alive=keep_alive,)
 
         try:
             f = open(contextualization, 'r')
@@ -130,6 +131,8 @@ class StratusLabCluster(cluster_tools.ICluster):
             log.debug("Created instances: %s" % str(ids))
             #for new_id in ids:
             new_id = ids[len(ids) - 1]
+            if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
+                vm_keepalive = self.keep_alive
             new_vm = cluster_tools.VM(name = vm_name, id = str(new_id), vmtype = vm_type, user = vm_user,
                 network = vm_networkassoc, cpuarch = vm_cpuarch, image = vm_image, memory = vm_mem, 
                 cpucores = vm_cores, storage = vm_storage, keep_alive = vm_keepalive, 

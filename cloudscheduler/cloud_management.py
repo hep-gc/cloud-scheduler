@@ -282,6 +282,8 @@ class ResourcePool:
         priority = get_or_none(config, cluster, "priority")
         priority = int(priority) if priority != None else 0
         hypervisor = get_or_none(config, cluster, "hypervisor")
+        keep_alive = get_or_none(config, cluster, "vm_keep_alive")
+        keep_alive = int(keep_alive) if keep_alive else 0
         networks = []
         if config.has_option(cluster, "networks"):
             try:
@@ -329,6 +331,7 @@ class ResourcePool:
                     temp_lease_storage = get_or_none(config, cluster, "temp_lease_storage"),
                     enabled=enabled,
                     priority = priority,
+                    keep_alive=keep_alive,
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
@@ -354,6 +357,7 @@ class ResourcePool:
                     placement_zone = get_or_none(config, cluster, "placement_zone"),
                     enabled=enabled,
                     priority = priority,
+                    keep_alive=keep_alive,
                     )
 
         elif cloud_type == "StratusLab" and stratuslab_support:
@@ -370,6 +374,7 @@ class ResourcePool:
                     contextualization = get_or_none(config, cluster, "contextualization"),
                     enabled=enabled,
                     priority = priority,
+                    keep_alive=keep_alive,
                     )
 
         elif cloud_type.lower() == "ibmsmartcloud":
@@ -387,6 +392,7 @@ class ResourcePool:
                     password= get_or_none(config, cluster, "password"),
                     enabled=enabled,
                     priority = priority,
+                    keep_alive=keep_alive,
                     )
         elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce":
             return googlecluster.GoogleComputeEngineCluster(name = cluster,
@@ -405,6 +411,7 @@ class ResourcePool:
                     enabled=enabled,
                     priority = priority,
                     total_cpu_cores = total_cpu_cores,
+                    keep_alive=keep_alive,
                     )
         elif cloud_type == "OpenStackNative":
             return openstackcluster.OpenStackCluster(name = cluster,
@@ -431,6 +438,7 @@ class ResourcePool:
                     enabled=enabled,
                     priority = priority,
                     cacert = get_or_none(config, cluster, "cacert"),
+                    keep_alive=keep_alive,
                     )
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)

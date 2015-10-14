@@ -53,7 +53,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
                  vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None,
                  auth_dat_file=None, secret_file=None, security_group=None, project_id=None,enabled=True, priority = 0,
-                 total_cpu_cores=-1):
+                 total_cpu_cores=-1,keep_alive=keep_alive,):
         log.debug("Init GCE cores %s, storage %s"%(cpu_cores,storage))
         self.gce_hostname_prefix = 'gce-cs-vm'
         self.security_group = security_group
@@ -87,7 +87,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout,enabled=enabled, priority=priority)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout,enabled=enabled,
+                         priority=priority, keep_alive=keep_alive,)
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
@@ -251,6 +252,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             log.debug("Cluster memory list has no sufficient memory " +\
                       "entries (Not supposed to happen). Returning error.")
             return self.ERROR
+        if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
+            vm_keepalive = self.keep_alive
         new_vm = cluster_tools.VM(name = next_instance_name, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address, id = target_id,
                     cloudtype = self.cloud_type, network = vm_networkassoc,

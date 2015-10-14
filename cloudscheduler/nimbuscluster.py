@@ -59,13 +59,14 @@ class NimbusCluster(cluster_tools.ICluster):
                  netslots={}, hypervisor='xen', vm_lifetime=config.vm_lifetime,
                  image_attach_device=config.image_attach_device,
                  scratch_attach_device=config.scratch_attach_device, boot_timeout=None, total_cpu_cores=-1,
-                 temp_lease_storage=False, enabled=True, priority=0):
+                 temp_lease_storage=False, enabled=True, priority=0, keep_alive=keep_alive,):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout= boot_timeout, enabled=enabled, priority=priority)
+                         storage=storage, hypervisor=hypervisor, boot_timeout= boot_timeout, enabled=enabled,
+                         priority=priority, keep_alive=keep_alive,)
         # typical cluster setup uses the get_or_none - if init called with port=None default not used
         self.port = port if port != None else "8443"
         self.net_slots = netslots
@@ -270,7 +271,8 @@ class NimbusCluster(cluster_tools.ICluster):
         else:
             log.warning("Unable to get the VM hostname, for vm_id %s" % vm_id)
 
-
+        if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
+            vm_keepalive = self.keep_alive
         # Create a VM object to represent the newly created VM
         new_vm = cluster_tools.VM(name = vm_name, id = vm_id, vmtype = vm_type, user = vm_user,
             hostname = vm_hostname, ipaddress = vm_ip, 
