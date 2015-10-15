@@ -94,7 +94,7 @@ vm_reqs_from_condor_reqs = False
 adjust_insufficient_resources = False
 connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
 use_cloud_init = True
-default_yaml = "/usr/local/share/cloud-scheduler/default.yaml"
+default_yaml = "/usr/local/share/cloud-scheduler/default.yaml" if os.path.exists('/usr/local/share/cloud-scheduler/default.yaml') else '/usr/share/cloud-scheduler/default.yaml'
 validate_yaml = False
 retire_reallocate = True
 
