@@ -123,6 +123,7 @@ log_location = None
 log_location_cloud_admin = None
 admin_log_comments = False
 log_stdout = False
+log_syslog = False
 log_max_size = None
 log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
 
@@ -240,6 +241,7 @@ def setup(path=None):
     global log_location_cloud_admin
     global admin_log_comments
     global log_stdout
+    global log_syslog
     global log_max_size
     global log_format
 
@@ -779,6 +781,13 @@ def setup(path=None):
             log_stdout = config_file.getboolean("logging", "log_stdout")
         except ValueError:
             print "Configuration file problem: log_stdout must be a" \
+                  " Boolean value."
+
+    if config_file.has_option("logging", "log_syslog"):
+        try:
+            log_syslog = config_file.getboolean("logging", "log_syslog")
+        except ValueError:
+            print "Configuration file problem: log_syslog must be a" \
                   " Boolean value."
 
     if config_file.has_option("logging", "log_max_size"):
