@@ -123,13 +123,15 @@ class EC2Cluster(cluster_tools.ICluster):
                  cpu_cores=0, storage=0, access_key_id=None, secret_access_key=None,
                  security_group=None, hypervisor='xen', key_name=None, 
                  boot_timeout=None, secure_connection="", regions=[], vm_domain_name="",
-                  reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0):
+                 reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0,
+                 keep_alive=0,):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled, priority=priority)
+                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled,
+                        priority=priority,keep_alive=keep_alive,)
 
         if not security_group:
             security_group = ["default"]
@@ -357,6 +359,8 @@ class EC2Cluster(cluster_tools.ICluster):
             return self.ERROR
         log.verbose("vm_create - Memory entry found in given cluster: %d" %
                                                                     vm_mementry)
+        if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
+            vm_keepalive = self.keep_alive
         new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,

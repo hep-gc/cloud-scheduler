@@ -299,7 +299,8 @@ class ICluster:
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None, enabled=True, priority=0):
+                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None, enabled=True, priority=0,
+                 keep_alive=0):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
@@ -323,6 +324,7 @@ class ICluster:
         self.errorconnect = None
         self.priority = priority
         self.failed_image_set = set()
+        self.keep_alive = keep_alive
 
         self.setup_logging()
         log.debug("New cluster %s created" % self.name)
@@ -332,6 +334,7 @@ class ICluster:
         state = self.__dict__.copy()
         del state['vms_lock']
         del state['res_lock']
+        del state['failed_image_set']
         return state
 
     def __setstate__(self, state):
@@ -339,6 +342,7 @@ class ICluster:
         self.__dict__ = state
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
+        self.failed_image_set = set()
 
     def __repr__(self):
         return self.name
