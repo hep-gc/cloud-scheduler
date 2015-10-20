@@ -2151,6 +2151,8 @@ def main():
         stream_handler.setFormatter(log_formatter)
         log.addHandler(stream_handler)
 
+    if config.log_syslog:
+        log.addHandler(logging.handlers.SysLogHandler(address='/dev/log'))
     if config.log_location:
         file_handler = None
         if config.log_max_size:
