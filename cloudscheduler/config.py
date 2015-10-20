@@ -87,6 +87,7 @@ vm_start_running_timeout = -1 # Unlimited time
 vm_idle_threshold = 5 * 60 # 5 minute default
 max_starting_vm = -1
 max_destroy_threads = 10
+max_keepalive = 60 * 60  # 1 hour default
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
@@ -206,6 +207,7 @@ def setup(path=None):
     global vm_start_running_timeout
     global vm_idle_threshold
     global max_starting_vm
+    global max_keepalive
     global proxy_cache_dir
     global myproxy_logon_command
     global override_vmtype
@@ -687,6 +689,16 @@ def setup(path=None):
         except ValueError:
             print "Configuration file problem: max_starting_vm must be an " \
                   "integer value."
+            sys.exit(1)
+
+    if config_file.has_option("global", "max_keepalive"):
+        try:
+            max_keepalive = config_file.getint("global", "max_keepalive") * 60
+            if max_keepalive < 0:
+                max_keepalive = 0
+        except ValueError:
+            print "Configuration file problem: max_keepalive must be an " \
+                  "integer value(# of minutes)."
             sys.exit(1)
 
     if config_file.has_option("global", "max_destroy_threads"):
