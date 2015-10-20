@@ -269,41 +269,43 @@ class ResourcePool:
 
 
     @staticmethod
-    def _cluster_from_config(config, cluster):
+    def _cluster_from_config(cconfig, cluster):
         """Create a new cluster object from a config file's specification."""
         enabled = False
-        cloud_type = get_or_none(config, cluster, "cloud_type")
-        max_vm_mem = get_or_none(config, cluster, "max_vm_mem")
+        cloud_type = get_or_none(cconfig, cluster, "cloud_type")
+        max_vm_mem = get_or_none(cconfig, cluster, "max_vm_mem")
         try:
             max_vm_mem = int(max_vm_mem) if max_vm_mem != None else -1
         except ValueError:
             log.error("%s max_vm_mem must be a valid number." % cluster)
-        max_vm_storage = get_or_none(config, cluster, "max_vm_storage")
+        max_vm_storage = get_or_none(cconfig, cluster, "max_vm_storage")
         try:
             max_vm_storage = int(max_vm_storage) if max_vm_storage != None else -1
         except ValueError:
             log.error("%s max_vm_storage must be a valid number." % cluster)
-        total_cpu_cores = get_or_none(config, cluster, "total_cpu_cores")
+        total_cpu_cores = get_or_none(cconfig, cluster, "total_cpu_cores")
         try:
             total_cpu_cores = int(total_cpu_cores) if total_cpu_cores != None else -1
         except ValueError:
             log.error("%s total_cpu_cores must be a valid number." % cluster)
-        priority = get_or_none(config, cluster, "priority")
+        priority = get_or_none(cconfig, cluster, "priority")
         try:
             priority = int(priority) if priority != None else 0
         except ValueError:
             log.error("%s Priority must be a valid number." % cluster)
-        hypervisor = get_or_none(config, cluster, "hypervisor")
-        keep_alive = get_or_none(config, cluster, "vm_keep_alive")
+        hypervisor = get_or_none(cconfig, cluster, "hypervisor")
+        keep_alive = get_or_none(cconfig, cluster, "vm_keep_alive")
         try:
             keep_alive = int(keep_alive)*60 if keep_alive else 0
+            if keep_alive > config.max_keepalive:
+                keep_alive = config.max_keepalive
         except ValueError:
             log.error("%s KeepAlive must be a valid number." % cluster)
             keep_alive = 0
         networks = []
-        if config.has_option(cluster, "networks"):
+        if cconfig.has_option(cluster, "networks"):
             try:
-                networks = splitnstrip(",", get_or_none(config, cluster, "networks"))
+                networks = splitnstrip(",", get_or_none(cconfig, cluster, "networks"))
             except:
                 log.error("No networks specified for %s, will use the default" % cluster)
         if hypervisor == None:
@@ -315,36 +317,36 @@ class ResourcePool:
                 return None
 
         if cloud_type == "Nimbus":
-            nets = splitnstrip(",", get_or_none(config, cluster, "networks"))
+            nets = splitnstrip(",", get_or_none(cconfig, cluster, "networks"))
             if len(nets) > 1:
                 # Split the vm_slots too
-                slots = map(int, splitnstrip(",", get_or_none(config, cluster, "vm_slots")))
+                slots = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "vm_slots")))
             else:
-                slots = [int(get_or_none(config, cluster, "vm_slots"))]
+                slots = [int(get_or_none(cconfig, cluster, "vm_slots"))]
             net_slots = {}
             for x in range(len(nets)):
                 net_slots[nets[x]] = slots[x]
             total_slots = sum(slots)
             return nimbuscluster.NimbusCluster(name = cluster,
-                    host = get_or_none(config, cluster, "host"),
-                    port = get_or_none(config, cluster, "port"),
-                    cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    host = get_or_none(cconfig, cluster, "host"),
+                    port = get_or_none(cconfig, cluster, "port"),
+                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
                     max_vm_mem = max_vm_mem,
-                    cpu_archs = splitnstrip(",", get_or_none(config, cluster, "cpu_archs")),
+                    cpu_archs = splitnstrip(",", get_or_none(cconfig, cluster, "cpu_archs")),
                     networks = nets,
                     vm_slots = total_slots,
-                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
-                    storage = int(get_or_none(config, cluster, "storage")),
+                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
+                    storage = int(get_or_none(cconfig, cluster, "storage")),
                     max_vm_storage = max_vm_storage,
                     netslots = net_slots,
                     hypervisor = hypervisor,
-                    vm_lifetime = get_or_none(config, cluster, "vm_lifetime"),
-                    image_attach_device = get_or_none(config, cluster, "image_attach_device"),
-                    scratch_attach_device = get_or_none(config, cluster, "scratch_attach_device"),
-                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
+                    vm_lifetime = get_or_none(cconfig, cluster, "vm_lifetime"),
+                    image_attach_device = get_or_none(cconfig, cluster, "image_attach_device"),
+                    scratch_attach_device = get_or_none(cconfig, cluster, "scratch_attach_device"),
+                    boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
                     total_cpu_cores = total_cpu_cores,
-                    temp_lease_storage = get_or_none(config, cluster, "temp_lease_storage"),
+                    temp_lease_storage = get_or_none(cconfig, cluster, "temp_lease_storage"),
                     enabled=enabled,
                     priority = priority,
                     keep_alive=keep_alive,
@@ -352,25 +354,25 @@ class ResourcePool:
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
             return ec2cluster.EC2Cluster(name = cluster,
-                    host = get_or_none(config, cluster, "host"),
-                    cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    host = get_or_none(cconfig, cluster, "host"),
+                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     networks = networks,
-                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
-                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
-                    storage = int(get_or_none(config, cluster, "storage")),
-                    access_key_id = get_or_none(config, cluster, "access_key_id"),
-                    secret_access_key = get_or_none(config, cluster, "secret_access_key"),
-                    security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
+                    vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
+                    storage = int(get_or_none(cconfig, cluster, "storage")),
+                    access_key_id = get_or_none(cconfig, cluster, "access_key_id"),
+                    secret_access_key = get_or_none(cconfig, cluster, "secret_access_key"),
+                    security_group = splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
                     hypervisor = hypervisor,
-                    key_name = get_or_none(config, cluster, "key_name"),
-                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
-                    secure_connection = get_or_none(config, cluster, "secure_connection"),
-                    regions = map(str, splitnstrip(",", get_or_none(config, cluster, "regions"))),
-                    vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
-                    reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
-                    placement_zone = get_or_none(config, cluster, "placement_zone"),
+                    key_name = get_or_none(cconfig, cluster, "key_name"),
+                    boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
+                    secure_connection = get_or_none(cconfig, cluster, "secure_connection"),
+                    regions = map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
+                    vm_domain_name = get_or_none(cconfig, cluster, "vm_domain_name"),
+                    reverse_dns_lookup = get_or_none(cconfig, cluster, "reverse_dns_lookup"),
+                    placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
                     enabled=enabled,
                     priority = priority,
                     keep_alive=keep_alive,
@@ -378,16 +380,16 @@ class ResourcePool:
 
         elif cloud_type == "StratusLab" and stratuslab_support:
             return stratuslabcluster.StratusLabCluster(name = cluster,
-                    host = get_or_none(config, cluster, "host"),
-                    cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    host = get_or_none(cconfig, cluster, "host"),
+                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     networks = networks,
-                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
-                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
-                    storage = int(get_or_none(config, cluster, "storage")),
+                    vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
+                    storage = int(get_or_none(cconfig, cluster, "storage")),
                     hypervisor = hypervisor,
-                    contextualization = get_or_none(config, cluster, "contextualization"),
+                    contextualization = get_or_none(cconfig, cluster, "contextualization"),
                     enabled=enabled,
                     priority = priority,
                     keep_alive=keep_alive,
@@ -395,35 +397,35 @@ class ResourcePool:
 
         elif cloud_type.lower() == "ibmsmartcloud":
             return ibmcluster.IBMCluster(name= cluster,
-                    host= get_or_none(config, cluster, "host"),
-                    cloud_type= get_or_none(config, cluster, "cloud_type"),
-                    memory= map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    host= get_or_none(cconfig, cluster, "host"),
+                    cloud_type= get_or_none(cconfig, cluster, "cloud_type"),
+                    memory= map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
                     max_vm_mem= max_vm_mem if max_vm_mem != None else -1,
                     networks= networks,
-                    vm_slots= int(get_or_none(config, cluster, "vm_slots")),
-                    cpu_cores= int(get_or_none(config, cluster, "cpu_cores")),
-                    storage= int(get_or_none(config, cluster, "storage")),
+                    vm_slots= int(get_or_none(cconfig, cluster, "vm_slots")),
+                    cpu_cores= int(get_or_none(cconfig, cluster, "cpu_cores")),
+                    storage= int(get_or_none(cconfig, cluster, "storage")),
                     hypervisor= hypervisor,
-                    username= get_or_none(config, cluster, "username"),
-                    password= get_or_none(config, cluster, "password"),
+                    username= get_or_none(cconfig, cluster, "username"),
+                    password= get_or_none(cconfig, cluster, "password"),
                     enabled=enabled,
                     priority = priority,
                     keep_alive=keep_alive,
                     )
         elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce":
             return googlecluster.GoogleComputeEngineCluster(name = cluster,
-                    cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     networks = networks,
-                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
-                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
-                    storage = int(get_or_none(config, cluster, "storage")),
-                    auth_dat_file = get_or_none(config, cluster, "auth_dat_file"),
-                    secret_file = get_or_none(config, cluster, "secret_file"),
-                    security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
-                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
-                    project_id = get_or_none(config, cluster, "project_id"),
+                    vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
+                    storage = int(get_or_none(cconfig, cluster, "storage")),
+                    auth_dat_file = get_or_none(cconfig, cluster, "auth_dat_file"),
+                    secret_file = get_or_none(cconfig, cluster, "secret_file"),
+                    security_group = splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
+                    boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
+                    project_id = get_or_none(cconfig, cluster, "project_id"),
                     enabled=enabled,
                     priority = priority,
                     total_cpu_cores = total_cpu_cores,
@@ -431,29 +433,29 @@ class ResourcePool:
                     )
         elif cloud_type == "OpenStackNative":
             return openstackcluster.OpenStackCluster(name = cluster,
-                    cloud_type = get_or_none(config, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(config, cluster, "memory"))),
+                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     networks = networks,
-                    vm_slots = int(get_or_none(config, cluster, "vm_slots")),
-                    cpu_cores = int(get_or_none(config, cluster, "cpu_cores")),
-                    storage = int(get_or_none(config, cluster, "storage")),
-                    username = get_or_none(config, cluster, "username"),
-                    password = get_or_none(config, cluster, "password"),
-                    tenant_name = get_or_none(config, cluster, "tenant_name"),
-                    auth_url = get_or_none(config, cluster, "auth_url"),
-                    security_group = splitnstrip(",", get_or_none(config, cluster, "security_group")),
+                    vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
+                    storage = int(get_or_none(cconfig, cluster, "storage")),
+                    username = get_or_none(cconfig, cluster, "username"),
+                    password = get_or_none(cconfig, cluster, "password"),
+                    tenant_name = get_or_none(cconfig, cluster, "tenant_name"),
+                    auth_url = get_or_none(cconfig, cluster, "auth_url"),
+                    security_group = splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
                     hypervisor = hypervisor,
-                    key_name = get_or_none(config, cluster, "key_name"),
-                    boot_timeout = get_or_none(config, cluster, "boot_timeout"),
-                    secure_connection = get_or_none(config, cluster, "secure_connection"),
-                    regions = map(str, splitnstrip(",", get_or_none(config, cluster, "regions"))),
-                    vm_domain_name = get_or_none(config, cluster, "vm_domain_name"),
-                    reverse_dns_lookup = get_or_none(config, cluster, "reverse_dns_lookup"),
-                    placement_zone = get_or_none(config, cluster, "placement_zone"),
+                    key_name = get_or_none(cconfig, cluster, "key_name"),
+                    boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
+                    secure_connection = get_or_none(cconfig, cluster, "secure_connection"),
+                    regions = map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
+                    vm_domain_name = get_or_none(cconfig, cluster, "vm_domain_name"),
+                    reverse_dns_lookup = get_or_none(cconfig, cluster, "reverse_dns_lookup"),
+                    placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
                     enabled=enabled,
                     priority = priority,
-                    cacert = get_or_none(config, cluster, "cacert"),
+                    cacert = get_or_none(cconfig, cluster, "cacert"),
                     keep_alive=keep_alive,
                     )
         else:
