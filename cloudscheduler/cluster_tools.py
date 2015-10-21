@@ -139,7 +139,7 @@ class VM:
         log = logging.getLogger("cloudscheduler")
         log.verbose("New VM Object - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
           % (name, id, clusteraddr, image, memory))
-        log.info("Created VM cluster address %s name %s"%(clusteraddr,name))
+        log.info("Created VM cloud: %s id: %s"%(clusteraddr,self.id))
 
     def log(self):
         """Log the VM to the info level."""

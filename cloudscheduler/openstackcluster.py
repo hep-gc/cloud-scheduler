@@ -238,6 +238,7 @@ class OpenStackCluster(cluster_tools.ICluster):
     
                 try:
                     self.resource_checkout(new_vm)
+                    log.info("Launching 1 VM: %s on %s under tenant: %s" % (instance_id, self.name, self.tenant_name))
                 except:
                     log.error("Unexpected Error checking out resources when creating a VM. Programming error?")
                     self.vm_destroy(new_vm, reason="Failed Resource checkout")
@@ -257,7 +258,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         """ Destroy a VM on OpenStack."""
         nova = self._get_creds_nova()
         import novaclient.exceptions
-        log.info("Destroying VM: %s Name: %s Reason: %s" % (vm.id, vm.hostname, reason))
+        log.info("Destroying VM: %s Name: %s on %s tenant: %s Reason: %s" % (vm.id, vm.hostname, self.name, self.tenant_name, reason))
         try:
             instance = nova.servers.get(vm.id)
             instance.delete()

@@ -276,7 +276,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
         # Delete an Instance
-        log.info("googlecluster::destroy vm::%s"%vm.name)
+        log.info("googlecluster::destroy vm::%s on %s " % (vm.hostname, self.name))
         request = self.gce_service.instances().delete(
             project=self.project_id, instance=vm.name, zone=self.DEFAULT_ZONE)
         try:

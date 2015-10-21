@@ -1303,7 +1303,7 @@ class Cleanup(threading.Thread):
                 else:
                     break
 
-            log.info("Final(for real) num to change: %s" % str(num_to_change))
+            log.debug("Final(for real) num to change: %s" % str(num_to_change))
 
             log.verbose("Ready to balance via configured method")
             if config.graceful_shutdown:
