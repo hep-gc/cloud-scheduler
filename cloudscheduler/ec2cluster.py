@@ -477,7 +477,7 @@ class EC2Cluster(cluster_tools.ICluster):
         vm -- vm to shutdown and destroy
         return_resources -- if set to false, do not return resources from VM to cluster
         """
-        log.info("Destroying VM: %s Name: %s Reason: %s" % (vm.id, vm.hostname, reason))
+        log.info("Destroying VM: %s Name: %s on %s Reason: %s" % (vm.id, vm.hostname, self.name, reason))
 
         try:
             connection = self._get_connection()

@@ -1498,7 +1498,7 @@ class ResourcePool:
         Return:
             a 3 tuple of the returncodes from the 2 commands used and a return code
         """
-        log.info("cloud_management.py::do_condor_off: %s, addr: %s, master_addr: %s"%(machine_name,machine_addr,master_addr))
+        log.debug("cloud_management.py::do_condor_off: %s, addr: %s, master_addr: %s"%(machine_name,machine_addr,master_addr))
         #cmd = '%s -peaceful -name "%s" -subsystem startd' % (config.condor_off_command, machine_name)
         cmd2 = '%s -peaceful -addr "%s" -subsystem startd' % (config.condor_off_command, machine_addr)
         cmd3 = '%s -peaceful -addr "%s" -subsystem master' % (config.condor_off_command, master_addr)
@@ -1607,7 +1607,7 @@ class ResourcePool:
         Return:
             a tuple of the returncodes from the command used and a return code
         """
-        log.info("cloud_management.py::do_advertise_master - target_file: %s" % (target_file))
+        log.debug("cloud_management.py::do_advertise_master - target_file: %s" % (target_file))
 
         cmd = '%s INVALIDATE_MASTER_ADS "%s"' % (config.condor_advertise_command, target_file)
         args = []
@@ -1658,7 +1658,7 @@ class ResourcePool:
         Return:
             a tuple of the returncodes from the command used and a return code
         """
-        log.info("cloud_management.py::do_advertise_startd - target_file: %s" % (target_file))
+        log.debug("cloud_management.py::do_advertise_startd - target_file: %s" % (target_file))
 
         cmd = '%s INVALIDATE_STARTD_ADS "%s"' % (config.condor_advertise_command, target_file)
         args = []
