@@ -16,7 +16,8 @@ write_files:
         # Local config for Cloud Scheduler
 
         ## Set this to the name you would like to give your VM
-        VMType = "atlas-worker"
+        ## or set override_vmtype to true in cloud_scheduler.conf so this will be set properly
+        VMType = "default"
 
         ## Hostname of the central manager.
         # Prefer value contextualized by Cloud Scheduler and then use central_manager
