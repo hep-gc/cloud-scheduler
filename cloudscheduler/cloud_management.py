@@ -945,7 +945,7 @@ class ResourcePool:
         """
         count = defaultdict(int)
         for vm in machineList:
-            if vm.slot_type == "Partitionable" and vm.total_slots > 1:
+            if vm.slot_type == "Partitionable" and vm.total_slots != "1":
                 continue
             if vm.remote_owner:
                 try:
