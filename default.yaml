@@ -3,16 +3,6 @@ merge_type: 'list(append)+dict(recurse_array)+str()'
 
 write_files:
 -   content: |
-        #!/bin/bash -l
-        #
-        # Condor startd jobwrapper
-        # Executes using bash -l, so that all /etc/profile.d/*.sh scripts are sourced.
-        #
-        exec "$@"
-    owner: root:root
-    permissions: '0755'
-    path: /usr/libexec/condor/jobwrapper.sh
--   content: |
         # Local config for Cloud Scheduler
 
         ## Set this to the name you would like to give your VM
@@ -63,7 +53,6 @@ write_files:
         SHUTDOWN_GRACEFUL_TIMEOUT = 3600 * 25 * 2
 
         ### Job environment config
-        USER_JOB_WRAPPER = /usr/libexec/condor/jobwrapper.sh
         NUM_SLOTS = 1
         NUM_SLOTS_TYPE_1 = 1
         SLOT_TYPE_1 = cpus=100%
