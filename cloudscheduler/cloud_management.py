@@ -1258,7 +1258,12 @@ class ResourcePool:
         try:
             old_resources = pickle.load(persistence_file)
         except:
-            log.exception("Unknown problem opening persistence file!")
+            log.exception("Unknown problem unpickling persistence file!")
+            with open('/tmp/cloudscheduler.persistence.bak', 'wb') as (pbak,err):
+                pcontents = persistence_file.read()
+                pbak.write(pcontents)
+                if err:
+                    log.error("Problem trying to create backup pickle: %s" % err)
             return
         persistence_file.close()
         
