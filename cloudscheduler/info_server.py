@@ -1,27 +1,13 @@
 #!/usr/bin/env python
-# vim: set expandtab ts=4 sw=4:
 
-# Copyright (C) 2009 University of Victoria
-# You may distribute under the terms of either the GNU General Public
-# License or the Apache v2 License, as specified in the README file.
+""" RPC Server for cloud_status.
+"""
 
-## Auth: Patrick Armstrong. 8/28/2009.
-##
-## Cloud Scheduler Information Server
-## This class implements an XMLRPC Server that serves information about the state
-## of the cloud sceduler to information utilities (web interface, command line, whatever)
-##
-## Based on http://docs.python.org/library/simplexmlrpcserver.html
-
-##
-## IMPORTS
-##
 import logging
 import threading
 import time
 import socket
 import sys
-import platform
 import re
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
@@ -44,8 +30,10 @@ else:
 
 log = None
 
+
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
+
 
 class InfoServer(threading.Thread,):
 

@@ -1,18 +1,5 @@
 #!/usr/bin/env python
-# vim: set expandtab ts=4 sw=4:
 
-# Copyright (C) 2009 University of Victoria
-# You may distribute under the terms of either the GNU General Public
-# License or the Apache v2 License, as specified in the README file.
-
-## Auth: Duncan Penfold-Brown. 6/15/2009.
-
-## CLOUD MANAGEMENT
-##
-
-##
-## IMPORTS
-##
 from __future__ import with_statement
 
 import os
@@ -28,13 +15,9 @@ import tempfile
 import threading
 import subprocess
 import ConfigParser
-import multiprocessing
 
-from urllib2 import URLError
 from decimal import *
-from StringIO import StringIO
 from collections import defaultdict
-import multiprocessing
 
 try:
     import cPickle as pickle
@@ -68,9 +51,8 @@ from cloudscheduler.utilities import ErrTrackQueue
 from cloudscheduler.utilities import splitnstrip
 import cloudscheduler.utilities as utilities
 
-##
-## GLOBALS
-##
+
+# GLOBALS
 log = None
 log = logging.getLogger("cloudscheduler")
 
