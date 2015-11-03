@@ -1,44 +1,24 @@
 #!/usr/bin/env python
-# vim: set expandtab ts=4 sw=4:
 
-# Copyright (C) 2009 University of Victoria
-# You may distribute under the terms of either the GNU General Public
-# License or the Apache v2 License, as specified in the README file.
+""" RPC server for cloud_admin.
+"""
 
-## Auth: Patrick Armstrong. 8/28/2009.
-##
-## Cloud Scheduler Information Server
-## This class implements an XMLRPC Server that serves information about the state
-## of the cloud sceduler to information utilities (web interface, command line, whatever)
-##
-## Based on http://docs.python.org/library/simplexmlrpcserver.html
-
-##
-## IMPORTS
-##
 import logging
 import threading
-import time
 import socket
 import sys
-import platform
-import re
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
-
 import cloudscheduler.utilities as utilities
 import cloudscheduler.config as config
-from cluster_tools import ICluster
-from cluster_tools import VM
-from cloud_management import ResourcePool
-from job_management import Job
-from job_management import JobPool
 from proxy_refreshers import MyProxyProxyRefresher
 
 log = None
 
+
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
+
 
 class AdminServer(threading.Thread,):
 
@@ -49,12 +29,13 @@ class AdminServer(threading.Thread,):
     vm_poller = None
     scheduler = None
     cleaner = None
+
     def __init__(self, c_resources, c_job_pool, c_job_poller, c_machine_poller, c_vm_poller, c_scheduler, c_cleaner):
 
         global log
         log = logging.getLogger("cloudscheduler")
 
-        #set up class
+        # set up class
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.done = False
         cloud_resources = c_resources
@@ -65,7 +46,7 @@ class AdminServer(threading.Thread,):
         scheduler = c_scheduler
         cleaner = c_cleaner
         host_name = "0.0.0.0"
-        #set up server
+        # set up server
         try:
             self.server = SimpleXMLRPCServer((host_name,
                                               config.admin_server_port),

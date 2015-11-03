@@ -1,12 +1,6 @@
 #!/usr/bin/env python
-# vim: set expandtab ts=4 sw=4:
 
-# Copyright (C) 2009 University of Victoria
-# You may distribute under the terms of either the GNU General Public
-# License or the Apache v2 License, as specified in the README file.
-
-# cloud_status - tool to display information about cloud scheduler
-# 
+""" cloud_admin - tool to control settings and VMs in cloud scheduler."""
 import xmlrpclib
 import sys
 import socket
