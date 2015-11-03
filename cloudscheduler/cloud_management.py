@@ -1973,7 +1973,7 @@ class ResourcePool:
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
                 log.debug(output)
             else:
-                output = "Could not find VM ID." % vmid
+                output = "Could not find VM ID: %s on Cloud: %s" % (vmid, clustername)
         else:
             output = "Could not find Cloud %s." % clustername
         return output
