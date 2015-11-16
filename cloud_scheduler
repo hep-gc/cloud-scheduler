@@ -15,7 +15,6 @@
 ## Using optparse for command line options (http://docs.python.org/library/optparse.html)
 ##
 
-## Imports
 from __future__ import with_statement
 import sys
 
@@ -26,16 +25,12 @@ if sys.version_info[:2] < (2,5):
 import os
 import re
 import time
-import string
-import getopt
 import signal
 import logging
 import urllib2
 import threading
 import traceback
-import ConfigParser
 import logging.handlers
-import multiprocessing
 from itertools import islice
 from optparse import OptionParser
 from decimal import *
@@ -54,7 +49,7 @@ import cloudscheduler.cloud_init_util as cloud_init_util
 from cloudscheduler.cloud_management import VMDestroyCmd
 from cloudscheduler.cloud_management import VMMachine
 
-#from cloudscheduler.monitoring.get_clouds import getCloudsClient
+# from cloudscheduler.monitoring.get_clouds import getCloudsClient
 
 log = utilities.get_cloudscheduler_logger()
 
