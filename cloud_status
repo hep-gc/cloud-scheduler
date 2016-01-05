@@ -2,9 +2,8 @@
 
 """ cloud_status - tool to display information about cloud scheduler. """
 
-import xmlrpclib
+import requests
 import sys
-import socket
 from optparse import OptionParser
 import platform
 
@@ -93,91 +92,91 @@ def main(argv=None):
     else:
         server_hostname = platform.node()
 
+    base_url = "http://{}:{}/".format(server_hostname, server_port)
+
     # Connect to info server
     try:
-        s = xmlrpclib.ServerProxy("http://%s:%s" %
-                                  (server_hostname, server_port))
         if cli_options.all_cluster and not cli_options.json:
-            print s.get_cluster_resources()
+            print requests.get(base_url + 'clusters').text
         elif cli_options.vms:
-            print s.get_cluster_vm_resources()
+            print requests.get(base_url + 'vms').text
         elif cli_options.status:
             if cli_options.cluster_name:
-                print s.get_vm_stats(cli_options.cluster_name)
+                print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms').text
             else:
-                print s.get_vm_stats()
+                print requests.get(base_url + 'vms').text
         elif not cli_options.json and cli_options.vm_id and cli_options.cluster_name:
-            print s.get_vm_info(cli_options.cluster_name, cli_options.vm_id)
+            print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms/' + cli_options.vm_id).text
         elif cli_options.vm_id and not cli_options.cluster_name:
             print "Please provide -c cluster_name with vm ID"
         elif not cli_options.json and cli_options.cluster_name and not cli_options.vm_id and not cli_options.totals:
-            print s.get_cluster_info(cli_options.cluster_name)
+            print requests.get(base_url + 'clusters/' + cli_options.cluster_name).text
         elif cli_options.json and cli_options.all_cluster:
-            print s.get_json_resource()
+            print requests.get(base_url + 'clusters.json').text
         elif cli_options.json and cli_options.vm_id and cli_options.cluster_name:
-            print s.get_json_vm(cli_options.cluster_name, cli_options.vm_id)
+            print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms/' + cli_options.vm_id + '.json').text
         elif cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
-            print s.get_json_cluster(cli_options.cluster_name)
+            print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '.json').text
         elif (cli_options.dev_info):
-            print s.get_developer_information()
+            print requests.get(base_url + 'developer-info').text
         elif cli_options.job_queue:
             if cli_options.job_queue.startswith('a'):
                 print "Jobs in Scheduled Queue"
-                print s.get_schedjobs()
+                print requests.get(base_url + 'jobs', params={'state': 'sched'}).text
                 print "Jobs in New Queue"
-                print s.get_newjobs()
+                print requests.get(base_url + 'jobs', params={'state': 'new'}).text
                 print "Jobs in High Priority Queue"
-                print s.get_highjobs()
+                print requests.get(base_url + 'jobs', params={'state': 'high'}).text
             elif cli_options.job_queue.startswith('n'):
                 print "Jobs in New Queue"
-                print s.get_newjobs()
+                print requests.get(base_url + 'jobs', params={'state': 'new'}).text
             elif cli_options.job_queue.startswith('s'):
                 print "Jobs in Scheduled Queue"
-                print s.get_schedjobs()
+                print requests.get(base_url + 'jobs', params={'state': 'sched'}).text
             elif cli_options.job_queue.startswith('hi'):
                 print "Jobs in High Priority Queue"
-                print s.get_highjobs()
+                print requests.get(base_url + 'jobs', params={'state': 'high'}).text
             elif cli_options.job_queue.startswith('he'):
                 print "Jobs in Held state"
-                print s.get_heldjobs()
+                print requests.get(base_url + 'jobs', params={'state': 'held'}).text
             elif cli_options.job_queue.startswith('i'):
                 print "Jobs in Idle state"
-                print s.get_idlejobs()
+                print requests.get(base_url + 'jobs', params={'state': 'idle'}).text
             elif cli_options.job_queue.startswith('c'):
                 print "Jobs in Complete state"
-                print s.get_completejobs()
+                print requests.get(base_url + 'jobs', params={'state': 'complete'}).text
             elif cli_options.job_queue.startswith('r'):
                 print "Jobs in Running state"
-                print s.get_runningjobs()
+                print requests.get(base_url + 'jobs', params={'state': 'running'}).text
         elif cli_options.ips:
-            print s.get_ips_munin()
+            print requests.get(base_url + 'ips').text
         elif cli_options.boot_time:
-            print s.get_vm_startup_time()
+            print requests.get(base_url + 'vms', params={'metric': 'startup-time'}).text
         elif cli_options.diff_type:
-            print s.get_diff_types()
+            print requests.get(base_url + 'diff-types').text
         elif cli_options.get_job_run_times:
-            print s.get_vm_job_run_times()
+            print requests.get(base_url + 'vms', params={'metric': 'job-run-times'}).text
         elif cli_options.cloud_conf:
-            print s.get_cloud_config_values()
+            print requests.get(base_url + 'cloud/config').text
         elif cli_options.totals and cli_options.cluster_name:
-            print s.get_total_vms_cloud(cli_options.cluster_name)
+            print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms', params={'metric': 'total'}).text
         elif cli_options.totals:
-            print s.get_total_vms()
+            print requests.get(base_url + 'vms', params={'metric': 'total'}).text
         elif cli_options.missing_vms:
-            print s.get_missing_vm_list()
+            print requests.get(base_url + 'vms', params={'metric': 'missing'}).text
         elif cli_options.heart_beats:
-            print s.get_thread_heart_beats()
+            print requests.get(base_url + 'thread-heart-beats').text
         elif cli_options.boot_failures:
-            print s.get_job_failure_reasons()
+            print requests.get(base_url + 'failures/boot').text
         elif cli_options.image_failures:
-            print s.get_image_failures()
+            print requests.get(base_url + 'failures/image').text
         elif cli_options.version:
-            print s.get_version()
+            print requests.get(base_url).text
             print "Cloud Status version: %s" % version.version
         else:
-            print s.get_cloud_resources()
+            print requests.get(base_url + 'cloud').text
 
-    except socket.error:
+    except requests.exceptions.ConnectionError:
         print "%s: couldn't connect to cloud scheduler at %s on port %s."\
                % (sys.argv[0], server_hostname, server_port)
         print "Is the cloud scheduler running on port %s?" % server_port
