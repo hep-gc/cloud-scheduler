@@ -151,11 +151,11 @@ def main(argv=None):
         elif cli_options.ips:
             print requests.get(base_url + 'ips').text
         elif cli_options.boot_time:
-            print requests.get(base_url + 'vms', params={'metric': 'startup-time'}).text
+            print requests.get(base_url + 'vms', params={'metric': 'startup_time'}).text
         elif cli_options.diff_type:
             print requests.get(base_url + 'diff-types').text
         elif cli_options.get_job_run_times:
-            print requests.get(base_url + 'vms', params={'metric': 'job-run-times'}).text
+            print requests.get(base_url + 'vms', params={'metric': 'job_run_times'}).text
         elif cli_options.cloud_conf:
             print requests.get(base_url + 'cloud/config').text
         elif cli_options.totals and cli_options.cluster_name:
