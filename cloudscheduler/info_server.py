@@ -117,30 +117,41 @@ class views:
         def GET(self, cluster_name=None, json=None):
             if cluster_name:
                 if json:
-                    output = "{}"
-                    cluster = web.cloud_resources.get_cluster(cluster_name)
-                    if cluster:
-                        output = ClusterJSONEncoder().encode(cluster)
-                    return output
+                    return self.view_cluster_json(cluster_name)
                 else:
-                    output = []
-                    output.append("Cluster Info: %s\n" % cluster_name)
-                    cluster = web.cloud_resources.get_cluster(cluster_name)
-                    if cluster:
-                        output.append(cluster.get_cluster_info_short())
-                    else:
-                        output.append("Cluster named %s not found." % cluster_name)
-                    return ''.join(output)
+                    return self.view_cluster(cluster_name)
             else:
                 if json:
                     return ResourcePoolJSONEncoder().encode(web.cloud_resources)
                 else:
-                    output = []
-                    output.append("Clusters in resource pool:\n")
-                    for cluster in web.cloud_resources.resources:
-                        output.append(web.cluster.get_cluster_info_short())
-                        output.append("\n")
-                    return ''.join(output)
+                    return self.view_resources()
+            return ''
+
+        def view_cluster(self, cluster_name):
+            output = []
+            output.append("Cluster Info: %s\n" % cluster_name)
+            cluster = web.cloud_resources.get_cluster(cluster_name)
+            if cluster:
+                output.append(cluster.get_cluster_info_short())
+            else:
+                output.append("Cluster named %s not found." % cluster_name)
+            return ''.join(output)
+
+        def view_cluster_json(self, cluster_name):
+            output = "{}"
+            cluster = web.cloud_resources.get_cluster(cluster_name)
+            if cluster:
+                output = ClusterJSONEncoder().encode(cluster)
+            return output
+
+        def view_resources(self):
+            output = []
+            output.append("Clusters in resource pool:\n")
+            for cluster in web.cloud_resources.resources:
+                output.append(web.cluster.get_cluster_info_short())
+                output.append("\n")
+            return ''.join(output)
+            
 
     class developer_info:
         def GET(self):
@@ -222,23 +233,31 @@ class views:
     class failures:
         def GET(self, failure_type):
             if failure_type == 'boot':
-                output = []
-                output.append("Job Failure Reasons:\n")
-                reasons = web.job_pool.fetch_job_failure_reasons()
-                for job in reasons:
-                    output.append("   Job ID: %s\n" % job.id)
-                    for reason in job.failed_boot_reason:
-                        output.append("      %s\n" % reason)
-                return ''.join(output)
+                return self.view_boot_failures()
             elif failure_type == 'image':
-                output = []
-                output.append("Image Failure List\n")
-                for cloud in web.cloud_resources.resources:
-                    if len(cloud.failed_image_set) > 0:
-                        output.append("   Cloud: %s\n" % cloud.name)
-                        for image in cloud.failed_image_set:
-                            output.append("      Image: %s\n" % image)
-                return ''.join(output)
+                return self.view_image_failures()
+
+            return ''
+
+        def view_boot_failures(self):
+            output = []
+            output.append("Job Failure Reasons:\n")
+            reasons = web.job_pool.fetch_job_failure_reasons()
+            for job in reasons:
+                output.append("   Job ID: %s\n" % job.id)
+                for reason in job.failed_boot_reason:
+                    output.append("      %s\n" % reason)
+            return ''.join(output)
+
+        def view_image_failures(self):
+            output = []
+            output.append("Image Failure List\n")
+            for cloud in web.cloud_resources.resources:
+                if len(cloud.failed_image_set) > 0:
+                    output.append("   Cloud: %s\n" % cloud.name)
+                    for image in cloud.failed_image_set:
+                        output.append("      Image: %s\n" % image)
+            return ''.join(output)
 
     class ips:
         def GET(self):
@@ -255,42 +274,51 @@ class views:
         def GET(self, jobid=None, json=None):
             if jobid:
                 if json:
-                    job_match = web.job_pool.job_container.get_job_by_id(jobid)
-                    return JobJSONEncoder().encode(job_match)
+                    return self.view_job_json(jobid)
                 else:
-                    output = "Job not found."
-                    job = web.job_pool.job_container.get_job_by_id(jobid)
-                    if job != None:
-                        output = job.get_job_info_pretty()
-                    return output
+                    return self.view_job(jobid)
 
             elif 'state' in web.input():
-                output = []
-
-                state = web.input().state
-                if state == 'complete':
-                    jobs = web.job_pool.job_container.get_complete_jobs()
-                elif state == 'held':
-                    jobs = web.job_pool.job_container.get_held_jobs()
-                elif state == 'high':
-                    jobs = web.job_pool.job_container.get_high_priority_jobs()
-                elif state == 'idle':
-                    jobs = web.job_pool.job_container.get_idle_jobs()
-                elif state == 'new':
-                    jobs = web.job_pool.job_container.get_unscheduled_jobs()
-                elif state == 'running':
-                    jobs = web.job_pool.job_container.get_running_jobs()
-                elif state == 'sched':
-                    jobs = web.job_pool.job_container.get_scheduled_jobs()
-                else:
-                    return ''
-
-                output.append(Job.get_job_info_header())
-                for job in jobs:
-                    output.append(job.get_job_info())
-                return ''.join(output)
+                return self.view_jobs(web.input().state)
 
             return ''
+
+        def view_jobs(self, state):
+            output = []
+
+            state = web.input().state
+            if state == 'complete':
+                jobs = web.job_pool.job_container.get_complete_jobs()
+            elif state == 'held':
+                jobs = web.job_pool.job_container.get_held_jobs()
+            elif state == 'high':
+                jobs = web.job_pool.job_container.get_high_priority_jobs()
+            elif state == 'idle':
+                jobs = web.job_pool.job_container.get_idle_jobs()
+            elif state == 'new':
+                jobs = web.job_pool.job_container.get_unscheduled_jobs()
+            elif state == 'running':
+                jobs = web.job_pool.job_container.get_running_jobs()
+            elif state == 'sched':
+                jobs = web.job_pool.job_container.get_scheduled_jobs()
+            else:
+                return ''
+
+            output.append(Job.get_job_info_header())
+            for job in jobs:
+                output.append(job.get_job_info())
+            return ''.join(output)
+
+        def view_job(self, jobid):
+            output = "Job not found."
+            job = web.job_pool.job_container.get_job_by_id(jobid)
+            if job != None:
+                output = job.get_job_info_pretty()
+            return output
+
+        def view_job_json(self, jobid):
+            job_match = web.job_pool.job_container.get_job_by_id(jobid)
+            return JobJSONEncoder().encode(job_match)
         
     class job_pool:
         def GET(self):
@@ -331,105 +359,124 @@ class views:
         def GET(self, cluster_name=None, vm_id=None, json=None):
             if cluster_name and vm_id:
                 if json:
-                    output = "{}"
-                    cluster = web.cloud_resources.get_cluster(cluster_name)
-                    vm = None
-                    if cluster:
-                        vm = cluster.get_vm(vm_id)
-                        if vm:
-                            output = VMJSONEncoder().encode(vm)
-                    return output
+                    return self.view_vm_json(cluster_name, vm_id)
                 else:
-                    output = []
-                    output.append("VM Info for VM id: %s\n" % vm_id)
-                    cluster = web.cloud_resources.get_cluster(cluster_name)
-                    vm = None
-                    if cluster:
-                        vm = cluster.get_vm(vm_id)
-                    else:
-                        output.append("Cluster %s not found.\n" % cluster_name)
-                    if vm:
-                        output.append(vm.get_vm_info())
-                    else:
-                        output.append("VM with id: %s not found.\n" % vm_id)
-                    return ''.join(output)
-            elif cluster_name and 'metric' in web.input():
-                metric = web.input().metric
-                if metric == 'total':
-                    output = []
-                    cluster = web.cloud_resources.get_cluster(cluster_name)
-                    if cluster:
-                        output.append(str(cluster.num_vms()))
-                    else:
-                        output.append("Cluster named %s not found." % cluster_name)
-                    return ''.join(output)
-                else:
-                    return ''
+                    return self.view_vm(cluster_name, vm_id)
+
             elif 'metric' in web.input():
-                metric = web.input().metric
-                if metric == 'all':
-                    vms = []
-                    if cluster_name:
-                        cluster = web.cloud_resources.get_cluster(cluster_name)
-                        if not cluster:
-                            return "Could not find cloud: %s - check cloud_status for list of available clouds" % cluster_name
-                        vms.extend(cluster.vms)
-                    else:
-                        for cluster in web.cloud_resources.resources:
-                            vms.extend(cluster.vms)
-                    state_count = {'Running':0, 'Starting':0, 'Error':0, 'Retiring':0, 'ExpiredProxy':0, 'NoProxy':0, 'ConnectionRefused':0}
-                    for vm in vms:
-                        if vm.override_status:
-                            state_count[vm.override_status] += 1
-                        else:
-                            state_count[vm.status] += 1
-                    output = []
-                    for state, count in state_count.iteritems():
-                        if count > 0:
-                            output.extend([str(count), ' ', state, ','])
-                    return ''.join(output)
-                elif metric == 'job_run_times':
-                    output = []
-                    output.append("Run Times of Jobs on VMs\n")
-                    for cluster in web.cloud_resources.resources:
-                        for vm in cluster.vms:
-                            output.append("%s : avg %f\n" % (vm.hostname, vm.job_run_times.average()))
-                    return ''.join(output)
-                elif metric == 'missing':
-                    return web.cloud_resources.fetch_missing_vm_list()
-                elif metric == 'startup_time':
-                    output = []
-                    for cluster in web.cloud_resources.resources:
-                        output.append("Cluster: %s " % cluster.name)
-                        total_time = 0
-                        for vm in cluster.vms:
-                            pass
-                            output.append("%d, " % (vm.startup_time if vm.startup_time != None else 0))
-                            total_time += (vm.startup_time if vm.startup_time != None else 0)
-                        if len(cluster.vms) > 0:
-                            output.append(" Avg: %d " % (int(total_time) / len(cluster.vms)))
-                    return ''.join(output)
-                elif metric == 'total':
-                    return str(web.cloud_resources.vm_count())
-                else:
-                    return ''
+                return self.view_vm_metric(cluster_name, web.input().metric)
+                
             else:
+                return self.view_vm_resources()
+
+        def view_vm(self, cluster_name, vm_id):
+            output = []
+            output.append("VM Info for VM id: %s\n" % vm_id)
+            cluster = web.cloud_resources.get_cluster(cluster_name)
+            vm = None
+            if cluster:
+                vm = cluster.get_vm(vm_id)
+            else:
+                output.append("Cluster %s not found.\n" % cluster_name)
+            if vm:
+                output.append(vm.get_vm_info())
+            else:
+                output.append("VM with id: %s not found.\n" % vm_id)
+            return ''.join(output)
+
+        def view_vm_json(self, cluster_name, vm_id):
+            output = "{}"
+            cluster = web.cloud_resources.get_cluster(cluster_name)
+            vm = None
+            if cluster:
+                vm = cluster.get_vm(vm_id)
+                if vm:
+                    output = VMJSONEncoder().encode(vm)
+            return output
+
+        def view_vm_metric(self, cluster_name, metric):
+            if metric == 'all':
+                vms = []
+                if cluster_name:
+                    cluster = web.cloud_resources.get_cluster(cluster_name)
+                    if not cluster:
+                        return "Could not find cloud: %s - check cloud_status for list of available clouds" % cluster_name
+                    vms.extend(cluster.vms)
+                else:
+                    for cluster in web.cloud_resources.resources:
+                        vms.extend(cluster.vms)
+                state_count = {'Running':0, 'Starting':0, 'Error':0, 'Retiring':0, 'ExpiredProxy':0, 'NoProxy':0, 'ConnectionRefused':0}
+                for vm in vms:
+                    if vm.override_status:
+                        state_count[vm.override_status] += 1
+                    else:
+                        state_count[vm.status] += 1
                 output = []
-                output.append(VM.get_vm_info_header())
-                clusters = 0
-                vm_count = 0
-                for cluster in web.cloud_resources.resources:
-                    clusters += 1
-                    vm_count += len(cluster.vms)
-                    output.append(cluster.get_cluster_vms_info())
-                output.append('\nTotal VMs: %i. Total Clouds: %i' % (vm_count, clusters))
-                extra_output = []
-                for cluster in web.cloud_resources.retired_resources:
-                    extra_output.append(cluster.get_cluster_vms_info())
-                if len(extra_output) > 0:
-                    output.append('\n\nRetiring VMs from removing resources:\n')
-                    output.extend(extra_output)
+                for state, count in state_count.iteritems():
+                    if count > 0:
+                        output.extend([str(count), ' ', state, ','])
                 return ''.join(output)
+
+            elif metric == 'job_run_times':
+                output = []
+                output.append("Run Times of Jobs on VMs\n")
+                for cluster in web.cloud_resources.resources:
+                    for vm in cluster.vms:
+                        output.append("%s : avg %f\n" % (vm.hostname, vm.job_run_times.average()))
+                return ''.join(output)
+
+            elif metric == 'missing':
+                return web.cloud_resources.fetch_missing_vm_list()
+
+            elif metric == 'startup_time':
+                output = []
+                for cluster in web.cloud_resources.resources:
+                    output.append("Cluster: %s " % cluster.name)
+                    total_time = 0
+                    for vm in cluster.vms:
+                        pass
+                        output.append("%d, " % (vm.startup_time if vm.startup_time != None else 0))
+                        total_time += (vm.startup_time if vm.startup_time != None else 0)
+                    if len(cluster.vms) > 0:
+                        output.append(" Avg: %d " % (int(total_time) / len(cluster.vms)))
+                return ''.join(output)
+
+            elif metric == 'total':
+                if cluster_name:
+                    metric = web.input().metric
+                    if metric == 'total':
+                        output = []
+                        cluster = web.cloud_resources.get_cluster(cluster_name)
+                        if cluster:
+                            output.append(str(cluster.num_vms()))
+                        else:
+                            output.append("Cluster named %s not found." % cluster_name)
+                        return ''.join(output)
+                    else:
+                        return ''
+                else:
+                    return str(web.cloud_resources.vm_count())
+
+            else:
+                return ''
+
+        def view_vm_resources(self):
+            output = []
+            output.append(VM.get_vm_info_header())
+            clusters = 0
+            vm_count = 0
+            for cluster in web.cloud_resources.resources:
+                clusters += 1
+                vm_count += len(cluster.vms)
+                output.append(cluster.get_cluster_vms_info())
+            output.append('\nTotal VMs: %i. Total Clouds: %i' % (vm_count, clusters))
+            extra_output = []
+            for cluster in web.cloud_resources.retired_resources:
+                extra_output.append(cluster.get_cluster_vms_info())
+            if len(extra_output) > 0:
+                output.append('\n\nRetiring VMs from removing resources:\n')
+                output.extend(extra_output)
+            return ''.join(output)
 
 class VMJSONEncoder(json.JSONEncoder):
     def default(self, vm):
