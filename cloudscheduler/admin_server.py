@@ -47,13 +47,13 @@ class AdminServer(threading.Thread,):
         self.app = None
         self.listen = (host_name, config.admin_server_port)
         self.urls = (
-            r'/',                       views.config,
-            r'/clouds/(\w+)',           views.clouds,
-            r'/clouds/(\w+)/vms',       views.vms,
-            r'/clouds/(\w+)/vms/(\w+)', views.vms,
-            r'/cloud-aliases',          views.cloud_aliases,
-            r'/users/(\w+)',            views.users,
-            r'/user-limits',            views.user_limits,
+            r'/',                             views.config,
+            r'/clouds/([\w-]+)',              views.clouds,
+            r'/clouds/([\w-]+)/vms',          views.vms,
+            r'/clouds/([\w-]+)/vms/([\w-]+)', views.vms,
+            r'/cloud-aliases',                views.cloud_aliases,
+            r'/users/([\w-]+)',               views.users,
+            r'/user-limits',                  views.user_limits,
         )
 
     def run(self):
