@@ -147,7 +147,7 @@ class views:
             output = []
             output.append("Clusters in resource pool:\n")
             for cluster in web.cloud_resources.resources:
-                output.append(web.cluster.get_cluster_info_short())
+                output.append(cluster.get_cluster_info_short())
                 output.append("\n")
             return ''.join(output)
             
