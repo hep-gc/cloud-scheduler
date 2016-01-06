@@ -102,9 +102,9 @@ def main(argv=None):
             print requests.get(base_url + 'vms').text
         elif cli_options.status:
             if cli_options.cluster_name:
-                print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms').text
+                print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms', params={'metric': 'all'}).text
             else:
-                print requests.get(base_url + 'vms').text
+                print requests.get(base_url + 'vms', params={'metric': 'all'}).text
         elif not cli_options.json and cli_options.vm_id and cli_options.cluster_name:
             print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms/' + cli_options.vm_id).text
         elif cli_options.vm_id and not cli_options.cluster_name:
