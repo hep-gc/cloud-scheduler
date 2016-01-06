@@ -80,6 +80,8 @@ class views:
             if 'log_level' in web.input():
                 log.setLevel(utilities.LEVELS[web.input().log_level])
                 return ''
+
+            raise web.notfound()
         
         def POST(self):
             if 'action' in web.input():
@@ -90,7 +92,8 @@ class views:
                 elif action == 'reconfig':
                     web.cloud_resources.setup()
                     return ''
-            return ''
+
+            raise web.notfound()
 
     class clouds:
         def PUT(self, cloudname):
@@ -106,6 +109,8 @@ class views:
                 return web.input().action + "_cloud(" + cloudname + ")"
             elif 'allocations' in web.input():
                 return web.cloud_resources.adjust_cloud_allocation(cloudname, web.input().allocations)
+
+            raise web.notfound()
 
     class cloud_aliases:
         def GET(self):
@@ -125,6 +130,8 @@ class views:
                     return MyProxyProxyRefresher.renew_job_proxy_user(web.job_pool, user)
                 elif web.input().refresh == 'vm_proxy':
                     return MyProxyProxyRefresher.renew_vm_proxy_user(web.job_pool, user)
+            
+            raise web.notfound()
 
     class user_limits:
         def GET(self):
@@ -149,7 +156,7 @@ class views:
                 elif action == 'reset_override_state' and vmid:
                     return web.cloud_resources.reset_override_state(cloudname, vmid)
 
-            return ''
+            raise web.notfound()
 
         def POST(self, cloudname, vmid=None):
             if 'action' in web.input():
@@ -162,6 +169,8 @@ class views:
                             return web.cloud_resources.force_retire_cluster_all(cloudname)
                         else:
                             return web.cloud_resources.force_retire_cluster_number(cloudname, web.input().count)
+            
+            raise web.notfound()
 
         def DELETE(self, cloudname, vmid=None):
             if vmid:
