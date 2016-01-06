@@ -196,7 +196,7 @@ def main(argv=None):
             log.debug("Call to disabled reconfig option. service quickrestart suggested.")
             #print s.cloud_resources_reconfig()
         elif cli_options.limits and _check_for_comment():
-            if requests.post(base_url + 'user-limits').text:
+            if requests.post(base_url + 'user-limits').text == 'True':
                 print "User-Limit file reloaded."
                 log.info("Reloaded the user limlt file.")
             else:
@@ -206,7 +206,7 @@ def main(argv=None):
             print requests.get(base_url + 'user-limits').text
             log.debug("Listing the user limit file")
         elif cli_options.alias and _check_for_comment():
-            if requests.post(base_url + 'cloud-aliases').text:
+            if requests.post(base_url + 'cloud-aliases').text == 'True':
                 print "Target Cloud Alias file reloaded."
                 log.info("Reloaded the cloud_alias file")
             else:
