@@ -125,7 +125,6 @@ class views:
                     return ResourcePoolJSONEncoder().encode(web.cloud_resources)
                 else:
                     return self.view_resources()
-            return ''
 
         def view_cluster(self, cluster_name):
             output = []
@@ -237,7 +236,7 @@ class views:
             elif failure_type == 'image':
                 return self.view_image_failures()
 
-            return ''
+            raise web.notfound()
 
         def view_boot_failures(self):
             output = []
@@ -281,7 +280,7 @@ class views:
             elif 'state' in web.input():
                 return self.view_jobs(web.input().state)
 
-            return ''
+            raise web.notfound()
 
         def view_jobs(self, state):
             output = []
@@ -457,8 +456,7 @@ class views:
                 else:
                     return str(web.cloud_resources.vm_count())
 
-            else:
-                return ''
+            raise web.notfound()
 
         def view_vm_resources(self):
             output = []
