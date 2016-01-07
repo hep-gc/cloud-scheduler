@@ -103,11 +103,8 @@ class InfoServer(threading.Thread,):
 
 class views:
     class cloud:
-        def GET(self, json=None):
-            if json:
-                return ResourcePoolJSONEncoder().encode(web.cloud_resources)
-            else:
-                return web.cloud_resources.get_pool_info()
+        def GET(self):
+            return web.cloud_resources.get_pool_info()
 
     class cloud_config:
         def GET(self):
