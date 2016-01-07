@@ -9,6 +9,7 @@ import socket
 import sys
 import web
 import web.wsgiserver
+import urllib
 import cloudscheduler.utilities as utilities
 import cloudscheduler.config as config
 from proxy_refreshers import MyProxyProxyRefresher
@@ -48,13 +49,13 @@ class AdminServer(threading.Thread,):
         self.app = None
         self.listen = (host_name, config.admin_server_port)
         self.urls = (
-            r'/',                             views.config,
-            r'/clouds/([\w-]+)',              views.clouds,
-            r'/clouds/([\w-]+)/vms',          views.vms,
-            r'/clouds/([\w-]+)/vms/([\w-]+)', views.vms,
-            r'/cloud-aliases',                views.cloud_aliases,
-            r'/users/([\w-]+)',               views.users,
-            r'/user-limits',                  views.user_limits,
+            r'/',                                 views.config,
+            r'/clouds/([\w\%-]+)',                views.clouds,
+            r'/clouds/([\w\%-]+)/vms',            views.vms,
+            r'/clouds/([\w\%-]+)/vms/([\w\%-]+)', views.vms,
+            r'/cloud-aliases',                    views.cloud_aliases,
+            r'/users/([\w\%-]+)',                 views.users,
+            r'/user-limits',                      views.user_limits,
         )
 
     def run(self):
@@ -98,6 +99,8 @@ class views:
 
     class clouds:
         def PUT(self, cloudname):
+            cloudname = urllib.unquote(cloudname)
+
             if 'action' in web.input():
                 action = web.input().action
                 if action == 'enable':
@@ -105,7 +108,7 @@ class views:
                 elif action == 'disable':
                     return web.cloud_resources.disable_cluster(cloudname)
                 else:
-                    return ''
+                    raise web.notfound()
 
                 return web.input().action + "_cloud(" + cloudname + ")"
             elif 'allocations' in web.input():
@@ -126,6 +129,8 @@ class views:
 
     class users:
         def POST(self, user):
+            user = urllib.unquote(user)
+
             if 'refresh' in web.input():
                 if web.input().refresh == 'job_proxy':
                     return MyProxyProxyRefresher.renew_job_proxy_user(web.job_pool, user)
@@ -144,6 +149,9 @@ class views:
 
     class vms:
         def PUT(self, cloudname, vmid=None):
+            cloudname = urllib.unquote(cloudname)
+            if vmid: vmid = urllib.unquote(vmid)
+
             if 'action' in web.input():
                 action = web.input().action
 
@@ -171,6 +179,9 @@ class views:
             raise web.notfound()
 
         def DELETE(self, cloudname, vmid=None):
+            cloudname = urllib.unquote(cloudname)
+            if vmid: vmid = urllib.unquote(vmid)
+
             if vmid:
                 return web.cloud_resources.remove_vm_no_shutdown(cloudname, vmid)
             elif 'count' in web.input() and web.input().count == 'all':
