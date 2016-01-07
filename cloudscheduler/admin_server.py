@@ -8,6 +8,7 @@ import threading
 import socket
 import sys
 import web
+import web.wsgiserver
 import cloudscheduler.utilities as utilities
 import cloudscheduler.config as config
 from proxy_refreshers import MyProxyProxyRefresher
@@ -62,7 +63,7 @@ class AdminServer(threading.Thread,):
         log.info("Started admin server on port %s" % config.admin_server_port)
         try:
             self.app = web.application(self.urls, globals())
-            self.server = web.httpserver.WSGIServer(self.listen, self.app.wsgifunc())
+            self.server = web.wsgiserver.CherryPyWSGIServer(self.listen, self.app.wsgifunc(), server_name="localhost")
             self.server.start()
 
         except Exception as e:
