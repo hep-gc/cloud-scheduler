@@ -176,5 +176,7 @@ class views:
         def DELETE(self, cloudname, vmid=None):
             if vmid:
                 return web.cloud_resources.remove_vm_no_shutdown(cloudname, vmid)
-            else:
+            elif 'count' in web.input() and web.input().count == 'all':
                 return web.cloud_resources.remove_all_vmcloud_no_shutdown(cloudname)
+
+            raise web.notfound()
