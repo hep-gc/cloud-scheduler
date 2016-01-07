@@ -146,22 +146,7 @@ class views:
         def PUT(self, cloudname, vmid=None):
             if 'action' in web.input():
                 action = web.input().action
-                if action == 'shutdown':
-                    if vmid:
-                        return web.cloud_resources.shutdown_cluster_vm(cloudname, vmid)
-                    elif 'count' in web.input():
-                        if web.input().count == 'all':
-                            return web.cloud_resources.shutdown_cluster_all(cloudname)
-                        else:
-                            return web.cloud_resources.shutdown_cluster_number(cloudname, web.input().count)
-                elif action == 'reset_override_state' and vmid:
-                    return web.cloud_resources.reset_override_state(cloudname, vmid)
 
-            raise web.notfound()
-
-        def POST(self, cloudname, vmid=None):
-            if 'action' in web.input():
-                action = web.input().action
                 if action == 'force_retire':
                     if vmid:
                         return web.cloud_resources.force_retire_cluster_vm(cloudname, vmid)
@@ -170,6 +155,18 @@ class views:
                             return web.cloud_resources.force_retire_cluster_all(cloudname)
                         else:
                             return web.cloud_resources.force_retire_cluster_number(cloudname, web.input().count)
+
+                elif action == 'shutdown':
+                    if vmid:
+                        return web.cloud_resources.shutdown_cluster_vm(cloudname, vmid)
+                    elif 'count' in web.input():
+                        if web.input().count == 'all':
+                            return web.cloud_resources.shutdown_cluster_all(cloudname)
+                        else:
+                            return web.cloud_resources.shutdown_cluster_number(cloudname, web.input().count)
+                
+                elif action == 'reset_override_state' and vmid:
+                    return web.cloud_resources.reset_override_state(cloudname, vmid)
             
             raise web.notfound()
 
