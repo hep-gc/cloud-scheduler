@@ -152,7 +152,7 @@ class views:
                         if web.input().count == 'all':
                             return web.cloud_resources.shutdown_cluster_all(cloudname)
                         else:
-                            return cloud_resources.shutdown_cluster_number(cloudname, web.input().count)
+                            return web.cloud_resources.shutdown_cluster_number(cloudname, web.input().count)
                 elif action == 'reset_override_state' and vmid:
                     return web.cloud_resources.reset_override_state(cloudname, vmid)
 
