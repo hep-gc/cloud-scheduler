@@ -11,6 +11,7 @@ import sys
 import re
 import web
 import web.wsgiserver
+import urllib
 import cloudscheduler.config as config
 import cloudscheduler.__version__ as version
 from cluster_tools import ICluster
@@ -62,27 +63,27 @@ class InfoServer(threading.Thread,):
         self.app = None
         self.listen = (host_name, config.info_server_port)
         self.urls = (
-            r'/',                                       views.version,
-            r'/cloud',                                  views.cloud,
-            r'/cloud/config',                           views.cloud_config,
-            r'/clusters',                               views.clusters,
-            r'/clusters()(\.json)',                     views.clusters,
-            r'/clusters/([\w-]+)',                      views.clusters,
-            r'/clusters/([\w-]+)(\.json)',              views.clusters,
-            r'/clusters/([\w-]+)/vms',                  views.vms,
-            r'/clusters/([\w-]+)/vms/([\w-]+)',         views.vms,
-            r'/clusters/([\w-]+)/vms/([\w-]+)(\.json)', views.vms,
-            r'/developer-info',                         views.developer_info,
-            r'/diff-types',                             views.diff_types,
-            r'/failures/(boot|image)',                  views.failures,
-            r'/ips',                                    views.ips,
-            r'/jobs',                                   views.jobs,
-            r'/jobs/([\w-]+)',                          views.jobs,
-            r'/jobs/([\w-]+)(\.json)',                  views.jobs,
-            r'/job-pool.json',                          views.job_pool,
-            r'/shared-objs',                            views.shared_objs,
-            r'/thread-heart-beats',                     views.thread_heart_beats,
-            r'/vms',                                    views.vms,
+            r'/',                                           views.version,
+            r'/cloud',                                      views.cloud,
+            r'/cloud/config',                               views.cloud_config,
+            r'/clusters',                                   views.clusters,
+            r'/clusters()(\.json)',                         views.clusters,
+            r'/clusters/([\w\%-]+)',                        views.clusters,
+            r'/clusters/([\w\%-]+)(\.json)',                views.clusters,
+            r'/clusters/([\w\%-]+)/vms',                    views.vms,
+            r'/clusters/([\w\%-]+)/vms/([\w\%-]+)',         views.vms,
+            r'/clusters/([\w\%-]+)/vms/([\w\%-]+)(\.json)', views.vms,
+            r'/developer-info',                             views.developer_info,
+            r'/diff-types',                                 views.diff_types,
+            r'/failures/(boot|image)',                      views.failures,
+            r'/ips',                                        views.ips,
+            r'/jobs',                                       views.jobs,
+            r'/jobs/([\w\%-]+)',                            views.jobs,
+            r'/jobs/([\w\%-]+)(\.json)',                    views.jobs,
+            r'/job-pool.json',                              views.job_pool,
+            r'/shared-objs',                                views.shared_objs,
+            r'/thread-heart-beats',                         views.thread_heart_beats,
+            r'/vms',                                        views.vms,
         )
 
     def run(self):
@@ -113,7 +114,10 @@ class views:
 
     class clusters:
         def GET(self, cluster_name=None, json=None):
+
             if cluster_name:
+                cluster_name = urllib.unquote(cluster_name)
+
                 if json:
                     return self.view_cluster_json(cluster_name)
                 else:
@@ -270,6 +274,8 @@ class views:
     class jobs:
         def GET(self, jobid=None, json=None):
             if jobid:
+                jobid = urllib.unquote(jobid)
+
                 if json:
                     return self.view_job_json(jobid)
                 else:
@@ -354,6 +360,9 @@ class views:
 
     class vms:
         def GET(self, cluster_name=None, vm_id=None, json=None):
+            if cluster_name: cluster_name = urllib.unquote(cluster_name)
+            if vm_id: vm_id = urllib.unquote(vm_id)
+
             if cluster_name and vm_id:
                 if json:
                     return self.view_vm_json(cluster_name, vm_id)

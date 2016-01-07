@@ -6,6 +6,7 @@ import requests
 import sys
 from optparse import OptionParser
 import platform
+import urllib
 
 import cloudscheduler.utilities as utilities 
 log = utilities.get_cloudscheduler_logger()
@@ -96,27 +97,32 @@ def main(argv=None):
 
     # Connect to info server
     try:
+        if cli_options.cluster_name:
+            cluster_name = urllib.quote(cli_options.cluster_name, safe='')
+        if cli_options.vm_id:
+            vm_id = urllib.quote(cli_options.vm_id, safe='')
+
         if cli_options.all_cluster and not cli_options.json:
             print requests.get(base_url + 'clusters').text
         elif cli_options.vms:
             print requests.get(base_url + 'vms').text
         elif cli_options.status:
             if cli_options.cluster_name:
-                print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms', params={'metric': 'all'}).text
+                print requests.get(base_url + 'clusters/' + cluster_name + '/vms', params={'metric': 'all'}).text
             else:
                 print requests.get(base_url + 'vms', params={'metric': 'all'}).text
         elif not cli_options.json and cli_options.vm_id and cli_options.cluster_name:
-            print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms/' + cli_options.vm_id).text
+            print requests.get(base_url + 'clusters/' + cluster_name + '/vms/' + vm_id).text
         elif cli_options.vm_id and not cli_options.cluster_name:
             print "Please provide -c cluster_name with vm ID"
         elif not cli_options.json and cli_options.cluster_name and not cli_options.vm_id and not cli_options.totals:
-            print requests.get(base_url + 'clusters/' + cli_options.cluster_name).text
+            print requests.get(base_url + 'clusters/' + cluster_name).text
         elif cli_options.json and cli_options.all_cluster:
             print requests.get(base_url + 'clusters.json').text
         elif cli_options.json and cli_options.vm_id and cli_options.cluster_name:
-            print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms/' + cli_options.vm_id + '.json').text
+            print requests.get(base_url + 'clusters/' + cluster_name + '/vms/' + vm_id + '.json').text
         elif cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
-            print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '.json').text
+            print requests.get(base_url + 'clusters/' + cluster_name + '.json').text
         elif (cli_options.dev_info):
             print requests.get(base_url + 'developer-info').text
         elif cli_options.job_queue:
@@ -159,7 +165,7 @@ def main(argv=None):
         elif cli_options.cloud_conf:
             print requests.get(base_url + 'cloud/config').text
         elif cli_options.totals and cli_options.cluster_name:
-            print requests.get(base_url + 'clusters/' + cli_options.cluster_name + '/vms', params={'metric': 'total'}).text
+            print requests.get(base_url + 'clusters/' + cluster_name + '/vms', params={'metric': 'total'}).text
         elif cli_options.totals:
             print requests.get(base_url + 'vms', params={'metric': 'total'}).text
         elif cli_options.missing_vms:
