@@ -10,6 +10,7 @@ import socket
 import sys
 import re
 import web
+import web.wsgiserver
 import cloudscheduler.config as config
 import cloudscheduler.__version__ as version
 from cluster_tools import ICluster
@@ -90,7 +91,7 @@ class InfoServer(threading.Thread,):
         log.info("Started info server on port %s" % config.info_server_port)
         try:
             self.app = web.application(self.urls, globals())
-            self.server = web.httpserver.WSGIServer(self.listen, self.app.wsgifunc())
+            self.server = web.wsgiserver.CherryPyWSGIServer(self.listen, self.app.wsgifunc(), server_name="localhost")
             self.server.start()
 
         except Exception as e:
