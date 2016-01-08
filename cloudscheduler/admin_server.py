@@ -176,15 +176,10 @@ class views:
                 elif action == 'reset_override_state' and vmid:
                     return web.cloud_resources.reset_override_state(cloudname, vmid)
             
-            raise web.notfound()
-
-        def DELETE(self, cloudname, vmid=None):
-            cloudname = urllib.unquote(cloudname)
-            if vmid: vmid = urllib.unquote(vmid)
-
-            if vmid:
-                return web.cloud_resources.remove_vm_no_shutdown(cloudname, vmid)
-            elif 'count' in web.input() and web.input().count == 'all':
-                return web.cloud_resources.remove_all_vmcloud_no_shutdown(cloudname)
+                elif action == 'remove':
+                    if vmid:
+                        return web.cloud_resources.remove_vm_no_shutdown(cloudname, vmid)
+                    elif 'count' in web.input() and web.input().count == 'all':
+                        return web.cloud_resources.remove_all_vmcloud_no_shutdown(cloudname)
 
             raise web.notfound()
