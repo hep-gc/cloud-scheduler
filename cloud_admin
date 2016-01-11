@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 """ cloud_admin - tool to control settings and VMs in cloud scheduler."""
-import xmlrpclib
+import requests
 import sys
-import socket
 from optparse import OptionParser
 import logging
 import platform
+import urllib
 
 import cloudscheduler.utilities as utilities 
 import cloudscheduler.cloud_management as cloud_management
@@ -123,20 +123,25 @@ def main(argv=None):
     else:
         server_hostname = platform.node()
 
-    # Connect to info server
+    base_url = "http://{}:{}/".format(server_hostname, server_port)
+
+    # Connect to admin server
     try:
-        s = xmlrpclib.ServerProxy("http://%s:%s" %
-                                  (server_hostname, server_port))
+        if cli_options.cloud_name:
+            cloud_name = urllib.quote(cli_options.cloud_name, safe='')
+        if cli_options.vm_id:
+            vm_id = urllib.quote(cli_options.vm_id, safe='')
+
         if cli_options.killvm and _check_for_comment():
             if cli_options.cloud_name:
                 if cli_options.vm_id:
-                    print s.shutdown_vm(cli_options.cloud_name, cli_options.vm_id)
+                    print requests.put(base_url + 'clouds/' + cloud_name + '/vms/' + vm_id, data={'action': 'shutdown'}).text
                     log.info("Shutting down VM: %s on: %s" % (cli_options.vm_id, cli_options.cloud_name))
                 elif cli_options.all:
-                    print s.shutdown_cluster_all(cli_options.cloud_name)
+                    print requests.put(base_url + 'clouds/' + cloud_name + '/vms', data={'action': 'shutdown', 'count': 'all'}).text
                     log.info("Shutting down all VMs on cloud: %s" % cli_options.cloud_name)
                 elif cli_options.number:
-                    print s.shutdown_cluster_count(cli_options.cloud_name, cli_options.number)
+                    print requests.put(base_url + 'clouds/' + cloud_name + '/vms', data={'action': 'shutdown', 'count': cli_options.number}).text
                     log.info("Shutting down %s VMs on cloud: %s" % (cli_options.number, cli_options.cloud_name))
                 else:
                     print "Must provide a -n [VM ID], -a to kill all VMs, or -b [count] to kill a set number on cloud."
@@ -147,10 +152,11 @@ def main(argv=None):
         elif cli_options.remove and _check_for_comment():
             if cli_options.cloud_name:
                 if cli_options.vm_id:
-                    print s.delete_vm_entry(cli_options.cloud_name, cli_options.vm_id)
+                    print requests.put(base_url + 'clouds/' + cloud_name + '/vms/' + vm_id, data={'action': 'remove'}).text
                     log.info("Removing VM entry: %s on: %s" % (cli_options.vm_id, cli_options.cloud_name))
                 elif cli_options.all:
-                    print s.delete_all_vm_entry_cloud(cli_options.cloud_name)
+                    print base_url + 'clouds/' + cloud_name + '/vms'
+                    print requests.put(base_url + 'clouds/' + cloud_name + '/vms', data={'action': 'remove', 'count': 'all'}).text
                     log.info("Removing all VM entries from Cloud Scheduler on cloud: %s" % cli_options.cloud_name)
                 else:
                     print "Must provide a -n [VM ID] or -a to remove all VMs on this cloud."
@@ -161,13 +167,13 @@ def main(argv=None):
         elif cli_options.force_retire and _check_for_comment():
             if cli_options.cloud_name:
                 if cli_options.vm_id:
-                    print s.force_retire_vm(cli_options.cloud_name, cli_options.vm_id)
+                    print requests.put(base_url + 'clouds/' + cloud_name + '/vms/' + vm_id, data={'action': 'force_retire'}).text
                     log.info("Force retiring VM: %s on cloud: %s" % (cli_options.vm_id, cli_options.cloud_name))
                 elif cli_options.all:
-                    print s.force_retire_all_vm(cli_options.cloud_name)
+                    print requests.put(base_url + 'clouds/' + cloud_name + '/vms', data={'action': 'force_retire', 'count': 'all'}).text
                     log.info("Force retiring all VMs on: %s" % cli_options.cloud_name)
                 elif cli_options.number:
-                    print s.force_retire_count_vm(cli_options.cloud_name, cli_options.number)
+                    print requests.put(base_url + 'clouds/' + cloud_name + '/vms', data={'action': 'force_retire', 'count': cli_options.number}).text
                     log.info("Force retiring %s VMs, on cloud: %s" %(cli_options.number, cli_options.cloud_name))
                 else:
                     print "Must provide a -n [VM ID], -a (all), or -b [count] to force retire all or some VMs on this cloud."
@@ -178,7 +184,7 @@ def main(argv=None):
         elif cli_options.reset_state and _check_for_comment():
             if cli_options.cloud_name:
                 if cli_options.vm_id:
-                    print s.reset_override_state(cli_options.cloud_name, cli_options.vm_id)
+                    print requests.put(base_url + 'clouds/' + cloud_name + '/vms/' + vm_id, data={'action': 'reset_override_state'}).text
                     log.info("Reset state of vm: %s on cloud: %s" % (cli_options.vm_id, cli_options.cloud_name))
                 else:
                     print "Must provide -n [VM ID] to reset state of VM."
@@ -187,47 +193,50 @@ def main(argv=None):
                 print "Must provide the cloud name and VM ID to reset override state on."
                 log.debug("reset state attempted without valid cloud name.")
         elif cli_options.enable:
-            print s.enable_cloud(cli_options.enable)
+            cloud_name = urllib.quote(cli_options.enable, safe='')
+            print requests.put(base_url + 'clouds/' + cloud_name, data={'action': 'enable'}).text
             log.info("Cloud: %s enabled." % cli_options.enable)
         elif cli_options.disable:
-            print s.disable_cloud(cli_options.disable)
+            cloud_name = urllib.quote(cli_options.disable, safe='')
+            print requests.put(base_url + 'clouds/' + cloud_name, data={'action': 'disable'}).text
             log.info("Cloud: %s disabled." % cli_options.disable)
         elif cli_options.reconfig:
             print "Reconfig Disabled - use 'quickrestart'"
             log.debug("Call to disabled reconfig option. service quickrestart suggested.")
             #print s.cloud_resources_reconfig()
         elif cli_options.limits and _check_for_comment():
-            if s.user_limit_reload():
+            if requests.post(base_url + 'user-limits').text == 'True':
                 print "User-Limit file reloaded."
                 log.info("Reloaded the user limlt file.")
             else:
                 print "No Limits set - list empty or problem parsing file."
                 log.debug("Problem reloading user limits, check format, path, permissions.")
         elif cli_options.list_limits:
-            print s.list_user_limits()
+            print requests.get(base_url + 'user-limits').text
             log.debug("Listing the user limit file")
         elif cli_options.alias and _check_for_comment():
-            if s.cloud_alias_reload():
+            if requests.post(base_url + 'cloud-aliases').text == 'True':
                 print "Target Cloud Alias file reloaded."
                 log.info("Reloaded the cloud_alias file")
             else:
                 print "Failed to load alias file - check json format, path, or permissions."
                 log.debug("Failed to reload cloud alias file, check format, path, permissions.")
         elif cli_options.list_alias:
-            print s.list_cloud_alias()
+            print requests.get(base_url + 'cloud-aliases').text
             log.debug("Listing cloud_alias contents")
         elif cli_options.log_level and _check_for_comment():
-            print s.change_log_level(cli_options.log_level)
+            print requests.put(base_url, data={'log_level': cli_options.log_level}).text
             log.info("Changed logging level to: %s" % cli_options.log_level)
         elif cli_options.proxy_refresh and _check_for_comment():
             if cli_options.user:
+                user = urllib.quote(cli_options.user, safe='')
                 if cli_options.proxy_refresh.startswith('v'):
                     print "Refreshing VM proxies for user %s." % cli_options.user
-                    s.refresh_vm_proxy_user(cli_options.user)
+                    requests.post(base_url + 'users/' + user, data={'refresh': 'vm_proxy'})
                     log.info("Refreshing VM proxies for user %s." % cli_options.user)
                 elif cli_options.proxy_refresh.startswith('j'):
                         print "Refreshing Job proxies for user %s." % cli_options.user
-                        s.refresh_job_proxy_user(cli_options.user)
+                        requests.post(base_url + 'users/' + user, data={'refresh': 'job_proxy'})
                         log.info("Refresh job proxies for user %s" % cli_options.user)
                 else:
                     print "Unsupported Proxy type, enter 'job' or 'vm'."
@@ -236,13 +245,13 @@ def main(argv=None):
                 print "Must Specify a user with -u or --user."
                 log.debug("Attempting to refresh proxy, missing user flag.")
         elif cli_options.quick and _check_for_comment():
-            s.perform_quick_shutdown()
+            print requests.post(base_url, data={'action': 'quick_shutdown'}).text
             print "Toggled Quick shutdown flag."
             log.info("Toggled quick shutdown flag.")
         elif cli_options.vm_allocation and _check_for_comment():
             if cli_options.cloud_name:
                 print 'Adjusting vm_slots on %s to %s' % (cli_options.cloud_name, cli_options.vm_allocation)
-                print s.adjust_cloud_allocation(cli_options.cloud_name, cli_options.vm_allocation)
+                print requests.put(base_url + 'clouds/' + cloud_name, data={'allocations': cli_options.vm_allocation}).text
                 log.info("Attempting to adjust vm allocation on %s. Target: %s" % (cli_options.cloud_name, cli_options.vm_allocation))
             else:
                 print "Change vm slot of cloud need '-c cloudname' for cloud to change allocation of"
@@ -252,7 +261,7 @@ def main(argv=None):
             log.debug("Invoked with no arguments or other error.")
 
 
-    except socket.error:
+    except requests.exceptions.ConnectionError:
         print "%s: couldn't connect to cloud scheduler at %s on port %s."\
                % (sys.argv[0], server_hostname, server_port)
         print "Is the cloud scheduler running on port %s?" % server_port
