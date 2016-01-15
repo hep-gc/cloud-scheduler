@@ -1553,7 +1553,7 @@ class ResourcePool:
             if out.startswith("Sent"):
                 ret1 = 0
             if sp1.returncode == 0 and ret1 == 0:
-                log.verbose("Successfuly sent condor_off startd to %s" % (machine_name))
+                log.debug("Successfuly sent condor_off startd to %s" % (machine_name))
             else:
                 log.debug("Failed to send condor_off startd to %s: Reason: %s. Err: %s" % (machine_name, out, err))
         except OSError, e:
