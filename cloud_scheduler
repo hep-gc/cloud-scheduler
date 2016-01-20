@@ -1713,6 +1713,7 @@ class Cleanup(threading.Thread):
                                 if vm.keep_alive == 0 or now - vm.idle_start > vm.keep_alive:
                                     #if vm.override_status != "Retiring":
                                     self.resource_pool.force_retire_vm(vm)
+                                    log.debug("Retiring idle VM: %s, type: %s as it's no longer required for remaining jobs." % (vm.id, vm.vmtype))
                                     #if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
                                     #    log.verbose("Starting Destroy of VM: %s" % (vm.id))
                                     #    th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
