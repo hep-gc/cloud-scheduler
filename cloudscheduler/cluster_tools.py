@@ -527,3 +527,13 @@ class ICluster:
             except:
                 log.warning("Couldn't return memory because I don't know about that mem entry anymore...")
 
+    def _generate_next_name(self):
+        name = ''.join([self.name.replace('_', '-').lower(), '-', str(uuid.uuid4())])
+        collision = False
+        for vm in self.vms:
+            if name == vm.hostname:
+                collision= True
+                break
+        if collision:
+            name = None
+        return name

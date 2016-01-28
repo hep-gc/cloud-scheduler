@@ -339,17 +339,6 @@ class OpenStackCluster(cluster_tools.ICluster):
             log.error("Problem importing keystone modules, and getting session: %s" % e)
         log.debug("Session object for %s created" % self.name)
         return sess
-
-    def _generate_next_name(self):
-        name = ''.join([self.name.replace('_', '-').lower(), '-', str(uuid.uuid4())])
-        collision = False
-        for vm in self.vms:
-            if name == vm.hostname:
-                collision= True
-                break
-        if collision:
-            name = None
-        return name
     
     def _find_network(self, name):
         nova = self._get_creds_nova()
