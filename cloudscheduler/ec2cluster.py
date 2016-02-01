@@ -269,14 +269,8 @@ class EC2Cluster(cluster_tools.ICluster):
                         image = potential_match
                         break
 
-            # Compress the user data to try and get under the amazon limit
-            udbuf = StringIO()
-            udf = gzip.GzipFile(mode='wb', fileobj=udbuf)
-            try:
-                udf.write(user_data)
-            finally:
-                udf.close()
-            user_data = udbuf.getvalue() 
+            # Compress the user data to try and get under the limit
+            user_data = utilities.gzip_userdata(user_data)
 
             if image:
                 if maximum_price is 0 or self.cloud_type == "OpenStack": # don't request a spot instance

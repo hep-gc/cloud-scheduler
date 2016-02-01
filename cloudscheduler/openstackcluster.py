@@ -126,13 +126,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
 
         # Compress the user data to try and get under the limit
-        udbuf = StringIO()
-        udf = gzip.GzipFile(mode='wb', fileobj=udbuf)
-        try:
-            udf.write(user_data)
-        finally:
-            udf.close()
-        user_data = udbuf.getvalue()
+        user_data = utilities.gzip_userdata(user_data)
         
         try:
             if self.name in vm_image.keys():
