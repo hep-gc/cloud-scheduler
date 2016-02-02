@@ -1725,7 +1725,15 @@ class ResourcePool:
             if foundIt:
                 break
         if not foundIt:
-            log.verbose("Could not find a VM with name: %s" % condor_name)
+            log.verbose("Could not find a VM with name: %s, checking retired_resources." % condor_name)
+            for cluster in self.retired_resources:
+                for vm in cluster.vms:
+                    if vm.condorname == condor_name or condor_name == vm.hostname or condor_name == vm.alt_hostname or condor_name == vm.condormasteraddr:
+                        foundIt = True
+                        vm_match = vm
+                        break
+                if foundIt:
+                    break
         return vm_match
 
     def find_cluster_with_vm(self, condor_name):
@@ -1756,6 +1764,15 @@ class ResourcePool:
                     break
             if foundIt:
                 break
+        if not foundIt:
+            for cluster in self.retired_resources:
+                for vm in cluster.vms:
+                    if vm.condoraddr == condor_addr:
+                        foundIt = True
+                        vm_match = vm
+                        break
+                if foundIt:
+                    break
         return vm_match
 
     def retiring_vms_of_type(self, vmtype):
