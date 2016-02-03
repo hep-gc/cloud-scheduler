@@ -2220,6 +2220,7 @@ class ResourcePool:
                 # if current < new  bump up the remaining with difference
                 if number > total_slots:
                     cluster.vm_slots += (number - total_slots)
+                    log.info("Increasing quota on %s to %s." % (cluster.name, number))
                 # if less need to subtract from remaining if remaining goes under 0, need to force retire 
                 # and move the excess VMs into the extra retiring area so their resources won't be returned.
                 elif number < total_slots:
@@ -2246,6 +2247,11 @@ class ResourcePool:
                                 cluster_copy.vms.append(vm)
                             vm.return_resources = False
                             self.force_retire_vm(vm)
+                    else:
+                        # we have free space in vm_slots
+                        cluster.vm_slots -= num_remove
+                        log.info("Reducing quota on %s to %s using spare slots " % (cluster.name,number))
+                        pass
                 else:
                     return "VM slots already set at %s. Nothing to do." % total_slots
         else:
