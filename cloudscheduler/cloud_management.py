@@ -440,6 +440,29 @@ class ResourcePool:
                     cacert = get_or_none(cconfig, cluster, "cacert"),
                     keep_alive=keep_alive,
                     )
+        elif cloud_type == "Azure":
+            return azurecluster.AzureCluster(name = cluster,
+                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
+                    networks = networks,
+                    vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
+                    storage = int(get_or_none(cconfig, cluster, "storage")),
+                    username = get_or_none(cconfig, cluster, "username"),
+                    password = get_or_none(cconfig, cluster, "password"),
+                    tenant_name = get_or_none(cconfig, cluster, "tenant_name"),
+                    auth_url = get_or_none(cconfig, cluster, "auth_url"),
+                    hypervisor = hypervisor,
+                    key_name = get_or_none(cconfig, cluster, "key_name"),
+                    boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
+                    regions = map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
+                    vm_domain_name = get_or_none(cconfig, cluster, "vm_domain_name"),
+                    placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
+                    enabled=enabled,
+                    priority = priority,
+                    cacert = get_or_none(cconfig, cluster, "cacert"),
+                    keep_alive=keep_alive,)
         else:
             log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
             return None
