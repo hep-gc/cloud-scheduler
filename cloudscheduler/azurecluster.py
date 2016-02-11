@@ -5,15 +5,12 @@ import uuid
 import string
 import shutil
 import logging
-import nimbus_xml
 import subprocess
 import cluster_tools
 import cloud_init_util
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.job_management import _attr_list_to_dict
-from cStringIO import StringIO
-import gzip
 
 log = utilities.get_cloudscheduler_logger()
 
@@ -46,7 +43,7 @@ class AzureCluster(cluster_tools.ICluster):
                  username=None, password=None, tenant_name=None, auth_url=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
                  regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, 
-                 enabled=True, priority=0, cacert=None,keep_alive=0, keycert=None):
+                 enabled=True, priority=0, keycert=None,keep_alive=0, blob_url=""):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=auth_url, cloud_type=cloud_type,
@@ -73,8 +70,8 @@ class AzureCluster(cluster_tools.ICluster):
         self.regions = regions
         self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
         self.placement_zone = placement_zone
-        self.cacert = cacert
         self.keycert = keycert
+        self.blob_url = blob_url
     
     def __getstate__(self):
         """Override to work with pickle module."""
@@ -85,13 +82,13 @@ class AzureCluster(cluster_tools.ICluster):
         """Override to work with pickle module."""
         cluster_tools.ICluster.__setstate__(self, state)
     
-    def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
+    def vm_create(self, vm_name, vm_type, vm_user,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", job_per_core=False, 
-                  key_name="", pre_customization=None, use_cloud_init=False, extra_userdata=[]):
+                  pre_customization=None, extra_userdata=[]):
         """ Create a VM on Azure."""
 
-        use_cloud_init = use_cloud_init or config.use_cloud_init
+        use_cloud_init = True
 
         if customization:
             user_data = cloud_init_util.build_write_files_cloud_init(customization)
@@ -199,7 +196,7 @@ class AzureCluster(cluster_tools.ICluster):
                 log.debug("Failed to create instance on %s" % self.name)
                 return self.ERROR
         else:
-            log.debug("Unable to generate name for %" % self.name)
+            log.debug("Unable to generate name for %s" % self.name)
             return self.ERROR
 
         return 0
