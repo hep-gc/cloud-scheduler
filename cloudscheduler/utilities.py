@@ -7,6 +7,7 @@ import socket
 import logging
 import subprocess
 import time
+import gzip
 import errno
 from urlparse import urlparse
 from datetime import datetime
@@ -15,6 +16,7 @@ try:
     from OpenSSL import crypto
 except ImportError:
     pass
+from cStringIO import StringIO
 
 def determine_path ():
     """Borrowed from wxglade.py"""
