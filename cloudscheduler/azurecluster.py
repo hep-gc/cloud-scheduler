@@ -11,7 +11,11 @@ import cloud_init_util
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.job_management import _attr_list_to_dict
-
+try:
+    import azure
+    import azure.servicemanagement
+except:
+    pass
 log = utilities.get_cloudscheduler_logger()
 
 class AzureCluster(cluster_tools.ICluster):
@@ -24,9 +28,11 @@ class AzureCluster(cluster_tools.ICluster):
             "StartingVM": "Starting",
             "CreatingRole": "Starting",
             "StartingRole": "Starting",
-            "ReadyRole": "Starting",
-            "BusyRole": "Busy",
+            "RoleStateUnknown": "Starting",
+            "ReadyRole": "Running",
+            "BusyRole": "Starting",
             "Preparing": "Starting",
+            "Provisioning": "Starting",
             "ProvisioningFailed": "Error",
             "StoppingRole": "StopRole",
             "StoppingVM": "Shutdown",
@@ -35,7 +41,8 @@ class AzureCluster(cluster_tools.ICluster):
             "RestartingRole": "Restarting",
             "StoppedDeallocated": "Stopped",
             "Active": "Running",
-            "Running": "Running"
+            "Running": "Running",
+            "ERROR": "Error",
     }
     def __init__(self, name="Dummy Cluster", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
@@ -155,7 +162,7 @@ class AzureCluster(cluster_tools.ICluster):
             try:
                 sms = self._get_service_connection()
                 req = sms.create_hosted_service(name,name,name, self.regions[0])
-                sms.wait_for_operation(req.id)
+                sms.wait_for_operation_status(req.request_id)
                 conf_set = azure.servicemanagement.LinuxConfigurationSet(host_name=name, user_name=self.username,
                                                                         user_password=self.password, disable_ssh_password_authentication=False,
                                                                          custom_data=user_data)
@@ -171,21 +178,24 @@ class AzureCluster(cluster_tools.ICluster):
             except Exception as e:
                 #print e
                 log.error("Unhandled exception while creating vm on %s: %s" %(self.name, e))
-            if instance:
-                instance_id = instance.id
+                try:
+                    sms.delete_hosted_service(name, True)
+                except:
+                    log.error("Problem cleaning up the failed service deployment: %s" % name)
+            if req:
                 if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
                     vm_keepalive = self.keep_alive
 
                 new_vm = cluster_tools.VM(name = vm_name, id = name, vmtype = vm_type, user = vm_user,
                             clusteraddr = self.network_address, hostname = ''.join([name, self.vm_domain_name]),
-                            cloudtype = self.cloud_type, network = vm_networkassoc,
+                            cloudtype = self.cloud_type, network = None,
                             image= vm_image, flavor=i_type,
                             memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
                             keep_alive = vm_keepalive, job_per_core = job_per_core)
     
                 try:
                     self.resource_checkout(new_vm)
-                    log.info("Launching 1 VM: %s on %s under tenant: %s" % (instance_id, self.name, self.tenant_name))
+                    log.info("Launching 1 VM: %s on %s" % (name, self.name))
                 except:
                     log.error("Unexpected Error checking out resources when creating a VM. Programming error?")
                     self.vm_destroy(new_vm, reason="Failed Resource checkout")
@@ -206,12 +216,16 @@ class AzureCluster(cluster_tools.ICluster):
         log.info("Destroying VM: %s Name: %s on %s tenant: %s Reason: %s" % (vm.id, vm.hostname, self.name, self.tenant_name, reason))
         try:
             azure_conn = self._get_service_connection()
-            azure_conn.delete_hosted_service(vm.hostname, True)
+            azure_conn.delete_hosted_service(vm.id, True)
         except Exception as e:
             try:
-                log.error("Unhandled exception while destroying VM on %s : %s" % (self.name,e))
-                return 1
+                if "hosted service name is invalid" in e.message:
+                    log.error("Invalid service name on %s : %s, dropping from CS" % (self.name,e))
+                else:
+                    log.error("Unhandled exception while destroying VM on %s : %s" % (self.name,e))
+                    return 1
             except:
+                print e
                 log.error("Failed to log exception properly?")
                 return 1
 
@@ -239,26 +253,27 @@ class AzureCluster(cluster_tools.ICluster):
                 log.error("Failed to log exception properly: %s" % vm.id)
         for service in service_list:
             try:
-                vm_info = azure_conn.get_hosted_service_properties(service_list.service_name, True)
-            except azure.servicemanagement.WindowsAzureMissingResourceError as e:
-                log.error("Unable to find service with name: %s on Azure." % service_list.service_name)
-            if len(vm_info) == 0:
+                vm_info = azure_conn.get_hosted_service_properties(service.service_name, True)
+            except Exception as e:
+                log.error("Unable to find service with name: %s on Azure. %s" % (service.service_name, e))
+            if vm_info and len(vm_info.deployments) == 0:
                 log.debug("No VMs running on service: %s, skipping." % vm_info.service_name)
                 continue
-            if vm_info.service_name == vm.hostname:
+            if vm_info.service_name+self.vm_domain_name == vm.hostname:
                 instance = vm_info
                 break
         else:
             log.debug("Unable to find VM %s on Azure." % vm.hostname)
             instance = None
         with self.vms_lock:
-            if instance and vm.status != self.VM_STATES.get(instance.deployments[0].role_instance_list[0].instance_status, "Starting"):
+            if instance and instance.deployments and instance.deployments[0].role_instance_list and vm.status != self.VM_STATES.get(instance.deployments[0].role_instance_list[0].instance_status, "Starting"):
 
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(instance.deployments[0].role_instance_list[0].instance_status, "Starting")))
-            if instance and instance.deployments[0].role_instance_list[0].instance_status in self.VM_STATES.keys():
+
+            if instance and instance.deployments and instance.deployments[0].role_instance_list and instance.deployments[0].role_instance_list[0].instance_status in self.VM_STATES.keys():
                 vm.status = self.VM_STATES[instance.deployments[0].role_instance_list[0].instance_status]
-            elif instance:
+            elif instance and instance.deployments and instance.deployments[0].role_instance_list:
                 vm.status = instance.deployments[0].role_instance_list[0].instance_status
             else:
                 vm.status = self.VM_STATES['ERROR']
