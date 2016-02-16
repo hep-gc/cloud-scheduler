@@ -468,6 +468,14 @@ setup_on_gce() {
 
 }
 
+setup_on_azure() {
+    local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+    tcp_forwarding_host=`grep PublicAddress /var/lib/waagent/SharedConfig.xml | awk '{print $7}' | awk -F ':' '{print $1}' | awk -F '"' '{print $2}'`
+    replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
+    private_network_interface=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+    replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
+}
+
 # Make sure the permissions on the grid hostkey
 # are restrictive enough, else GSI will fail.
 set_hostkey_permissions () {
@@ -502,11 +510,18 @@ verify_execute () {
 
 # Start condor.
 start() {
-        set_hostkey_permissions
-	setup_on_ec2
+    set_hostkey_permissions
+    if [ -f "/var/lib/cloud_type" ]; then
+        cloud_type=`cat /var/lib/cloud_type`
+        if [ "$cloud_type" = "Azure" ]; then
+            setup_on_azure
+        else
+            setup_on_ec2
+        fi
+    fi
 	setup_ccb
 	set_central_manager $CENTRAL_MANAGER
-        setup_vmtype $IMAGE_METADATA
+    setup_vmtype $IMAGE_METADATA
 	update_condor_local_config
 	verify_execute
 	init_condor_master
