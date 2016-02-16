@@ -515,6 +515,8 @@ start() {
         cloud_type=`cat /var/lib/cloud_type`
         if [ "$cloud_type" = "Azure" ]; then
             setup_on_azure
+        elif [ "$cloud_type" = "gce" ]; then
+            setup_on_gce
         else
             setup_on_ec2
         fi
