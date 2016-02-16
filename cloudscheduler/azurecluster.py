@@ -56,7 +56,7 @@ class AzureCluster(cluster_tools.ICluster):
                  enabled=True, priority=0, keycert=None, keep_alive=0, blob_url=""):
 
         # Call super class's init
-        cluster_tools.ICluster.__init__(self, name=name, host=auth_url, cloud_type=cloud_type,
+        cluster_tools.ICluster.__init__(self, name=name, host="azure.microsoft.com", cloud_type=cloud_type,
                                         memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                                         vm_slots=vm_slots, cpu_cores=cpu_cores,
                                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout,
