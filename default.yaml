@@ -456,22 +456,20 @@ write_files:
         }
 
         # set up condor ccb if only private networking is available
-        setup_ccb() {
+        setup_ccb_ec2() {
             LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
             EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
             echo $LOCAL_ADDRESS $EXTHOSTNAME "# Added for Condor CCB" >> /etc/hosts
-
-            # /sbin/ifconfig | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null
-            # NON_LOCAL=$?
-            # if [ $NON_LOCAL -eq 1 ]; then
-                # All addresses are local
-                # LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
-                # Use hostname from meta-data since DNS hostname is not the same as hostname reported
-            # by OpenStack
-                #echo $LOCAL_ADDRESS $HOSTNAME "# Added for Condor CCB" >> /etc/hosts
-                # EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
-                # echo $LOCAL_ADDRESS $EXTHOSTNAME "# Added for Condor CCB" >> /etc/hosts
-            #fi
+        }
+        setup_ccb_gce() {
+            LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+            EXTHOSTNAME=`curl -s http://metadata/computeMetadata/v1/instance/attributes/hostname`
+            echo $LOCAL_ADDRESS $EXTHOSTNAME "# Added for Condor CCB" >> /etc/hosts
+        }
+        setup_ccb_azure() {
+            LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+            EXTHOSTNAME=`hostname`
+            echo $LOCAL_ADDRESS $EXTHOSTNAME "# Added for Condor CCB" >> /etc/hosts
         }
 
         # usage: setup_vmtype metadata
@@ -611,8 +609,19 @@ write_files:
         # Start condor.
         start() {
             set_hostkey_permissions
-            setup_on_ec2
-            setup_ccb
+            if [ -f "/var/lib/cloud_type" ]; then
+                cloud_type=`cat /var/lib/cloud_type`
+                if [ "$cloud_type" = "Azure" ]; then
+                    setup_on_azure
+                    setup_ccb_azure
+                elif [ "$cloud_type" = "gce" ]; then
+                    setup_on_gce
+                    setup_ccb_gce
+                else
+                    setup_on_ec2
+                    setup_ccb
+                fi
+            fi
             set_central_manager $CENTRAL_MANAGER
             setup_vmtype $IMAGE_METADATA
             update_condor_local_config
