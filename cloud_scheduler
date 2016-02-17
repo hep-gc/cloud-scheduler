@@ -899,6 +899,7 @@ class Scheduler(threading.Thread):
                 failure_reasons = {"-1": "Proxy/Auth related issue",
                                    "-2": "Resource Availability / Quota Problem",
                                    "-3": "Other VM Create Error",
+                                   "-4": "Endpoint / Region problem",
                                    "2": "Resource Request Denied",
                                    "1": "Error when making VM request: check log"}
                 if create_ret == None:
