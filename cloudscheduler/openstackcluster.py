@@ -150,21 +150,22 @@ class OpenStackCluster(cluster_tools.ICluster):
                     return
         try:
             imageobj = nova.images.find(name=image)
+        except novaclient.exceptions.EndpointNotFound:
+            log.error("Endpoint not found, are your region settings correct for %s" % self.name)
+            return -4
         except Exception as e:
             log.warning("Exception occurred while trying to fetch image via name: %s %s" % (image, e))
             try:
                 imageobj = nova.images.get(image)
                 log.debug("Got image via uuid: %s" % image)
+            except novaclient.exceptions.EndpointNotFound:
+                log.error("Endpoint not found, are your region settings correct for %s" % self.name)
+                return -4
             except Exception as e:
                 log.exception("Unable to fetch image via uuid: %s %s" % (image, e))
                 self.failed_image_set.add(image)
                 return
-            except novaclient.exceptions.EndpointNotFound:
-                log.error("Endpoint not found, are your region settings correct for %s" % self.name)
-                return -4
-        except novaclient.exceptions.EndpointNotFound:
-            log.error("Endpoint not found, are your region settings correct for %s" % self.name)
-            return -4
+
         try:
             if self.name in instance_type.keys():
                 i_type = instance_type[self.name]
