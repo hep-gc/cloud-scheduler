@@ -49,6 +49,7 @@ except:
     pass
 
 import cloudscheduler.config as config
+import cloudconfig
 
 from cloudscheduler.utilities import determine_path
 from cloudscheduler.utilities import get_or_none
@@ -169,10 +170,10 @@ class ResourcePool:
 
         # Read in config file, parse into Cluster objects
         for cluster in cloud_config.sections():
-
-            new_cluster = self._cluster_from_config(cloud_config, cluster)
-            if new_cluster:
-                new_resources.append(new_cluster)
+            if cloudconfig.verify_sections_base(cloud_config, cluster):
+                new_cluster = self._cluster_from_config(cloud_config, cluster)
+                if new_cluster:
+                    new_resources.append(new_cluster)
 
         # Check to see if we are removing any clusters. If so,
         # shut down all the VMs of the cluster we're removing
@@ -254,11 +255,12 @@ class ResourcePool:
             self.setup_queued = False
             self.setup()
 
-
     @staticmethod
     def _cluster_from_config(cconfig, cluster):
         """Create a new cluster object from a config file's specification."""
         enabled = False
+        #if not _verify_cloud_conf_base(cconfig, cluster):
+        #    return None
         cloud_type = get_or_none(cconfig, cluster, "cloud_type")
         max_vm_mem = get_or_none(cconfig, cluster, "max_vm_mem")
         try:
@@ -303,7 +305,7 @@ class ResourcePool:
                 log.error("%s hypervisor not supported." % hypervisor)
                 return None
 
-        if cloud_type == "Nimbus":
+        if cloud_type == "Nimbus" and cloudconfig.verify_cloud_conf_nimbus(cconfig, cluster):
             nets = splitnstrip(",", get_or_none(cconfig, cluster, "networks"))
             if len(nets) > 1:
                 # Split the vm_slots too
@@ -340,7 +342,8 @@ class ResourcePool:
                     )
 
         elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
-            return ec2cluster.EC2Cluster(name = cluster,
+            if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
+                return ec2cluster.EC2Cluster(name = cluster,
                     host = get_or_none(cconfig, cluster, "host"),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
@@ -365,7 +368,7 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     )
 
-        elif cloud_type == "StratusLab" and stratuslab_support:
+        elif cloud_type == "StratusLab" and stratuslab_support and cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):
             return stratuslabcluster.StratusLabCluster(name = cluster,
                     host = get_or_none(cconfig, cluster, "host"),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
@@ -382,7 +385,7 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     )
 
-        elif cloud_type.lower() == "ibmsmartcloud":
+        elif cloud_type.lower() == "ibmsmartcloud" and cloudconfig.verify_cloud_conf_ibm(cconfig, cluster):
             return ibmcluster.IBMCluster(name= cluster,
                     host= get_or_none(cconfig, cluster, "host"),
                     cloud_type= get_or_none(cconfig, cluster, "cloud_type"),
@@ -399,7 +402,7 @@ class ResourcePool:
                     priority = priority,
                     keep_alive=keep_alive,
                     )
-        elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce":
+        elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce" and cloudconfig.verify_cloud_conf_gce(cconfig, cluster):
             return googlecluster.GoogleComputeEngineCluster(name = cluster,
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
@@ -418,7 +421,7 @@ class ResourcePool:
                     total_cpu_cores = total_cpu_cores,
                     keep_alive=keep_alive,
                     )
-        elif cloud_type == "OpenStackNative":
+        elif cloud_type == "OpenStackNative" and cloudconfig.verify_cloud_conf_openstacknative(cconfig, cluster):
             return openstackcluster.OpenStackCluster(name = cluster,
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
@@ -445,7 +448,7 @@ class ResourcePool:
                     cacert = get_or_none(cconfig, cluster, "cacert"),
                     keep_alive=keep_alive,
                     )
-        elif cloud_type == "Azure":
+        elif cloud_type == "Azure" and cloudconfig.verify_cloud_conf_azure(cconfig, cluster):
             return azurecluster.AzureCluster(name = cluster,
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
@@ -467,9 +470,8 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     blob_url= get_or_none(cconfig, cluster, "blob_url"),)
         else:
-            log.error("ResourcePool.setup doesn't know what to do with the %s cloud_type" % cloud_type)
-            return None
-
+            log.error("ResourcePool.setup encountered a problem creating entry for %s" % cluster)
+        return None
 
     def add_resource(self, cluster):
         """Add a cluster resource to the pool's resource list."""
