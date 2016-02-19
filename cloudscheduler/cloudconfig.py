@@ -1,8 +1,6 @@
-import logging
 import utilities
 
 log = utilities.get_cloudscheduler_logger()
-
 
 def verify_cloud_conf_openstacknative(conf, name):
     """
@@ -51,6 +49,7 @@ def verify_cloud_conf_ec2(conf, name):
         return False
     return True
 
+
 def verify_cloud_conf_gce(conf, name):
     """
     :param conf: Ref to config file data
@@ -65,6 +64,7 @@ def verify_cloud_conf_gce(conf, name):
         log.error("Missing required options in %s: %s" % (name, str(diff)))
         return False
     return True
+
 
 def verify_cloud_conf_nimbus(conf, name):
     """
@@ -82,6 +82,7 @@ def verify_cloud_conf_nimbus(conf, name):
         return False
     return True
 
+
 def verify_cloud_conf_stratuslab(conf, name):
     """
     :param conf: Ref to config file data
@@ -96,6 +97,7 @@ def verify_cloud_conf_stratuslab(conf, name):
         return False
     return True
 
+
 def verify_cloud_conf_ibm(conf, name):
     """
     :param conf: Ref to config file data
@@ -109,6 +111,7 @@ def verify_cloud_conf_ibm(conf, name):
         log.error("Missing required options in %s: %s" % (name, str(diff)))
         return False
     return True
+
 
 def verify_sections_base(conf, name):
     """
