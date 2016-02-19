@@ -2,6 +2,7 @@ import utilities
 
 log = utilities.get_cloudscheduler_logger()
 
+
 def verify_cloud_conf_openstacknative(conf, name):
     """
     :param conf: Ref to config file data
