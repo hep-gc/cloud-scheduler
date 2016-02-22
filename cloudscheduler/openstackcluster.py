@@ -5,7 +5,6 @@ import uuid
 import string
 import shutil
 import logging
-import nimbus_xml
 import subprocess
 import cluster_tools
 import cloud_init_util

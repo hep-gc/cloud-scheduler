@@ -28,7 +28,6 @@ import threading
 from subprocess import Popen
 from urlparse import urlparse
 
-import nimbus_xml
 import config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.utilities import get_cert_expiry_time
