@@ -174,6 +174,8 @@ class Job:
             raise ValueError
         try:
             self.keep_alive   = int(VMKeepAlive) * 60 # Convert to seconds
+            if self.keep_alive > config.max_keepalive:
+                self.keep_alive = config.max_keepalive
         except:
             log.exception("VMKeepAlive not int: %s" % VMKeepAlive)
             raise ValueError

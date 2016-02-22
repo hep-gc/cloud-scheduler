@@ -182,7 +182,11 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             user_data = cloud_init_util.inject_customizations([], user_data)[0]
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
-            user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config')], extra_userdata)     
+            user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config')], extra_userdata)
+
+        # Compress the user data to try and get under the limit
+        user_data = utilities.gzip_userdata(user_data)
+
         next_instance_name = self.generate_next_instance_name()
         
         instance = {
@@ -276,7 +280,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
         # Delete an Instance
-        log.info("googlecluster::destroy vm::%s"%vm.name)
+        log.info("googlecluster::destroy vm::%s on %s " % (vm.hostname, self.name))
         request = self.gce_service.instances().delete(
             project=self.project_id, instance=vm.name, zone=self.DEFAULT_ZONE)
         try:

@@ -152,7 +152,10 @@ def validate_yaml(content):
     """ Try to load yaml to see if it passes basic validation."""
     try:
         import yaml
-        yaml.load(content)
+        y = yaml.load(content)
+        if not y.has_key('merge_type'):
+            log.error("Yaml submitted without a merge_type.")
+            return "Missing merge_type:"
     except yaml.YAMLError as e:
         log.error("Problem validating yaml: %s" % e)
         return ' '.join(['Line: ', str(e.problem_mark.line), ' Col: ', str(e.problem_mark.column)]) # use e.problem_mark.[name,column,line]

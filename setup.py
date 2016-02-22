@@ -15,6 +15,8 @@ setup(name = "cloud-scheduler",
     license="'GPL3' or 'Apache 2'",
     install_requires=[
        "boto>=2.0b3",
+       "requests>=2.2.0",
+       "web.py>=0.3",
         ],
     description = "A cloud-enabled distributed resource manager",
     author = "Duncan Penfold-Brown, Chris Usher, Patrick Armstrong, Ian Gable, Michael Paterson, Andre Charbonneau",

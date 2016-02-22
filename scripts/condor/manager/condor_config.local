@@ -13,7 +13,6 @@ COLLECTOR.MAX_FILE_DESCRIPTORS = 10000
 LOWPORT = 40000
 HIGHPORT = 45000
 ENABLE_SOAP = TRUE
-ALLOW_SOAP = localhost, 127.0.0.1
 
 ## Settings after this point have been set automatically. Don't change them
 ## unless you're really sure you know what you're doing

@@ -352,18 +352,20 @@ update_condor_local_config() {
 }
 
 # set up condor ccb if only private networking is available
-setup_ccb() {
-	/sbin/ifconfig | grep "inet addr" | egrep -v "addr:127.|addr:192.|addr:172.|addr:10." > /dev/null
-	NON_LOCAL=$?
-
-	if [ $NON_LOCAL -eq 1 ]; then
-		# All addresses are local
-		LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
-		EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
-		# Use exthostname with OpenStack / EC2 clouds. hostname for Nimbus Images
-		#echo $LOCAL_ADDRESS $HOSTNAME "# Added for Condor CCB" >> /etc/hosts
-		echo $LOCAL_ADDRESS $EXTHOSTNAME "# Added for Condor CCB" >> /etc/hosts
-	fi
+setup_ccb_ec2() {
+    LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+    EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
+    echo $LOCAL_ADDRESS $EXTHOSTNAME "# Added for Condor CCB" >> /etc/hosts
+}
+setup_ccb_gce() {
+    LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+    EXTHOSTNAME=`curl -s http://metadata/computeMetadata/v1/instance/attributes/hostname`
+    echo $LOCAL_ADDRESS $EXTHOSTNAME "# Added for Condor CCB" >> /etc/hosts
+}
+setup_ccb_azure() {
+    LOCAL_ADDRESS=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+    EXTHOSTNAME=`hostname`
+    echo $LOCAL_ADDRESS $EXTHOSTNAME "# Added for Condor CCB" >> /etc/hosts
 }
 
 # usage: setup_vmtype metadata
@@ -399,28 +401,28 @@ setup_on_ec2() {
 		if [ $HAS_PUBLIC_IP -eq 0 ] ; then
 
 			# Set hostname to external
-			EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
+			EXTHOSTNAME=`curl -m 5 -s http://$EC2_METADATA/latest/meta-data/public-hostname`
 			VALID_HOST=$?
 			if [ $VALID_HOST -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
 				hostname $EXTHOSTNAME
 
-				private_network_name=amazon-ec2-`curl -s http://$EC2_METADATA/latest/meta-data/placement/availability-zone`
+				private_network_name=amazon-ec2-`curl -m 5 -s http://$EC2_METADATA/latest/meta-data/placement/availability-zone`
 				replace_or_append "PRIVATE_NETWORK_NAME" "PRIVATE_NETWORK_NAME=$private_network_name" $local_file
 
-				tcp_forwarding_host=`curl -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
+				tcp_forwarding_host=`curl -m 5 -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
 				replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
 
-				private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
+				private_network_interface=`curl -m 5 -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
 				replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
 			fi
 		else
-			# EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/instance-id`
-			EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
+			# EXTHOSTNAME=`curl -m 5 -s http://$EC2_METADATA/latest/meta-data/instance-id`
+			EXTHOSTNAME=`curl -m 5 -s http://$EC2_METADATA/latest/meta-data/public-hostname`
 			VALID_ID=$?
 			if [ $VALID_ID -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
 				hostname $EXTHOSTNAME
 
-				private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
+				private_network_interface=`curl -m 5 -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
 				replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
 			fi
 		fi
@@ -443,29 +445,37 @@ setup_on_gce() {
 		if [ $HAS_PUBLIC_IP -eq 0 ] ; then
 
 			# Set hostname to external
-			EXTHOSTNAME=`curl -s http://metadata/computeMetadata/v1beta1/instance/hostname`
+			EXTHOSTNAME=`curl -m 5 -s http://metadata/computeMetadata/v1beta1/instance/hostname`
 			VALID_HOST=$?
 			if [ $VALID_HOST -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
 				hostname $EXTHOSTNAME
 
-				tcp_forwarding_host=`curl -s http://metadata/computeMetadata/v1beta1/instance/network-interfaces/0/access-configs/0/external-ip`
+				tcp_forwarding_host=`curl -m 5 -s http://metadata/computeMetadata/v1beta1/instance/network-interfaces/0/access-configs/0/external-ip`
 				replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
 
-				private_network_interface=`curl -s http://metadata/computeMetadata/v1beta1/instance/network-interfaces/0/ip`
+				private_network_interface=`curl -m 5 -s http://metadata/computeMetadata/v1beta1/instance/network-interfaces/0/ip`
 				replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
 			fi
 		else
-			EXTHOSTNAME=`curl -s http://metadata/computeMetadata/v1beta1/instance/hostname`
+			EXTHOSTNAME=`curl -m 5 -s http://metadata/computeMetadata/v1beta1/instance/hostname`
 			VALID_ID=$?
 			if [ $VALID_ID -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
 				hostname $EXTHOSTNAME
 
-				private_network_interface=`curl -s http://metadata/computeMetadata/v1beta1/instance/network-interfaces/0/ip`
+				private_network_interface=`curl -m 5 -s http://metadata/computeMetadata/v1beta1/instance/network-interfaces/0/ip`
 				replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
 			fi
 		fi
 	fi
 
+}
+
+setup_on_azure() {
+    local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+    tcp_forwarding_host=`grep PublicAddress /var/lib/waagent/SharedConfig.xml | awk '{print $7}' | awk -F ':' '{print $1}' | awk -F '"' '{print $2}'`
+    replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
+    private_network_interface=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+    replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
 }
 
 # Make sure the permissions on the grid hostkey
@@ -502,11 +512,22 @@ verify_execute () {
 
 # Start condor.
 start() {
-        set_hostkey_permissions
-	setup_on_ec2
-	setup_ccb
+    set_hostkey_permissions
+    if [ -f "/var/lib/cloud_type" ]; then
+        cloud_type=`cat /var/lib/cloud_type`
+        if [ "$cloud_type" = "Azure" ]; then
+            setup_on_azure
+            setup_ccb_gce
+        elif [ "$cloud_type" = "gce" ]; then
+            setup_on_gce
+            setup_ccb_gce
+        else
+            setup_on_ec2
+            setup_ccb
+        fi
+    fi
 	set_central_manager $CENTRAL_MANAGER
-        setup_vmtype $IMAGE_METADATA
+    setup_vmtype $IMAGE_METADATA
 	update_condor_local_config
 	verify_execute
 	init_condor_master

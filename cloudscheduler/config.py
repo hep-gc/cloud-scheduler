@@ -87,6 +87,7 @@ vm_start_running_timeout = -1 # Unlimited time
 vm_idle_threshold = 5 * 60 # 5 minute default
 max_starting_vm = -1
 max_destroy_threads = 10
+max_keepalive = 60 * 60  # 1 hour default
 myproxy_logon_command = 'myproxy-logon'
 proxy_cache_dir = None
 override_vmtype = False
@@ -94,7 +95,7 @@ vm_reqs_from_condor_reqs = False
 adjust_insufficient_resources = False
 connection_fail_disable_time = 60 * 60 * 2 # 2 hour default
 use_cloud_init = True
-default_yaml = "/usr/local/share/cloud-scheduler/default.yaml"
+default_yaml = "/usr/local/share/cloud-scheduler/default.yaml" if os.path.exists('/usr/local/share/cloud-scheduler/default.yaml') else '/usr/share/cloud-scheduler/default.yaml'
 validate_yaml = False
 retire_reallocate = True
 
@@ -123,6 +124,7 @@ log_location = None
 log_location_cloud_admin = None
 admin_log_comments = False
 log_stdout = False
+log_syslog = False
 log_max_size = None
 log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
 
@@ -205,6 +207,7 @@ def setup(path=None):
     global vm_start_running_timeout
     global vm_idle_threshold
     global max_starting_vm
+    global max_keepalive
     global proxy_cache_dir
     global myproxy_logon_command
     global override_vmtype
@@ -240,6 +243,7 @@ def setup(path=None):
     global log_location_cloud_admin
     global admin_log_comments
     global log_stdout
+    global log_syslog
     global log_max_size
     global log_format
 
@@ -687,6 +691,16 @@ def setup(path=None):
                   "integer value."
             sys.exit(1)
 
+    if config_file.has_option("global", "max_keepalive"):
+        try:
+            max_keepalive = config_file.getint("global", "max_keepalive") * 60
+            if max_keepalive < 0:
+                max_keepalive = 0
+        except ValueError:
+            print "Configuration file problem: max_keepalive must be an " \
+                  "integer value(# of minutes)."
+            sys.exit(1)
+
     if config_file.has_option("global", "max_destroy_threads"):
         try:
             max_destroy_threads = config_file.getint("global", "max_destroy_threads")
@@ -779,6 +793,13 @@ def setup(path=None):
             log_stdout = config_file.getboolean("logging", "log_stdout")
         except ValueError:
             print "Configuration file problem: log_stdout must be a" \
+                  " Boolean value."
+
+    if config_file.has_option("logging", "log_syslog"):
+        try:
+            log_syslog = config_file.getboolean("logging", "log_syslog")
+        except ValueError:
+            print "Configuration file problem: log_syslog must be a" \
                   " Boolean value."
 
     if config_file.has_option("logging", "log_max_size"):

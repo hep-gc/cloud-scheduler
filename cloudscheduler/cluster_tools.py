@@ -16,6 +16,7 @@ import os
 import re
 import sys
 import time
+import uuid
 import string
 import shutil
 import logging
@@ -139,7 +140,7 @@ class VM:
         log = logging.getLogger("cloudscheduler")
         log.verbose("New VM Object - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
           % (name, id, clusteraddr, image, memory))
-        log.info("Created VM cluster address %s name %s"%(clusteraddr,name))
+        log.info("Created VM cloud: %s id: %s"%(clusteraddr,self.id))
 
     def log(self):
         """Log the VM to the info level."""
@@ -527,3 +528,13 @@ class ICluster:
             except:
                 log.warning("Couldn't return memory because I don't know about that mem entry anymore...")
 
+    def _generate_next_name(self):
+        name = ''.join([self.name.replace('_', '-').lower(), '-', str(uuid.uuid4())])
+        collision = False
+        for vm in self.vms:
+            if name == vm.hostname:
+                collision= True
+                break
+        if collision:
+            name = None
+        return name

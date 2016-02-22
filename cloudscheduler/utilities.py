@@ -7,6 +7,7 @@ import socket
 import logging
 import subprocess
 import time
+import gzip
 import errno
 from urlparse import urlparse
 from datetime import datetime
@@ -15,6 +16,7 @@ try:
     from OpenSSL import crypto
 except ImportError:
     pass
+from cStringIO import StringIO
 
 def determine_path ():
     """Borrowed from wxglade.py"""
@@ -366,4 +368,13 @@ def check_popen_timeout(process, timeout=180):
                     raise
     return ret
 
+def gzip_userdata(user_data):
+    # Compress the user data to try and get under the limit
+    udbuf = StringIO()
+    udf = gzip.GzipFile(mode='wb', fileobj=udbuf)
+    try:
+        udf.write(user_data)
+    finally:
+        udf.close()
+    return udbuf.getvalue()
 

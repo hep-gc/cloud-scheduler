@@ -15,7 +15,6 @@
 ## Using optparse for command line options (http://docs.python.org/library/optparse.html)
 ##
 
-## Imports
 from __future__ import with_statement
 import sys
 
@@ -26,16 +25,12 @@ if sys.version_info[:2] < (2,5):
 import os
 import re
 import time
-import string
-import getopt
 import signal
 import logging
 import urllib2
 import threading
 import traceback
-import ConfigParser
 import logging.handlers
-import multiprocessing
 from itertools import islice
 from optparse import OptionParser
 from decimal import *
@@ -54,7 +49,7 @@ import cloudscheduler.cloud_init_util as cloud_init_util
 from cloudscheduler.cloud_management import VMDestroyCmd
 from cloudscheduler.cloud_management import VMMachine
 
-#from cloudscheduler.monitoring.get_clouds import getCloudsClient
+# from cloudscheduler.monitoring.get_clouds import getCloudsClient
 
 log = utilities.get_cloudscheduler_logger()
 
@@ -879,6 +874,23 @@ class Scheduler(threading.Thread):
                         'key_name':job.key_name,
                         'use_cloud_init': job.use_cloud_init}
                 create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "AzureCluster":
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_image':vmimage_expanded,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'pre_customization':pre_customizations,
+                        'extra_userdata': extra_userdata,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':vminstancetype_expanded,
+                        'job_per_core':job.job_per_core,}
+                create_ret = resource.vm_create(**args)
 
             # If the VM create fails, try again on another resource
             if (create_ret != 0):
@@ -887,6 +899,7 @@ class Scheduler(threading.Thread):
                 failure_reasons = {"-1": "Proxy/Auth related issue",
                                    "-2": "Resource Availability / Quota Problem",
                                    "-3": "Other VM Create Error",
+                                   "-4": "Endpoint / Region problem",
                                    "2": "Resource Request Denied",
                                    "1": "Error when making VM request: check log"}
                 if create_ret == None:
@@ -1303,7 +1316,7 @@ class Cleanup(threading.Thread):
                 else:
                     break
 
-            log.info("Final(for real) num to change: %s" % str(num_to_change))
+            log.debug("Final(for real) num to change: %s" % str(num_to_change))
 
             log.verbose("Ready to balance via configured method")
             if config.graceful_shutdown:
@@ -1718,19 +1731,20 @@ class Cleanup(threading.Thread):
                                 if vm.keep_alive == 0 or now - vm.idle_start > vm.keep_alive:
                                     #if vm.override_status != "Retiring":
                                     self.resource_pool.force_retire_vm(vm)
-                                    if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
-                                        log.verbose("Starting Destroy of VM: %s" % (vm.id))
-                                        th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
-                                        th.start()
-                                        self.destroy_threads["".join([cluster.name, vm.id])] = th
+                                    log.debug("Retiring idle VM: %s, type: %s as it's no longer required for remaining jobs." % (vm.id, vm.vmtype))
+                                    #if not self.check_destroy(cluster, vm) and not cluster.connection_problem:
+                                    #    log.verbose("Starting Destroy of VM: %s" % (vm.id))
+                                    #    th = VMDestroyCmd(cluster, vm, reason="VM %s of type %s no longer required for remaining jobs" % (vm.id, vm.vmtype))
+                                    #    th.start()
+                                    #    self.destroy_threads["".join([cluster.name, vm.id])] = th
                                 else:
                                     log.verbose('waiting on keep_alive: %s current: %s' % (vm.keep_alive, now-vm.idle_start))
                             else:
                                 vm.idle_start = int(time.time())
                                 break
-                    if found_vm:
-                        log.verbose('vm: %s found matching: %s stopping search. Types %s and %s' % (vm.hostname, unused_vms_of_type[x].machine_name, vm.uservmtype, vmtype))
-                        break
+                        if found_vm:
+                            log.verbose('vm: %s found matching: %s stopping search. Types %s and %s' % (vm.hostname, unused_vms_of_type[x].machine_name, vm.uservmtype, vmtype))
+                            break
                 if not found_vm:
                     log.debug("Unable to find Condor Machine %s in VM list" % unused_vms_of_type[x].machine_name)
 
@@ -2151,6 +2165,8 @@ def main():
         stream_handler.setFormatter(log_formatter)
         log.addHandler(stream_handler)
 
+    if config.log_syslog:
+        log.addHandler(logging.handlers.SysLogHandler(address='/dev/log'))
     if config.log_location:
         file_handler = None
         if config.log_max_size:

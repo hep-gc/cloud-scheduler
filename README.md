@@ -1,4 +1,4 @@
-# Cloud Scheduler 1.10.2 README
+# Cloud Scheduler 1.11 README
 
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
@@ -17,6 +17,8 @@ For more documentation on Cloud Scheduler, please refer to:
 * A working Condor 7.5.x or later install (details below)
 * [Python 2.6+](http://www.python.org/)
 * [boto](http://code.google.com/p/boto/) for using EC2 API clouds (Amazon, OpenStack)
+* [web.py](http://webpy.org/) for admin and status REST servers
+* [requests](https://github.com/kennethreitz/requests) for admin and status REST clients
 * [OpenStack novaclient](https://pypi.python.org/pypi/python-novaclient/) for using the native OpenStack APIs
 * redhat-lsb 
 

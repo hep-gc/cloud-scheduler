@@ -126,13 +126,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
 
         # Compress the user data to try and get under the limit
-        udbuf = StringIO()
-        udf = gzip.GzipFile(mode='wb', fileobj=udbuf)
-        try:
-            udf.write(user_data)
-        finally:
-            udf.close()
-        user_data = udbuf.getvalue()
+        user_data = utilities.gzip_userdata(user_data)
         
         try:
             if self.name in vm_image.keys():
@@ -156,15 +150,22 @@ class OpenStackCluster(cluster_tools.ICluster):
                     return
         try:
             imageobj = nova.images.find(name=image)
+        except novaclient.exceptions.EndpointNotFound:
+            log.error("Endpoint not found, are your region settings correct for %s" % self.name)
+            return -4
         except Exception as e:
-            log.warning("Exception occurred while trying to fetch image via name: %s" % e)
+            log.warning("Exception occurred while trying to fetch image via name: %s %s" % (image, e))
             try:
                 imageobj = nova.images.get(image)
                 log.debug("Got image via uuid: %s" % image)
+            except novaclient.exceptions.EndpointNotFound:
+                log.error("Endpoint not found, are your region settings correct for %s" % self.name)
+                return -4
             except Exception as e:
-                log.exception("Unable to fetch image via uuid: %s" % e)
+                log.exception("Unable to fetch image via uuid: %s %s" % (image, e))
                 self.failed_image_set.add(image)
                 return
+
         try:
             if self.name in instance_type.keys():
                 i_type = instance_type[self.name]
@@ -238,6 +239,7 @@ class OpenStackCluster(cluster_tools.ICluster):
     
                 try:
                     self.resource_checkout(new_vm)
+                    log.info("Launching 1 VM: %s on %s under tenant: %s" % (instance_id, self.name, self.tenant_name))
                 except:
                     log.error("Unexpected Error checking out resources when creating a VM. Programming error?")
                     self.vm_destroy(new_vm, reason="Failed Resource checkout")
@@ -257,7 +259,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         """ Destroy a VM on OpenStack."""
         nova = self._get_creds_nova()
         import novaclient.exceptions
-        log.info("Destroying VM: %s Name: %s Reason: %s" % (vm.id, vm.hostname, reason))
+        log.info("Destroying VM: %s Name: %s on %s tenant: %s Reason: %s" % (vm.id, vm.hostname, self.name, self.tenant_name, reason))
         try:
             instance = nova.servers.get(vm.id)
             instance.delete()
@@ -338,17 +340,6 @@ class OpenStackCluster(cluster_tools.ICluster):
             log.error("Problem importing keystone modules, and getting session: %s" % e)
         log.debug("Session object for %s created" % self.name)
         return sess
-
-    def _generate_next_name(self):
-        name = ''.join([self.name.replace('_', '-').lower(), '-', str(uuid.uuid4())])
-        collision = False
-        for vm in self.vms:
-            if name == vm.hostname:
-                collision= True
-                break
-        if collision:
-            name = None
-        return name
     
     def _find_network(self, name):
         nova = self._get_creds_nova()
