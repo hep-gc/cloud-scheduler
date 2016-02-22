@@ -229,7 +229,7 @@ class AzureCluster(cluster_tools.ICluster):
             azure_conn.delete_hosted_service(vm.id, True)
         except Exception as e:
             try:
-                if "hosted service name is invalid" in e.message:
+                if "hosted service name is invalid" in e.message or 'The hosted service does not exist' in e.message:
                     log.error("Invalid service name on %s : %s, dropping from CS" % (self.name, e))
                 else:
                     log.error("Unhandled exception while destroying VM on %s : %s" % (self.name, e))
