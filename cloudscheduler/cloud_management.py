@@ -305,43 +305,7 @@ class ResourcePool:
                 log.error("%s hypervisor not supported." % hypervisor)
                 return None
 
-        if cloud_type == "Nimbus" and cloudconfig.verify_cloud_conf_nimbus(cconfig, cluster):
-            nets = splitnstrip(",", get_or_none(cconfig, cluster, "networks"))
-            if len(nets) > 1:
-                # Split the vm_slots too
-                slots = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "vm_slots")))
-            else:
-                slots = [int(get_or_none(cconfig, cluster, "vm_slots"))]
-            net_slots = {}
-            for x in range(len(nets)):
-                net_slots[nets[x]] = slots[x]
-            total_slots = sum(slots)
-            return nimbuscluster.NimbusCluster(name = cluster,
-                    host = get_or_none(cconfig, cluster, "host"),
-                    port = get_or_none(cconfig, cluster, "port"),
-                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
-                    max_vm_mem = max_vm_mem,
-                    cpu_archs = splitnstrip(",", get_or_none(cconfig, cluster, "cpu_archs")),
-                    networks = nets,
-                    vm_slots = total_slots,
-                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
-                    storage = int(get_or_none(cconfig, cluster, "storage")),
-                    max_vm_storage = max_vm_storage,
-                    netslots = net_slots,
-                    hypervisor = hypervisor,
-                    vm_lifetime = get_or_none(cconfig, cluster, "vm_lifetime"),
-                    image_attach_device = get_or_none(cconfig, cluster, "image_attach_device"),
-                    scratch_attach_device = get_or_none(cconfig, cluster, "scratch_attach_device"),
-                    boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
-                    total_cpu_cores = total_cpu_cores,
-                    temp_lease_storage = get_or_none(cconfig, cluster, "temp_lease_storage"),
-                    enabled=enabled,
-                    priority = priority,
-                    keep_alive=keep_alive,
-                    )
-
-        elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
+        if cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
             if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
                 return ec2cluster.EC2Cluster(name = cluster,
                     host = get_or_none(cconfig, cluster, "host"),

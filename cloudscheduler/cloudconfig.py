@@ -67,23 +67,6 @@ def verify_cloud_conf_gce(conf, name):
     return True
 
 
-def verify_cloud_conf_nimbus(conf, name):
-    """
-    :param conf: Ref to config file data
-    :param name: name of cloud checking conf values for
-    :return: True if all required fields present, False otherise
-    """
-    required_options_nimbus = {'cloud_type', 'cpu_archs', 'cpu_cores', 'host',
-                               'memory', 'networks', 'storage',
-                               'vm_slots'}
-    options = set(conf.options(name))
-    diff = required_options_nimbus - options
-    if len(diff) > 0:
-        log.error("Missing required options in %s: %s" % (name, str(diff)))
-        return False
-    return True
-
-
 def verify_cloud_conf_stratuslab(conf, name):
     """
     :param conf: Ref to config file data
