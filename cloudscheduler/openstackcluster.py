@@ -106,10 +106,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         else:
             key_name = self.key_name if self.key_name else ""
         if customization:
-            if not use_cloud_init:
-                user_data = nimbus_xml.ws_optional(customization)
-            else:
-                user_data = cloud_init_util.build_write_files_cloud_init(customization)
+            user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
             user_data = ""
         if pre_customization:

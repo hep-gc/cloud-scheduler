@@ -164,20 +164,13 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             return
         use_cloud_init = use_cloud_init or config.use_cloud_init
         if customization:
-            if not use_cloud_init:
-                user_data = nimbus_xml.ws_optional(customization)
-            else:
-                user_data = cloud_init_util.build_write_files_cloud_init(customization)
+            user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
             user_data = ""
         
         
         if pre_customization:
-            if not use_cloud_init:
-                for item in pre_customization:
-                    user_data = '\n'.join([item, user_data])
-            else:
-                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
+            user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
         elif use_cloud_init:
             user_data = cloud_init_util.inject_customizations([], user_data)[0]
         if len(extra_userdata) > 0:
