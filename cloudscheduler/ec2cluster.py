@@ -225,19 +225,12 @@ class EC2Cluster(cluster_tools.ICluster):
         if key_name == None:
             key_name = self.key_name
         if customization:
-            if not use_cloud_init:
-                user_data = nimbus_xml.ws_optional(customization)
-            else:
-                user_data = cloud_init_util.build_write_files_cloud_init(customization)
+            user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
             user_data = ""
 
         if pre_customization:
-            if not use_cloud_init:
-                for item in pre_customization:
-                    user_data = '\n'.join([item, user_data])
-            else:
-                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
+            user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
         elif use_cloud_init:
             user_data = cloud_init_util.inject_customizations([], user_data)[0]
         if len(extra_userdata) > 0:
@@ -554,7 +547,7 @@ class EC2Cluster(cluster_tools.ICluster):
             if not utilities.check_popen_timeout(sp):
                 (out, err) = sp.communicate(input=None)
             else:
-                log.warning("Process %s timed out! cmd was %" % (sp.pid, " ".join(cmd)))
+                log.warning("Process %s timed out! cmd was %s" % (sp.pid, " ".join(cmd)))
             return (sp.returncode, out, err)
         except OSError, e:
             try:
