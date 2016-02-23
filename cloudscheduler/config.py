@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # vim: set expandtab ts=4 sw=4:
 
-# Copyright (C) 2009 University of Victoria
-# You may distribute under the terms of either the GNU General Public
-# License or the Apache v2 License, as specified in the README file.
-
-## Auth.: Patrick Armstrong
-
 import os
 import sys
 from urlparse import urlparse
@@ -42,11 +36,8 @@ ca_root_certs = []
 ca_signing_policies = []
 cloudscheduler_ssh_key = ""
 cloud_resource_config = None
-image_attach_device = "sda"
-scratch_attach_device = "sdb"
 info_server_port = 8111
 admin_server_port = 8112
-workspace_path = "workspace"
 persistence_file = "/var/lib/cloudscheduler.persistence"
 user_limit_file = None
 target_cloud_alias_file = None
@@ -104,7 +95,6 @@ default_VMNetwork= ""
 default_VMCPUArch= "x86_64"
 default_VMHypervisor= "xen"
 default_VMName= "Default-Image"
-default_VMLoc= ""
 default_VMAMI= ""
 default_VMMem= 512
 default_VMCPUCores= 1
@@ -163,11 +153,8 @@ def setup(path=None):
     global ca_signing_policies
     global cloudscheduler_ssh_key
     global cloud_resource_config
-    global image_attach_device
-    global scratch_attach_device
     global info_server_port
     global admin_server_port
-    global workspace_path
     global persistence_file
     global user_limit_file
     global target_cloud_alias_file
@@ -375,14 +362,6 @@ def setup(path=None):
         cloud_resource_config = config_file.get("global",
                                                 "cloud_resource_config")
 
-    if config_file.has_option("global", "image_attach_device"):
-        image_attach_device = config_file.get("global",
-                                                "image_attach_device")
-
-    if config_file.has_option("global", "scratch_attach_device"):
-        scratch_attach_device = config_file.get("global",
-                                                "scratch_attach_device")
-
     if config_file.has_option("global", "info_server_port"):
         try:
             info_server_port = config_file.getint("global", "info_server_port")
@@ -398,9 +377,6 @@ def setup(path=None):
             print "Configuration file problem: admin_server_port must be an " \
                   "integer value."
             sys.exit(1)
-
-    if config_file.has_option("global", "workspace_path"):
-        workspace_path = config_file.get("global", "workspace_path")
 
     if config_file.has_option("global", "persistence_file"):
         persistence_file = config_file.get("global", "persistence_file")
@@ -828,9 +804,6 @@ def setup(path=None):
 
     if config_file.has_option("job", "default_VMName"):
         default_VMName = config_file.get("job", "default_VMName")
-
-    if config_file.has_option("job", "default_VMLoc"):
-        default_VMLoc = config_file.get("job", "default_VMLoc")
 
     if config_file.has_option("job", "default_VMAMI"):
         default_VMAMI = config_file.get("job", "default_VMAMI")
