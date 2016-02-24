@@ -304,7 +304,7 @@ class ResourcePool:
                 log.error("%s hypervisor not supported." % hypervisor)
                 return None
 
-        if cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
+        if cloud_type.lower() == "amazonec2" or cloud_type.lower() == "eucalyptus" or cloud_type.lower() == "openstack":
             if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
                 return ec2cluster.EC2Cluster(name = cluster,
                     host = get_or_none(cconfig, cluster, "host"),
@@ -331,7 +331,7 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     )
 
-        elif cloud_type == "StratusLab" and stratuslab_support and cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):
+        elif cloud_type.lower() == "stratuslab" and stratuslab_support and cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):
             return stratuslabcluster.StratusLabCluster(name = cluster,
                     host = get_or_none(cconfig, cluster, "host"),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
@@ -384,7 +384,7 @@ class ResourcePool:
                     total_cpu_cores = total_cpu_cores,
                     keep_alive=keep_alive,
                     )
-        elif cloud_type == "OpenStackNative" and cloudconfig.verify_cloud_conf_openstacknative(cconfig, cluster):
+        elif cloud_type.lower() == "openstacknative" and cloudconfig.verify_cloud_conf_openstacknative(cconfig, cluster):
             return openstackcluster.OpenStackCluster(name = cluster,
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
@@ -411,7 +411,7 @@ class ResourcePool:
                     cacert = get_or_none(cconfig, cluster, "cacert"),
                     keep_alive=keep_alive,
                     )
-        elif cloud_type == "Azure" and cloudconfig.verify_cloud_conf_azure(cconfig, cluster):
+        elif cloud_type.lower() == "azure" and cloudconfig.verify_cloud_conf_azure(cconfig, cluster):
             return azurecluster.AzureCluster(name = cluster,
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
