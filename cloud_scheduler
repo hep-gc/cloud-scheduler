@@ -434,7 +434,6 @@ class Scheduler(threading.Thread):
         #If there are no lookahead jobs, no reason to kill machines; let them die of natural causes
         if len(lookahead_jobs):
             for machine in machine_list:
-                #find the VM object that corresponds with the machine (actual Nimbus VM)
                 log.debug("cloud_scheduler.py::435::do_condor_off::Name %s, addr %s"%(machine.machine_name,machine.address_startd))
                 matching_vm = None
                 for vm in vm_list:
@@ -656,7 +655,7 @@ class Scheduler(threading.Thread):
             job.override_status = "TempBanned"
             log.verbose("VM Creation failed - temporarily banning job %s" % job.id)
             return False
-        elif create_ret == -2: # -2 on Nimbus resource failures previously banned, but need to resolve resource misconfig - admin will need to manually reconfig to resolve - adjusted happens in the nimbus cloud vm_creation() 
+        elif create_ret == -2:
             if config.adjust_insufficient_resources:
                 log.info("Resources on cloud adjusted due to insufficient availability.")
             else:
@@ -1351,20 +1350,7 @@ class Cleanup(threading.Thread):
                 num_fit = 0
                 if vmtype in fits_by_type.keys():
                     for cloud in fits_by_type[vmtype]:
-                        num_fit_cloud = 0
-                        if cloud.__class__.__name__ == "NimbusCluster":
-                            if vmtype in unsched_jobs.keys():
-                                if unsched_jobs[vmtype][0].req_network in cloud.network_pools:
-                                    num_fit_cloud = cloud.net_slots[unsched_jobs[vmtype][0].req_network]
-                                    # IF no specified network do something
-                                elif not unsched_jobs[vmtype][0].req_network:
-                                    # Need to get total slots on all network pools
-                                    total_netpool_slots = 0
-                                    for netpool in cloud.net_slots.keys():
-                                        total_netpool_slots += cloud.net_slots[netpool]
-                                    num_fit_cloud = total_netpool_slots
-                        else:
-                            num_fit_cloud = cloud.vm_slots
+                        num_fit_cloud = cloud.vm_slots
                         if job.req_storage == 0:
                             numstore = -1
                         else:
@@ -1889,7 +1875,7 @@ class Cleanup(threading.Thread):
 
     def clean_retire_near_lifetime(self):
         """Forces a VM to retire that is nearing it's maximum lifetime. This is 
-        done to prevent a job's execution from being interupted by Nimbus shutting
+        done to prevent a job's execution from being interupted from the cloud shutting
         down the VM at the maximum lifetime."""
         for cluster in self.resource_pool.resources:
             try:
@@ -1907,7 +1893,7 @@ class Cleanup(threading.Thread):
                                     else:
                                         log.warning("Unable to retire VM, possibly due to condor name %s" % vm.condorname)
             except AttributeError:
-                # No vm lifetime for Non-Nimbus clouds move on to next 
+                # Most clouds don't have a lifetime
                 continue
 
     def check_destroy(self, cluster, vm):

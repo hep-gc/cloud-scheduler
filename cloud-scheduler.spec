@@ -15,12 +15,11 @@ BuildRequires:  python-setuptools
 Requires:	python-lxml >= 2.2.6
 Requires:       python-boto >= 2.0
 Requires:       python-suds >= 0.3.9
-Requires:       nimbus-cloud-client
 Requires:       condor
 
 %description
 Cloud Scheduler manages virtual machines on clouds configured with
-Nimbus, Eucalyptus, or Amazon EC2 to create an environment for HTC
+Eucalyptus, or Amazon EC2 to create an environment for HTC
 batch job execution. Users submit their jobs to a Condor job queue,
 and Cloud Scheduler boots VMs to suit those jobs.
 

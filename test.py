@@ -12,7 +12,6 @@ from lxml import etree
 import cloudscheduler.config
 import cloudscheduler.cloud_management
 import cloudscheduler.job_management
-import cloudscheduler.nimbus_xml
 import cloudscheduler.utilities as utilities
 
 log = utilities.get_cloudscheduler_logger()
@@ -36,11 +35,8 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.cert_file_on_vm = "/path/to/certonvm"
         self.key_file_on_vm = "/path/to/keyonvm"
         self.condor_context_file = "/etc/testlocation"
-        self.image_attach_device = "deva"
-        self.scratch_attach_device = "devb"
         self.cloud_resource_config = "/home/testuser/cloud"
         self.info_server_port = "1234"
-        self.workspace_path = "/path/to/workspace"
         self.persistence_file = "/path/to/persistence"
         self.scheduler_interval = 42
         self.vm_poller_interval = 42
@@ -72,10 +68,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'key_file_on_vm', self.key_file_on_vm)
         testconfig.set('global', 'condor_context_file', self.condor_context_file)
         testconfig.set('global', 'cloud_resource_config', self.cloud_resource_config)
-        testconfig.set('global', 'image_attach_device', self.image_attach_device)
-        testconfig.set('global', 'scratch_attach_device', self.scratch_attach_device)
         testconfig.set('global', 'info_server_port', self.info_server_port)
-        testconfig.set('global', 'workspace_path', self.workspace_path)
         testconfig.set('global', 'persistence_file', self.persistence_file)
         testconfig.set('global', 'scheduler_interval', self.scheduler_interval)
         testconfig.set('global', 'vm_poller_interval', self.vm_poller_interval)
@@ -140,17 +133,8 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
     def test_cloud_resource_config(self):
         self.assertEqual(self.cloud_resource_config, cloudscheduler.config.cloud_resource_config)
 
-    def test_image_attach_device(self):
-        self.assertEqual(self.image_attach_device, cloudscheduler.config.image_attach_device)
-
-    def test_scratch_attach_device(self):
-        self.assertEqual(self.scratch_attach_device, cloudscheduler.config.scratch_attach_device)
-
     def test_info_server_port(self):
         self.assertEqual(int(self.info_server_port), cloudscheduler.config.info_server_port)
-
-    def test_workspace_path(self):
-        self.assertEqual(self.workspace_path, cloudscheduler.config.workspace_path)
 
     def test_persistence_file(self):
         self.assertEqual(self.persistence_file, cloudscheduler.config.persistence_file)
