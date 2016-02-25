@@ -40,10 +40,10 @@ start () {
 
     echo -n $"Starting $SERVICE:"
     if [ "$SUDO_COMMAND" ]; then
-        sudo nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >${CRASHLOG} 2>&1 &
+        sudo nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >>${CRASHLOG} 2>&1 &
         echo $! > $PIDFILE
     else
-        nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >${CRASHLOG} 2>&1 &
+        nohup ${PYTHON} ${EXECUTABLEPATH} </dev/null >>${CRASHLOG} 2>&1 &
         echo $! > $PIDFILE
     fi
     RETVAL=$?

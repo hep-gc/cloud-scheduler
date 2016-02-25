@@ -46,7 +46,7 @@ start () {
     echo -n $"Starting ${SERVICE}:"
     touch  ${CRASHLOG} ${LOGFILE} ${PIDFILE} ${PERSISTFILE}
     chown ${CS_USER}:${CS_USER} ${CRASHLOG} ${LOGFILE} ${PIDFILE} ${PERSISTFILE}
-    ${SU} - ${CS_USER} -c "nohup ${CS_EXEC}" </dev/null >${CRASHLOG} 2>&1 &
+    ${SU} - ${CS_USER} -c "nohup ${CS_EXEC}" </dev/null >>${CRASHLOG} 2>&1 &
     echo $! > ${PIDFILE}
     RETVAL=$?
     touch /var/lock/subsys/${SERVICE}
