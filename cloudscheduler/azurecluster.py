@@ -269,6 +269,7 @@ class AzureCluster(cluster_tools.ICluster):
                 vm_info = azure_conn.get_hosted_service_properties(service.service_name, True)
             except Exception as e:
                 log.error("Unable to find service with name: %s on Azure. %s" % (service.service_name, e))
+                continue
             if vm_info and len(vm_info.deployments) == 0:
                 log.debug("No VMs running on service: %s, skipping." % vm_info.service_name)
                 continue
