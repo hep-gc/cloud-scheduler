@@ -125,7 +125,7 @@ class Job:
         if not VMName:
             VMName = config.default_VMName
         if not VMLoc:
-            VMLoc = config.default_VMLoc
+            VMLoc = ""
         if not VMAMI:
             VMAMI = _attr_list_to_dict(config.default_VMAMI)
         if not VMInstanceType:
@@ -155,7 +155,7 @@ class Job:
         self.req_vmtype   = VMType
         self.req_network  = VMNetwork
         self.req_image    = VMName
-        self.req_imageloc = VMLoc
+        self.req_imageloc = ""
         self.req_ami      = VMAMI
         try:
             self.req_memory   = int(VMMem)
