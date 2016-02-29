@@ -14,7 +14,7 @@ setup(name = "cloud-scheduler",
     version = version.version,
     license="'GPL3' or 'Apache 2'",
     install_requires=[
-       "boto>=2.0b3",
+       "boto>=2.38.0",
        "requests>=2.2.0",
        "web.py>=0.3",
         ],
