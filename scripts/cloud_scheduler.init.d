@@ -22,7 +22,6 @@ else
     SU="su - -s /bin/sh"
 fi
 
-export PATH=${PATH}:${NIMBUS_CLOUD_CLIENT_DIR}/bin
 LOGFILE=$(awk '/log_location:/ {print $2}' ${CS_CONFIG_DIR}/cloud_scheduler.conf | tail -n 1)
 PERSISTFILE=$(awk '/persistence_file:/ {print $2}' ${CS_CONFIG_DIR}/cloud_scheduler.conf | tail -n 1)
 
