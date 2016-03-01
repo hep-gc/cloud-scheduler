@@ -13,7 +13,7 @@ BuildArch:      noarch
 BuildRequires:  python-setuptools
 
 Requires:	python-lxml >= 2.2.6
-Requires:       python-boto >= 2.0
+Requires:       python-boto >= 2.38
 Requires:       python-suds >= 0.3.9
 Requires:       condor
 
