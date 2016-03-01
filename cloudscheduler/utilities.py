@@ -17,6 +17,8 @@ try:
 except ImportError:
     pass
 from cStringIO import StringIO
+from collections import deque
+
 
 def determine_path ():
     """Borrowed from wxglade.py"""
@@ -30,6 +32,7 @@ def determine_path ():
         print "There is no __file__ variable. Please contact the author."
         sys.exit ()
 
+
 LEVELS = {'DEBUG': logging.DEBUG,
           'VERBOSE': logging.DEBUG-1,
           'INFO': logging.INFO,
@@ -37,9 +40,11 @@ LEVELS = {'DEBUG': logging.DEBUG,
           'ERROR': logging.ERROR,
           'CRITICAL': logging.CRITICAL,}
 
+
 class NullHandler(logging.Handler):
     def emit(self, record):
         pass
+
 
 def get_cloudscheduler_logger():
     """Gets a reference to the 'cloudscheduler' log handle."""
@@ -51,9 +56,11 @@ def get_cloudscheduler_logger():
 
     return log
 
+
 def get_hostname_from_url(url):
     """Return the hostname parsed from a full url."""
     return urlparse(url)[1].split(":")[0]
+
 
 def get_or_none(config, section, value):
     """Return the value of a config option if it exists, none otherwise."""
@@ -61,6 +68,7 @@ def get_or_none(config, section, value):
         return config.get(section, value)
     else:
         return None
+
 
 def splitnstrip(sep, val):
     """Return a list of items trimed of excess whitespace from a string(typically comma separated)."""
@@ -97,8 +105,6 @@ def get_globus_path(executable="grid-proxy-init"):
             return ""
 
 
-
-
 def get_cert_DN(cert_file_path):
     """This utility function will extract the subject DN from an x509 certificate.
 
@@ -130,7 +136,6 @@ def get_cert_DN(cert_file_path):
             log = get_cloudscheduler_logger()
             log.exception('Error extracting cert subject using openssl.')
             return None
-    
 
 
 def get_cert_expiry_time(cert_file_path):
@@ -171,7 +176,8 @@ def get_cert_expiry_time(cert_file_path):
             log = get_cloudscheduler_logger()
             log.exception('Error extracting cert expiry time using openssl.')
             return None
-    
+
+
 def match_host_with_condor_host(hostname, condor_hostname):
     """
     match_host_with_condor_host -- determine if hostname matches condor's hostname
@@ -212,6 +218,7 @@ def match_host_with_condor_host(hostname, condor_hostname):
         return True
 
     return False
+
 
 def match_host_with_condor_host_master(hostname, condor_hostname):
     """
@@ -262,81 +269,39 @@ def match_host_with_condor_host_master(hostname, condor_hostname):
 
     return False
 
-class CircleQueue():
-    """Represents a Circular queue of specified length."""
-    def __init__(self, length=10):
-        """Initializes the new circular queue.
-        
-        Keywords:
-        length, default 10
-        
-        """
-        self.data = [None for _ in range(0, length)]
 
-    def append(self, x):
-        """Append item to the end of the queue while removing the head."""
-        self.data.pop(0)
-        self.data.append(x)
-
-    def get(self):
-        """Returns the queue as a list."""
-        return self.data
-
-    def clear(self):
-        """Resets the queue to empty state filled with None values."""
-        self.data = [None for _ in range(0, len(self.data))]
-
-    def min_use(self):
-        """Checks the head of the queue for a None value to determine if is queue full."""
-        min_use = True
-        if self.data[0] == None:
-            min_use = False
-        return min_use
-
-    def length(self):
-        """Returns the number of non-None values to get the actual length of queue."""
-        length = 0
-        for x in self.data:
-            if x != None:
-                length += 1
-        return length
-
-class ErrTrackQueue(CircleQueue):
+class ErrTrackQueue():
     """Error Tracking Queue - Keeps a True/False record of each VM Boot."""
     def __init__(self, name):
         """Initializes new queue with the configured length."""
-        CircleQueue.__init__(self, config.ban_min_track)
+        self.data = deque(10)
         self.name = name
 
     def dist_true(self):
         """Calculate the distribution of True(succuessful) starts."""
-        tc = 0
-        for x in self.data:
-            if x:
-                tc += 1
+        tc = sum(self.data)
         return (float(tc) / float(len(self.data))) if len(self.data) > 0 else 0
 
     def dist_false(self):
         """Calculate the distribution of False(failed) starts."""
         return 1.0 - self.dist_true()
-    
-class JobRunTrackQueue(CircleQueue):
+
+
+class JobRunTrackQueue():
     """Job Run-[time] Tracking Queue. Keeps a list of job runtimes for  stats purposes."""
     def __init__(self, name):
         """Initizlizes new queue, of length 10."""
-        CircleQueue.__init__(self, 10)
+        self.data = deque(10)
         self.name = name
         self.avg = 0
         
     def average(self):
         """"Returns the average run-time of jobs in the queue."""
-        total = 0
-        for x in self.data:
-            if x:
-                total += x
-        if self.length() > 0:
-            self.avg = total / self.length()
+        total = sum(self.data)
+        if len(self.data) > 0:
+            self.avg = total / len(self.data)
         return self.avg
+
 
 def check_popen_timeout(process, timeout=180):
     """ Timeout feature for subprocess.Popen - polls the process for timeout seconds waiting for it to complete
@@ -367,6 +332,7 @@ def check_popen_timeout(process, timeout=180):
                 if e.errno != errno.ESRCH:
                     raise
     return ret
+
 
 def gzip_userdata(user_data):
     # Compress the user data to try and get under the limit
