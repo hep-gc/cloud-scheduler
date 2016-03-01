@@ -235,7 +235,6 @@ class AzureCluster(cluster_tools.ICluster):
                     log.error("Unhandled exception while destroying VM on %s : %s" % (self.name, e))
                     return 1
             except:
-                print e
                 log.error("Failed to log exception properly?")
                 return 1
 
