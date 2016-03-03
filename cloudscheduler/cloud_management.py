@@ -2257,6 +2257,7 @@ class VMDestroyCmd(threading.Thread):
 #    def get_vm(self):
 #        return self.vm
 
+
 class VMMachine():
     """
     VMMachine - abstraction class to hold information about machines registered with the batch queue
@@ -2295,8 +2296,11 @@ class VMMachine():
         self.remote_owner = remote_owner
         self.slot_type = slot_type
         self.total_slots = total_slots
-    
+
+
     def get_uservmtype(self):
         return ''.join([self.remote_owner, self.vmtype])
+
+
     def __repr__(self):
         return "MachineName: %s, State: %s, Activity: %s, VMType: %s, SlotType: %s, TotalSlots: %s" % (self.machine_name, self.state, self.activity, self.vmtype, self.slot_type, self.total_slots)
