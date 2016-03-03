@@ -9,7 +9,7 @@ import cloudscheduler.config as config
 log = None
 
 #
-# This is an abstract base class; do not intantiate directly.
+# This is an abstract base class; do not instantiate directly.
 #
 # API documentation should go in here, as opposed to writing specific
 # documentation for each concrete subclasses.
