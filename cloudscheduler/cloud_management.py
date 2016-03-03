@@ -1087,23 +1087,6 @@ class ResourcePool:
             types[vmtype] *= mem_cpu_storage_total
         return types
 
-    # Skipped creating an alternate usertypes version of this function
-    # VM Type resource usage
-    # Counts up how much/many of each resource (RAM, Cores, Storage)
-    # are being used by each type of VM
-    #def vmtype_resource_usage(self):
-        #types = {}
-        #for cluster in self.resources:
-            #for vm in cluster.vms:
-                #if vm.vmtype in types.keys():
-                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
-                #else:
-                    #types[vm.vmtype] = []
-                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
-        #results = {}
-        #for vmtype in types.keys():
-            #results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
-        #return results
 
     def vmtype_resource_usage(self):
         """VM Type resource usage w/ uservmtype
@@ -1142,18 +1125,6 @@ class ResourcePool:
             results[vmusertype] = [vmcount[vmusertype]*types[vmusertype].memory, vmcount[vmusertype]*types[vmusertype].cpucores, vmcount[vmusertype]*types[vmusertype].storage]
         return results
 
-    #def vm_slots_used(self):
-        #types = {}
-        #for cluster in self.resources:
-            #for vm in cluster.vms:
-                #if not types.has_key(vm.vmtype):
-                    #types[vm.vmtype] = []
-                #if hasattr(vm, "job_per_core") and vm.job_per_core:
-                    #for core in range(vm.cpucores):
-                        #types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
-                #else:
-                    #types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
-        #return types
     
     def vm_slots_total(self):
         """Provides a count of the vm slots across all clusters in the system."""
@@ -1161,7 +1132,7 @@ class ResourcePool:
         for cluster in self.resources:
             count += cluster.max_slots
         return count
-            
+
     def vm_slots_available(self):
         """Provides a count of all available vm slots across all clusters in the system."""
         count = 0
@@ -1293,26 +1264,7 @@ class ResourcePool:
     def track_failures(self, job, resources,  value):
         """Error Tracking to be used to ban / filter resources."""
         for cluster in resources:
-            if cluster.__class__.__name__ == 'NimbusCluster':
-                if job.req_imageloc in self.failures.keys():
-                    foundIt = False
-                    for resource in self.failures[job.req_imageloc]:
-                        if resource.name == cluster.name:
-                            resource.append(value)
-                            foundIt = True
-                        if foundIt:
-                            break
-                        else:
-                            queue = ErrTrackQueue(cluster.name)
-                            queue.append(value)
-                            self.failures[job.req_imageloc].append(queue)
-                else:
-                    self.failures[job.req_imageloc] = []
-                    queue = ErrTrackQueue(cluster.name)
-                    queue.append(value)
-                    self.failures[job.req_imageloc].append(queue)
-
-            elif cluster.__class__.__name__ == 'StratusLabCluster' and stratuslab_support:
+            if cluster.__class__.__name__ == 'StratusLabCluster' and stratuslab_support:
                 # If not valid image file to download
                 if job.req_imageloc == "":
                     continue
@@ -1338,6 +1290,14 @@ class ResourcePool:
                     queue = ErrTrackQueue(cluster.name)
                     queue.append(value)
                     self.failures[job.req_ami].append(queue)
+            elif cluster.__class__.__name__ == 'AzureCluster':
+                pass
+            elif cluster.__class__.__name__ == 'OpenStackCluster':
+                pass
+            elif cluster.__class__.__name__ == 'GoogleComputeEngineCluster':
+                pass
+            elif cluster.__class__.__name__ == 'IBMCluster':
+                pass
 
     def check_failures(self):
         """Check if failures have crossed the threshold and ban job from resources."""
