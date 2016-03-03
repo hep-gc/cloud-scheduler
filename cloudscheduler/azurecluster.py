@@ -264,6 +264,7 @@ class AzureCluster(cluster_tools.ICluster):
             except:
                 log.error("Failed to log exception properly: %s" % vm.id)
         for service in service_list:
+            vm_info = None
             try:
                 vm_info = azure_conn.get_hosted_service_properties(service.service_name, True)
             except Exception as e:
@@ -272,7 +273,7 @@ class AzureCluster(cluster_tools.ICluster):
             if vm_info and len(vm_info.deployments) == 0:
                 log.debug("No VMs running on service: %s, skipping." % vm_info.service_name)
                 continue
-            if vm_info.service_name + self.vm_domain_name == vm.hostname:
+            if vm_info and vm_info.service_name + self.vm_domain_name == vm.hostname:
                 instance = vm_info
                 break
         else:
