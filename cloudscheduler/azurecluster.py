@@ -35,6 +35,7 @@ class AzureCluster(cluster_tools.ICluster):
         "BusyRole": "Starting",
         "Preparing": "Starting",
         "Provisioning": "Starting",
+        "ProvisioningTimeout": "Error",
         "ProvisioningFailed": "Error",
         "StoppingRole": "StopRole",
         "StoppingVM": "Shutdown",
