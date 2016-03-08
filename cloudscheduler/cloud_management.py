@@ -2222,8 +2222,24 @@ class ResourcePool:
                     return "VM slots already set at %s. Nothing to do." % total_slots
         else:
             return "Unable to find cluster with name: %s" % cloud_name
+
+        self.update_cloud_resources(cloud_name, number)
         return "Attempt adjustment on cloud %s, change to %s slots" % (cloud_name, number)
-    
+
+
+    def update_cloud_resources(self, cloud, slots):
+        try:
+            cloud_config = ConfigParser.ConfigParser()
+            cloud_config.read(self.config_file)
+        except ConfigParser.ParsingError:
+            log.exception("Cloud config problem: Couldn't " \
+                  "parse your cloud config file. Check for spaces " \
+                  "before or after variables.")
+            sys.exit(1)
+        cloud_config.set(cloud, "vm_slots", slots)
+        with open(self.config_file, "wb") as cf:
+            cf.write(cloud_config)
+
 
 class VMDestroyCmd(threading.Thread):
     """
