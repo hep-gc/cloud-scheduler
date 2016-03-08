@@ -789,9 +789,13 @@ class ResourcePool:
                 log.debug("No Cluster with name %s in system" % name)
         return clusters
 
-    def get_cluster(self, cluster_name):
+    def get_cluster(self, cluster_name, retired=False):
         """Return cluster that matches cluster_name."""
-        for cluster in self.resources:
+        if retired:
+            res_list = self.retired_resources
+        else:
+            res_list = self.resources
+        for cluster in res_list:
             if cluster.name == cluster_name:
                 return cluster
         return None
@@ -1865,26 +1869,35 @@ class ResourcePool:
         """Manually shutdown a VM, for use by cloud_admin."""
         output = ""
         cluster = self.get_cluster(clustername)
+        cluster_retired = self.get_cluster(clustername, True)
         if cluster:
             vm = cluster.get_vm(vmid)
+            vm_retired = cluster_retired.get_vm(vmid)
             if vm:
                 # found the vm - shutdown
                 # move the vmdestroycmd thread into a better place and import so avilable here
-                thread = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
-                thread.start()
-                while thread.is_alive():
-                    time.sleep(1)
-                if not thread.is_alive():
-                    if thread.get_result() != 0:
-                        output = "Destroying VM %s failed. Leaving it for now." % thread.get_vm().id
-                    else:
-                        output = "VM %s has been Destroyed." % thread.get_vm().id
-                    thread.join()
+                _shutdown_admin(vm)
+            elif vm_retired:
+                _shutdown_admin(vm_retired)
             else:
                 output = "Could not find VM with ID: %s on Cluster: %s." % (vmid, clustername)
         else:
             output = "Could not find a Cluster with name: %s." % clustername
         return output
+
+    @staticmethod
+    def _shutdown_admin(vm):
+        thread = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
+        thread.start()
+        while thread.is_alive():
+            time.sleep(1)
+        if not thread.is_alive():
+            if thread.get_result() != 0:
+                output = "Destroying VM %s failed. Leaving it for now." % thread.get_vm().id
+            else:
+                output = "VM %s has been Destroyed." % thread.get_vm().id
+            thread.join()
+
 
     def shutdown_cluster_all(self, clustername):
         """Manually shutdown all VMs on a cluster, for use by cloud_admin."""
@@ -2196,7 +2209,7 @@ class ResourcePool:
                                 cluster_copy.vms.append(vm)
                                 self.retired_resources.append(cluster_copy)
                             else:
-                                cluster_copy = self.retired_resources.get_cluster(cluster.name)
+                                cluster_copy = self.get_cluster(cluster.name, True)
                                 cluster_copy.vms.append(vm)
                             vm.return_resources = False
                             self.force_retire_vm(vm)
