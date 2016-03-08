@@ -1876,9 +1876,9 @@ class ResourcePool:
             if vm:
                 # found the vm - shutdown
                 # move the vmdestroycmd thread into a better place and import so avilable here
-                _shutdown_admin(vm)
+                self._shutdown_admin(vm)
             elif vm_retired:
-                _shutdown_admin(vm_retired)
+                self._shutdown_admin(vm_retired)
             else:
                 output = "Could not find VM with ID: %s on Cluster: %s." % (vmid, clustername)
         else:
