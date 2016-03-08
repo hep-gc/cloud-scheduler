@@ -1,4 +1,4 @@
-*.pyc
+*.py[cod]
 *.log
 *.epr
 *~
