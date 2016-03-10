@@ -2238,7 +2238,7 @@ class ResourcePool:
             sys.exit(1)
         cloud_config.set(cloud, "vm_slots", slots)
         with open(self.config_file, "wb") as cf:
-            cf.write(cloud_config)
+            cloud_config.write(cf)
 
 
 class VMDestroyCmd(threading.Thread):
