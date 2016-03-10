@@ -274,7 +274,7 @@ class ErrTrackQueue():
     """Error Tracking Queue - Keeps a True/False record of each VM Boot."""
     def __init__(self, name):
         """Initializes new queue with the configured length."""
-        self.data = deque(10)
+        self.data = deque(maxlen=10)
         self.name = name
 
     def dist_true(self):
@@ -291,7 +291,7 @@ class JobRunTrackQueue():
     """Job Run-[time] Tracking Queue. Keeps a list of job runtimes for  stats purposes."""
     def __init__(self, name):
         """Initizlizes new queue, of length 10."""
-        self.data = deque(10)
+        self.data = deque(maxlen=10)
         self.name = name
         self.avg = 0
         
