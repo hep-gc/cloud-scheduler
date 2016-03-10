@@ -1978,6 +1978,7 @@ class ResourcePool:
     def force_retire_cluster_vm(self, clustername, vmid):
         output = ""
         cluster = self.get_cluster(clustername)
+        cluster_retired = self.get_cluster(clustername, True)
         if cluster:
             vm = cluster.get_vm(vmid)
             if vm:
@@ -1987,7 +1988,16 @@ class ResourcePool:
                 else:
                     output = "Unable to retire VM."
             else:
-                output = "Could not find VM ID %s." % vmid
+                if cluster_retired:
+                    vm = cluster_retired.get_vm(vmid)
+                    if vm:
+                        if self.force_retire_vm(vm):
+                            output = "Retired VM %s on %s." % (vmid, clustername)
+                            log.debug(output)
+                        else:
+                            output = "Unable to retire VM."
+                    else:
+                        output = "Could not find VM ID %s." % vmid
         else:
             output = "Could not find Cloud %s." % clustername
         return output
