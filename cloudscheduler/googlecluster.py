@@ -2,7 +2,6 @@ import os
 import time
 import uuid
 import threading
-import nimbus_xml
 import ConfigParser
 import cluster_tools
 import cloud_init_util
@@ -14,10 +13,11 @@ try:
     import httplib2
     from oauth2client.client import flow_from_clientsecrets
     from oauth2client.file import Storage
-    from oauth2client.tools import run
+    #from oauth2client.tools import run
     from oauth2client.tools import run_flow
     from apiclient.discovery import build
-except:
+except Exception as e:
+    print e
     pass
 
 log = utilities.get_cloudscheduler_logger()
@@ -53,7 +53,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
                  vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None,
                  auth_dat_file=None, secret_file=None, security_group=None, project_id=None,enabled=True, priority = 0,
-                 total_cpu_cores=-1,keep_alive=keep_alive,):
+                 total_cpu_cores=-1, keep_alive=0,):
         log.debug("Init GCE cores %s, storage %s"%(cpu_cores,storage))
         self.gce_hostname_prefix = 'gce-cs-vm'
         self.security_group = security_group
@@ -61,6 +61,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         self.secret_file_path = secret_file
         self.project_id = project_id
         self.total_cpu_cores = total_cpu_cores
+        self.keep_alive = keep_alive
         if not project_id:
             return None
         
@@ -330,6 +331,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
     def _blocking_call(self, gce_service, auth_http, response):
         """Blocks until the operation status is done for the given operation."""
+        status = ""
         if 'status' in response:
             status = response['status']
             
@@ -367,4 +369,3 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         return potential_name
     def construct_hostname(self, instance_name):
         return ''.join([instance_name, '.c.', self.project_id, '.internal'])
-            
