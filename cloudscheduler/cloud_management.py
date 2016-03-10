@@ -1929,13 +1929,20 @@ class ResourcePool:
         """Remove a VM entry from Cloudscheduler without issuing a shutdown to the cluster, for use by cloud_admin."""
         output = ""
         cluster = self.get_cluster(clustername)
+        cluster_retired = self.get_cluster(clustername, True)
         if cluster:
             vm = cluster.get_vm(vmid)
+            vm_retired = cluster_retired.get_vm(vmid)
             if vm:
                 with cluster.vms_lock:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
+                log.debug(output)
+            elif vm_retired:
+                with cluster_retired.vms_lock:
+                    cluster_retired.vms.remove(vm)
+                output = "Removed %s's VM %s from CloudScheduler retired resources." % (clustername, vmid)
                 log.debug(output)
             else:
                 output = "Could not find VM ID: %s on Cloud: %s" % (vmid, clustername)
