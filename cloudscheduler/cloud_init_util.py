@@ -11,8 +11,7 @@ import cloudscheduler.config as config
 log = logging.getLogger("cloudscheduler")
 
 def inject_customizations(pre_init, cloud_init):
-    """ Inject cloud init style customizations into an ami/cloud init script given by user
-    Replaces the old nimbus style xml. """
+    """ Inject cloud init style customizations into an ami/cloud init script given by user. """
     # cloud init should be a list of file contents
     # Need to see if the write_files preamble exists
     found_write_files = False
