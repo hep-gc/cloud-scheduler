@@ -82,21 +82,6 @@ def verify_cloud_conf_stratuslab(conf, name):
     return True
 
 
-def verify_cloud_conf_ibm(conf, name):
-    """
-    :param conf: Ref to config file data
-    :param name: name of cloud checking conf values for
-    :return: True if all required fields present, False otherise
-    """
-    required_options_ibm = {'cloud_type', 'password', 'username', 'vm_slots'}
-    options = set(conf.options(name))
-    diff = required_options_ibm - options
-    if len(diff) > 0:
-        log.error("Missing required options in %s: %s" % (name, str(diff)))
-        return False
-    return True
-
-
 def verify_sections_base(conf, name):
     """
     Check the sections to make sure there's no extra or misspelled keys.

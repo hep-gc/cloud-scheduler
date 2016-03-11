@@ -577,7 +577,7 @@ class JobJSONEncoder(json.JSONEncoder):
                 'machine_reserved': job.machine_reserved, 'req_hypervisor': job.req_hypervisor,
                 'proxy_non_boot': job.proxy_non_boot, 'vmimage_proxy_file': job.vmimage_proxy_file,
                 'usertype_limit': job.usertype_limit, 'req_image_id': job.req_image_id,
-                'req_instance_type_ibm': job.req_instance_type_ibm, 'location': job.location,
+                'location': job.location,
                 'key_name': job.key_name, 'req_security_group': job.req_security_group,
                 'override_status': job.override_status, 'block_time': job.block_time
                 }
