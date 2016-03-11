@@ -27,10 +27,6 @@ except:
 import cluster_tools
 import ec2cluster
 try:
-    import ibmcluster
-except:
-    pass
-try:
     import stratuslabcluster
 except:
     pass
@@ -343,24 +339,6 @@ class ResourcePool:
                     storage = int(get_or_none(cconfig, cluster, "storage")),
                     hypervisor = hypervisor,
                     contextualization = get_or_none(cconfig, cluster, "contextualization"),
-                    enabled=enabled,
-                    priority = priority,
-                    keep_alive=keep_alive,
-                    )
-
-        elif cloud_type.lower() == "ibmsmartcloud" and cloudconfig.verify_cloud_conf_ibm(cconfig, cluster):
-            return ibmcluster.IBMCluster(name= cluster,
-                    host= get_or_none(cconfig, cluster, "host"),
-                    cloud_type= get_or_none(cconfig, cluster, "cloud_type"),
-                    memory= map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
-                    max_vm_mem= max_vm_mem if max_vm_mem != None else -1,
-                    networks= networks,
-                    vm_slots= int(get_or_none(cconfig, cluster, "vm_slots")),
-                    cpu_cores= int(get_or_none(cconfig, cluster, "cpu_cores")),
-                    storage= int(get_or_none(cconfig, cluster, "storage")),
-                    hypervisor= hypervisor,
-                    username= get_or_none(cconfig, cluster, "username"),
-                    password= get_or_none(cconfig, cluster, "password"),
                     enabled=enabled,
                     priority = priority,
                     keep_alive=keep_alive,
@@ -1299,8 +1277,6 @@ class ResourcePool:
             elif cluster.__class__.__name__ == 'OpenStackCluster':
                 pass
             elif cluster.__class__.__name__ == 'GoogleComputeEngineCluster':
-                pass
-            elif cluster.__class__.__name__ == 'IBMCluster':
                 pass
 
     def check_failures(self):

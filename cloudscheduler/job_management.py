@@ -79,8 +79,8 @@ class Job:
              TargetClouds=None, ServerTime=0, JobStartDate=0, VMHypervisor=None,
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
-             VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
-             VMSecurityGroup="", VMUserData="", VMAMIConfig=None, VMUseCloudInit=False, VMInjectCA=config.default_VMInjectCA, **kwargs):
+             VMLocation=None, VMKeyName=None, VMSecurityGroup="", VMUserData="",
+             VMAMIConfig=None, VMUseCloudInit=False, VMInjectCA=config.default_VMInjectCA, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -218,7 +218,6 @@ class Job:
             log.exception("VMTypeLimit not int: %s" % VMTypeLimit)
             raise ValueError
         self.req_image_id = VMImageID
-        self.req_instance_type_ibm = VMInstanceTypeIBM
         self.location = VMLocation
         self.key_name = VMKeyName
         self.req_security_group = splitnstrip(',', VMSecurityGroup)

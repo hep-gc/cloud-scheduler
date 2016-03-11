@@ -269,15 +269,6 @@ class ResourcePoolSetup(unittest.TestCase):
         self.cpu_archs1 = "x86"
         self.networks1 = "private"
 
-        self.cloud_name1 = "example1"
-        self.host1 = "cloud.example.com"
-        self.cloud_type1 = "ibmsmartcloud"
-        self.vm_slots1 = 100
-        self.cpu_cores1 = 4
-        self.storage1 = 1000
-        self.memory1 = 2048
-        self.cpu_archs1 = "x86"
-        self.networks1 = "private"
         # build config file
         (self.configfile, self.configfilename) = tempfile.mkstemp()
         testconfig = ConfigParser.RawConfigParser()

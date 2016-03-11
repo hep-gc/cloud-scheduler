@@ -768,24 +768,6 @@ class Scheduler(threading.Thread):
                         'key_name': job.key_name,
                         'use_cloud_init': job.use_cloud_init}
                 create_ret = resource.vm_create(**args)
-            elif resource.__class__.__name__ == "IBMCluster":
-                customizations.append(("ibm", cloud_type_file_dest))
-                customizations.append((resource.name, cloud_name_file_dest))
-                args = {'vm_name':job.req_image,
-                        'vm_type':job.req_vmtype,
-                        'vm_user':job.user,
-                        'vm_networkassoc':job.req_network,
-                        'vm_image':job.req_image_id,
-                        'vm_mem':job.req_memory,
-                        'vm_cores':job.req_cpucores,
-                        'vm_storage':job.req_storage,
-                        'customization':customizations,
-                        'vm_keepalive':job.keep_alive,
-                        'instance_type':job.req_instance_type_ibm,
-                        'location':job.location,
-                        'job_per_core':job.job_per_core,
-                        'vm_keyname':job.key_name}
-                create_ret = resource.vm_create(**args)
             elif resource.__class__.__name__ == "StratusLabCluster":
                 customizations.append(("stratuslab", cloud_type_file_dest))
                 customizations.append((resource.name, cloud_name_file_dest))
