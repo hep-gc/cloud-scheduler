@@ -701,10 +701,6 @@ class ResourcePool:
                 continue
             if not cluster.find_potential_mementry(memory):
                 continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
-                continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
-                continue
             # Cluster meets network and cpu reqs and may have enough memory
             potential_fit = True
             break
@@ -737,8 +733,6 @@ class ResourcePool:
                 continue
             if cluster.name in blocked:
                 continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
-                continue
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
                 continue
@@ -748,8 +742,6 @@ class ResourcePool:
             if not cluster.find_potential_mementry(memory):
                 continue
             if disk > cluster.max_storageGB:
-                continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
                 continue
 
             fitting.append(cluster)
