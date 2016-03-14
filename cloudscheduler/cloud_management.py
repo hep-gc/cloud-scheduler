@@ -193,8 +193,6 @@ class ResourcePool:
             with cluster.res_lock:
                 cluster.vm_slots = 0
                 cluster.memory = []
-                if cluster.__class__.__name__ == "NimbusCluster":
-                    cluster.net_slots = {}
             old_resources.append(cluster)
             self.resources.remove(cluster)
 
@@ -481,23 +479,12 @@ class ResourcePool:
             # If required network is NOT in cluster's network associations
             if not (network in cluster.network_pools):
                 continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.net_slots[network] <= 0:
-                continue
             # If request exceeds the max vm memory on cluster
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
             # If the cluster has no sufficient memory entries for the VM
-            if cluster.__class__.__name__ == "NimbusCluster" and (cluster.find_mementry(memory) < 0):
-                continue
             # If the cluster does not have sufficient CPU cores
             if (cpucores > cluster.cpu_cores):
-                continue
-            # If the cluster does not have sufficient storage capacity
-            if cluster.__class__.__name__ == "NimbusCluster" and (storage > cluster.storageGB):
-                continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
-                continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
                 continue
 
             # Return the cluster as an available resource (meets all job reqs)
@@ -518,7 +505,6 @@ class ResourcePool:
             cpucores  - the number of cores that a VM requires (dedicated? or general?)
             storage   - the amount of scratch space the VM requires
             ami       - the ami of the vm image - used by EC2 clouds
-            imageloc  - the image location url - used by Nimbus clouds
             targets   - list of target clouds 
         Return: a list of Cluster objects representing clusters that meet given
             requirements for network, cpu, memory, and storage
@@ -540,42 +526,7 @@ class ResourcePool:
             if cluster.name in blocked:
                 log.verbose("get_fitting_resources - %s is blocked." % cluster.name)
                 continue
-            if cluster.__class__.__name__ == "NimbusCluster":
-                # If not valid image file to download
-                if imageloc == "":
-                    log.verbose("get_fitting_resources - No image location set: %s" % cluster.name)
-                    continue
-                # If required network is NOT in cluster's network associations
-                # if network is undefined then it means pick whatever, so we
-                # just always okay it.
-                if network and (network not in cluster.network_pools):
-                    log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
-                    continue
-                if network and network in cluster.net_slots.keys() and cluster.net_slots[network] <= 0:
-                    log.verbose("get_fitting_resources - No Slots left in network %s on %s" % (network, cluster.name))
-                    continue
-                if not network:
-                    full = True
-                    for net in cluster.net_slots.keys():
-                        if cluster.net_slots[net] > 0:
-                            full = False
-                    if full:
-                        log.verbose("get_fitting_resources - No Slots left on %s" % cluster.name)
-                        continue
-                if imageloc in self.banned_job_resource.keys():
-                    if cluster.name in self.banned_job_resource[imageloc]:
-                        log.verbose("get_fitting_resources - %s cloud is banned for image location" % cluster.name)
-                        continue
-                if cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
-                    log.verbose("get_fitting_resources - Storage request exceeds max_vm_storage for %s" % cluster.name)
-                    continue
-                if cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
-                    log.verbose("get_fitting_resources - cpu request greater than total available cores on %s" % cluster.name)
-                    continue
-                if cluster.hypervisor not in hypervisor:
-                    log.verbose("get_fitting_resources - Wrong hypervisor on %s" % cluster.name)
-                    continue
-            elif cluster.__class__.__name__ == "EC2Cluster":
+            if cluster.__class__.__name__ == "EC2Cluster":
                 # If no valid ami to boot from
                 if ami == "":
                     continue
@@ -647,7 +598,6 @@ class ResourcePool:
            cpucores  - the number of cores that a VM requires (dedicated? or general?)
            storage   - the amount of scratch space the VM requires
            ami       - image ami - used by EC2 clouds
-           imageloc  - image url - used by Nimbus clouds
            targets   - list of target clouds
         Return: returns a tuple of cluster objects. The first, or primary cluster, is the
                 most balanced fit. The second, or secondary, is an alternative fitting

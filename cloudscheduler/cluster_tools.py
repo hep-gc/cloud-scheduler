@@ -63,7 +63,7 @@ class VM:
 
         name         - (str) The name of the vm (arbitrary)
         id           - (str) The id tag for the VM. Whatever is used to access the vm
-                       by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
+                       by cloud software (OpenStack: uuid number, etc.)
         vmtype       - (str) The condor VMType attribute for the VM
         user         - (str) The user who 'owns' this VM
         uservmtype   - (str) Aggregate type in form 'user:vmtype'
@@ -73,7 +73,7 @@ class VM:
         condoraddr   - (str) The Address of the VM as it's registered with Condor
         clusteraddr  - (str) The address of the cluster hosting the VM
         clusterport  - (str) The port of the cluster hosting the VM
-        cloudtype    - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
+        cloudtype    - (str) The cloud type of the VM (OpenStack, EC2, OpenNebula, etc)
         network      - (str) The network association the VM uses
         cpuarch      - (str) The required CPU architecture of the VM
         image        - (str) The location of the image from which the VM was created
@@ -428,7 +428,7 @@ class ICluster:
     # Note: vm_id is the identifier for a VM, used to query or change an already
     #       created VM. vm_id will be a different entity based on the subclass's
     #       cloud software. EG:
-    #       - Nimbus vm_ids are epr files
+    #       - OpenStack vm_ids are uuids
     #       - OpenNebula (and Eucalyptus?) vm_ids are names/numbers
 
     def vm_create(self, **args):
