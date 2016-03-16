@@ -1194,9 +1194,10 @@ class ResourcePool:
                     continue
                 if (not Image.isDiskId(job.req_imageloc)) and (not Image.isImageId(job.req_imageloc)):
                     continue
-                resource.append(value)
-
-            elif cluster.__class__.__name__ == 'EC2Cluster':
+                for resource in self.failures[job.req_imageloc]:
+                    if resource.name == cluster.name:
+                        resource.append(value)
+            else:
                 if job.req_ami in self.failures.keys():
                     foundIt = False
                     for resource in self.failures[job.req_ami]:
@@ -1214,12 +1215,7 @@ class ResourcePool:
                     queue = ErrTrackQueue(cluster.name)
                     queue.append(value)
                     self.failures[job.req_ami].append(queue)
-            elif cluster.__class__.__name__ == 'AzureCluster':
-                pass
-            elif cluster.__class__.__name__ == 'OpenStackCluster':
-                pass
-            elif cluster.__class__.__name__ == 'GoogleComputeEngineCluster':
-                pass
+
 
     def check_failures(self):
         """Check if failures have crossed the threshold and ban job from resources."""
