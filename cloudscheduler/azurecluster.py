@@ -24,6 +24,7 @@ class AzureCluster(cluster_tools.ICluster):
     ERROR = 1
     DEFAULT_INSTANCE_TYPE = config.default_VMInstanceType if config.default_VMInstanceType else "m1.small"
     DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config.default_VMInstanceTypeList)
+    AZURE_SERVICE_NAME = "CloudSchedulerService"
     VM_STATES = {
         "Unknown": "Error",
         "CreatingVM": "Starting",
@@ -167,8 +168,10 @@ class AzureCluster(cluster_tools.ICluster):
         if name:
             sms = self._get_service_connection()
             try:
-                req = sms.create_hosted_service(name, name, name, self.regions[0])
-                sms.wait_for_operation_status(req.request_id)
+                if not sms.check_hosted_service_name_availability(self.AZURE_SERVICE_NAME):
+                    req = sms.create_hosted_service(self.AZURE_SERVICE_NAME, self.AZURE_SERVICE_NAME, location=self.regions[0])
+                    sms.wait_for_operation_status(req.request_id)
+
                 conf_set = azure.servicemanagement.LinuxConfigurationSet(host_name=name, user_name=self.username,
                                                                          user_password=self.password,
                                                                          disable_ssh_password_authentication=False,
@@ -180,7 +183,7 @@ class AzureCluster(cluster_tools.ICluster):
                                                                           port=22,
                                                                           local_port=22))
                 os_hd = azure.servicemanagement.OSVirtualHardDisk(image, self.blob_url + name)
-                req = sms.create_virtual_machine_deployment(name, name, 'production', name, name, conf_set,
+                req = sms.create_virtual_machine_deployment(self.AZURE_SERVICE_NAME, name, 'production', name, name, conf_set,
                                                             network_config=net_set,
                                                             os_virtual_hard_disk=os_hd, role_size=i_type)
 
@@ -227,7 +230,8 @@ class AzureCluster(cluster_tools.ICluster):
         vm.id, vm.hostname, self.name, self.tenant_name, reason))
         try:
             azure_conn = self._get_service_connection()
-            azure_conn.delete_hosted_service(vm.id, True)
+            #azure_conn.delete_hosted_service(vm.id, True)
+            azure_conn.delete_deployment(self.AZURE_SERVICE_NAME, vm.id)
         except Exception as e:
             try:
                 if "hosted service name is invalid" in e.message or 'The hosted service does not exist' in e.message:
@@ -265,6 +269,8 @@ class AzureCluster(cluster_tools.ICluster):
             except:
                 log.error("Failed to log exception properly: %s" % vm.id)
         for service in service_list:
+            if service.service_name is not self.AZURE_SERVICE_NAME:
+                continue
             vm_info = None
             try:
                 vm_info = azure_conn.get_hosted_service_properties(service.service_name, True)
