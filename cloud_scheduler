@@ -948,7 +948,7 @@ class Scheduler(threading.Thread):
 
         # Add the owner restriction requirement.
         # This is to prevent a VM started by a user being recycled to run jobs from another user.
-        if job.user != None:
+        if job.user is not None:
             start_requirement = 'START=(Owner == "%s")\n' % (job.user)
             log.verbose("Adding START requirement to match resource's original owner:\n%s" % start_requirement)
             local_modifications += start_requirement

@@ -110,14 +110,15 @@ class HashTableJobContainer(VMContainer):
 
     def __init__(self):
         VMContainer.__init__(self)
-        self.vms = {}
+        self.vms = {} # keyed on id
+
         # might want another hashed with vm type
         # condorname, condoraddr, user
         log.verbose('HashTableVMContainer instance created.')
 
 
     def __str__(self):
-        pass
+        return self.vms.__str__()
 
 
     def get_vm(self, vmid):
