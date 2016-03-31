@@ -260,32 +260,19 @@ class AzureCluster(cluster_tools.ICluster):
 
         instance = None
         azure_conn = self._get_service_connection()
+        vm_info = None
         try:
-            service_list = []
-            service_list = azure_conn.list_hosted_services()
+            vm_info = azure_conn.get_hosted_service_properties(self.AZURE_SERVICE_NAME, True)
         except Exception as e:
-            try:
-                log.error("Unexpected exception occurred polling vm %s: %s" % (vm.id, e))
-            except:
-                log.error("Failed to log exception properly: %s" % vm.id)
-        for service in service_list:
-            if service.service_name is not self.AZURE_SERVICE_NAME:
-                continue
-            vm_info = None
-            try:
-                vm_info = azure_conn.get_hosted_service_properties(service.service_name, True)
-            except Exception as e:
-                log.error("Unable to find service with name: %s on Azure. %s" % (service.service_name, e))
-                continue
-            if vm_info and len(vm_info.deployments) == 0:
-                log.debug("No VMs running on service: %s, skipping." % vm_info.service_name)
-                continue
-            if vm_info and vm_info.service_name + self.vm_domain_name == vm.hostname:
-                instance = vm_info
-                break
-        else:
-            log.debug("Unable to find VM %s on Azure." % vm.hostname)
-            instance = None
+            log.error("Unable to find service with name: %s on Azure. %s" % (self.AZURE_SERVICE_NAME, e))
+            return None
+        if vm_info and len(vm_info.deployments) == 0:
+            log.debug("No VMs running on service: %s, skipping." % vm_info.service_name)
+            return None
+        if vm_info:
+            for instance in vm_info.deployments:
+                pass
+
         with self.vms_lock:
             if instance and instance.deployments and instance.deployments[
                 0].role_instance_list and vm.status != self.VM_STATES.get(
