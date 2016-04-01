@@ -168,9 +168,6 @@ class AzureCluster(cluster_tools.ICluster):
         if name:
             sms = self._get_service_connection()
             try:
-                if not sms.check_hosted_service_name_availability(self.AZURE_SERVICE_NAME):
-                    req = sms.create_hosted_service(self.AZURE_SERVICE_NAME, self.AZURE_SERVICE_NAME, location=self.regions[0])
-                    sms.wait_for_operation_status(req.request_id)
 
                 conf_set = azure.servicemanagement.LinuxConfigurationSet(host_name=name, user_name=self.username,
                                                                          user_password=self.password,
@@ -183,10 +180,24 @@ class AzureCluster(cluster_tools.ICluster):
                                                                           port=22,
                                                                           local_port=22))
                 os_hd = azure.servicemanagement.OSVirtualHardDisk(image, self.blob_url + name)
-                req = sms.create_virtual_machine_deployment(self.AZURE_SERVICE_NAME, name, 'production', name, name, conf_set,
-                                                            network_config=net_set,
-                                                            os_virtual_hard_disk=os_hd, role_size=i_type)
 
+                res = sms.check_hosted_service_name_availability(self.AZURE_SERVICE_NAME)
+                if res.result:
+                    print 'service name available?'
+                    req = sms.create_hosted_service(self.AZURE_SERVICE_NAME, self.AZURE_SERVICE_NAME, location=self.regions[0])
+                    sms.wait_for_operation_status(req.request_id)
+
+                    req = sms.create_virtual_machine_deployment(service_name=self.AZURE_SERVICE_NAME,
+                                                                deployment_name=self.AZURE_SERVICE_NAME,
+                                                                deployment_slot='production',
+                                                                role_name=name, label=name,
+                                                                system_config=conf_set, network_config=net_set,
+                                                                os_virtual_hard_disk=os_hd, role_size=i_type)
+                else:
+                    print 'exists, add a role to it'
+                    req = sms.add_role(service_name=self.AZURE_SERVICE_NAME, deployment_name=self.AZURE_SERVICE_NAME,
+                                       role_name=name, system_config=conf_set, network_config=net_set,
+                                       os_virtual_hard_disk=os_hd, role_size=i_type)
             except Exception as e:
                 # print e
                 log.error("Unhandled exception while creating vm on %s: %s" % (self.name, e))
@@ -270,22 +281,25 @@ class AzureCluster(cluster_tools.ICluster):
             log.debug("No VMs running on service: %s, skipping." % vm_info.service_name)
             return None
         if vm_info:
-            for instance in vm_info.deployments:
-                pass
+            for vm_instance in vm_info.deployments:
+                if vm_instance.name == vm.id:
+                    instance = vm_instance
+                    break
+            else:
+                log.debug("Unable to find VM: %s on Azure" % vm.id)
 
         with self.vms_lock:
-            if instance and instance.deployments and instance.deployments[
-                0].role_instance_list and vm.status != self.VM_STATES.get(
-                    instance.deployments[0].role_instance_list[0].instance_status, "Starting"):
+            if instance and instance.role_instance_list and vm.status != self.VM_STATES.get(
+                    instance.role_instance_list[0].instance_status, "Starting"):
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(
-                    instance.deployments[0].role_instance_list[0].instance_status, "Starting")))
+                    instance.role_instance_list[0].instance_status, "Starting")))
 
-            if instance and instance.deployments and instance.deployments[0].role_instance_list and \
-                            instance.deployments[0].role_instance_list[0].instance_status in self.VM_STATES.keys():
-                vm.status = self.VM_STATES[instance.deployments[0].role_instance_list[0].instance_status]
-            elif instance and instance.deployments and instance.deployments[0].role_instance_list:
-                vm.status = instance.deployments[0].role_instance_list[0].instance_status
+            if instance and instance.role_instance_list and \
+                            instance.role_instance_list[0].instance_status in self.VM_STATES.keys():
+                vm.status = self.VM_STATES[instance.role_instance_list[0].instance_status]
+            elif instance and instance.role_instance_list:
+                vm.status = instance.role_instance_list[0].instance_status
             else:
                 vm.status = self.VM_STATES['ERROR']
         return vm.status
