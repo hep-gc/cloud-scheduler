@@ -256,7 +256,14 @@ class AzureCluster(cluster_tools.ICluster):
             azure_conn.wait_for_operation_status(req.request_id)
         except Exception as e:
             try:
-                if "hosted service name is invalid" in e.message or 'does not exist' in e.message:
+                if "only role present" in e.message:
+                    try:
+                        azure_conn = self._get_service_connection()
+                        req = azure_conn.delete_hosted_service(self.AZURE_SERVICE_NAME, True)
+                        azure_conn.wait_for_operation_status(req.request_id)
+                    except Exception as e:
+                        log.error("Problem deleteing the CS Azure service: %s" % e)
+                elif "hosted service name is invalid" in e.message or 'does not exist' in e.message:
                     log.error("Invalid service name on %s : %s, dropping from CS" % (self.name, e))
                 else:
                     log.error("Unhandled exception while destroying VM on %s : %s" % (self.name, e))
