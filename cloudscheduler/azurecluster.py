@@ -85,6 +85,7 @@ class AzureCluster(cluster_tools.ICluster):
         self.placement_zone = placement_zone
         self.keycert = keycert
         self.blob_url = blob_url
+        self.count = 0
 
     def __getstate__(self):
         """Override to work with pickle module."""
@@ -177,13 +178,15 @@ class AzureCluster(cluster_tools.ICluster):
                 net_set.input_endpoints.input_endpoints.append(
                     azure.servicemanagement.ConfigurationSetInputEndpoint(name='SSH',
                                                                           protocol='TCP',
-                                                                          port=22,
+                                                                          port=20000+self.count,
                                                                           local_port=22))
+                self.count += 1
+                if self.count > 15000:
+                    self.count = 0
                 os_hd = azure.servicemanagement.OSVirtualHardDisk(image, self.blob_url + name)
 
                 res = sms.check_hosted_service_name_availability(self.AZURE_SERVICE_NAME)
                 if res.result:
-                    print 'service name available?'
                     req = sms.create_hosted_service(self.AZURE_SERVICE_NAME, self.AZURE_SERVICE_NAME, location=self.regions[0])
                     sms.wait_for_operation_status(req.request_id)
 
@@ -193,13 +196,21 @@ class AzureCluster(cluster_tools.ICluster):
                                                                 role_name=name, label=name,
                                                                 system_config=conf_set, network_config=net_set,
                                                                 os_virtual_hard_disk=os_hd, role_size=i_type)
+                    try:
+                        op_status = sms.wait_for_operation_status(req.request_id)
+                    except Exception as e:
+                        log.error("Problem creating VM on Azure: %s" % e.result.error.message)
+                        return 1
                 else:
-                    print 'exists, add a role to it'
                     req = sms.add_role(service_name=self.AZURE_SERVICE_NAME, deployment_name=self.AZURE_SERVICE_NAME,
                                        role_name=name, system_config=conf_set, network_config=net_set,
                                        os_virtual_hard_disk=os_hd, role_size=i_type)
+                    try:
+                        op_status = sms.wait_for_operation_status(req.request_id)
+                    except Exception as e:
+                        log.error("Problem creating VM on Azure: %s" % e.result.error.message)
+                        return 1
             except Exception as e:
-                # print e
                 log.error("Unhandled exception while creating vm on %s: %s" % (self.name, e))
                 try:
                     sms.delete_hosted_service(name, True)
@@ -241,11 +252,11 @@ class AzureCluster(cluster_tools.ICluster):
         vm.id, vm.hostname, self.name, self.tenant_name, reason))
         try:
             azure_conn = self._get_service_connection()
-            #azure_conn.delete_hosted_service(vm.id, True)
-            azure_conn.delete_deployment(self.AZURE_SERVICE_NAME, vm.id)
+            req = azure_conn.delete_role(self.AZURE_SERVICE_NAME, self.AZURE_SERVICE_NAME, vm.id, True)
+            azure_conn.wait_for_operation_status(req.request_id)
         except Exception as e:
             try:
-                if "hosted service name is invalid" in e.message or 'The hosted service does not exist' in e.message:
+                if "hosted service name is invalid" in e.message or 'does not exist' in e.message:
                     log.error("Invalid service name on %s : %s, dropping from CS" % (self.name, e))
                 else:
                     log.error("Unhandled exception while destroying VM on %s : %s" % (self.name, e))
@@ -282,24 +293,24 @@ class AzureCluster(cluster_tools.ICluster):
             return None
         if vm_info:
             for vm_instance in vm_info.deployments:
-                if vm_instance.name == vm.id:
-                    instance = vm_instance
-                    break
+                for role in vm_instance.role_instance_list.role_instances:
+                    if role.role_name == vm.id:
+                        instance = role
+                        break
             else:
                 log.debug("Unable to find VM: %s on Azure" % vm.id)
 
         with self.vms_lock:
-            if instance and instance.role_instance_list and vm.status != self.VM_STATES.get(
-                    instance.role_instance_list[0].instance_status, "Starting"):
+            if instance and vm.status != self.VM_STATES.get(
+                    instance.instance_status, "Starting"):
                 vm.last_state_change = int(time.time())
                 log.debug("VM: %s on %s. Changed from %s to %s." % (vm.id, self.name, vm.status, self.VM_STATES.get(
-                    instance.role_instance_list[0].instance_status, "Starting")))
+                    instance.instance_status, "Starting")))
 
-            if instance and instance.role_instance_list and \
-                            instance.role_instance_list[0].instance_status in self.VM_STATES.keys():
-                vm.status = self.VM_STATES[instance.role_instance_list[0].instance_status]
-            elif instance and instance.role_instance_list:
-                vm.status = instance.role_instance_list[0].instance_status
+            if instance and instance.instance_status in self.VM_STATES.keys():
+                vm.status = self.VM_STATES[instance.instance_status]
+            elif instance:
+                vm.status = instance.instance_status
             else:
                 vm.status = self.VM_STATES['ERROR']
         return vm.status
