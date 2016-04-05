@@ -508,7 +508,7 @@ class VMJSONEncoder(json.JSONEncoder):
                 'myproxy_renew_time': vm.myproxy_renew_time, 'override_status': vm.override_status,
                 'job_per_core': vm.job_per_core, 'force_retire': vm.force_retire,
                 'failed_retire': vm.failed_retire, 'x509userproxy_expiry_time': str(vm.x509userproxy_expiry_time),
-                'job_run_times': vm.job_run_times.data}
+                'job_run_times': list(vm.job_run_times.data)}
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
