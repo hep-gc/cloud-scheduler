@@ -263,7 +263,8 @@ class AzureCluster(cluster_tools.ICluster):
                         azure_conn.wait_for_operation_status(req.request_id)
                     except Exception as e:
                         log.error("Problem deleteing the CS Azure service: %s" % e)
-                elif "hosted service name is invalid" in e.message or 'does not exist' in e.message:
+                elif "hosted service name is invalid" in e.message or 'does not exist' in e.message or \
+                     "not found in the currently deployed service" in e.message:
                     log.error("Invalid service name on %s : %s, dropping from CS" % (self.name, e))
                 else:
                     log.error("Unhandled exception while destroying VM on %s : %s" % (self.name, e))
@@ -304,8 +305,8 @@ class AzureCluster(cluster_tools.ICluster):
                     if role.role_name == vm.id:
                         instance = role
                         break
-            else:
-                log.debug("Unable to find VM: %s on Azure" % vm.id)
+                else:
+                    log.debug("Unable to find VM: %s on Azure" % vm.id)
 
         with self.vms_lock:
             if instance and vm.status != self.VM_STATES.get(
