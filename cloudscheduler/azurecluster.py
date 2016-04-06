@@ -270,6 +270,8 @@ class AzureCluster(cluster_tools.ICluster):
                 elif "hosted service name is invalid" in e.message or 'does not exist' in e.message or \
                      "not found in the currently deployed service" in e.message:
                     log.error("Invalid service name on %s : %s, dropping from CS" % (self.name, e))
+                elif "Not Found" in e.message:
+                    log.error("VM %s not found on azure, may already be destroyed, dropping from CS" % vm.id)
                 else:
                     log.error("Unhandled exception while destroying VM on %s : %s" % (self.name, e))
                     return 1
