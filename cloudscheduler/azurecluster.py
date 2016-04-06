@@ -299,10 +299,12 @@ class AzureCluster(cluster_tools.ICluster):
             vm_info = azure_conn.get_hosted_service_properties(self.AZURE_SERVICE_NAME, True)
         except Exception as e:
             log.error("Unable to find service with name: %s on Azure. %s" % (self.AZURE_SERVICE_NAME, e))
-            return None
+            vm.status = self.VM_STATES['Error']
+            return vm.status
         if vm_info and len(vm_info.deployments) == 0:
             log.debug("No VMs running on service: %s, skipping." % vm_info.service_name)
-            return None
+            vm.status = self.VM_STATES['Error']
+            return vm.status
         if vm_info:
             for vm_instance in vm_info.deployments:
                 for role in vm_instance.role_instance_list.role_instances:
@@ -324,7 +326,7 @@ class AzureCluster(cluster_tools.ICluster):
             elif instance:
                 vm.status = instance.instance_status
             else:
-                vm.status = self.VM_STATES['ERROR']
+                vm.status = self.VM_STATES['Error']
         return vm.status
 
     def _get_service_connection(self):
