@@ -38,7 +38,7 @@ class AzureCluster(cluster_tools.ICluster):
         "Provisioning": "Starting",
         "ProvisioningFailed": "Error",
         "ProvisioningTimeout": "Error",
-        "ReadyRole": "Starting",
+        "ReadyRole": "Running",
         "RestartingRole": "Restarting",
         "RoleStateUnknown": "Starting",
         "Running": "Running",
