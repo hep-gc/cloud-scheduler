@@ -216,10 +216,7 @@ class AzureCluster(cluster_tools.ICluster):
                         return 1
             except Exception as e:
                 log.error("Unhandled exception while creating vm on %s: %s" % (self.name, e))
-                try:
-                    sms.delete_hosted_service(name, True)
-                except:
-                    log.error("Problem cleaning up the failed service deployment: %s" % name)
+                return self.ERROR
             if req:
                 if not vm_keepalive and self.keep_alive:  # if job didn't set a keep_alive use the clouds default
                     vm_keepalive = self.keep_alive
