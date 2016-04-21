@@ -59,7 +59,7 @@ class AzureCluster(cluster_tools.ICluster):
                  username=None, password=None, tenant_name=None, auth_url=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
                  regions=[], vm_domain_name="", reverse_dns_lookup=False, placement_zone=None,
-                 enabled=True, priority=0, keycert=None, keep_alive=0, blob_url=""):
+                 enabled=True, priority=0, keycert=None, keep_alive=0, blob_url="", service_name=None):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self, name=name, host="azure.microsoft.com", cloud_type=cloud_type,
@@ -90,6 +90,7 @@ class AzureCluster(cluster_tools.ICluster):
         self.keycert = keycert
         self.blob_url = blob_url
         self.count = 0
+        self.azure_service_name = service_name if service_name else self.AZURE_SERVICE_NAME
 
     def __getstate__(self):
         """Override to work with pickle module."""
@@ -189,13 +190,13 @@ class AzureCluster(cluster_tools.ICluster):
                     self.count = 0
                 os_hd = azure.servicemanagement.OSVirtualHardDisk(image, self.blob_url + name)
 
-                res = sms.check_hosted_service_name_availability(self.AZURE_SERVICE_NAME)
+                res = sms.check_hosted_service_name_availability(self.azure_service_name)
                 if res.result:
-                    req = sms.create_hosted_service(self.AZURE_SERVICE_NAME, self.AZURE_SERVICE_NAME, location=self.regions[0])
+                    req = sms.create_hosted_service(self.azure_service_name, self.azure_service_name, location=self.regions[0])
                     sms.wait_for_operation_status(req.request_id)
 
-                    req = sms.create_virtual_machine_deployment(service_name=self.AZURE_SERVICE_NAME,
-                                                                deployment_name=self.AZURE_SERVICE_NAME,
+                    req = sms.create_virtual_machine_deployment(service_name=self.azure_service_name,
+                                                                deployment_name=self.azure_service_name,
                                                                 deployment_slot='production',
                                                                 role_name=name, label=name,
                                                                 system_config=conf_set, network_config=net_set,
@@ -206,7 +207,7 @@ class AzureCluster(cluster_tools.ICluster):
                         log.error("Problem creating VM on Azure: %s" % e.result.error.message)
                         return 1
                 else:
-                    req = sms.add_role(service_name=self.AZURE_SERVICE_NAME, deployment_name=self.AZURE_SERVICE_NAME,
+                    req = sms.add_role(service_name=self.azure_service_name, deployment_name=self.azure_service_name,
                                        role_name=name, system_config=conf_set, network_config=net_set,
                                        os_virtual_hard_disk=os_hd, role_size=i_type)
                     try:
@@ -253,14 +254,14 @@ class AzureCluster(cluster_tools.ICluster):
         vm.id, vm.hostname, self.name, self.tenant_name, reason))
         try:
             azure_conn = self._get_service_connection()
-            req = azure_conn.delete_role(self.AZURE_SERVICE_NAME, self.AZURE_SERVICE_NAME, vm.id, True)
+            req = azure_conn.delete_role(self.azure_service_name, self.azure_service_name, vm.id, True)
             azure_conn.wait_for_operation_status(req.request_id)
         except Exception as e:
             try:
                 if "only role present" in e.message:
                     try:
                         azure_conn = self._get_service_connection()
-                        req = azure_conn.delete_hosted_service(self.AZURE_SERVICE_NAME, True)
+                        req = azure_conn.delete_hosted_service(self.azure_service_name, True)
                         azure_conn.wait_for_operation_status(req.request_id)
                     except Exception as e:
                         log.error("Problem deleteing the CS Azure service: %s" % e)
@@ -295,9 +296,9 @@ class AzureCluster(cluster_tools.ICluster):
         azure_conn = self._get_service_connection()
         vm_info = None
         try:
-            vm_info = azure_conn.get_hosted_service_properties(self.AZURE_SERVICE_NAME, True)
+            vm_info = azure_conn.get_hosted_service_properties(self.azure_service_name, True)
         except Exception as e:
-            log.error("Unable to find service with name: %s on Azure. %s" % (self.AZURE_SERVICE_NAME, e))
+            log.error("Unable to find service with name: %s on Azure. %s" % (self.azure_service_name, e))
             vm.status = self.VM_STATES['Error']
             return vm.status
         if vm_info and len(vm_info.deployments) == 0:

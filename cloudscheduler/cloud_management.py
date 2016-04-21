@@ -407,7 +407,8 @@ class ResourcePool:
                     priority = priority,
                     keycert = get_or_none(cconfig, cluster, "keycert"),
                     keep_alive=keep_alive,
-                    blob_url= get_or_none(cconfig, cluster, "blob_url"),)
+                    blob_url= get_or_none(cconfig, cluster, "blob_url"),
+                    service_name= get_or_none(cconfig, cluster, "service_name"),)
         else:
             log.error("ResourcePool.setup encountered a problem creating entry for %s" % cluster)
         return None
