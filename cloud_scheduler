@@ -2079,6 +2079,41 @@ class GetClouds(threading.Thread):
                 sleep_tics -= 1
 
         log.debug("Exiting getclouds thread")
+
+
+class GangliaUpdate(threading.Thread):
+    """
+    GetClouds - Periodically syncs the cluster resources with a redis store
+                being updated by the cloud-aggregator monitoring package
+    """
+
+
+    def __init__(self, resource_pool, job_pool):
+        threading.Thread.__init__(self, name=self.__class__.__name__)
+        self.resource_pool = resource_pool
+        self.job_pool = job_pool
+        self.quit = False
+        self.polling_interval = 60 # secondsgetCloudsClient
+        self.heart_beat = time.time()
+
+    def stop(self):
+        log.debug("Waiting for gangliaupdate loop to end")
+        self.quit = True
+
+    def run(self):
+        log.info("Starting gangliaupdate Thread...")
+
+        while not self.quit:
+            pass
+
+            log.verbose("gangliaupdate waiting %ds..." % self.polling_interval)
+            sleep_tics = self.polling_interval
+            self.heart_beat = time.time()
+            while (not self.quit) and sleep_tics > 0:
+                time.sleep(1)
+                sleep_tics -= 1
+
+        log.debug("Exiting gangliaupdate thread")
 ##
 ## Functions
 ##
