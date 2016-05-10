@@ -390,7 +390,7 @@ class EC2Cluster(cluster_tools.ICluster):
                     return vm.status
                 except boto.exception.EC2ResponseError, e:
                     log.exception("Problem getting spot info %s: %s" % (vm.spot_id, e))
-                    if e.status == 400 and 'NotFound' in e.error_code:
+                    if e.status == 400:
                         vm.status = self.VM_STATES['error']
                         return vm.status
                 except:
@@ -408,7 +408,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 return vm.status
             except boto.exception.EC2ResponseError, e:
                 log.exception("Unexpected error polling %s: %s" % (vm.id, e))
-                if e.status == 400 and 'NotFound' in e.error_code:
+                if e.status == 400:
                     vm.status = self.VM_STATES['error']
                 elif e.status == 404:
                     vm.status = self.VM_STATES['error']
@@ -481,7 +481,7 @@ class EC2Cluster(cluster_tools.ICluster):
         except boto.exception.EC2ResponseError, e:
             returnError = True
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
-            if e.status == 400 and 'NotFound' in e.error_code:
+            if e.status == 400:
                 log.exception("VM %s no longer exists... removing from system" % vm.id)
                 returnError = False
             if e.status == 404:
