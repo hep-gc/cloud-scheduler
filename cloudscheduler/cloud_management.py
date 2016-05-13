@@ -1787,12 +1787,13 @@ class ResourcePool:
         cluster_retired = self.get_cluster(clustername, True)
         if cluster:
             vm = cluster.get_vm(vmid)
-            vm_retired = cluster_retired.get_vm(vmid)
+            if cluster_retired:
+                vm_retired = cluster_retired.get_vm(vmid)
             if vm:
                 # found the vm - shutdown
                 # move the vmdestroycmd thread into a better place and import so avilable here
                 self._shutdown_admin(vm)
-            elif vm_retired:
+            elif cluster_retired and vm_retired:
                 self._shutdown_admin(vm_retired)
             else:
                 output = "Could not find VM with ID: %s on Cluster: %s." % (vmid, clustername)
@@ -1847,14 +1848,15 @@ class ResourcePool:
         cluster_retired = self.get_cluster(clustername, True)
         if cluster:
             vm = cluster.get_vm(vmid)
-            vm_retired = cluster_retired.get_vm(vmid)
+            if cluster_retired:
+                vm_retired = cluster_retired.get_vm(vmid)
             if vm:
                 with cluster.vms_lock:
                     cluster.vms.remove(vm)
                 cluster.resource_return(vm)
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
                 log.debug(output)
-            elif vm_retired:
+            elif cluster_retired and vm_retired:
                 with cluster_retired.vms_lock:
                     cluster_retired.vms.remove(vm)
                 output = "Removed %s's VM %s from CloudScheduler retired resources." % (clustername, vmid)
