@@ -164,10 +164,6 @@ class AzureCluster(cluster_tools.ICluster):
                 log.debug("No default instance type found for %s, trying single default" % self.network_address)
                 i_type = self.DEFAULT_INSTANCE_TYPE
 
-        # create the hosted service
-        # create the configurationset and network set
-
-        # Need to get the rotating hostname from the google code to use for here.  
         name = self._generate_next_name()
         instance = None
         req = None
@@ -194,7 +190,7 @@ class AzureCluster(cluster_tools.ICluster):
                 if res.result:
                     req = sms.create_hosted_service(self.azure_service_name, self.azure_service_name, location=self.regions[0])
                     sms.wait_for_operation_status(req.request_id)
-
+                if len(self.vms) == 0:
                     req = sms.create_virtual_machine_deployment(service_name=self.azure_service_name,
                                                                 deployment_name=self.azure_service_name,
                                                                 deployment_slot='production',
