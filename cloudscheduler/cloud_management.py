@@ -1853,12 +1853,14 @@ class ResourcePool:
             if vm:
                 with cluster.vms_lock:
                     cluster.vms.remove(vm)
+                    log.debug("VM: %s, on %s removed from list." % (vm.id, vm.clusteraddr))
                 cluster.resource_return(vm)
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
                 log.debug(output)
             elif cluster_retired and vm_retired:
                 with cluster_retired.vms_lock:
                     cluster_retired.vms.remove(vm)
+                    log.debug("VM: %s, on %s removed from list." % (vm.id, vm.clusteraddr))
                 output = "Removed %s's VM %s from CloudScheduler retired resources." % (clustername, vmid)
                 log.debug(output)
             else:
@@ -1875,6 +1877,7 @@ class ResourcePool:
             for vm in reversed(cluster.vms):
                 with cluster.vms_lock:
                     cluster.vms.remove(vm)
+                    log.debug("VM: %s, on %s removed from list." % (vm.id, vm.clusteraddr))
                 cluster.resource_return(vm)
             output = "Removed all VMs from %s." % clustername
             log.debug(output)
