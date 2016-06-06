@@ -121,7 +121,7 @@ class EC2Cluster(cluster_tools.ICluster):
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, access_key_id=None, secret_access_key=None,
                  security_group=None, hypervisor='xen', key_name=None, 
-                 boot_timeout=None, secure_connection="", regions=[], vm_domain_name="",
+                 boot_timeout=None, secure_connection="", regions=[],
                  reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0,
                  keep_alive=0,):
 
@@ -147,7 +147,6 @@ class EC2Cluster(cluster_tools.ICluster):
         self.secure_connection = secure_connection in ['True', 'true', 'TRUE']
         self.total_cpu_cores = -1
         self.regions = regions
-        self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
 
@@ -437,9 +436,9 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.hostname = self._extract_host_from_dig(dig_out)
             elif self.cloud_type == "OpenStack":
                 if len(instance.public_dns_name) > 0:
-                    vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
+                    vm.hostname = instance.public_dns_name
                 else:
-                    vm.hostname = ''.join([instance.private_dns_name, self.vm_domain_name])
+                    vm.hostname = instance.private_dns_name
             else:
                 if len(instance.public_dns_name) > 0:
                     vm.hostname = instance.public_dns_name
@@ -449,8 +448,8 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.hostname = instance.public_dns_name
                 vm.alt_hostname = instance.private_dns_name
                 if self.cloud_type == "OpenStack":
-                    vm.hostname = ''.join([vm.hostname, self.vm_domain_name])
-                    vm.alt_hostname = ''.join([vm.alt_hostname, self.vm_domain_name])
+                    vm.hostname = vm.hostname
+                    vm.alt_hostname = vm.alt_hostname
             vm.lastpoll = int(time.time())
         return vm.status
 

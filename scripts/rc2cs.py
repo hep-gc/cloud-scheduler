@@ -13,7 +13,6 @@ OUTPUT_KEYS = [
     'regions',
     'cloud_type',
     'vm_slots',
-    'vm_domain_name',
 ]
 
 KEY_MAPPING = {
@@ -23,7 +22,6 @@ KEY_MAPPING = {
 DEFAULTS = {
     'cloud_type': 'OpenStackNative',
     'vm_slots': 1,
-    'vm_domain_name': '.novalocal'
 }
 
 def main():

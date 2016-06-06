@@ -33,7 +33,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                  cpu_cores=0, storage=0, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
                  hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
-                 regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, 
+                 regions=[], reverse_dns_lookup=False,placement_zone=None,
                  enabled=True, priority=0, cacert=None,keep_alive=0,):
 
         # Call super class's init
@@ -60,7 +60,6 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.secure_connection = secure_connection in ['True', 'true', 'TRUE']
         self.total_cpu_cores = -1
         self.regions = regions
-        self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
         self.flavor_set = set()
@@ -227,7 +226,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                     vm_keepalive = self.keep_alive
 
                 new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
-                            clusteraddr = self.network_address, hostname = ''.join([name, self.vm_domain_name]),
+                            clusteraddr = self.network_address, hostname = name,
                             cloudtype = self.cloud_type, network = vm_networkassoc,
                             image= vm_image, flavor=flavor.name,
                             memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
