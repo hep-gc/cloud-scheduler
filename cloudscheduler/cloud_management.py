@@ -1789,9 +1789,9 @@ class ResourcePool:
             if vm:
                 # found the vm - shutdown
                 # move the vmdestroycmd thread into a better place and import so avilable here
-                self._shutdown_admin(vm)
+                self._shutdown_admin(cluster, vm)
             elif cluster_retired and vm_retired:
-                self._shutdown_admin(vm_retired)
+                self._shutdown_admin(cluster_retired, vm_retired)
             else:
                 output = "Could not find VM with ID: %s on Cluster: %s." % (vmid, clustername)
         else:
@@ -1799,7 +1799,7 @@ class ResourcePool:
         return output
 
     @staticmethod
-    def _shutdown_admin(vm):
+    def _shutdown_admin(cluster, vm):
         thread = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
         thread.start()
         while thread.is_alive():
