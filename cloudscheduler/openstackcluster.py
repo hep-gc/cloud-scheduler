@@ -25,6 +25,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             "ACTIVE" : "Running",
             "SHUTOFF" : "Shutdown",
             "SUSPENDED": "Suspended",
+            "STOPPED": "Stopped",
             "PAUSED": "Paused",
             "ERROR" : "Error",
     }
