@@ -28,6 +28,7 @@ class OpenStackCluster(cluster_tools.ICluster):
             "STOPPED": "Stopped",
             "PAUSED": "Paused",
             "ERROR" : "Error",
+            "VERIFY_RESIZE": "Error",
     }
     def __init__(self, name="Dummy Cluster", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
