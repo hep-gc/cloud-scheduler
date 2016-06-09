@@ -53,7 +53,7 @@ class VM:
 
     def __init__(self, name="", id="", vmtype="", user="",
             hostname="", ipaddress="", clusteraddr="", clusterport="",
-            cloudtype="", network="public", cpuarch="x86",
+            cloudtype="", network="public",
             image="", memory=0, mementry=0, flavor="",
             cpucores=0, storage=0, keep_alive=0, spot_id="",
             proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, 
@@ -75,7 +75,6 @@ class VM:
         clusterport  - (str) The port of the cluster hosting the VM
         cloudtype    - (str) The cloud type of the VM (OpenStack, EC2, OpenNebula, etc)
         network      - (str) The network association the VM uses
-        cpuarch      - (str) The required CPU architecture of the VM
         image        - (str) The location of the image from which the VM was created
         memory       - (int) The memory used by the VM
         mementry     - (int) The index of the entry in the host cluster's memory list
@@ -299,7 +298,7 @@ class ICluster:
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None, enabled=True, priority=0,
+                 vm_slots=0, cpu_cores=0, storage=0, boot_timeout=None, enabled=True, priority=0,
                  keep_alive=0):
         self.name = name
         self.network_address = host
@@ -317,7 +316,6 @@ class ICluster:
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
         self.enabled = enabled
-        self.hypervisor = hypervisor
         self.boot_timeout = int(boot_timeout) if boot_timeout != None else config.vm_start_running_timeout
         self.connection_fail_disable_time = config.connection_fail_disable_time
         self.connection_problem = False

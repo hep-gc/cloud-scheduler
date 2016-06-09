@@ -1348,7 +1348,6 @@ class JobPoolTests(unittest.TestCase):
         -- Submitter: canfarpool.phys.uvic.ca : <142.104.63.28:8080> : canfarpool.phys.uvic.ca
         Out = "cal036017b.machoprocess.out"
         VMMem = "2048"
-        VMCPUArch = "x86"
         LastJobStatus = 0
         VMLoc = "http://vmrepo.phys.uvic.ca/vms/canfarbase_i386_seb.img.gz"
         BufferBlockSize = 32768
@@ -1436,7 +1435,6 @@ class JobPoolTests(unittest.TestCase):
 
         Out = "cal036017r.machoprocess.out"
         VMMem = "2048"
-        VMCPUArch = "x86"
         LastJobStatus = 0
         VMLoc = "http://vmrepo.phys.uvic.ca/vms/canfarbase_i386_seb.img.gz"
         BufferBlockSize = 32768
@@ -2133,7 +2131,6 @@ xmlns:condor="urn:condor">
         self.assertEqual(parsed_job.proc_id, test_job.proc_id)
         self.assertEqual(parsed_job.req_vmtype, test_job.req_vmtype)
         self.assertEqual(parsed_job.req_network, test_job.req_network)
-        self.assertEqual(parsed_job.req_cpuarch, test_job.req_cpuarch)
         self.assertEqual(parsed_job.req_image, test_job.req_image)
         self.assertEqual(parsed_job.req_imageloc, test_job.req_imageloc)
         self.assertEqual(parsed_job.req_memory, test_job.req_memory)

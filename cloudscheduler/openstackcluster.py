@@ -34,7 +34,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
-                 hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
+                 key_name=None, boot_timeout=None, secure_connection="",
                  regions=[], reverse_dns_lookup=False,placement_zone=None,
                  enabled=True, priority=0, cacert=None,keep_alive=0,):
 
@@ -42,7 +42,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         cluster_tools.ICluster.__init__(self,name=name, host=auth_url, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled,
+                         storage=storage, boot_timeout=boot_timeout, enabled=enabled,
                          priority=priority, keep_alive=keep_alive,)
         try:
             import novaclient.v2.client as nvclient

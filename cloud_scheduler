@@ -603,8 +603,8 @@ class Scheduler(threading.Thread):
                 # Check for an underallocated job that has resources
                 if userjob and userjob.uservmtype in diff_types.keys() and diff_types[userjob.uservmtype] <= 0:
                     good_resources = self.resource_pool.get_resourceBF(userjob.req_network,
-                        userjob.req_cpuarch, userjob.req_memory, userjob.req_cpucores, userjob.req_storage,
-                        userjob.req_ami, userjob.req_imageloc, userjob.target_clouds, userjob.req_hypervisor,
+                        userjob.req_memory, userjob.req_cpucores, userjob.req_storage,
+                        userjob.req_ami, userjob.req_imageloc, userjob.target_clouds,
                         userjob.blocked_clouds)
                     # See if there's a valid resource for job to boot on
                     if len(good_resources) > 0:
@@ -614,8 +614,8 @@ class Scheduler(threading.Thread):
             if over_allocate:
                 log.verbose("Possible Allow - check for resources: %s" % job.req_vmtype)
                 good_resources = self.resource_pool.get_resourceBF(job.req_network,
-                        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage,
-                        job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor,
+                        job.req_memory, job.req_cpucores, job.req_storage,
+                        job.req_ami, job.req_imageloc, job.target_clouds,
                         job.blocked_clouds)
                 # See if there's a valid resource for job to boot on
                 if len(good_resources) > 0:
@@ -629,8 +629,8 @@ class Scheduler(threading.Thread):
         """
         # Find resources that match the job's requirements
         good_resources = self.resource_pool.get_resourceBF(job.req_network,
-        job.req_cpuarch, job.req_memory, job.req_cpucores, job.req_storage,
-        job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor,
+        job.req_memory, job.req_cpucores, job.req_storage,
+        job.req_ami, job.req_imageloc, job.target_clouds,
         job.blocked_clouds)
 
         # If no resource fits, continue to next job in user's list
@@ -1093,17 +1093,17 @@ class Cleanup(threading.Thread):
         for cloud in self.resource_pool.resources:
             cloud_names.append(cloud.name)
         for job in self.job_pool.job_container.get_unscheduled_jobs():
-            if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch):
+            if not self.resource_pool.resourcePF(job.req_network):
                 bad_jobs.append(job)
-                log.debug("#1 network and cpuarch - No cluster fits job %s ignoring" % job.id)
+                log.debug("#1 network - No cluster fits job %s ignoring" % job.id)
                 continue
             if job.req_memory > 0:
-                if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch, memory=job.req_memory):
+                if not self.resource_pool.resourcePF(job.req_network, memory=job.req_memory):
                     bad_jobs.append(job)
                     log.debug("#2 memory - No cluster fits job %s ignoring" % job.id)
                     continue
             if job.req_storage > 0:
-                if not self.resource_pool.resourcePF(job.req_network, job.req_cpuarch, disk=job.req_storage):
+                if not self.resource_pool.resourcePF(job.req_network, disk=job.req_storage):
                     bad_jobs.append(job)
                     log.debug("#3 storage - No cluster fits job %s ignoring" % job.id)
                     continue
@@ -1327,8 +1327,8 @@ class Cleanup(threading.Thread):
             if vmtype in unsched_jobs.keys():
                 job = unsched_jobs[vmtype][0]
                 fitting = self.resource_pool.get_fitting_resources(job.req_network,  \
-                        job.req_cpuarch, job.req_memory, job.req_cpucores, \
-                        job.req_storage, job.req_ami, job.req_imageloc, job.target_clouds, job.req_hypervisor, job.blocked_clouds)
+                        job.req_memory, job.req_cpucores, job.req_storage, job.req_ami, \
+                        job.req_imageloc, job.target_clouds, job.blocked_clouds)
                 fits_by_type[vmtype] = set(fitting)
         for vmtype in num_to_change.keys():
             if num_to_change[vmtype] < 0:
@@ -1734,9 +1734,9 @@ class Cleanup(threading.Thread):
                 if vmtype in vmtypes_jobs.keys():
                     fitting_clusters.extend(self.resource_pool.get_potential_fitting_resources( \
                     vmtypes_jobs[vmtype][0].req_network, \
-                    vmtypes_jobs[vmtype][0].req_cpuarch, vmtypes_jobs[vmtype][0].req_memory, \
+                    vmtypes_jobs[vmtype][0].req_memory, \
                     vmtypes_jobs[vmtype][0].req_storage, vmtypes_jobs[vmtype][0].target_clouds,\
-                    vmtypes_jobs[vmtype][0].req_hypervisor, vmtypes_jobs[vmtype][0].req_cpucores, \
+                    vmtypes_jobs[vmtype][0].req_cpucores, \
                     vmtypes_jobs[vmtype][0].blocked_clouds))
         return set(fitting_clusters)
 
@@ -2020,7 +2020,7 @@ class Cleanup(threading.Thread):
     def check_vm_job_reqs(self, vm, job):
         """ Check if a vm has correct attributes to run a job."""
         vmjobmatch = False
-        if vm.memory >= job.req_memory and vm.network in job.req_network and vm.cpuarch == job.req_cpuarch \
+        if vm.memory >= job.req_memory and vm.network in job.req_network \
             and vm.cpucores >= job.req_cpucores and vm.storage >= job.req_storage \
             and (vm.image == job.req_imageloc or vm.image == job.req_ami) \
             and vm.uservmtype == job.uservmtype:

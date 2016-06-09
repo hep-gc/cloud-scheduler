@@ -51,7 +51,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None,
+                 vm_slots=0, cpu_cores=0, storage=0, boot_timeout=None,
                  auth_dat_file=None, secret_file=None, security_group=None, project_id=None,enabled=True, priority = 0,
                  total_cpu_cores=-1, keep_alive=0,):
         log.debug("Init GCE cores %s, storage %s"%(cpu_cores,storage))
@@ -88,7 +88,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout,enabled=enabled,
+                         storage=storage, boot_timeout=boot_timeout,enabled=enabled,
                          priority=priority, keep_alive=0,)
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
@@ -256,7 +256,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                     clusteraddr = self.network_address, id = target_id,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     hostname = self.construct_hostname(next_instance_name),
-                    cpuarch = "x86", image= vm_image, mementry = vm_mementry, flavor=vm_instance_type,
+                    image= vm_image, mementry = vm_mementry, flavor=vm_instance_type,
                     memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive, job_per_core = job_per_core)
     

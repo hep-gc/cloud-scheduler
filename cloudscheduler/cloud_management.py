@@ -275,7 +275,6 @@ class ResourcePool:
             priority = int(priority) if priority != None else 0
         except ValueError:
             log.error("%s Priority must be a valid number." % cluster)
-        hypervisor = get_or_none(cconfig, cluster, "hypervisor")
         keep_alive = get_or_none(cconfig, cluster, "vm_keep_alive")
         try:
             keep_alive = int(keep_alive)*60 if keep_alive else 0
@@ -290,13 +289,6 @@ class ResourcePool:
                 networks = splitnstrip(",", get_or_none(cconfig, cluster, "networks"))
             except:
                 log.error("No networks specified for %s, will use the default" % cluster)
-        if hypervisor == None:
-            hypervisor = 'xen'
-        else:
-            hypervisor = hypervisor.lower()
-            if hypervisor != 'xen' and hypervisor != 'kvm':
-                log.error("%s hypervisor not supported." % hypervisor)
-                return None
 
         if cloud_type.lower() == "amazonec2" or cloud_type.lower() == "eucalyptus" or cloud_type.lower() == "openstack":
             if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
@@ -312,7 +304,6 @@ class ResourcePool:
                     access_key_id = get_or_none(cconfig, cluster, "access_key_id"),
                     secret_access_key = get_or_none(cconfig, cluster, "secret_access_key"),
                     security_group = splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
-                    hypervisor = hypervisor,
                     key_name = get_or_none(cconfig, cluster, "key_name"),
                     boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
                     secure_connection = get_or_none(cconfig, cluster, "secure_connection"),
@@ -334,7 +325,6 @@ class ResourcePool:
                     vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
                     storage = int(get_or_none(cconfig, cluster, "storage")),
-                    hypervisor = hypervisor,
                     contextualization = get_or_none(cconfig, cluster, "contextualization"),
                     enabled=enabled,
                     priority = priority,
@@ -373,7 +363,6 @@ class ResourcePool:
                     tenant_name = get_or_none(cconfig, cluster, "tenant_name"),
                     auth_url = get_or_none(cconfig, cluster, "auth_url"),
                     security_group = splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
-                    hypervisor = hypervisor,
                     key_name = get_or_none(cconfig, cluster, "key_name"),
                     boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
                     secure_connection = get_or_none(cconfig, cluster, "secure_connection"),
@@ -396,7 +385,6 @@ class ResourcePool:
                     username = get_or_none(cconfig, cluster, "username"),
                     password = get_or_none(cconfig, cluster, "password"),
                     tenant_name = get_or_none(cconfig, cluster, "tenant_name"),
-                    hypervisor = hypervisor,
                     boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
                     regions = map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
                     placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
@@ -448,7 +436,7 @@ class ResourcePool:
 
         return (self.resources[0])
 
-    def get_resourceFF(self, network, cpuarch, memory, cpucores, storage):
+    def get_resourceFF(self, network, memory, cpucores, storage):
         """Return the first resource that fits the passed in VM requirements. 
         
         Does not remove the element returned.
@@ -456,7 +444,6 @@ class ResourcePool:
         
         Keywords:
            network  - the network assoication required by the VM
-           cpuarch  - the cpu architecture that the VM must run on
            memory   - the amount of memory (RAM) the VM requires
            cpucores  - the number of cores that a VM requires (dedicated? or general?)
            storage   - the amount of scratch space the VM requires
@@ -492,13 +479,12 @@ class ResourcePool:
         return None
 
 
-    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[],
-                              hypervisor=['xen'], blocked=[]):
+    def get_fitting_resources(self, network, memory, cpucores, storage, ami, imageloc, targets=[],
+                              blocked=[]):
         """get a list of Clusters that fit the given VM/Job requirements.
         
         Keywords: (as for get_resource methods)
             network  - the network assoication required by the VM
-            cpuarch  - the cpu architecture that the VM must run on
             memory   - the amount of memory (RAM) the VM requires
             cpucores  - the number of cores that a VM requires (dedicated? or general?)
             storage   - the amount of scratch space the VM requires
@@ -574,7 +560,7 @@ class ResourcePool:
         return fitting_clusters
 
 
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[], hypervisor=['xen'], blocked=[]):
+    def get_resourceBF(self, network, memory, cpucores, storage, ami, imageloc, targets=[], blocked=[]):
         """
         Returns a resource that fits given requirements and fits some balance
         criteria between clusters (for example, lowest current load or most free
@@ -591,7 +577,6 @@ class ResourcePool:
           - etc.
         Keywords:
            network  - the network assoication required by the VM
-           cpuarch  - the cpu architecture that the VM must run on
            memory   - the amount of memory (RAM) the VM requires
            cpucores  - the number of cores that a VM requires (dedicated? or general?)
            storage   - the amount of scratch space the VM requires
@@ -606,7 +591,7 @@ class ResourcePool:
 
         """
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets, hypervisor,blocked)
+        fitting_clusters = self.get_fitting_resources(network, memory, cpucores, storage, ami, imageloc, targets, blocked)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
@@ -623,15 +608,13 @@ class ResourcePool:
         fitting_clusters.sort(key=lambda cluster: cluster.priority)
         return fitting_clusters
 
-    def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
+    def resourcePF(self, network, memory=0, disk=0):
         """
         Check that a cluster will be able to meet the static requirements.
         Keywords:
            network  - the network assoication required by the VM
-           cpuarch  - the cpu architecture that the VM must run on
            memory   - minimum memory required on cloud
            disk     - minimum storage space required on cloud
-           hypervisor - type of hypervisor used by cloud
         Return: True if cluster is found that fits VM requirments
                 Otherwise, returns False
 
@@ -656,14 +639,13 @@ class ResourcePool:
         # If no clusters are found (no clusters can host the required VM)
         return potential_fit
 
-    def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[],
-                                        hypervisor=['xen'], cpucores=-1, blocked=[]):
+    def get_potential_fitting_resources(self, network, memory, disk, targets=[],
+                                        cpucores=-1, blocked=[]):
         """
         Determines which clouds could start a VM with the given requirements.
         
         Keywords:
             network - the network pool
-            cpuarch - CPU architecture that the VM must run on
             memory  - amount of memory VM requires to run
             disk    - amount of scratch space needed on VM
             targets - list of target clouds

@@ -245,7 +245,6 @@ parameters to work properly. These are: (Required parameters are highlighted)
 
 * *Requirements = VMType =?= “your.vm.type”* :  The type of VM that the job must run on. This is a custom attribute of the VM advertised to the Condor central manager. It should be specified on the VM’s condor_config or condor_config.local file.
 * VMAMI : The AMI (for EC2-like clusters) or image name of the image required for the job to run
-* VMCPUArch : The CPU architecture that the job requires. x86 or x86_64. Defaults to x86.
 * VMCPUCores : The number of CPU cores for the VM. Defaults to 1.
 * VMStorage : The amount of scratch storage space the job requires. (Currently ignored on EC2-like Clusters)
 * VMMem : The amount of RAM that the VM requires.
@@ -275,7 +274,6 @@ parameters to work properly. These are: (Required parameters are highlighted)
     Requirements = VMType =?= "vm.for.script"
     +VMLoc         = "http://repository.tld/your.vm.img.gz"
     +VMAMI = "ami-dfasfds"
-    +VMCPUArch     = "x86"
     +VMCPUCores    = "1"
     +VMNetwork     = "private"
     +VMMem         = "512"

@@ -22,7 +22,6 @@ Requirements = VMType =?= "green" && \
 # User requirements
 +VMName        = "Green02"
 +VMNetwork     = "private"
-+VMCPUArch     = "x86"
 +VMLoc         = "http://vmrepo.phys.uvic.ca/vms/dev-green_x86.img.gz"
 +VMMem         = "1024"
 +VMCPUCores    = "1"

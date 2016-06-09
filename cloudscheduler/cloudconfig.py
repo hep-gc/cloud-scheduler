@@ -90,7 +90,7 @@ def verify_sections_base(conf, name):
     :return: True if conf good, False if problem detected
     """
     valid_option_names = {'access_key_id', 'auth_dat_file', 'auth_url', 'blob_url', 'boot_timeout', 'cacert',
-                          'cloud_type', 'contextualization', 'cpu_archs', 'cpu_cores', 'host', 'hypervisor',
+                          'cloud_type', 'contextualization', 'cpu_archs', 'cpu_cores', 'host',
                           'image_attach_device', 'key_name', 'keycert', 'max_vm_mem', 'max_vm_storage', 'memory',
                           'networks', 'password', 'placement_zone', 'port', 'priority', 'project_id', 'regions',
                           'reverse_dns_lookup', 'scratch_attach_device', 'secret_access_key', 'secret_file',

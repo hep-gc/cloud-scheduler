@@ -120,7 +120,7 @@ class EC2Cluster(cluster_tools.ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, access_key_id=None, secret_access_key=None,
-                 security_group=None, hypervisor='xen', key_name=None, 
+                 security_group=None, key_name=None,
                  boot_timeout=None, secure_connection="", regions=[],
                  reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0,
                  keep_alive=0,):
@@ -129,7 +129,7 @@ class EC2Cluster(cluster_tools.ICluster):
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled,
+                         storage=storage, boot_timeout=boot_timeout, enabled=enabled,
                         priority=priority,keep_alive=keep_alive,)
 
         if not security_group:

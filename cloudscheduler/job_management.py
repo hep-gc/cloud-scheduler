@@ -76,7 +76,7 @@ class Job:
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
              VMInstanceType=None, 
              VMMaximumPrice=None, VMJobPerCore=False,
-             TargetClouds=None, ServerTime=0, JobStartDate=0, VMHypervisor=None,
+             TargetClouds=None, ServerTime=0, JobStartDate=0,
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMLocation=None, VMKeyName=None, VMSecurityGroup="", VMUserData="",
@@ -88,7 +88,6 @@ class Job:
      Priority   - (int) The priority given in the job submission file (default = 1)
      VMType     - (str) The VMType required by the job (set in VM's condor_config file)
      VMNetwork  - (str) The network association the job requires. TODO: Should support "any"
-     VMCPUArch  - (str) The CPU architecture the job requires in its run environment
      VMName     - (str) The name of the image the job is to run on
      VMLoc      - (str) The location (URL) of the image the job is to run on
      VMAMI      - (str) The Amazon AMI of the image to be run
@@ -120,8 +119,6 @@ class Job:
             VMType = config.default_VMType
         if not VMNetwork:
             VMNetwork = config.default_VMNetwork
-        if not VMHypervisor:
-            VMHypervisor = config.default_VMHypervisor
         if not VMName:
             VMName = config.default_VMName
         if not VMLoc:
@@ -197,7 +194,6 @@ class Job:
         self.x509userproxy = x509userproxy
         self.original_x509userproxy = SUBMIT_x509userproxy
         self.spool_dir = Iwd
-        self.req_cpuarch=None
         self.x509userproxy_expiry_time = None
         self.proxy_renew_time = CSMyProxyRenewalTime
         self.job_per_core = VMJobPerCore in ['true', "True", True]
@@ -209,7 +205,6 @@ class Job:
         self.banned = False
         self.ban_time = None
         self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
-        self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
         self.proxy_non_boot = VMProxyNonBoot in ['true', 'True', True, 'TRUE']
         self.vmimage_proxy_file = VMImageProxyFile
         try:
@@ -397,7 +392,7 @@ class Job:
 
     def has_same_reqs(self, job):
         """A method that will compare a job's requirements listed below with another job to see if they all match."""
-        return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network and self.user == job.user
+        return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_network == job.req_network and self.user == job.user
 
     def get_vmimage_proxy_file_path(self):
         proxypath = []
