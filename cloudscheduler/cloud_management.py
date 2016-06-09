@@ -1569,7 +1569,8 @@ class ResourcePool:
             condor_name = condor_name.split('@')[1]
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.condorname == condor_name or condor_name == vm.hostname or condor_name == vm.alt_hostname or condor_name == vm.condormasteraddr:
+                if utilities.match_host_with_condor_host(vm.hostname, condor_name) or utilities.match_host_with_condor_host(vm.alt_hostname, condor_name) or \
+                  utilities.match_host_with_condor_host(vm.condormasteraddr, condor_name) or utilities.match_host_with_condor_host(vm.condorname, condor_name):
                     foundIt = True
                     vm_match = vm
                     break
@@ -1579,7 +1580,8 @@ class ResourcePool:
             log.verbose("Could not find a VM with name: %s, checking retired_resources." % condor_name)
             for cluster in self.retired_resources:
                 for vm in cluster.vms:
-                    if vm.condorname == condor_name or condor_name == vm.hostname or condor_name == vm.alt_hostname or condor_name == vm.condormasteraddr:
+                    if utilities.match_host_with_condor_host(vm.condorname, condor_name) or utilities.match_host_with_condor_host(vm.hostname, condor_name) or \
+                      utilities.match_host_with_condor_host(vm.condormasteraddr, condor_name) or utilities.match_host_with_condor_host(vm.alt_hostname, condor_name):
                         foundIt = True
                         vm_match = vm
                         break
