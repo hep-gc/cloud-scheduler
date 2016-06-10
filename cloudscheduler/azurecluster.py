@@ -252,6 +252,7 @@ class AzureCluster(cluster_tools.ICluster):
             req = azure_conn.delete_role(self.azure_service_name, self.azure_service_name, vm.id, True)
             azure_conn.wait_for_operation_status(req.request_id)
         except Exception as e:
+            log.debug("Problem destroying VM on Azure: %s" % e)
             try:
                 if "only role present" in e.message:
                     try:
@@ -260,6 +261,7 @@ class AzureCluster(cluster_tools.ICluster):
                         azure_conn.wait_for_operation_status(req.request_id)
                     except Exception as e:
                         log.error("Problem deleteing the CS Azure service: %s" % e)
+                        return 1
                 elif "hosted service name is invalid" in e.message or 'does not exist' in e.message or \
                      "not found in the currently deployed service" in e.message:
                     log.error("Invalid service name on %s : %s, dropping from CS" % (self.name, e))
