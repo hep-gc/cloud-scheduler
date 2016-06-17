@@ -493,7 +493,7 @@ class VMJSONEncoder(json.JSONEncoder):
                 'ipaddress': vm.ipaddress,
                 'cloudtype': vm.cloudtype, 'network': vm.network, 
                 'image': vm.image, 'alt_hostname': vm.alt_hostname,
-                'memory': vm.memory, 'mementry': vm.mementry, 'flavor': vm.flavor,
+                'memory': vm.memory, 'flavor': vm.flavor,
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status, 'condoraddr': vm.condoraddr,
                 'condorname': vm.condorname, 'condormasteraddr': vm.condormasteraddr,

@@ -54,7 +54,7 @@ class VM:
     def __init__(self, name="", id="", vmtype="", user="",
             hostname="", ipaddress="", clusteraddr="", clusterport="",
             cloudtype="", network="public",
-            image="", memory=0, mementry=0, flavor="",
+            image="", memory=0, flavor="",
             cpucores=0, storage=0, keep_alive=0, spot_id="",
             proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, 
             myproxy_renew_time="12", job_per_core=False):
@@ -77,8 +77,6 @@ class VM:
         network      - (str) The network association the VM uses
         image        - (str) The location of the image from which the VM was created
         memory       - (int) The memory used by the VM
-        mementry     - (int) The index of the entry in the host cluster's memory list
-                       from which this VM is taking memory
         flavor       - (str) The flavor/instance_type of the VM
         proxy_file   - the proxy that was used to authenticate this VM's creation
         myproxy_creds_name - (str) The name of the credentials to retreive from the myproxy server
@@ -105,7 +103,6 @@ class VM:
         self.network = network
         self.image = image
         self.memory = memory
-        self.mementry = mementry
         self.flavor = flavor
         self.cpucores = cpucores
         self.storage = storage
@@ -297,14 +294,14 @@ class ICluster:
     """
 
     def __init__(self, name="Dummy Cluster", host="localhost",
-                 cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
+                 cloud_type="Dummy", memory=0, max_vm_mem= -1, networks=[],
                  vm_slots=0, cpu_cores=0, storage=0, boot_timeout=None, enabled=True, priority=0,
                  keep_alive=0):
         self.name = name
         self.network_address = host
         self.cloud_type = cloud_type
         self.memory = memory
-        self.max_mem = tuple(memory)
+        self.max_mem = memory
         self.max_vm_mem = max_vm_mem
         self.network_pools = networks
         self.vm_slots = vm_slots
@@ -444,39 +441,12 @@ class ICluster:
 
     ## Private VM methods
 
-    def find_mementry(self, memory):
-        """Finds a memory entry in the Cluster's 'memory' list which supports the
-        requested amount of memory for the VM. If multiple memory entries fit
-        the request, returns the first suitable entry. Returns an exact fit if
-        one exists.
-        Parameters: memory - the memory required for VM creation
-        Return: The index of the first fitting entry in the Cluster's 'memory'
-        list.
-        If no fitting memory entries are found, returns -1 (error!)
-        """
-        # Check for exact fit
-        if (memory in self.memory):
-            return self.memory.index(memory)
-
-        # Scan for any fit
-        for i in range(len(self.memory)):
-            if self.memory[i] >= memory:
-                return i
-
-        # If no entries found, return error code.
-        return(-1)
-
-    def find_potential_mementry(self, memory):
-        """Check if a cluster contains a memory entry with adequate space for given memory value.
-        Returns: True if a valid memory entry is found
+    def check_memory(self, memory):
+        """Check if a cluster contains enough memory given memory request.
+        Returns: True if max_mem greater than requested memory
                  False otherwise
         """
-        potential_fit = False
-        for i in range(len(self.max_mem)):
-            if self.max_mem[i] >= memory:
-                potential_fit = True
-                break
-        return potential_fit
+        return self.max_mem >= memory
 
     def resource_checkout(self, vm):
         """
@@ -500,14 +470,14 @@ class ICluster:
             if remaining_storage < 0:
                 raise NoResourcesError("storage")
 
-            remaining_memory = self.memory[vm.mementry] - vm.memory
+            remaining_memory = self.memory - vm.memory
             if remaining_memory < 0:
                 raise NoResourcesError("memory")
 
             # Otherwise, we can check out these resources
             self.vm_slots = remaining_vm_slots
             self.storageGB = remaining_storage
-            self.memory[vm.mementry] = remaining_memory
+            self.memory = remaining_memory
 
     def resource_return(self, vm):
         """Returns the resources taken by the passed in VM to the Cluster's internal
@@ -519,11 +489,7 @@ class ICluster:
         with self.res_lock:
             self.vm_slots += 1
             self.storageGB += vm.storage
-            # ISSUE: No way to know what mementry a VM is running on
-            try:
-                self.memory[vm.mementry] += vm.memory
-            except:
-                log.warning("Couldn't return memory because I don't know about that mem entry anymore...")
+            self.memory += vm.memory
 
     def _generate_next_name(self):
         name = ''.join([self.name.replace('_', '-').lower(), '-', str(uuid.uuid4())])

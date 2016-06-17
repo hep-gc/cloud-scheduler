@@ -336,21 +336,13 @@ class EC2Cluster(cluster_tools.ICluster):
                 return self.ERROR
             return self.ERROR
 
-        vm_mementry = self.find_mementry(vm_mem)
-        if (vm_mementry < 0):
-            #TODO: this is kind of pointless with EC2...
-            log.debug("Cluster memory list has no sufficient memory " +\
-                      "entries (Not supposed to happen). Returning error.")
-            return self.ERROR
-        log.verbose("vm_create - Memory entry found in given cluster: %d" %
-                                                                    vm_mementry)
         if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
             vm_keepalive = self.keep_alive
         new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     image= vm_ami, flavor=instance_type,
-                    memory = vm_mem, mementry = vm_mementry,
+                    memory = vm_mem,
                     cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive, job_per_core = job_per_core)
 
