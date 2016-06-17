@@ -539,8 +539,8 @@ class ResourcePool:
                 log.verbose("get_fitting_resources - memory request exceeds max_vm_mem on %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
-            if (cluster.find_mementry(memory) < 0):
-                log.verbose("get_fitting_resources - No available memory entry in %s" % cluster.name)
+            if (memory > cluster.memory):
+                log.verbose("get_fitting_resources - Not enough Memory  in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient CPU cores
             if (cpucores > cluster.cpu_cores):
@@ -630,7 +630,7 @@ class ResourcePool:
             # If request exceeds the max vm memory on cluster
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
-            if not cluster.find_potential_mementry(memory):
+            if not cluster.check_memory(memory):
                 continue
             # Cluster meets network and cpu reqs and may have enough memory
             potential_fit = True
@@ -669,7 +669,7 @@ class ResourcePool:
             # If request exceeds the max vm memory on cluster
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
-            if not cluster.find_potential_mementry(memory):
+            if not cluster.check_memory(memory):
                 continue
             if disk > cluster.max_storageGB:
                 continue
