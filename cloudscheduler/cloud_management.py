@@ -142,7 +142,6 @@ class ResourcePool:
         self.load_persistence()
 
 
-
     def setup(self):
         """Read the cloud_resources.conf to determine the available clouds."""
         log.debug("Loading cloud resource configuration file %s" % self.config_file)
@@ -292,7 +291,7 @@ class ResourcePool:
 
         if cloud_type.lower() == "amazonec2" or cloud_type.lower() == "eucalyptus" or cloud_type.lower() == "openstack":
             if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
-                return ec2cluster.EC2Cluster(name = cluster,
+                return ec2cluster.EC2Cluster(name = cluster.lower(),
                     host = get_or_none(cconfig, cluster, "host"),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
@@ -316,7 +315,7 @@ class ResourcePool:
                     )
 
         elif cloud_type.lower() == "stratuslab" and stratuslab_support and cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):
-            return stratuslabcluster.StratusLabCluster(name = cluster,
+            return stratuslabcluster.StratusLabCluster(name = cluster.lower(),
                     host = get_or_none(cconfig, cluster, "host"),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
@@ -331,7 +330,7 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     )
         elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce" and cloudconfig.verify_cloud_conf_gce(cconfig, cluster):
-            return googlecluster.GoogleComputeEngineCluster(name = cluster,
+            return googlecluster.GoogleComputeEngineCluster(name = cluster.lower(),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
@@ -350,7 +349,7 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     )
         elif cloud_type.lower() == "openstacknative" and cloudconfig.verify_cloud_conf_openstacknative(cconfig, cluster):
-            return openstackcluster.OpenStackCluster(name = cluster,
+            return openstackcluster.OpenStackCluster(name = cluster.lower(),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
@@ -375,7 +374,7 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     )
         elif cloud_type.lower() == "azure" and cloudconfig.verify_cloud_conf_azure(cconfig, cluster):
-            return azurecluster.AzureCluster(name = cluster,
+            return azurecluster.AzureCluster(name = cluster.lower(),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
@@ -682,7 +681,7 @@ class ResourcePool:
         expanded_names = self.resolve_target_cloud_alias(names)
         clusters = []
         for name in expanded_names:
-            cluster = self.get_cluster(name)
+            cluster = self.get_cluster(name.lower())
             if cluster != None:
                 clusters.append(cluster)
             else:
@@ -1737,7 +1736,7 @@ class ResourcePool:
             return "Unable to shutdown %s VMs, use a number." % number
         
         output = ""
-        cluster = self.get_cluster(cloudname)
+        cluster = self.get_cluster(cloudname.lower())
         desthreads = []
         if cluster:
             if number > len(cluster.vms):
@@ -1764,8 +1763,8 @@ class ResourcePool:
     def shutdown_cluster_vm(self, clustername, vmid):
         """Manually shutdown a VM, for use by cloud_admin."""
         output = ""
-        cluster = self.get_cluster(clustername)
-        cluster_retired = self.get_cluster(clustername, True)
+        cluster = self.get_cluster(clustername.lower())
+        cluster_retired = self.get_cluster(clustername.lower(), True)
         if cluster:
             vm = cluster.get_vm(vmid)
             if cluster_retired:
@@ -1800,7 +1799,7 @@ class ResourcePool:
         """Manually shutdown all VMs on a cluster, for use by cloud_admin."""
         output = ""
         vmdesth = {}
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         if cluster:
             for vm in cluster.vms:
                 th = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
@@ -1825,8 +1824,8 @@ class ResourcePool:
     def remove_vm_no_shutdown(self, clustername, vmid):
         """Remove a VM entry from Cloudscheduler without issuing a shutdown to the cluster, for use by cloud_admin."""
         output = ""
-        cluster = self.get_cluster(clustername)
-        cluster_retired = self.get_cluster(clustername, True)
+        cluster = self.get_cluster(clustername.lower())
+        cluster_retired = self.get_cluster(clustername.lower(), True)
         if cluster:
             vm = cluster.get_vm(vmid)
             if cluster_retired:
@@ -1852,7 +1851,7 @@ class ResourcePool:
 
     def remove_all_vmcloud_no_shutdown(self, clustername):
         """Remove all VM entries from a cluster without issuing shutdowns to the IaaS, for use by cloud_admin."""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         output = ""
         if cluster:
             for vm in reversed(cluster.vms):
@@ -1904,7 +1903,7 @@ class ResourcePool:
         return output
     
     def force_retire_cluster_all(self, cloudname):
-        cluster = self.get_cluster(cloudname)
+        cluster = self.get_cluster(cloudname.lower())
         output = ""
         if cluster:
             for vm in cluster.vms:
@@ -1919,7 +1918,7 @@ class ResourcePool:
         return output
 
     def force_retire_cluster_number(self, cloudname, number):
-        cluster = self.get_cluster(cloudname)
+        cluster = self.get_cluster(cloudname.lower())
         output = ""
         try:
             number = int(number)
@@ -1941,7 +1940,7 @@ class ResourcePool:
 
     def disable_cluster(self, clustername):
         """Toggles the enabled flag for a cluster, for use by cloud_admin."""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         ret = ""
         if cluster:
             cluster.enabled = False
@@ -1953,7 +1952,7 @@ class ResourcePool:
     
     def enable_cluster(self, clustername):
         """Toggles the enabled flag for a cluster, for use by cloud_admin."""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         ret = ""
         if cluster:
             cluster.enabled = True
@@ -1965,7 +1964,7 @@ class ResourcePool:
 
     def reset_override_state(self, clustername, vmid):
         output = ""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         if cluster:
             vm = cluster.get_vm(vmid)
             if vm:
@@ -2074,9 +2073,9 @@ class ResourcePool:
             if k in self.target_cloud_aliases.keys():
                 exp = self.target_cloud_aliases[k]
                 for cloud in exp:
-                    expanded_amis[cloud] = v
+                    expanded_amis[cloud.lower()] = v
             else:
-                expanded_amis[k] = v
+                expanded_amis[k.lower()] = v
         return expanded_amis
 
     def resolve_vminstancetype_cloud_alias(self, vminstancetypes=None):
@@ -2085,9 +2084,9 @@ class ResourcePool:
             if k in self.target_cloud_aliases.keys():
                 exp = self.target_cloud_aliases[k]
                 for cloud in exp:
-                    expanded_types[cloud] = v
+                    expanded_types[cloud.lower()] = v
             else:
-                expanded_types[k] = v
+                expanded_types[k.lower()] = v
         return expanded_types
 
     def adjust_cloud_allocation(self, cloud_name, number):
@@ -2095,7 +2094,7 @@ class ResourcePool:
             number = int(number)
         except:
             return "Need to use an integer value for vm_allocation"
-        cluster = self.get_cluster(cloud_name)
+        cluster = self.get_cluster(cloud_name.lower())
         if cluster:
             with(cluster.res_lock):
                 # Determine current vm slot value - remaining+current vms
@@ -2141,7 +2140,7 @@ class ResourcePool:
         else:
             return "Unable to find cluster with name: %s" % cloud_name
 
-        self.update_cloud_resources(cloud_name, number)
+        self.update_cloud_resources(cluster.name, number)
         return "Attempt adjustment on cloud %s, change to %s slots" % (cloud_name, number)
 
 

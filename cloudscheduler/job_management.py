@@ -1209,7 +1209,7 @@ def _attr_list_to_dict(attr_list):
         if len(host_attr) == 1:
             attr_dict["default"] = host_attr[0].strip()
         elif len(host_attr) == 2:
-            attr_dict[host_attr[0].strip()] = host_attr[1].strip()
+            attr_dict[host_attr[0].strip().lower()] = host_attr[1].strip()
         else:
             raise ValueError("Can't split '%s' into suitable host attribute pair" % host_attr)
 
