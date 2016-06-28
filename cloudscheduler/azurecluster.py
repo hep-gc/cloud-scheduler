@@ -280,7 +280,7 @@ class AzureCluster(cluster_tools.ICluster):
                 self.resource_return(vm)
             with self.vms_lock:
                 self.vms.remove(vm)
-                log.debug("VM %s removed from %s list" % (vm.id, self.name))
+                log.info("VM %s removed from %s list" % (vm.id, self.name))
         except Exception as e:
             log.error("Error removing vm from list: %s" % e)
             return 1
