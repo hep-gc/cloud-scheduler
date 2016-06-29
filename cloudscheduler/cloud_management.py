@@ -290,6 +290,10 @@ class ResourcePool:
                 log.error("No networks specified for %s, will use the default" % cluster)
 
         if cloud_type.lower() == "amazonec2" or cloud_type.lower() == "eucalyptus" or cloud_type.lower() == "openstack":
+            try:
+                port = int(get_or_none(cconfig, cluster, "port"))
+            except TypeError:
+                port = 8773
             if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
                 return ec2cluster.EC2Cluster(name = cluster.lower(),
                     host = get_or_none(cconfig, cluster, "host"),
@@ -312,6 +316,7 @@ class ResourcePool:
                     enabled=enabled,
                     priority = priority,
                     keep_alive=keep_alive,
+                    port= port,
                     )
 
         elif cloud_type.lower() == "stratuslab" and stratuslab_support and cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):

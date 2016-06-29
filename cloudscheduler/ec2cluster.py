@@ -79,7 +79,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                    aws_secret_access_key=self.secret_access_key,
                                    is_secure=self.secure_connection,
                                    region=region,
-                                   port=8773,
+                                   port=self.port,
                                    path="/services/Eucalyptus",
                                    )
                 log.verbose("Created a connection to Eucalyptus (%s)" % self.name)
@@ -102,7 +102,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                    aws_secret_access_key=self.secret_access_key,
                                    is_secure=self.secure_connection,
                                    region=region,
-                                   port=8773,
+                                   port=self.port,
                                    path="/services/Cloud",
                                    validate_certs=False
                                    )
@@ -123,7 +123,7 @@ class EC2Cluster(cluster_tools.ICluster):
                  security_group=None, key_name=None,
                  boot_timeout=None, secure_connection="", regions=[],
                  reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0,
-                 keep_alive=0,):
+                 keep_alive=0, port=8773):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
@@ -149,6 +149,7 @@ class EC2Cluster(cluster_tools.ICluster):
         self.regions = regions
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
+        self.port = port
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
