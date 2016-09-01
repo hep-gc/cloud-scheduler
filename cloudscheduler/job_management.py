@@ -80,7 +80,7 @@ class Job:
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMLocation=None, VMKeyName=None, VMSecurityGroup="", VMUserData="",
-             VMAMIConfig=None, VMUseCloudInit=False, VMInjectCA=config.default_VMInjectCA, **kwargs):
+             VMAMIConfig=None, VMInjectCA=config.default_VMInjectCA, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -218,7 +218,7 @@ class Job:
         self.req_security_group = splitnstrip(',', VMSecurityGroup)
         self.user_data = splitnstrip(',', VMUserData)
         self.ami_config = VMAMIConfig
-        self.use_cloud_init = VMUseCloudInit in ['true', 'True', True, 'TRUE']
+        self.use_cloud_init = True
         self.inject_ca = VMInjectCA in ['true', 'True', True, 'TRUE']
 
         # Set the new job's status
