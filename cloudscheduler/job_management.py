@@ -80,7 +80,7 @@ class Job:
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
              VMLocation=None, VMKeyName=None, VMSecurityGroup="", VMUserData="",
-             VMAMIConfig=None, VMInjectCA=config.default_VMInjectCA, **kwargs):
+             VMAMIConfig=None, VMInjectCA=None, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -141,6 +141,8 @@ class Job:
             VMMaximumPrice = config.default_VMMaximumPrice
         if not VMJobPerCore:
             VMJobPerCore = config.default_VMJobPerCore
+        if not VMInjectCA:
+            VMInjectCA = config.default_VMInjectCA
     
         self.id           = GlobalJobId
         self.user         = Owner
@@ -242,7 +244,6 @@ class Job:
 
         #log.verbose("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
         #  % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
-
     def __repr__(self):
         return "Job '%s'" % self.id
 
@@ -613,6 +614,7 @@ class JobPool:
             # VMAMI requires special fiddling
             _attribute_from_list(classad, "VMAMI")
             _attribute_from_list(classad, "VMInstanceType")
+
             try:            
                 jobs.append(Job(**classad))
             except ValueError:
