@@ -6,11 +6,11 @@ write_files:
         # Local config for Cloud Scheduler
 
         ## Set this to the name you would like to give your VM
-        VMType = "atlas-worker"
+        VMType = "cloudscheduler-worker"
 
         ## Hostname of the central manager.
         # Prefer value contextualized by Cloud Scheduler and then use central_manager
-        CONDOR_HOST=condor.heprc.uvic.ca
+        CONDOR_HOST=myhost.localhost
 
         SEC_DAEMON_AUTHENTICATION =
         SEC_DAEMON_AUTHENTICATION_METHODS =
@@ -32,26 +32,21 @@ write_files:
         HOSTALLOW_WRITE = $(IP_ADDRESS), $(FULL_HOSTNAME), $(CONDOR_HOST)
         ALLOW_WRITE = $(IP_ADDRESS), $(FULL_HOSTNAME), $(CONDOR_HOST)
 
-        ##  Enable CCB for nodes behind NAT
         CCB_ADDRESS = $(CONDOR_HOST)
 
-        ## By default, user jobs run as nobody.
         TRUST_UID_DOMAIN = False
         ## If you require jobs to run as a user set TRUST_UID_DOMAIN to True and uncomment the following
         #SCHEDD_HOST=$(CONDOR_HOST)
         #UID_DOMAIN=$(CONDOR_HOST)
         #FILESYSTEM_DOMAIN=$(CONDOR_HOST)
 
-        ## START requirement
         START = TRUE
 
         DAEMON_LIST = MASTER, STARTD
 
-        # Give VMs enough time to retire their jobs and for condor daemons to shutdown
         MaxJobRetirementTime = 3600 * 24 * 2
         SHUTDOWN_GRACEFUL_TIMEOUT = 3600 * 25 * 2
 
-        ### Job environment config
         NUM_SLOTS = 1
         NUM_SLOTS_TYPE_1 = 1
         SLOT_TYPE_1 = cpus=100%
@@ -76,26 +71,17 @@ write_files:
         STARTER_ALLOW_RUNAS_OWNER = False
         EXECUTE = /var/lib/condor/execute
 
-        ## These varibales tells condor which certificate to
-        ## use to GSI authenticate this host.
-        ##
-        ## Note that the /etc/init.d/condor startup script
-        ## also relies on those values being properly
-        ## set.
         GSI_DAEMON_DIRECTORY = /etc/grid-security
         GSI_DAEMON_CERT = /etc/grid-security/hostcert.pem
         GSI_DAEMON_KEY = /etc/grid-security/hostkey.pem
 
-        ## Job processing options.
         SUSPEND = False
         CONTINUE = True
         PREEMPT = False
         KILL = False
 
-        ## Evaluate VMType as part of the job requirements.
         STARTD_ATTRS = COLLECTOR_HOST_STRING VMType
 
-        ## Ephemeral port specifications:
         HIGHPORT = 50000
         LOWPORT = 40000
     owner: root:root
@@ -122,24 +108,12 @@ write_files:
         ##
         ##**************************************************************
 
-
         #
         # chkconfig: 2345 98 10
         # description: Condor HTC computing platform
         #
         # condor script for SysV-style init boot scripts.
         #
-        # Usually this would be installed as /etc/init.d/condor with soft
-        # links put in from /etc/rc*.d to point back to /etc/init.d/condor to
-        # determine when Condor should be started and stopped.  Exact
-        # directories or details of the links you should use will vary from
-        # platform to platform.
-        #
-
-        # This script strives for portability, and thus may be inelegant
-        # on any given system.  Users on Fedora or Red Hat systems should
-        # also consider "condor.init", which is more native and should
-        # integrate better with the rest of the system.
 
         ### BEGIN INIT INFO
         # Provides:          condor
@@ -154,91 +128,34 @@ write_files:
 
         # Ensure that the settings below are correct for your Condor
         # installation.
-
-
-        # EC2 Metadata server
         EC2_METADATA=169.254.169.254
-
-        # Central Manager of your condor pool
         CENTRAL_MANAGER=`cat /etc/condor/central_manager 2>/dev/null`
-
-        # START requirement for resource
         START_REQUIREMENT=`cat /etc/condor/start_req_config 2>/dev/null`
-
-        # Path to your primary condor configuration file.
         CONDOR_CONFIG=/etc/condor/condor_config
-
-        # Path to condor_config_val
         CONDOR_CONFIG_VAL=/usr/bin/condor_config_val
-
-        # Path to condor_config.local.modifications
         CONDOR_CONFIG_LOCAL_MODIFS=/etc/condor/condor_config.local.modifications
 
-        # Path to image metadata file. If its not set, or file doesn't exist
-        # VMType won't automatically be set
         IMAGE_METADATA=/.image.metadata
 
-        # A file used to track the running instance. Needs to be writable
-        # and deletable.  If left blank, defaults to $RUN/master.pid,
-        # where $RUN is the RUN directory in your CONDOR_CONFIG, will be
-        # used.
         PIDFILE=
 
-
-        # Number of seconds to wait for the condor_master to exit.
-        #
-        # You might want to set this to 5 seconds longer than
-        # SHUTDOWN_FAST_TIMEOUT as set in your CONDOR_CONFIG to give
-        # Condor as much chance as possible to shut itself and its children
-        # down before we give up.  SHUTDOWN_FAST_TIMEOUT timeout defaults
-        # to 300 (5 minutes), as of 2008.
         MAX_STOP_WAIT=30
-
 
         # Assuming a typical Condor installation, the following settings
         # will be automatically detected.
-
-        # The ps command to dump all running processes.  The PID should be
-        # the second field in the output, and the full command name should
-        # be present.  Likely options are "/bin/ps auwx" and "/bin/ps -ef".
-        # If blank, this script will try to automatically detect it.
         PS=
-
-
-        # Paths to various Condor directories.  If blank, default
-        # to the matching setting in the Condor configuration file
-        #
-        # condor_config_val LOG
         CONDOR_LOG=
-        # condor_config_val SBIN
         CONDOR_SBIN=
-
-        # Paths to various Condor binaries.  If blank, default to
-        # the location given.
-        #
-        # condor_off - defaults to $CONDOR_SBIN/condor_off
         CONDOR_OFF=
-        # condor_reconfig - defaults to $CONDOR_SBIN/condor_reconfig
         CONDOR_RECONFIG=
-        # condor_master - defaults to `condor_config_val MASTER`
         CONDOR_MASTER=
 
 
 
         # There are no settings beyond this point.
 
-
-
         ################################################################################
 
-        # A key goal of this script is portability.  As a result,
-        # there are is awkward syntax.  For example: the -e test
-        # for file existance isn't available in Solaris 9 /bin/sh
-        # so "\( -f "$1" -o -L "$1" \)" is used as a rough equivalent.
-        # stop is not an acceptable function name on AIX and HPUX,
-        # so the function is called xstop.
-
-        # Equivalent to "echo -n", but portable.
         echon() {
             if [ "`echo -n`" = "-n" ]; then
                 echo "$@""\c"
@@ -247,14 +164,11 @@ write_files:
             fi
         }
 
-        # Emits error with a "FATAL: " prefix. Exits.  Never returns
         fatal_error() {
                 echo "FATAL: $1"
                 exit 1
         }
 
-        # Is the executable in $1 potentially runnable?
-        # Exit if no.
         verify_executable() {
             if [ ! \( -f "$1" -o -L "$1" \) ]; then
                 fatal_error "Required executable $1 does not exist."
@@ -268,8 +182,6 @@ write_files:
             return 0
         }
 
-        # Is the path in $1 a potentially readable directory?
-        # Exit if no.
         verify_readable_directory() {
             if [ ! -d "$1" ]; then
                 fatal_error "Required directory $1 does not exist, or is not a directory."
@@ -280,8 +192,6 @@ write_files:
             return 0
         }
 
-        # Returns a setting from the CONDOR_CONFIG configuration
-        # file.  Exits if the value cannot be found!
         get_condor_config_val() {
             TMPVAL=`"$CONDOR_CONFIG_VAL" $1`
             if [ "$TMPVAL" = "" ]; then
@@ -290,8 +200,6 @@ write_files:
             echo "$TMPVAL"
         }
 
-        # Ensure CONDOR_SBIN holds path to SBIN as defined in the
-        # CONDOR_CONFIG file
         init_condor_sbin() {
             if [ "$CONDOR_SBIN" != "" ]; then
                 return 0;
@@ -301,8 +209,6 @@ write_files:
             return 0;
         }
 
-        # Ensure CONDOR_RUN holds path to a plausible run directory.
-        # Exit on failure.
         init_condor_run() {
             if [ "$CONDOR_RUN" != "" ]; then
                 return 0
@@ -312,9 +218,6 @@ write_files:
             return 0
         }
 
-
-        # Ensure CONDOR_MASTER holds path to a plausible condor_master.
-        # Exit on failure.
         init_condor_master() {
             if [ "$CONDOR_MASTER" = "" ]; then
                 CONDOR_MASTER=`get_condor_config_val MASTER`
@@ -323,8 +226,6 @@ write_files:
             return 0
         }
 
-        # Ensure CONDOR_RECONFIG holds path to a plausible condor_reconfig.
-        # Exit on failure.
         init_condor_reconfig() {
             if [ "$CONDOR_RECONFIG" = "" ]; then
                 init_condor_sbin
@@ -334,8 +235,6 @@ write_files:
             return 0
         }
 
-        # Ensure CONDOR_OFF holds path to a plausible condor_off.
-        # Exit on failure.
         init_condor_off() {
             if [ "$CONDOR_OFF" = "" ]; then
                 init_condor_sbin
@@ -345,7 +244,6 @@ write_files:
             return 0
         }
 
-        # Try to detect a working ps, if not done already
         init_ps() {
             if [ "$PS" != "" ]; then
                 return 0;
@@ -372,10 +270,6 @@ write_files:
             fatal_error "Could not determine how to call ps. Edit this script to explicitly set PS as documented there."
         }
 
-
-        # To the best of its ability, finds the active condor_master's PID.
-        # echos the result, or an empty string if none was found.
-        # You can call this repeatedly to check for updates.
         condor_pid() {
             if [ ! -f "$PIDFILE" ]; then return 1; fi # Isn't a file
             if [ ! -r "$PIDFILE" ]; then return 1; fi # Isn't readable
@@ -389,15 +283,6 @@ write_files:
             return 0
         }
 
-        # Wait for condor_master to exit.
-        #
-        # Only reliably detects condor_masters started by this script
-        #
-        # Sleeps $1 seconds between checks
-        # After approximately $2 seconds, gives up
-        #
-        # $?=0 - condor_master is gone
-        # $?=1 - timed out
         wait_for_exit() {
             max_wait=$2
             sleep_time=$1
@@ -418,7 +303,6 @@ write_files:
             replace_this=$1
             with_this=$2
             on_this_file=$3
-
             grep -e "^$replace_this[ =]" $on_this_file >/dev/null 2>&1
             REPLACE=$?
             if [ $REPLACE -eq 0 ]; then
@@ -447,7 +331,6 @@ write_files:
             echo "Applying modifications to ${local_file} ..."
             while read LINE
             do
-            # Split values like 'variable = value'
                 variable=`echo ${LINE} | perl -pe 's/(\w*?) \s*? = \s* (.*)/\1/x'`
                 value=`echo ${LINE} | perl -pe 's/(\w*?) \s*? = \s* (.*)/\2/x'`
                 replace_or_append "${variable}" "${variable}=${value}" $local_file
@@ -492,8 +375,6 @@ write_files:
         setup_on_ec2() {
 
             local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
-
-            # Eucalyptus can give us just a private IP
             public_ip=`curl -m 10 -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
             test $public_ip != "0.0.0.0" > /dev/null 2>&1
             HAS_PUBLIC_IP=$?
@@ -504,18 +385,14 @@ write_files:
 
                 if [ $HAS_PUBLIC_IP -eq 0 ] ; then
 
-                    # Set hostname to external
                     EXTHOSTNAME=`curl -s http://$EC2_METADATA/latest/meta-data/public-hostname`
                     VALID_HOST=$?
                     if [ $VALID_HOST -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
                         hostname $EXTHOSTNAME
-
                         private_network_name=amazon-ec2-`curl -s http://$EC2_METADATA/latest/meta-data/placement/availability-zone`
                         replace_or_append "PRIVATE_NETWORK_NAME" "PRIVATE_NETWORK_NAME=$private_network_name" $local_file
-
                         tcp_forwarding_host=`curl -s http://$EC2_METADATA/latest/meta-data/public-ipv4`
                         replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
-
                         private_network_interface=`curl -s http://$EC2_METADATA/latest/meta-data/local-ipv4`
                         replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
                     fi
@@ -537,26 +414,21 @@ write_files:
         setup_on_gce() {
 
             local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
-
             public_ip=`curl -m 10 -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H "Metadata-Flavor: Google"`
             test $public_ip != "0.0.0.0" > /dev/null 2>&1
             HAS_PUBLIC_IP=$?
-
             curl -m 10 -s http://metadata/ >/dev/null 2>&1
             IS_EC2=$?
             if [ $IS_EC2 -eq 0 ] ; then
 
                 if [ $HAS_PUBLIC_IP -eq 0 ] ; then
 
-                    # Set hostname to external
                     EXTHOSTNAME=`curl -s http://metadata/computeMetadata/v1/instance/hostname -H "Metadata-Flavor: Google"`
                     VALID_HOST=$?
                     if [ $VALID_HOST -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
                         hostname $EXTHOSTNAME
-
                         tcp_forwarding_host=`curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H "Metadata-Flavor: Google"`
                         replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
-
                         private_network_interface=`curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/ip -H "Metadata-Flavor: Google"`
                         replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
                     fi
@@ -565,7 +437,6 @@ write_files:
                     VALID_ID=$?
                     if [ $VALID_ID -eq 0 ] && [[ $EXTHOSTNAME != ??xml* ]] && [[ $EXTHOSTNAME != ?html* ]] ; then
                         hostname $EXTHOSTNAME
-
                         private_network_interface=`curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/ip -H "Metadata-Flavor: Google"`
                         replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
                     fi
@@ -574,8 +445,6 @@ write_files:
 
         }
 
-        # Make sure the permissions on the grid hostkey
-        # are restrictive enough, else GSI will fail.
         set_hostkey_permissions () {
             HOST_KEY=`get_condor_config_val GSI_DAEMON_KEY`
             if [ -f $HOST_KEY ]; then
@@ -606,7 +475,6 @@ write_files:
             fi
         }
 
-        # Start condor.
         start() {
             set_hostkey_permissions
             if [ -f "/var/lib/cloud_type" ]; then
@@ -635,22 +503,6 @@ write_files:
             return 0
         }
 
-
-        # Tries to stop the condor_master
-        #
-        # If we have a valid PIDFILE, uses "kill -QUIT".
-        # Failing that, uses "condor_off -fast -master"
-        #
-        # We prefer the "kill -QUIT", as the master might refuse
-        # the condor_off request because of security configuration.
-        # We still try condor_off in case the PIDFILE is missing,
-        # say because someone started condor_master by hand.
-        #
-        # The two options are nearly identical from the condor_master's
-        # point of view; it will end up executing the same shutdown
-        # code either way.
-        #
-        # named xstop because stop causes problems on AIX and HPUX.
         xstop() {
             cleanup_ccb
             echon "Shutting down Condor (fast-shutdown mode)..."
@@ -679,24 +531,10 @@ write_files:
             fi
 
             echo "done."
-
             rm /var/lock/subsys/condor
-
             return 0
         }
 
-
-        # Ask Condor to re-read its configuration files
-        #
-        # This can fail for any number of reasons, and we wouldn't
-        # detect it.
-        #
-        # As a possible improvement, we might send SIGHUP if `condor_pid`
-        # is non-empty, only falling back on condor_reconfig if it is.
-        #
-        # Also, detect the return code from CONDOR_RECONFIG; non-zero
-        # indicates aproblem. (At the moment that never happens, but
-        # may in the future.)
         reload() {
             init_condor_reconfig
             echon "Reloading Condor configuration..."
@@ -705,19 +543,6 @@ write_files:
             return 0
         }
 
-
-        # Report Condor's status
-        #
-        # If condor was started by directly running condor_master,
-        # this will erroneously report that it is not running.
-        #
-        # Return codes (from Linux Standards Base)
-        # (Not all of these are currently implemented)
-        # 0 running
-        # 1 dead and /var/run pid file exists
-        # 2 dead and /var/lock lock file exists
-        # 3 not running
-        # 4 unknown
         status() {
             master_pid=`condor_pid`
             if [ "$master_pid" != "" ]; then
@@ -731,7 +556,6 @@ write_files:
 
         ################################################################################
 
-        # Back up only relevant argument, as function calls may stomp it.
         INIT_COMMAND=$1
 
         verify_executable "$CONDOR_CONFIG_VAL"
@@ -747,7 +571,6 @@ write_files:
             init_condor_run
             PIDFILE="$CONDOR_RUN/master.pid"
         fi
-
 
         case $INIT_COMMAND in
         'start')
