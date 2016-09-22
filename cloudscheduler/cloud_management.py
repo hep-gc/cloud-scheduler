@@ -1129,6 +1129,8 @@ class ResourcePool:
             new_cluster = self.get_cluster(old_cluster.name)
             if new_cluster:
                 new_cluster.enabled = old_cluster.enabled
+                if new_cluster.__class__.__name__ == 'AzureCluster':
+                    new_cluster.count = old_cluster.count
 
             for vm in old_cluster.vms:
                 log.debug("Found VM %s on %s" % (vm.id, old_cluster.name))
