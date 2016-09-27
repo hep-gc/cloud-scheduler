@@ -177,7 +177,9 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config')], extra_userdata)
-
+            if not user_data:
+                log.error("Problem building cloud-config user data.")
+                return 1
         # Compress the user data to try and get under the limit
         user_data = utilities.gzip_userdata(user_data)
 

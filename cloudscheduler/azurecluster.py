@@ -120,6 +120,9 @@ class AzureCluster(cluster_tools.ICluster):
             # need to use the multi-mime type functions
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')],
                                                                  extra_userdata)
+            if not user_data:
+                log.error("Problem building cloud-config user data.")
+                return self.ERROR
 
         # Compress the user data to try and get under the limit
         user_data = utilities.gzip_userdata(user_data)

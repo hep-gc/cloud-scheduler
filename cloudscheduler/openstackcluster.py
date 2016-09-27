@@ -121,6 +121,9 @@ class OpenStackCluster(cluster_tools.ICluster):
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
+            if not user_data:
+                log.error("Problem building cloud-config user data.")
+                return self.ERROR
         #with open('/tmp/userdata.yaml', 'w') as f:
             #f.write(user_data)
         # Compress the user data to try and get under the limit

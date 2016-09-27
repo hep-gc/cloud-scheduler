@@ -90,7 +90,7 @@ class EC2Cluster(cluster_tools.ICluster):
 
         elif self.cloud_type == "OpenNebula":
 
-            log.error("OpenNebula support isn't ready yet.")
+            log.error("Use the boto3 ec2cluster for OpenNebula support.")
             raise NotImplementedError
 
         elif self.cloud_type == "OpenStack":
@@ -236,6 +236,9 @@ class EC2Cluster(cluster_tools.ICluster):
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
+            if not user_data:
+                log.error("Problem building cloud-config user data.")
+                return self.ERROR
 
         if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
             log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)

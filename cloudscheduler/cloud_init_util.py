@@ -95,7 +95,7 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
         #    contents = fh.read()
         (contents, format_type) = read_file_type_pairs(i)
         if contents == None or format_type == None:
-            continue
+            return None
         sub_message = MIMEText(contents, format_type, sys.getdefaultencoding())
         sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (i))
         combined_message.attach(sub_message)
