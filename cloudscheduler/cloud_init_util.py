@@ -145,6 +145,9 @@ def read_file_type_pairs(file_type_pair):
         with open(filename) as fh:
             content = fh.read()
 
+    if len(content) == 0:
+        return (None, None)
+
     return (content, format_type)
 
 def validate_yaml(content):
