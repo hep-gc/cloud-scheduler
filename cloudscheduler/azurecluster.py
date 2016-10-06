@@ -178,10 +178,11 @@ class AzureCluster(cluster_tools.ICluster):
                                                                          disable_ssh_password_authentication=False,
                                                                          custom_data=user_data)
                 net_set = azure.servicemanagement.ConfigurationSet()
+                vm_ssh_port = 20000+self.count
                 net_set.input_endpoints.input_endpoints.append(
                     azure.servicemanagement.ConfigurationSetInputEndpoint(name='SSH',
                                                                           protocol='TCP',
-                                                                          port=20000+self.count,
+                                                                          port=vm_ssh_port,
                                                                           local_port=22))
                 self.count += 1
                 if self.count > 15000:
@@ -226,7 +227,7 @@ class AzureCluster(cluster_tools.ICluster):
                                           cloudtype=self.cloud_type, network=None,
                                           image=vm_image, flavor=i_type,
                                           memory=vm_mem, cpucores=vm_cores, storage=vm_storage,
-                                          keep_alive=vm_keepalive, job_per_core=job_per_core)
+                                          keep_alive=vm_keepalive, job_per_core=job_per_core, ssh_port=vm_ssh_port)
 
                 try:
                     self.resource_checkout(new_vm)

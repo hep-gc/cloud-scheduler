@@ -57,7 +57,7 @@ class VM:
             image="", memory=0, flavor="",
             cpucores=0, storage=0, keep_alive=0, spot_id="",
             proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, 
-            myproxy_renew_time="12", job_per_core=False):
+            myproxy_renew_time="12", job_per_core=False, ssh_port=22):
         """
         Constructor
 
@@ -85,6 +85,7 @@ class VM:
         errorcount   - (int) Number of Polling Errors VM has had
         force_retire - (bool) Flag to prevent a retiring VM from being turned back on
         return_resources - (bool) Flag to set if resources from this VM should be returned to cluster
+        ssh_port - (int) the ssh port of the VM
         """
         self.name = name
         self.id = id
@@ -127,6 +128,7 @@ class VM:
         self.failed_retire = False
         self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
         self.x509userproxy_expiry_time = None
+        self.ssh_port = ssh_port
         
         # Set a status variable on new creation
         self.status = "Starting"
@@ -152,6 +154,8 @@ class VM:
         idout = self.id
         if self.id == "":
             idout = self.spot_id
+        if self.ssh_port != 22:
+            nameout = ':'.join([nameout, str(self.ssh_port)])
         output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout, self.vmtype, self.user, self.status)
         if self.override_status != None:
             output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout, self.vmtype, self.user, self.override_status)
