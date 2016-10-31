@@ -89,7 +89,15 @@ class VMPoller(threading.Thread):
             while (not self.quit) and sleep_tics > 0:
                 time.sleep(1)
                 sleep_tics -= 1
-            
+
+
+    def poll_all_clouds(self, retired_resources=False):
+        """
+        poll_all_clouds - poll each cloud and update VM states.
+        :param retired_resources:
+        :return: None
+        """
+        pass
 
     def poll_all_machines(self, retired_resources=False):
         """
