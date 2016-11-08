@@ -137,9 +137,133 @@ class BotoCluster(cluster_tools.ICluster):
                   key_name="",use_cloud_init=False, extra_userdata=[]):
         """Attempt to boot a new VM on the cluster."""
 
-        client = self._get_connection()
-        client.run_instances(ImageId='ami', MinCount=1, MaxCount=1, InstanceType='instance_type', UserData='userdata')
-        pass
+        use_cloud_init = use_cloud_init or config.use_cloud_init
+        log.verbose("Trying to boot %s on %s" % (vm_type, self.network_address))
+        if len(securitygroup) != 0:
+            sec_group = []
+            for group in securitygroup:
+                if group in self.security_groups:
+                    sec_group.append(group)
+            if len(sec_group) == 0:
+                log.debug("No matching security groups - trying default config")
+                sec_group = self.security_groups
+                #sec_group.append("default") - don't just append default use what is in cloud_resources.conf for this cloud
+        else:
+            sec_group = self.security_groups
+
+        try:
+            if self.name in vm_image.keys():
+                vm_ami = vm_image[self.name]
+            else:
+                vm_ami = vm_image[self.network_address]
+        except:
+            log.debug("No AMI for %s, trying default" % self.network_address)
+            #try:
+            #    vm_ami = vm_image["default"]
+            #except:
+                #log.debug("No given default - trying global defaults")
+            try:
+                vm_default_ami = _attr_list_to_dict(config.default_VMAMI)
+                if self.name in vm_default_ami.keys():
+                    vm_ami = vm_default_ami[self.name]
+                else:
+                    vm_ami = vm_default_ami[self.network_address]
+            except:
+                try:
+                    vm_ami = vm_default_ami["default"]
+                except:
+                    log.exception("Can't find a suitable AMI")
+                    self.failed_image_set.add(vm_ami)
+                    return
+
+        try:
+            if self.name in instance_type.keys():
+                i_type = instance_type[self.name]
+            elif self.network_address in instance_type.keys():
+                i_type = instance_type[self.network_address]
+            else:
+                i_type = instance_type["default"]
+        except:
+            log.debug("No instance type for %s, trying default" % self.network_address)
+            #try:
+            #    i_type = instance_type["default"]
+            #except:
+            #    if isinstance(instance_type, str):
+            #        i_type = instance_type
+            #    else:
+            try:
+                if self.name in self.DEFAULT_INSTANCE_TYPE_LIST.keys():
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.name]
+                else:
+                    i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
+            except:
+                log.debug("No default instance type found for %s, trying single default" % self.network_address)
+                i_type = self.DEFAULT_INSTANCE_TYPE
+        instance_type = i_type
+
+        if key_name == None:
+            key_name = self.key_name
+        if customization:
+            if not use_cloud_init:
+                user_data = nimbus_xml.ws_optional(customization)
+            else:
+                user_data = cloud_init_util.build_write_files_cloud_init(customization)
+        else:
+            user_data = ""
+
+        if pre_customization:
+            if not use_cloud_init:
+                for item in pre_customization:
+                    user_data = '\n'.join([item, user_data])
+            else:
+                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
+        elif use_cloud_init:
+            user_data = cloud_init_util.inject_customizations([], user_data)[0]
+        if len(extra_userdata) > 0:
+            # need to use the multi-mime type functions
+            user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
+
+        if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
+            log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)
+            addressing_type = "public"
+        else:
+            addressing_type = vm_networkassoc
+
+        user_data = utilities.gzip_userdata(user_data)
+        try:
+            client = self._get_connection()
+            client.run_instances(ImageId=vm_ami, MinCount=1, MaxCount=1, InstanceType=instance_type, UserData=user_data, KeyName=key_name, SecurityGroups=[sec_group])
+            # will need to figure out how PlacementGroups will work still will probably just be Placement={"AvailabilityZone':placement_zone}
+        except Exception as e:
+            log.error("Problem creating instance %s" % e)
+            return self.ERROR
+
+        if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
+            vm_keepalive = self.keep_alive
+        new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
+                    clusteraddr = self.network_address,
+                    cloudtype = self.cloud_type, network = vm_networkassoc,
+                    image= vm_ami, flavor=instance_type,
+                    memory = vm_mem, mementry = 0,
+                    cpucores = vm_cores, storage = vm_storage,
+                    keep_alive = vm_keepalive, job_per_core = job_per_core)
+
+        #try:
+        #    new_vm.spot_id = spot_id
+        #except:
+        #    log.verbose("No spot ID to add to VM %s" % instance_id)
+
+        try:
+            self.resource_checkout(new_vm)
+        except:
+            log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
+            self.vm_destroy(new_vm, reason="Failed Resource checkout")
+            return self.ERROR
+
+        self.vms.append(new_vm)
+
+        return 0
+
 
     def vm_poll(self, vm):
         """Query the cloud service for information regarding a VM."""
@@ -172,6 +296,27 @@ class BotoCluster(cluster_tools.ICluster):
         return_resources -- if set to false, do not return resources from VM to cluster
         """
         log.info("Destroying VM: %s Name: %s on %s Reason: %s" % (vm.id, vm.hostname, self.name, reason))
+        client = self._get_connection()
+        try:
+            client.terminate_instances(InstanceIds=[vm.id])
+        except Exception as e:
+            log.error("Problem destroying VM %s: %s" %(vm.hostname, e))
+            # will need to detect correct exception / message for no longer existing VM and clean it from CS by falling
+            # through and continuing with the resource return, if other exception return error
+            return self.ERROR
+
+        if return_resources and vm.return_resources:
+            self.resource_return(vm)
+        with self.vms_lock:
+            try:
+                self.vms.remove(vm)
+            except Exception as e:
+                log.error("Unable to remove VM %s on %s: %s" % (vm.id, self.name, e))
+
+        return 0
+
+        #connection.terminate_instances(InstanceIds=[instid])
+
         pass
 
 
