@@ -318,7 +318,6 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     port= port,
                     )
-
         elif cloud_type.lower() == "stratuslab" and stratuslab_support and cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):
             return stratuslabcluster.StratusLabCluster(name = cluster.lower(),
                     host = get_or_none(cconfig, cluster, "host"),
@@ -398,6 +397,35 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     blob_url= get_or_none(cconfig, cluster, "blob_url"),
                     service_name= get_or_none(cconfig, cluster, "service_name"),)
+        elif cloud_type.lower() == "opennebula":
+            try:
+                port = int(get_or_none(cconfig, cluster, "port"))
+            except TypeError:
+                port = 8773
+            if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
+                return ec2cluster.BotoCluster(name = cluster.lower(),
+                    host = get_or_none(cconfig, cluster, "host"),
+                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
+                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
+                    networks = networks,
+                    vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
+                    storage = int(get_or_none(cconfig, cluster, "storage")),
+                    access_key_id = get_or_none(cconfig, cluster, "access_key_id"),
+                    secret_access_key = get_or_none(cconfig, cluster, "secret_access_key"),
+                    security_group = splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
+                    key_name = get_or_none(cconfig, cluster, "key_name"),
+                    boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
+                    secure_connection = get_or_none(cconfig, cluster, "secure_connection"),
+                    regions = map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
+                    reverse_dns_lookup = get_or_none(cconfig, cluster, "reverse_dns_lookup"),
+                    placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
+                    enabled=enabled,
+                    priority = priority,
+                    keep_alive=keep_alive,
+                    port= port,
+                    )
         else:
             log.error("ResourcePool.setup encountered a problem creating entry for %s" % cluster)
         return None
