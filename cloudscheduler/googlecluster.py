@@ -261,7 +261,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             self.resource_checkout(new_vm)
         except:
             log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-            self.vm_destroy(new_vm, reason="Failed Resource checkout")
+            self.vm_destroy(new_vm, reason="Failed Resource checkout", return_resources=False)
             return self.ERROR
     
         self.vms.append(new_vm)

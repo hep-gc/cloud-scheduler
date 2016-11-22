@@ -104,7 +104,7 @@ class BotoCluster(cluster_tools.ICluster):
                 log.error("Couldn't connect to Eucalyptus EC2 because: %s" %
                                                                e.error_message)
 
-        elif self.cloud_type == "OpenNebula":
+        elif self.cloud_type.lower() == "opennebula":
             try:
                 pass
                 connection = boto3.client('ec2', region_name=self.regions, endpoint_url=self.host,
@@ -125,7 +125,7 @@ class BotoCluster(cluster_tools.ICluster):
                 log.error("Couldn't connect to OpenStack because: %s" %
                             e.error_message)
         else:
-            log.error("EC2Cluster don't know how to handle a %s cluster." %
+            log.error("BotoCluster don't know how to handle a %s cluster." %
                                                                self.cloud_type)
 
         return connection
@@ -257,7 +257,7 @@ class BotoCluster(cluster_tools.ICluster):
             self.resource_checkout(new_vm)
         except:
             log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-            self.vm_destroy(new_vm, reason="Failed Resource checkout")
+            self.vm_destroy(new_vm, reason="Failed Resource checkout", return_resources=False)
             return self.ERROR
 
         self.vms.append(new_vm)

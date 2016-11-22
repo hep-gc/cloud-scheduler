@@ -234,7 +234,7 @@ class AzureCluster(cluster_tools.ICluster):
                     log.info("Launching 1 VM: %s on %s" % (name, self.name))
                 except:
                     log.error("Unexpected Error checking out resources when creating a VM. Programming error?")
-                    self.vm_destroy(new_vm, reason="Failed Resource checkout")
+                    self.vm_destroy(new_vm, reason="Failed Resource checkout", return_resources=False)
                     return self.ERROR
 
                 self.vms.append(new_vm)

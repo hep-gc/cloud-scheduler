@@ -42,6 +42,10 @@ try:
     import azurecluster
 except:
     pass
+try:
+    import botocluster
+except:
+    pass
 
 import cloudscheduler.config as config
 import cloudconfig
@@ -403,7 +407,7 @@ class ResourcePool:
             except TypeError:
                 port = 8773
             if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
-                return ec2cluster.BotoCluster(name = cluster.lower(),
+                return botocluster.BotoCluster(name = cluster.lower(),
                     host = get_or_none(cconfig, cluster, "host"),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
                     memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
