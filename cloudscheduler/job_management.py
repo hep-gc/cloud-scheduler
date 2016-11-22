@@ -144,20 +144,20 @@ class Job:
         if not VMInjectCA:
             VMInjectCA = config.default_VMInjectCA
     
-        self.id           = GlobalJobId
-        self.user         = Owner
-        self.uservmtype   = ':'.join([Owner, VMType])
-        self.priority     = int(JobPrio)
-        self.job_status   = int(JobStatus)
-        self.cluster_id   = int(ClusterId)
-        self.proc_id      = int(ProcId)
-        self.req_vmtype   = VMType
-        self.req_network  = VMNetwork
-        self.req_image    = VMName
+        self.id = GlobalJobId
+        self.user = Owner
+        self.uservmtype = ':'.join([Owner, VMType])
+        self.priority = int(JobPrio)
+        self.job_status = int(JobStatus)
+        self.cluster_id = int(ClusterId)
+        self.proc_id = int(ProcId)
+        self.req_vmtype = VMType
+        self.req_network = VMNetwork
+        self.req_image = VMName
         self.req_imageloc = ""
-        self.req_ami      = VMAMI
+        self.req_ami = VMAMI
         try:
-            self.req_memory   = int(VMMem)
+            self.req_memory = int(VMMem)
         except:
             log.exception("VMMem not int: %s" % VMMem)
             raise ValueError
