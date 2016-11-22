@@ -19,7 +19,9 @@ For more documentation on Cloud Scheduler, please refer to:
 * [boto](http://code.google.com/p/boto/) for using EC2 API clouds (Amazon, OpenStack)
 * [web.py](http://webpy.org/) for admin and status REST servers
 * [requests](https://github.com/kennethreitz/requests) for admin and status REST clients
-* [OpenStack novaclient](https://pypi.python.org/pypi/python-novaclient/) for using the native OpenStack APIs
+* [OpenStack novaclient](https://pypi.python.org/pypi/python-novaclient/) and [OpenStack keystoneclient](https://pypi.python.org/pypi/python-keystoneclient/) for using the native OpenStack APIs
+* [Google API Python Client](pip install --upgrade google-api-python-client) to use Google Compute Engine
+* [Azure Service Management](https://pypi.python.org/pypi/azure-servicemanagement-legacy/) to use Microsoft Azure
 * redhat-lsb 
 
 ## Optional Prerequisites
