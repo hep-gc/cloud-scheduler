@@ -851,6 +851,28 @@ class Scheduler(threading.Thread):
                         'instance_type':vminstancetype_expanded,
                         'job_per_core':job.job_per_core,}
                 create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "BotoCluster":
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args = {'vm_name':job.req_image,
+                        'vm_type':job.req_vmtype,
+                        'vm_user':job.user,
+                        'vm_networkassoc':job.req_network,
+                        'vm_image':vmimage_expanded,
+                        'vm_mem':job.req_memory,
+                        'vm_cores':job.req_cpucores,
+                        'vm_storage':job.req_storage,
+                        'customization':customizations,
+                        'pre_customization': pre_customizations,
+                        'extra_userdata': extra_userdata,
+                        'vm_keepalive':job.keep_alive,
+                        'instance_type':vminstancetype_expanded,
+                        'maximum_price':job.maximum_price,
+                        'job_per_core':job.job_per_core,
+                        'securitygroup':job.req_security_group,
+                        'key_name': job.key_name,
+                        'use_cloud_init': job.use_cloud_init}
+                create_ret = resource.vm_create(**args)
 
             # If the VM create fails, try again on another resource
             if create_ret != 0:
