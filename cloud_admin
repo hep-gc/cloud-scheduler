@@ -5,6 +5,7 @@ import requests
 import sys
 from optparse import OptionParser
 import logging
+import logging.handlers
 import platform
 import urllib
 
