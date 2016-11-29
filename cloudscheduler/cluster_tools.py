@@ -303,6 +303,7 @@ class ICluster:
                  keep_alive=0):
         self.name = name
         self.network_address = host
+        self.host = host
         self.cloud_type = cloud_type
         self.memory = memory
         self.max_mem = memory
