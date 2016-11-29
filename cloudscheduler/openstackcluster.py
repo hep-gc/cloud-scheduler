@@ -35,7 +35,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                  cpu_cores=0, storage=0, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
                  key_name=None, boot_timeout=None, secure_connection="",
-                 regions=[], reverse_dns_lookup=False,placement_zone=None,
+                 regions="", reverse_dns_lookup=False,placement_zone=None,
                  enabled=True, priority=0, cacert=None,keep_alive=0,):
 
         # Call super class's init

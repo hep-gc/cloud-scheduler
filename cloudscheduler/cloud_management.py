@@ -422,7 +422,7 @@ class ResourcePool:
                     key_name = get_or_none(cconfig, cluster, "key_name"),
                     boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
                     secure_connection = get_or_none(cconfig, cluster, "secure_connection"),
-                    regions = map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
+                    regions = get_or_none(cconfig, cluster, "regions"),
                     reverse_dns_lookup = get_or_none(cconfig, cluster, "reverse_dns_lookup"),
                     placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
                     enabled=enabled,

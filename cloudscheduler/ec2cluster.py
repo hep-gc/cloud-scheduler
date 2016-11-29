@@ -121,7 +121,7 @@ class EC2Cluster(cluster_tools.ICluster):
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, access_key_id=None, secret_access_key=None,
                  security_group=None, key_name=None,
-                 boot_timeout=None, secure_connection="", regions=[],
+                 boot_timeout=None, secure_connection="", regions="",
                  reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0,
                  keep_alive=0, port=8773):
 
