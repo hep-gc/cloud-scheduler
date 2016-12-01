@@ -39,8 +39,8 @@ class BotoCluster(cluster_tools.ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, access_key_id=None, secret_access_key=None,
-                 security_group=None, key_name=None,
-                 boot_timeout=None, secure_connection="", regions=[],
+                 security_group=None, key_name="",
+                 boot_timeout=None, secure_connection="", regions="",
                  reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0,
                  keep_alive=0, port=8773):
 
@@ -77,7 +77,6 @@ class BotoCluster(cluster_tools.ICluster):
 
             returns a boto connection object, or none in the case of an error
         """
-
         connection = None
         if len(self.regions) > 0:
             region_name = self.regions[0]
@@ -86,10 +85,8 @@ class BotoCluster(cluster_tools.ICluster):
 
         if self.cloud_type == "AmazonEC2":
             try:
-                pass
                 log.debug("Not Implemented use the boto 2 version for AmazonEC2.")
                 return None
-                #log.verbose("Created a connection to Amazon EC2")
 
             except Exception, e:
                 log.error("Couldn't connect to Amazon EC2 because: %s" %
@@ -97,7 +94,6 @@ class BotoCluster(cluster_tools.ICluster):
 
         elif self.cloud_type == "Eucalyptus":
             try:
-                pass
                 log.verbose("Created a connection to Eucalyptus (%s)" % self.name)
 
             except boto.exception.EC2ResponseError, e:
@@ -106,14 +102,12 @@ class BotoCluster(cluster_tools.ICluster):
 
         elif self.cloud_type.lower() == "opennebula":
             try:
-                pass
                 connection = boto3.client('ec2', region_name=self.regions, endpoint_url=self.host,
                                           aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key,
                                           config=botocore.client.Config(signature_version='v2'))
                 log.verbose("Created a connection to OpenNebula.")
             except Exception as e:
                 log.error("Couldn't connect to OpenNebula: %s" % e.error_message)
-
 
         elif self.cloud_type == "OpenStack":
             try:
@@ -201,8 +195,9 @@ class BotoCluster(cluster_tools.ICluster):
                 i_type = self.DEFAULT_INSTANCE_TYPE
         instance_type = i_type
 
-        if key_name == None:
-            key_name = self.key_name
+        if key_name == "" or key_name == None:
+            key_name = self.key_name if self.key_name else ""
+
         if customization:
             if not use_cloud_init:
                 user_data = nimbus_xml.ws_optional(customization)
@@ -232,7 +227,9 @@ class BotoCluster(cluster_tools.ICluster):
         user_data = utilities.gzip_userdata(user_data)
         try:
             client = self._get_connection()
-            client.run_instances(ImageId=vm_ami, MinCount=1, MaxCount=1, InstanceType=instance_type, UserData=user_data, KeyName=key_name, SecurityGroups=[sec_group])
+            #Uncomment for debugging boto calls
+            #boto3.set_stream_logger('botocore')
+            resp = client.run_instances(ImageId=vm_ami, MinCount=1, MaxCount=1, InstanceType=instance_type, UserData=user_data, KeyName=key_name, SecurityGroups=sec_group)
             # will need to figure out how PlacementGroups will work still will probably just be Placement={"AvailabilityZone':placement_zone}
         except Exception as e:
             log.error("Problem creating instance %s" % e)
@@ -240,12 +237,11 @@ class BotoCluster(cluster_tools.ICluster):
 
         if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
             vm_keepalive = self.keep_alive
-        new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
+        new_vm = cluster_tools.VM(name = vm_name, id = resp['Instances'][0]['InstanceId'], vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     image= vm_ami, flavor=instance_type,
-                    memory = vm_mem, mementry = 0,
-                    cpucores = vm_cores, storage = vm_storage,
+                    memory = vm_mem, cpucores = vm_cores, storage = vm_storage,
                     keep_alive = vm_keepalive, job_per_core = job_per_core)
 
         #try:
@@ -268,19 +264,16 @@ class BotoCluster(cluster_tools.ICluster):
     def vm_poll(self, vm):
         """Query the cloud service for information regarding a VM."""
         client = self._get_connection()
-        response = client.describe_instance_status()
-        if response and 'InstanceStatuses' in response.keys():
-            for instance in response['InstanceStatuses']:
+        response = client.describe_instances(InstanceIds=[vm.id])
+        if response:
+            for instance in response['Reservations'][0]['Instances']:
                 if instance['InstanceId'] == vm.id:
-                    if vm.status != instance['InstanceState']['Name']:
+                    if vm.status != instance['State']['Name']:
                         vm.last_state_change = int(time.time())
-                    vm.status = instance['InstanceState']['Name']
+                    vm.status = instance['State']['Name']
+                    if not vm.hostname:
+                        vm.hostname = instance['PublicDnsName']
                     break
-                else:
-                    continue
-                #instance['InstanceId'] # vm id
-                #instance['InstanceState']['Name'] # pending / running / terminated / etc
-                pass
             else:
                 log.debug("Unable to find vm: %s" % vm.id)
                 return 'Error'
@@ -314,10 +307,3 @@ class BotoCluster(cluster_tools.ICluster):
                 log.error("Unable to remove VM %s on %s: %s" % (vm.id, self.name, e))
 
         return 0
-
-        #connection.terminate_instances(InstanceIds=[instid])
-
-        pass
-
-
-
