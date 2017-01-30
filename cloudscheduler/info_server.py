@@ -124,7 +124,7 @@ class views:
                     return self.view_cluster(cluster_name)
             else:
                 if json:
-                    return ResourcePoolJSONEncoder().encode(web.cloud_resources)
+                    return '\n'.join([ResourcePoolJSONEncoder().encode(web.cloud_resources), ResourcePoolJSONEncoder().encode(web.cloud_resources.retired_resources)])
                 else:
                     return self.view_resources()
 
@@ -490,10 +490,10 @@ class VMJSONEncoder(json.JSONEncoder):
             return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
-                'ipaddress': vm.ipaddress,
+                'ipaddress': vm.ipaddress, 'ssh_port': vm.ssh_port,
                 'cloudtype': vm.cloudtype, 'network': vm.network, 
                 'image': vm.image, 'alt_hostname': vm.alt_hostname,
-                'memory': vm.memory, 'mementry': vm.mementry, 'flavor': vm.flavor,
+                'memory': vm.memory, 'flavor': vm.flavor,
                 'cpucores': vm.cpucores, 'storage': vm.storage, 
                 'status': vm.status, 'condoraddr': vm.condoraddr,
                 'condorname': vm.condorname, 'condormasteraddr': vm.condormasteraddr,
@@ -508,7 +508,7 @@ class VMJSONEncoder(json.JSONEncoder):
                 'myproxy_renew_time': vm.myproxy_renew_time, 'override_status': vm.override_status,
                 'job_per_core': vm.job_per_core, 'force_retire': vm.force_retire,
                 'failed_retire': vm.failed_retire, 'x509userproxy_expiry_time': str(vm.x509userproxy_expiry_time),
-                'job_run_times': vm.job_run_times.data}
+                'job_run_times': list(vm.job_run_times.data)}
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
@@ -526,7 +526,7 @@ class ClusterJSONEncoder(json.JSONEncoder):
                 'network_pools': cluster.network_pools, 
                 'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
                 'storageGB': cluster.storageGB, 'vms': vmDecodes, 'enabled':cluster.enabled,
-                'hypervisor': cluster.hypervisor, 'max_mem': cluster.max_mem,
+                'max_mem': cluster.max_mem,
                 'max_vm_mem': cluster.max_vm_mem, 'max_slots': cluster.max_slots,
                 'max_storageGB': cluster.max_storageGB, 'boot_timeout': cluster.boot_timeout,
                 'connection_fail_disable_time': cluster.connection_fail_disable_time,
@@ -574,10 +574,10 @@ class JobJSONEncoder(json.JSONEncoder):
                 'x509userproxy_expiry_time': job.x509userproxy_expiry_time,
                 'proxy_renew_time': job.proxy_renew_time, 'job_per_core': job.job_per_core,
                 'servertime': job.servertime, 'jobstarttime': job.jobstarttime,
-                'machine_reserved': job.machine_reserved, 'req_hypervisor': job.req_hypervisor,
+                'machine_reserved': job.machine_reserved,
                 'proxy_non_boot': job.proxy_non_boot, 'vmimage_proxy_file': job.vmimage_proxy_file,
                 'usertype_limit': job.usertype_limit, 'req_image_id': job.req_image_id,
-                'req_instance_type_ibm': job.req_instance_type_ibm, 'location': job.location,
+                'location': job.location,
                 'key_name': job.key_name, 'req_security_group': job.req_security_group,
                 'override_status': job.override_status, 'block_time': job.block_time
                 }

@@ -28,7 +28,6 @@ import threading
 from subprocess import Popen
 from urlparse import urlparse
 
-import nimbus_xml
 import config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.utilities import get_cert_expiry_time
@@ -54,17 +53,17 @@ class VM:
 
     def __init__(self, name="", id="", vmtype="", user="",
             hostname="", ipaddress="", clusteraddr="", clusterport="",
-            cloudtype="", network="public", cpuarch="x86",
-            image="", memory=0, mementry=0, flavor="",
+            cloudtype="", network="public",
+            image="", memory=0, flavor="",
             cpucores=0, storage=0, keep_alive=0, spot_id="",
             proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, 
-            myproxy_renew_time="12", job_per_core=False):
+            myproxy_renew_time="12", job_per_core=False, ssh_port=22):
         """
         Constructor
 
         name         - (str) The name of the vm (arbitrary)
         id           - (str) The id tag for the VM. Whatever is used to access the vm
-                       by cloud software (Nimbus: epr file. OpenNebula: id number, etc.)
+                       by cloud software (OpenStack: uuid number, etc.)
         vmtype       - (str) The condor VMType attribute for the VM
         user         - (str) The user who 'owns' this VM
         uservmtype   - (str) Aggregate type in form 'user:vmtype'
@@ -74,13 +73,10 @@ class VM:
         condoraddr   - (str) The Address of the VM as it's registered with Condor
         clusteraddr  - (str) The address of the cluster hosting the VM
         clusterport  - (str) The port of the cluster hosting the VM
-        cloudtype    - (str) The cloud type of the VM (Nimbus, OpenNebula, etc)
+        cloudtype    - (str) The cloud type of the VM (OpenStack, EC2, OpenNebula, etc)
         network      - (str) The network association the VM uses
-        cpuarch      - (str) The required CPU architecture of the VM
         image        - (str) The location of the image from which the VM was created
         memory       - (int) The memory used by the VM
-        mementry     - (int) The index of the entry in the host cluster's memory list
-                       from which this VM is taking memory
         flavor       - (str) The flavor/instance_type of the VM
         proxy_file   - the proxy that was used to authenticate this VM's creation
         myproxy_creds_name - (str) The name of the credentials to retreive from the myproxy server
@@ -89,6 +85,7 @@ class VM:
         errorcount   - (int) Number of Polling Errors VM has had
         force_retire - (bool) Flag to prevent a retiring VM from being turned back on
         return_resources - (bool) Flag to set if resources from this VM should be returned to cluster
+        ssh_port - (int) the ssh port of the VM
         """
         self.name = name
         self.id = id
@@ -107,7 +104,6 @@ class VM:
         self.network = network
         self.image = image
         self.memory = memory
-        self.mementry = mementry
         self.flavor = flavor
         self.cpucores = cpucores
         self.storage = storage
@@ -132,6 +128,7 @@ class VM:
         self.failed_retire = False
         self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
         self.x509userproxy_expiry_time = None
+        self.ssh_port = ssh_port
         
         # Set a status variable on new creation
         self.status = "Starting"
@@ -157,6 +154,8 @@ class VM:
         idout = self.id
         if self.id == "":
             idout = self.spot_id
+        if self.ssh_port != 22:
+            nameout = ':'.join([nameout, str(self.ssh_port)])
         output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout, self.vmtype, self.user, self.status)
         if self.override_status != None:
             output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout, self.vmtype, self.user, self.override_status)
@@ -299,14 +298,15 @@ class ICluster:
     """
 
     def __init__(self, name="Dummy Cluster", host="localhost",
-                 cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None, enabled=True, priority=0,
+                 cloud_type="Dummy", memory=0, max_vm_mem= -1, networks=[],
+                 vm_slots=0, cpu_cores=0, storage=0, boot_timeout=None, enabled=True, priority=0,
                  keep_alive=0):
         self.name = name
         self.network_address = host
+        self.host = host
         self.cloud_type = cloud_type
         self.memory = memory
-        self.max_mem = tuple(memory)
+        self.max_mem = memory
         self.max_vm_mem = max_vm_mem
         self.network_pools = networks
         self.vm_slots = vm_slots
@@ -318,7 +318,6 @@ class ICluster:
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
         self.enabled = enabled
-        self.hypervisor = hypervisor
         self.boot_timeout = int(boot_timeout) if boot_timeout != None else config.vm_start_running_timeout
         self.connection_fail_disable_time = config.connection_fail_disable_time
         self.connection_problem = False
@@ -399,7 +398,7 @@ class ICluster:
         """Return a short form of cluster information."""
         output = "Cluster: {0} \n".format(self.name)
         output += "{0:25}  {1:^15}  {2:^15}  {3:^12} {4:^15} {5:^12} {6:^12}\n".format("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "PRIORITY", "ENABLED")
-        output += "{0:^25}  {1:^15}  {2:^15}  {3:^12} {4:^15} {5:^12} {6:^12}\n".format(self.network_address[0:24], self.cloud_type, self.vm_slots, self.memory, self.storageGB, self.priority, str(self.enabled))
+        output += "{0:^25}  {1:^15}  {2:>5} / {3:<8}  {4:^12} {5:^15} {6:^12} {7:^12}\n".format(self.network_address[0:24], self.cloud_type, self.num_vms(), self.max_slots, self.memory, self.storageGB, self.priority, str(self.enabled))
         return output
 
     def get_cluster_vms_info(self):
@@ -429,7 +428,7 @@ class ICluster:
     # Note: vm_id is the identifier for a VM, used to query or change an already
     #       created VM. vm_id will be a different entity based on the subclass's
     #       cloud software. EG:
-    #       - Nimbus vm_ids are epr files
+    #       - OpenStack vm_ids are uuids
     #       - OpenNebula (and Eucalyptus?) vm_ids are names/numbers
 
     def vm_create(self, **args):
@@ -447,39 +446,12 @@ class ICluster:
 
     ## Private VM methods
 
-    def find_mementry(self, memory):
-        """Finds a memory entry in the Cluster's 'memory' list which supports the
-        requested amount of memory for the VM. If multiple memory entries fit
-        the request, returns the first suitable entry. Returns an exact fit if
-        one exists.
-        Parameters: memory - the memory required for VM creation
-        Return: The index of the first fitting entry in the Cluster's 'memory'
-        list.
-        If no fitting memory entries are found, returns -1 (error!)
-        """
-        # Check for exact fit
-        if (memory in self.memory):
-            return self.memory.index(memory)
-
-        # Scan for any fit
-        for i in range(len(self.memory)):
-            if self.memory[i] >= memory:
-                return i
-
-        # If no entries found, return error code.
-        return(-1)
-
-    def find_potential_mementry(self, memory):
-        """Check if a cluster contains a memory entry with adequate space for given memory value.
-        Returns: True if a valid memory entry is found
+    def check_memory(self, memory):
+        """Check if a cluster contains enough memory given memory request.
+        Returns: True if max_mem greater than requested memory
                  False otherwise
         """
-        potential_fit = False
-        for i in range(len(self.max_mem)):
-            if self.max_mem[i] >= memory:
-                potential_fit = True
-                break
-        return potential_fit
+        return self.max_mem >= memory
 
     def resource_checkout(self, vm):
         """
@@ -503,14 +475,14 @@ class ICluster:
             if remaining_storage < 0:
                 raise NoResourcesError("storage")
 
-            remaining_memory = self.memory[vm.mementry] - vm.memory
+            remaining_memory = self.memory - vm.memory
             if remaining_memory < 0:
                 raise NoResourcesError("memory")
 
             # Otherwise, we can check out these resources
             self.vm_slots = remaining_vm_slots
             self.storageGB = remaining_storage
-            self.memory[vm.mementry] = remaining_memory
+            self.memory = remaining_memory
 
     def resource_return(self, vm):
         """Returns the resources taken by the passed in VM to the Cluster's internal
@@ -522,11 +494,7 @@ class ICluster:
         with self.res_lock:
             self.vm_slots += 1
             self.storageGB += vm.storage
-            # ISSUE: No way to know what mementry a VM is running on
-            try:
-                self.memory[vm.mementry] += vm.memory
-            except:
-                log.warning("Couldn't return memory because I don't know about that mem entry anymore...")
+            self.memory += vm.memory
 
     def _generate_next_name(self):
         name = ''.join([self.name.replace('_', '-').lower(), '-', str(uuid.uuid4())])

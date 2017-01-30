@@ -10,7 +10,7 @@ def verify_cloud_conf_openstacknative(conf, name):
     :return: True if all required fields present, False otherise
     """
     required_options_openstack = {'auth_url', 'cloud_type', 'password', 'regions', 'security_group', 'tenant_name',
-                                  'username', 'vm_domain_name', 'vm_slots'}
+                                  'username', 'vm_slots'}
     options = set(conf.options(name))
     diff = required_options_openstack - options
     if len(diff) > 0:
@@ -26,7 +26,7 @@ def verify_cloud_conf_azure(conf, name):
     :return: True if all required fields present, False otherise
     """
     required_options_azure = {'blob_url', 'cloud_type', 'password', 'regions', 'tenant_name',
-                              'username', 'vm_domain_name', 'vm_slots'}
+                              'username', 'vm_slots'}
     options = set(conf.options(name))
     diff = required_options_azure - options
     if len(diff) > 0:
@@ -42,7 +42,7 @@ def verify_cloud_conf_ec2(conf, name):
     :return: True if all required fields present, False otherise
     """
     required_options_ec2 = {'access_key_id', 'cloud_type', 'host', 'memory', 'regions', 'secret_access_key',
-                            'security_group', 'vm_domain_name', 'vm_slots'}
+                            'security_group', 'vm_slots'}
     options = set(conf.options(name))
     diff = required_options_ec2 - options
     if len(diff) > 0:
@@ -67,23 +67,6 @@ def verify_cloud_conf_gce(conf, name):
     return True
 
 
-def verify_cloud_conf_nimbus(conf, name):
-    """
-    :param conf: Ref to config file data
-    :param name: name of cloud checking conf values for
-    :return: True if all required fields present, False otherise
-    """
-    required_options_nimbus = {'cloud_type', 'cpu_archs', 'cpu_cores', 'host',
-                               'memory', 'networks', 'storage',
-                               'vm_slots'}
-    options = set(conf.options(name))
-    diff = required_options_nimbus - options
-    if len(diff) > 0:
-        log.error("Missing required options in %s: %s" % (name, str(diff)))
-        return False
-    return True
-
-
 def verify_cloud_conf_stratuslab(conf, name):
     """
     :param conf: Ref to config file data
@@ -99,21 +82,6 @@ def verify_cloud_conf_stratuslab(conf, name):
     return True
 
 
-def verify_cloud_conf_ibm(conf, name):
-    """
-    :param conf: Ref to config file data
-    :param name: name of cloud checking conf values for
-    :return: True if all required fields present, False otherise
-    """
-    required_options_ibm = {'cloud_type', 'password', 'username', 'vm_slots'}
-    options = set(conf.options(name))
-    diff = required_options_ibm - options
-    if len(diff) > 0:
-        log.error("Missing required options in %s: %s" % (name, str(diff)))
-        return False
-    return True
-
-
 def verify_sections_base(conf, name):
     """
     Check the sections to make sure there's no extra or misspelled keys.
@@ -122,12 +90,12 @@ def verify_sections_base(conf, name):
     :return: True if conf good, False if problem detected
     """
     valid_option_names = {'access_key_id', 'auth_dat_file', 'auth_url', 'blob_url', 'boot_timeout', 'cacert',
-                          'cloud_type', 'contextualization', 'cpu_archs', 'cpu_cores', 'host', 'hypervisor',
+                          'cloud_type', 'contextualization', 'cpu_archs', 'cpu_cores', 'host',
                           'image_attach_device', 'key_name', 'keycert', 'max_vm_mem', 'max_vm_storage', 'memory',
                           'networks', 'password', 'placement_zone', 'port', 'priority', 'project_id', 'regions',
                           'reverse_dns_lookup', 'scratch_attach_device', 'secret_access_key', 'secret_file',
-                          'secure_connection', 'security_group', 'storage', 'temp_lease_storage', 'tenant_name',
-                          'total_cpu_cores', 'username', 'vm_domain_name', 'vm_keep_alive', 'vm_lifetime', 'vm_slots'}
+                          'secure_connection', 'security_group', 'service_name', 'storage', 'temp_lease_storage',
+                          'tenant_name', 'total_cpu_cores', 'username', 'vm_keep_alive', 'vm_lifetime', 'vm_slots'}
     options = set(conf.options(name))
     diff = options - valid_option_names
     if len(diff) > 0:

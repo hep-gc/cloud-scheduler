@@ -12,9 +12,8 @@ BuildArch:      noarch
 BuildRequires:  python-setuptools
 
 Requires:	python-lxml
-Requires:	python-boto >= 2.0
+Requires:	python-boto >= 2.38
 Requires:	python-suds >= 0.3.9
-Requires:	nimbus-cloud-client
 Requires:	condor
 
 Requires(post):	  chkconfig
@@ -81,6 +80,9 @@ fi
 
 
 %changelog
+* Tue Mar 01 2016 Michael Paterson <mhp@uvic.ca> - 1.11
+Removed nimbus client req and bumped req boto version
+for amazon long id support
 * Wed Jun 05 2013 Sebastien Fabbro <sfabbro@uvic.ca> - 1.7-1
 Version bump. Move configuration to /etc/condor for debian
 compatibility. cloud_admin now on tar ball.

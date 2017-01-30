@@ -2,7 +2,6 @@ import os
 import time
 import uuid
 import threading
-import nimbus_xml
 import ConfigParser
 import cluster_tools
 import cloud_init_util
@@ -14,10 +13,11 @@ try:
     import httplib2
     from oauth2client.client import flow_from_clientsecrets
     from oauth2client.file import Storage
-    from oauth2client.tools import run
+    #from oauth2client.tools import run
     from oauth2client.tools import run_flow
     from apiclient.discovery import build
-except:
+except Exception as e:
+    print e
     pass
 
 log = utilities.get_cloudscheduler_logger()
@@ -51,9 +51,9 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
     def __init__(self, name="Dummy Cluster", host="localhost",
                  cloud_type="Dummy", memory=[], max_vm_mem= -1, networks=[],
-                 vm_slots=0, cpu_cores=0, storage=0, hypervisor='xen', boot_timeout=None,
+                 vm_slots=0, cpu_cores=0, storage=0, boot_timeout=None,
                  auth_dat_file=None, secret_file=None, security_group=None, project_id=None,enabled=True, priority = 0,
-                 total_cpu_cores=-1,keep_alive=keep_alive,):
+                 total_cpu_cores=-1, keep_alive=0,):
         log.debug("Init GCE cores %s, storage %s"%(cpu_cores,storage))
         self.gce_hostname_prefix = 'gce-cs-vm'
         self.security_group = security_group
@@ -61,6 +61,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         self.secret_file_path = secret_file
         self.project_id = project_id
         self.total_cpu_cores = total_cpu_cores
+        self.keep_alive = keep_alive
         if not project_id:
             return None
         
@@ -87,7 +88,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout,enabled=enabled,
+                         storage=storage, boot_timeout=boot_timeout,enabled=enabled,
                          priority=priority, keep_alive=0,)
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
@@ -164,26 +165,21 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             return
         use_cloud_init = use_cloud_init or config.use_cloud_init
         if customization:
-            if not use_cloud_init:
-                user_data = nimbus_xml.ws_optional(customization)
-            else:
-                user_data = cloud_init_util.build_write_files_cloud_init(customization)
+            user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
             user_data = ""
         
         
         if pre_customization:
-            if not use_cloud_init:
-                for item in pre_customization:
-                    user_data = '\n'.join([item, user_data])
-            else:
-                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
+            user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
         elif use_cloud_init:
             user_data = cloud_init_util.inject_customizations([], user_data)[0]
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config')], extra_userdata)
-
+            if not user_data:
+                log.error("Problem building cloud-config user data.")
+                return 1
         # Compress the user data to try and get under the limit
         user_data = utilities.gzip_userdata(user_data)
 
@@ -250,19 +246,14 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         else:
             #print 'no response'
             return
-        vm_mementry = self.find_mementry(vm_mem)
-        if (vm_mementry < 0):
-            #TODO: this is kind of pointless with EC2..., but the resource code depends on it
-            log.debug("Cluster memory list has no sufficient memory " +\
-                      "entries (Not supposed to happen). Returning error.")
-            return self.ERROR
+
         if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
             vm_keepalive = self.keep_alive
         new_vm = cluster_tools.VM(name = next_instance_name, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address, id = target_id,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     hostname = self.construct_hostname(next_instance_name),
-                    cpuarch = "x86", image= vm_image, mementry = vm_mementry, flavor=vm_instance_type,
+                    image= vm_image, flavor=vm_instance_type,
                     memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive, job_per_core = job_per_core)
     
@@ -270,7 +261,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             self.resource_checkout(new_vm)
         except:
             log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-            self.vm_destroy(new_vm, reason="Failed Resource checkout")
+            self.vm_destroy(new_vm, reason="Failed Resource checkout", return_resources=False)
             return self.ERROR
     
         self.vms.append(new_vm)
@@ -337,6 +328,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
     def _blocking_call(self, gce_service, auth_http, response):
         """Blocks until the operation status is done for the given operation."""
+        status = ""
         if 'status' in response:
             status = response['status']
             
@@ -374,4 +366,3 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         return potential_name
     def construct_hostname(self, instance_name):
         return ''.join([instance_name, '.c.', self.project_id, '.internal'])
-            

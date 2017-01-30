@@ -76,11 +76,11 @@ class Job:
              Iwd=None, SUBMIT_x509userproxy=None, CSMyProxyRenewalTime="12",
              VMInstanceType=None, 
              VMMaximumPrice=None, VMJobPerCore=False,
-             TargetClouds=None, ServerTime=0, JobStartDate=0, VMHypervisor=None,
+             TargetClouds=None, ServerTime=0, JobStartDate=0,
              VMProxyNonBoot=config.default_VMProxyNonBoot,
              VMImageProxyFile=None, VMTypeLimit=-1, VMImageID=None,
-             VMInstanceTypeIBM=None, VMLocation=None, VMKeyName=None,
-             VMSecurityGroup="", VMUserData="", VMAMIConfig=None, VMUseCloudInit=False, VMInjectCA=config.default_VMInjectCA, **kwargs):
+             VMLocation=None, VMKeyName=None, VMSecurityGroup="", VMUserData="",
+             VMAMIConfig=None, VMInjectCA=None, **kwargs):
         """
      Parameters:
      GlobalJobID  - (str) The ID of the job (via condor). Functions as name.
@@ -88,7 +88,6 @@ class Job:
      Priority   - (int) The priority given in the job submission file (default = 1)
      VMType     - (str) The VMType required by the job (set in VM's condor_config file)
      VMNetwork  - (str) The network association the job requires. TODO: Should support "any"
-     VMCPUArch  - (str) The CPU architecture the job requires in its run environment
      VMName     - (str) The name of the image the job is to run on
      VMLoc      - (str) The location (URL) of the image the job is to run on
      VMAMI      - (str) The Amazon AMI of the image to be run
@@ -120,12 +119,10 @@ class Job:
             VMType = config.default_VMType
         if not VMNetwork:
             VMNetwork = config.default_VMNetwork
-        if not VMHypervisor:
-            VMHypervisor = config.default_VMHypervisor
         if not VMName:
             VMName = config.default_VMName
         if not VMLoc:
-            VMLoc = config.default_VMLoc
+            VMLoc = ""
         if not VMAMI:
             VMAMI = _attr_list_to_dict(config.default_VMAMI)
         if not VMInstanceType:
@@ -144,21 +141,23 @@ class Job:
             VMMaximumPrice = config.default_VMMaximumPrice
         if not VMJobPerCore:
             VMJobPerCore = config.default_VMJobPerCore
+        if not VMInjectCA:
+            VMInjectCA = config.default_VMInjectCA
     
-        self.id           = GlobalJobId
-        self.user         = Owner
-        self.uservmtype   = ':'.join([Owner, VMType])
-        self.priority     = int(JobPrio)
-        self.job_status   = int(JobStatus)
-        self.cluster_id   = int(ClusterId)
-        self.proc_id      = int(ProcId)
-        self.req_vmtype   = VMType
-        self.req_network  = VMNetwork
-        self.req_image    = VMName
-        self.req_imageloc = VMLoc
-        self.req_ami      = VMAMI
+        self.id = GlobalJobId
+        self.user = Owner
+        self.uservmtype = ':'.join([Owner, VMType])
+        self.priority = int(JobPrio)
+        self.job_status = int(JobStatus)
+        self.cluster_id = int(ClusterId)
+        self.proc_id = int(ProcId)
+        self.req_vmtype = VMType
+        self.req_network = VMNetwork
+        self.req_image = VMName
+        self.req_imageloc = ""
+        self.req_ami = VMAMI
         try:
-            self.req_memory   = int(VMMem)
+            self.req_memory = int(VMMem)
         except:
             log.exception("VMMem not int: %s" % VMMem)
             raise ValueError
@@ -197,7 +196,6 @@ class Job:
         self.x509userproxy = x509userproxy
         self.original_x509userproxy = SUBMIT_x509userproxy
         self.spool_dir = Iwd
-        self.req_cpuarch=None
         self.x509userproxy_expiry_time = None
         self.proxy_renew_time = CSMyProxyRenewalTime
         self.job_per_core = VMJobPerCore in ['true', "True", True]
@@ -209,7 +207,6 @@ class Job:
         self.banned = False
         self.ban_time = None
         self.machine_reserved = ""     #Used for FIFO scheduling to determine which, if any, machine is reserved (stores the "Name" dict key)
-        self.req_hypervisor = [x.lower() for x in splitnstrip(',', VMHypervisor)]
         self.proxy_non_boot = VMProxyNonBoot in ['true', 'True', True, 'TRUE']
         self.vmimage_proxy_file = VMImageProxyFile
         try:
@@ -218,13 +215,12 @@ class Job:
             log.exception("VMTypeLimit not int: %s" % VMTypeLimit)
             raise ValueError
         self.req_image_id = VMImageID
-        self.req_instance_type_ibm = VMInstanceTypeIBM
         self.location = VMLocation
         self.key_name = VMKeyName
         self.req_security_group = splitnstrip(',', VMSecurityGroup)
         self.user_data = splitnstrip(',', VMUserData)
         self.ami_config = VMAMIConfig
-        self.use_cloud_init = VMUseCloudInit in ['true', 'True', True, 'TRUE']
+        self.use_cloud_init = True
         self.inject_ca = VMInjectCA in ['true', 'True', True, 'TRUE']
 
         # Set the new job's status
@@ -248,7 +244,6 @@ class Job:
 
         #log.verbose("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Network: %s, Image: %s, Image Location: %s, AMI: %s, Memory: %d" \
         #  % (self.id, self.user, self.priority, self.req_vmtype, self.req_network, self.req_image, self.req_imageloc, self.req_ami, self.req_memory))
-
     def __repr__(self):
         return "Job '%s'" % self.id
 
@@ -398,7 +393,7 @@ class Job:
 
     def has_same_reqs(self, job):
         """A method that will compare a job's requirements listed below with another job to see if they all match."""
-        return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_cpuarch == job.req_cpuarch and self.req_network == job.req_network and self.user == job.user
+        return self.req_vmtype == job.req_vmtype and self.req_cpucores == job.req_cpucores and self.req_memory == job.req_memory and self.req_storage == job.req_storage and self.req_network == job.req_network and self.user == job.user
 
     def get_vmimage_proxy_file_path(self):
         proxypath = []
@@ -619,6 +614,7 @@ class JobPool:
             # VMAMI requires special fiddling
             _attribute_from_list(classad, "VMAMI")
             _attribute_from_list(classad, "VMInstanceType")
+
             try:            
                 jobs.append(Job(**classad))
             except ValueError:
@@ -1215,7 +1211,7 @@ def _attr_list_to_dict(attr_list):
         if len(host_attr) == 1:
             attr_dict["default"] = host_attr[0].strip()
         elif len(host_attr) == 2:
-            attr_dict[host_attr[0].strip()] = host_attr[1].strip()
+            attr_dict[host_attr[0].strip().lower()] = host_attr[1].strip()
         else:
             raise ValueError("Can't split '%s' into suitable host attribute pair" % host_attr)
 

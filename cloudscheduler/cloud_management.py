@@ -26,11 +26,6 @@ except:
 
 import cluster_tools
 import ec2cluster
-import nimbuscluster
-try:
-    import ibmcluster
-except:
-    pass
 try:
     import stratuslabcluster
 except:
@@ -45,6 +40,10 @@ except:
     pass
 try:
     import azurecluster
+except:
+    pass
+try:
+    import botocluster
 except:
     pass
 
@@ -147,7 +146,6 @@ class ResourcePool:
         self.load_persistence()
 
 
-
     def setup(self):
         """Read the cloud_resources.conf to determine the available clouds."""
         log.debug("Loading cloud resource configuration file %s" % self.config_file)
@@ -198,8 +196,6 @@ class ResourcePool:
             with cluster.res_lock:
                 cluster.vm_slots = 0
                 cluster.memory = []
-                if cluster.__class__.__name__ == "NimbusCluster":
-                    cluster.net_slots = {}
             old_resources.append(cluster)
             self.resources.remove(cluster)
 
@@ -282,7 +278,6 @@ class ResourcePool:
             priority = int(priority) if priority != None else 0
         except ValueError:
             log.error("%s Priority must be a valid number." % cluster)
-        hypervisor = get_or_none(cconfig, cluster, "hypervisor")
         keep_alive = get_or_none(cconfig, cluster, "vm_keep_alive")
         try:
             keep_alive = int(keep_alive)*60 if keep_alive else 0
@@ -297,56 +292,17 @@ class ResourcePool:
                 networks = splitnstrip(",", get_or_none(cconfig, cluster, "networks"))
             except:
                 log.error("No networks specified for %s, will use the default" % cluster)
-        if hypervisor == None:
-            hypervisor = 'xen'
-        else:
-            hypervisor = hypervisor.lower()
-            if hypervisor != 'xen' and hypervisor != 'kvm':
-                log.error("%s hypervisor not supported." % hypervisor)
-                return None
 
-        if cloud_type == "Nimbus" and cloudconfig.verify_cloud_conf_nimbus(cconfig, cluster):
-            nets = splitnstrip(",", get_or_none(cconfig, cluster, "networks"))
-            if len(nets) > 1:
-                # Split the vm_slots too
-                slots = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "vm_slots")))
-            else:
-                slots = [int(get_or_none(cconfig, cluster, "vm_slots"))]
-            net_slots = {}
-            for x in range(len(nets)):
-                net_slots[nets[x]] = slots[x]
-            total_slots = sum(slots)
-            return nimbuscluster.NimbusCluster(name = cluster,
-                    host = get_or_none(cconfig, cluster, "host"),
-                    port = get_or_none(cconfig, cluster, "port"),
-                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
-                    max_vm_mem = max_vm_mem,
-                    cpu_archs = splitnstrip(",", get_or_none(cconfig, cluster, "cpu_archs")),
-                    networks = nets,
-                    vm_slots = total_slots,
-                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
-                    storage = int(get_or_none(cconfig, cluster, "storage")),
-                    max_vm_storage = max_vm_storage,
-                    netslots = net_slots,
-                    hypervisor = hypervisor,
-                    vm_lifetime = get_or_none(cconfig, cluster, "vm_lifetime"),
-                    image_attach_device = get_or_none(cconfig, cluster, "image_attach_device"),
-                    scratch_attach_device = get_or_none(cconfig, cluster, "scratch_attach_device"),
-                    boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
-                    total_cpu_cores = total_cpu_cores,
-                    temp_lease_storage = get_or_none(cconfig, cluster, "temp_lease_storage"),
-                    enabled=enabled,
-                    priority = priority,
-                    keep_alive=keep_alive,
-                    )
-
-        elif cloud_type == "AmazonEC2" or cloud_type == "Eucalyptus" or cloud_type == "OpenStack":
+        if cloud_type.lower() == "amazonec2" or cloud_type.lower() == "eucalyptus" or cloud_type.lower() == "openstack":
+            try:
+                port = int(get_or_none(cconfig, cluster, "port"))
+            except TypeError:
+                port = 8773
             if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
-                return ec2cluster.EC2Cluster(name = cluster,
+                return ec2cluster.EC2Cluster(name = cluster.lower(),
                     host = get_or_none(cconfig, cluster, "host"),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
+                    memory = int(get_or_none(cconfig, cluster, "memory")),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     networks = networks,
                     vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
@@ -355,57 +311,36 @@ class ResourcePool:
                     access_key_id = get_or_none(cconfig, cluster, "access_key_id"),
                     secret_access_key = get_or_none(cconfig, cluster, "secret_access_key"),
                     security_group = splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
-                    hypervisor = hypervisor,
                     key_name = get_or_none(cconfig, cluster, "key_name"),
                     boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
                     secure_connection = get_or_none(cconfig, cluster, "secure_connection"),
                     regions = map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
-                    vm_domain_name = get_or_none(cconfig, cluster, "vm_domain_name"),
                     reverse_dns_lookup = get_or_none(cconfig, cluster, "reverse_dns_lookup"),
                     placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
                     enabled=enabled,
                     priority = priority,
                     keep_alive=keep_alive,
+                    port= port,
                     )
-
-        elif cloud_type == "StratusLab" and stratuslab_support and cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):
-            return stratuslabcluster.StratusLabCluster(name = cluster,
+        elif cloud_type.lower() == "stratuslab" and stratuslab_support and cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):
+            return stratuslabcluster.StratusLabCluster(name = cluster.lower(),
                     host = get_or_none(cconfig, cluster, "host"),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
+                    memory = int(get_or_none(cconfig, cluster, "memory")),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     networks = networks,
                     vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
                     storage = int(get_or_none(cconfig, cluster, "storage")),
-                    hypervisor = hypervisor,
                     contextualization = get_or_none(cconfig, cluster, "contextualization"),
                     enabled=enabled,
                     priority = priority,
                     keep_alive=keep_alive,
                     )
-
-        elif cloud_type.lower() == "ibmsmartcloud" and cloudconfig.verify_cloud_conf_ibm(cconfig, cluster):
-            return ibmcluster.IBMCluster(name= cluster,
-                    host= get_or_none(cconfig, cluster, "host"),
-                    cloud_type= get_or_none(cconfig, cluster, "cloud_type"),
-                    memory= map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
-                    max_vm_mem= max_vm_mem if max_vm_mem != None else -1,
-                    networks= networks,
-                    vm_slots= int(get_or_none(cconfig, cluster, "vm_slots")),
-                    cpu_cores= int(get_or_none(cconfig, cluster, "cpu_cores")),
-                    storage= int(get_or_none(cconfig, cluster, "storage")),
-                    hypervisor= hypervisor,
-                    username= get_or_none(cconfig, cluster, "username"),
-                    password= get_or_none(cconfig, cluster, "password"),
-                    enabled=enabled,
-                    priority = priority,
-                    keep_alive=keep_alive,
-                    )
         elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce" and cloudconfig.verify_cloud_conf_gce(cconfig, cluster):
-            return googlecluster.GoogleComputeEngineCluster(name = cluster,
+            return googlecluster.GoogleComputeEngineCluster(name = cluster.lower(),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
+                    memory = int(get_or_none(cconfig, cluster, "memory")),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     networks = networks,
                     vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
@@ -421,10 +356,10 @@ class ResourcePool:
                     total_cpu_cores = total_cpu_cores,
                     keep_alive=keep_alive,
                     )
-        elif cloud_type == "OpenStackNative" and cloudconfig.verify_cloud_conf_openstacknative(cconfig, cluster):
-            return openstackcluster.OpenStackCluster(name = cluster,
+        elif cloud_type.lower() == "openstacknative" and cloudconfig.verify_cloud_conf_openstacknative(cconfig, cluster):
+            return openstackcluster.OpenStackCluster(name = cluster.lower(),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
+                    memory = int(get_or_none(cconfig, cluster, "memory")),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     networks = networks,
                     vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
@@ -435,12 +370,10 @@ class ResourcePool:
                     tenant_name = get_or_none(cconfig, cluster, "tenant_name"),
                     auth_url = get_or_none(cconfig, cluster, "auth_url"),
                     security_group = splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
-                    hypervisor = hypervisor,
                     key_name = get_or_none(cconfig, cluster, "key_name"),
                     boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
                     secure_connection = get_or_none(cconfig, cluster, "secure_connection"),
                     regions = map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
-                    vm_domain_name = get_or_none(cconfig, cluster, "vm_domain_name"),
                     reverse_dns_lookup = get_or_none(cconfig, cluster, "reverse_dns_lookup"),
                     placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
                     enabled=enabled,
@@ -448,10 +381,10 @@ class ResourcePool:
                     cacert = get_or_none(cconfig, cluster, "cacert"),
                     keep_alive=keep_alive,
                     )
-        elif cloud_type == "Azure" and cloudconfig.verify_cloud_conf_azure(cconfig, cluster):
-            return azurecluster.AzureCluster(name = cluster,
+        elif cloud_type.lower() == "azure" and cloudconfig.verify_cloud_conf_azure(cconfig, cluster):
+            return azurecluster.AzureCluster(name = cluster.lower(),
                     cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
-                    memory = map(int, splitnstrip(",", get_or_none(cconfig, cluster, "memory"))),
+                    memory = int(get_or_none(cconfig, cluster, "memory")),
                     max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
                     vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
                     cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
@@ -459,16 +392,44 @@ class ResourcePool:
                     username = get_or_none(cconfig, cluster, "username"),
                     password = get_or_none(cconfig, cluster, "password"),
                     tenant_name = get_or_none(cconfig, cluster, "tenant_name"),
-                    hypervisor = hypervisor,
                     boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
                     regions = map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
-                    vm_domain_name = get_or_none(cconfig, cluster, "vm_domain_name"),
                     placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
                     enabled=enabled,
                     priority = priority,
                     keycert = get_or_none(cconfig, cluster, "keycert"),
                     keep_alive=keep_alive,
-                    blob_url= get_or_none(cconfig, cluster, "blob_url"),)
+                    blob_url= get_or_none(cconfig, cluster, "blob_url"),
+                    service_name= get_or_none(cconfig, cluster, "service_name"),)
+        elif cloud_type.lower() == "opennebula":
+            try:
+                port = int(get_or_none(cconfig, cluster, "port"))
+            except TypeError:
+                port = 8773
+            if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
+                return botocluster.BotoCluster(name = cluster.lower(),
+                    host = get_or_none(cconfig, cluster, "host"),
+                    cloud_type = get_or_none(cconfig, cluster, "cloud_type"),
+                    memory = int(get_or_none(cconfig, cluster, "memory")),
+                    max_vm_mem = max_vm_mem if max_vm_mem != None else -1,
+                    networks = networks,
+                    vm_slots = int(get_or_none(cconfig, cluster, "vm_slots")),
+                    cpu_cores = int(get_or_none(cconfig, cluster, "cpu_cores")),
+                    storage = int(get_or_none(cconfig, cluster, "storage")),
+                    access_key_id = get_or_none(cconfig, cluster, "access_key_id"),
+                    secret_access_key = get_or_none(cconfig, cluster, "secret_access_key"),
+                    security_group = splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
+                    key_name = get_or_none(cconfig, cluster, "key_name"),
+                    boot_timeout = get_or_none(cconfig, cluster, "boot_timeout"),
+                    secure_connection = get_or_none(cconfig, cluster, "secure_connection"),
+                    regions = get_or_none(cconfig, cluster, "regions"),
+                    reverse_dns_lookup = get_or_none(cconfig, cluster, "reverse_dns_lookup"),
+                    placement_zone = get_or_none(cconfig, cluster, "placement_zone"),
+                    enabled=enabled,
+                    priority = priority,
+                    keep_alive=keep_alive,
+                    port= port,
+                    )
         else:
             log.error("ResourcePool.setup encountered a problem creating entry for %s" % cluster)
         return None
@@ -511,7 +472,7 @@ class ResourcePool:
 
         return (self.resources[0])
 
-    def get_resourceFF(self, network, cpuarch, memory, cpucores, storage):
+    def get_resourceFF(self, network, memory, cpucores, storage):
         """Return the first resource that fits the passed in VM requirements. 
         
         Does not remove the element returned.
@@ -519,7 +480,6 @@ class ResourcePool:
         
         Keywords:
            network  - the network assoication required by the VM
-           cpuarch  - the cpu architecture that the VM must run on
            memory   - the amount of memory (RAM) the VM requires
            cpucores  - the number of cores that a VM requires (dedicated? or general?)
            storage   - the amount of scratch space the VM requires
@@ -540,23 +500,12 @@ class ResourcePool:
             # If required network is NOT in cluster's network associations
             if not (network in cluster.network_pools):
                 continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.net_slots[network] <= 0:
-                continue
             # If request exceeds the max vm memory on cluster
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
             # If the cluster has no sufficient memory entries for the VM
-            if cluster.__class__.__name__ == "NimbusCluster" and (cluster.find_mementry(memory) < 0):
-                continue
             # If the cluster does not have sufficient CPU cores
             if (cpucores > cluster.cpu_cores):
-                continue
-            # If the cluster does not have sufficient storage capacity
-            if cluster.__class__.__name__ == "NimbusCluster" and (storage > cluster.storageGB):
-                continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
-                continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
                 continue
 
             # Return the cluster as an available resource (meets all job reqs)
@@ -566,18 +515,16 @@ class ResourcePool:
         return None
 
 
-    def get_fitting_resources(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[],
-                              hypervisor=['xen'], blocked=[]):
+    def get_fitting_resources(self, network, memory, cpucores, storage, ami, imageloc, targets=[],
+                              blocked=[]):
         """get a list of Clusters that fit the given VM/Job requirements.
         
         Keywords: (as for get_resource methods)
             network  - the network assoication required by the VM
-            cpuarch  - the cpu architecture that the VM must run on
             memory   - the amount of memory (RAM) the VM requires
             cpucores  - the number of cores that a VM requires (dedicated? or general?)
             storage   - the amount of scratch space the VM requires
             ami       - the ami of the vm image - used by EC2 clouds
-            imageloc  - the image location url - used by Nimbus clouds
             targets   - list of target clouds 
         Return: a list of Cluster objects representing clusters that meet given
             requirements for network, cpu, memory, and storage
@@ -599,42 +546,7 @@ class ResourcePool:
             if cluster.name in blocked:
                 log.verbose("get_fitting_resources - %s is blocked." % cluster.name)
                 continue
-            if cluster.__class__.__name__ == "NimbusCluster":
-                # If not valid image file to download
-                if imageloc == "":
-                    log.verbose("get_fitting_resources - No image location set: %s" % cluster.name)
-                    continue
-                # If required network is NOT in cluster's network associations
-                # if network is undefined then it means pick whatever, so we
-                # just always okay it.
-                if network and (network not in cluster.network_pools):
-                    log.verbose("get_fitting_resources - No matching networks in %s" % cluster.name)
-                    continue
-                if network and network in cluster.net_slots.keys() and cluster.net_slots[network] <= 0:
-                    log.verbose("get_fitting_resources - No Slots left in network %s on %s" % (network, cluster.name))
-                    continue
-                if not network:
-                    full = True
-                    for net in cluster.net_slots.keys():
-                        if cluster.net_slots[net] > 0:
-                            full = False
-                    if full:
-                        log.verbose("get_fitting_resources - No Slots left on %s" % cluster.name)
-                        continue
-                if imageloc in self.banned_job_resource.keys():
-                    if cluster.name in self.banned_job_resource[imageloc]:
-                        log.verbose("get_fitting_resources - %s cloud is banned for image location" % cluster.name)
-                        continue
-                if cluster.max_vm_storage != -1 and storage > cluster.max_vm_storage:
-                    log.verbose("get_fitting_resources - Storage request exceeds max_vm_storage for %s" % cluster.name)
-                    continue
-                if cluster.total_cpu_cores != -1 and cpucores > cluster.total_cpu_cores:
-                    log.verbose("get_fitting_resources - cpu request greater than total available cores on %s" % cluster.name)
-                    continue
-                if cluster.hypervisor not in hypervisor:
-                    log.verbose("get_fitting_resources - Wrong hypervisor on %s" % cluster.name)
-                    continue
-            elif cluster.__class__.__name__ == "EC2Cluster":
+            if cluster.__class__.__name__ == "EC2Cluster":
                 # If no valid ami to boot from
                 if ami == "":
                     continue
@@ -663,8 +575,8 @@ class ResourcePool:
                 log.verbose("get_fitting_resources - memory request exceeds max_vm_mem on %s" % cluster.name)
                 continue
             # If the cluster has no sufficient memory entries for the VM
-            if (cluster.find_mementry(memory) < 0):
-                log.verbose("get_fitting_resources - No available memory entry in %s" % cluster.name)
+            if (memory > cluster.memory):
+                log.verbose("get_fitting_resources - Not enough Memory  in %s" % cluster.name)
                 continue
             # If the cluster does not have sufficient CPU cores
             if (cpucores > cluster.cpu_cores):
@@ -684,7 +596,7 @@ class ResourcePool:
         return fitting_clusters
 
 
-    def get_resourceBF(self, network, cpuarch, memory, cpucores, storage, ami, imageloc, targets=[], hypervisor=['xen'], blocked=[]):
+    def get_resourceBF(self, network, memory, cpucores, storage, ami, imageloc, targets=[], blocked=[]):
         """
         Returns a resource that fits given requirements and fits some balance
         criteria between clusters (for example, lowest current load or most free
@@ -701,12 +613,10 @@ class ResourcePool:
           - etc.
         Keywords:
            network  - the network assoication required by the VM
-           cpuarch  - the cpu architecture that the VM must run on
            memory   - the amount of memory (RAM) the VM requires
            cpucores  - the number of cores that a VM requires (dedicated? or general?)
            storage   - the amount of scratch space the VM requires
            ami       - image ami - used by EC2 clouds
-           imageloc  - image url - used by Nimbus clouds
            targets   - list of target clouds
         Return: returns a tuple of cluster objects. The first, or primary cluster, is the
                 most balanced fit. The second, or secondary, is an alternative fitting
@@ -717,7 +627,7 @@ class ResourcePool:
 
         """
         # Get a list of fitting clusters
-        fitting_clusters = self.get_fitting_resources(network, cpuarch, memory, cpucores, storage, ami, imageloc, targets, hypervisor,blocked)
+        fitting_clusters = self.get_fitting_resources(network, memory, cpucores, storage, ami, imageloc, targets, blocked)
 
         # If list is empty (no resources fit), return None
         if len(fitting_clusters) == 0:
@@ -734,15 +644,13 @@ class ResourcePool:
         fitting_clusters.sort(key=lambda cluster: cluster.priority)
         return fitting_clusters
 
-    def resourcePF(self, network, cpuarch, memory=0, disk=0, hypervisor=['xen']):
+    def resourcePF(self, network, memory=0, disk=0):
         """
         Check that a cluster will be able to meet the static requirements.
         Keywords:
            network  - the network assoication required by the VM
-           cpuarch  - the cpu architecture that the VM must run on
            memory   - minimum memory required on cloud
            disk     - minimum storage space required on cloud
-           hypervisor - type of hypervisor used by cloud
         Return: True if cluster is found that fits VM requirments
                 Otherwise, returns False
 
@@ -758,11 +666,7 @@ class ResourcePool:
             # If request exceeds the max vm memory on cluster
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
-            if not cluster.find_potential_mementry(memory):
-                continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
-                continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
+            if not cluster.check_memory(memory):
                 continue
             # Cluster meets network and cpu reqs and may have enough memory
             potential_fit = True
@@ -771,14 +675,13 @@ class ResourcePool:
         # If no clusters are found (no clusters can host the required VM)
         return potential_fit
 
-    def get_potential_fitting_resources(self, network, cpuarch, memory, disk, targets=[],
-                                        hypervisor=['xen'], cpucores=-1, blocked=[]):
+    def get_potential_fitting_resources(self, network, memory, disk, targets=[],
+                                        cpucores=-1, blocked=[]):
         """
         Determines which clouds could start a VM with the given requirements.
         
         Keywords:
             network - the network pool
-            cpuarch - CPU architecture that the VM must run on
             memory  - amount of memory VM requires to run
             disk    - amount of scratch space needed on VM
             targets - list of target clouds
@@ -796,19 +699,15 @@ class ResourcePool:
                 continue
             if cluster.name in blocked:
                 continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.hypervisor not in hypervisor:
-                continue
             # If required network is NOT in cluster's network associations
             if network and not (network in cluster.network_pools):
                 continue
             # If request exceeds the max vm memory on cluster
             if memory > cluster.max_vm_mem and cluster.max_vm_mem != -1:
                 continue
-            if not cluster.find_potential_mementry(memory):
+            if not cluster.check_memory(memory):
                 continue
             if disk > cluster.max_storageGB:
-                continue
-            if cluster.__class__.__name__ == "NimbusCluster" and cluster.max_vm_storage != -1 and disk > cluster.max_vm_storage:
                 continue
 
             fitting.append(cluster)
@@ -819,16 +718,20 @@ class ResourcePool:
         expanded_names = self.resolve_target_cloud_alias(names)
         clusters = []
         for name in expanded_names:
-            cluster = self.get_cluster(name)
+            cluster = self.get_cluster(name.lower())
             if cluster != None:
                 clusters.append(cluster)
             else:
                 log.debug("No Cluster with name %s in system" % name)
         return clusters
 
-    def get_cluster(self, cluster_name):
+    def get_cluster(self, cluster_name, retired=False):
         """Return cluster that matches cluster_name."""
-        for cluster in self.resources:
+        if retired:
+            res_list = self.retired_resources
+        else:
+            res_list = self.resources
+        for cluster in res_list:
             if cluster.name == cluster_name:
                 return cluster
         return None
@@ -1124,23 +1027,6 @@ class ResourcePool:
             types[vmtype] *= mem_cpu_storage_total
         return types
 
-    # Skipped creating an alternate usertypes version of this function
-    # VM Type resource usage
-    # Counts up how much/many of each resource (RAM, Cores, Storage)
-    # are being used by each type of VM
-    #def vmtype_resource_usage(self):
-        #types = {}
-        #for cluster in self.resources:
-            #for vm in cluster.vms:
-                #if vm.vmtype in types.keys():
-                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
-                #else:
-                    #types[vm.vmtype] = []
-                    #types[vm.vmtype].append([vm.memory, vm.cpucores, vm.storage])
-        #results = {}
-        #for vmtype in types.keys():
-            #results[vmtype] = [sum(values) for values in zip(*types[vmtype])]
-        #return results
 
     def vmtype_resource_usage(self):
         """VM Type resource usage w/ uservmtype
@@ -1179,18 +1065,6 @@ class ResourcePool:
             results[vmusertype] = [vmcount[vmusertype]*types[vmusertype].memory, vmcount[vmusertype]*types[vmusertype].cpucores, vmcount[vmusertype]*types[vmusertype].storage]
         return results
 
-    #def vm_slots_used(self):
-        #types = {}
-        #for cluster in self.resources:
-            #for vm in cluster.vms:
-                #if not types.has_key(vm.vmtype):
-                    #types[vm.vmtype] = []
-                #if hasattr(vm, "job_per_core") and vm.job_per_core:
-                    #for core in range(vm.cpucores):
-                        #types[vm.vmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
-                #else:
-                    #types[vm.vmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
-        #return types
     
     def vm_slots_total(self):
         """Provides a count of the vm slots across all clusters in the system."""
@@ -1198,7 +1072,7 @@ class ResourcePool:
         for cluster in self.resources:
             count += cluster.max_slots
         return count
-            
+
     def vm_slots_available(self):
         """Provides a count of all available vm slots across all clusters in the system."""
         count = 0
@@ -1269,11 +1143,13 @@ class ResourcePool:
             old_resources = pickle.load(persistence_file)
         except:
             log.exception("Unknown problem unpickling persistence file!")
-            with open('/tmp/cloudscheduler.persistence.bak', 'wb') as (pbak,err):
+            try:
+                pbak = open('/tmp/cloudscheduler.persistence.bak', 'wb')
+                persistence_file = open(config.persistence_file, "rb")
                 pcontents = persistence_file.read()
                 pbak.write(pcontents)
-                if err:
-                    log.error("Problem trying to create backup pickle: %s" % err)
+            except Exception as e:
+                log.error("Problem trying to create backup pickle: %s" % e)
             return
         persistence_file.close()
         
@@ -1285,6 +1161,8 @@ class ResourcePool:
             new_cluster = self.get_cluster(old_cluster.name)
             if new_cluster:
                 new_cluster.enabled = old_cluster.enabled
+                if new_cluster.__class__.__name__ == 'AzureCluster':
+                    new_cluster.count = old_cluster.count
 
             for vm in old_cluster.vms:
                 log.debug("Found VM %s on %s" % (vm.id, old_cluster.name))
@@ -1328,34 +1206,16 @@ class ResourcePool:
     def track_failures(self, job, resources,  value):
         """Error Tracking to be used to ban / filter resources."""
         for cluster in resources:
-            if cluster.__class__.__name__ == 'NimbusCluster':
-                if job.req_imageloc in self.failures.keys():
-                    foundIt = False
-                    for resource in self.failures[job.req_imageloc]:
-                        if resource.name == cluster.name:
-                            resource.append(value)
-                            foundIt = True
-                        if foundIt:
-                            break
-                        else:
-                            queue = ErrTrackQueue(cluster.name)
-                            queue.append(value)
-                            self.failures[job.req_imageloc].append(queue)
-                else:
-                    self.failures[job.req_imageloc] = []
-                    queue = ErrTrackQueue(cluster.name)
-                    queue.append(value)
-                    self.failures[job.req_imageloc].append(queue)
-
-            elif cluster.__class__.__name__ == 'StratusLabCluster' and stratuslab_support:
+            if cluster.__class__.__name__ == 'StratusLabCluster' and stratuslab_support:
                 # If not valid image file to download
                 if job.req_imageloc == "":
                     continue
                 if (not Image.isDiskId(job.req_imageloc)) and (not Image.isImageId(job.req_imageloc)):
                     continue
-                resource.append(value)
-
-            elif cluster.__class__.__name__ == 'EC2Cluster':
+                for resource in self.failures[job.req_imageloc]:
+                    if resource.name == cluster.name:
+                        resource.append(value)
+            else:
                 if job.req_ami in self.failures.keys():
                     foundIt = False
                     for resource in self.failures[job.req_ami]:
@@ -1373,6 +1233,7 @@ class ResourcePool:
                     queue = ErrTrackQueue(cluster.name)
                     queue.append(value)
                     self.failures[job.req_ami].append(queue)
+
 
     def check_failures(self):
         """Check if failures have crossed the threshold and ban job from resources."""
@@ -1746,7 +1607,8 @@ class ResourcePool:
             condor_name = condor_name.split('@')[1]
         for cluster in self.resources:
             for vm in cluster.vms:
-                if vm.condorname == condor_name or condor_name == vm.hostname or condor_name == vm.alt_hostname or condor_name == vm.condormasteraddr:
+                if utilities.match_host_with_condor_host(vm.hostname, condor_name) or utilities.match_host_with_condor_host(vm.alt_hostname, condor_name) or \
+                  utilities.match_host_with_condor_host(vm.condormasteraddr, condor_name) or utilities.match_host_with_condor_host(vm.condorname, condor_name):
                     foundIt = True
                     vm_match = vm
                     break
@@ -1756,7 +1618,8 @@ class ResourcePool:
             log.verbose("Could not find a VM with name: %s, checking retired_resources." % condor_name)
             for cluster in self.retired_resources:
                 for vm in cluster.vms:
-                    if vm.condorname == condor_name or condor_name == vm.hostname or condor_name == vm.alt_hostname or condor_name == vm.condormasteraddr:
+                    if utilities.match_host_with_condor_host(vm.condorname, condor_name) or utilities.match_host_with_condor_host(vm.hostname, condor_name) or \
+                      utilities.match_host_with_condor_host(vm.condormasteraddr, condor_name) or utilities.match_host_with_condor_host(vm.alt_hostname, condor_name):
                         foundIt = True
                         vm_match = vm
                         break
@@ -1912,7 +1775,7 @@ class ResourcePool:
             return "Unable to shutdown %s VMs, use a number." % number
         
         output = ""
-        cluster = self.get_cluster(cloudname)
+        cluster = self.get_cluster(cloudname.lower())
         desthreads = []
         if cluster:
             if number > len(cluster.vms):
@@ -1939,33 +1802,43 @@ class ResourcePool:
     def shutdown_cluster_vm(self, clustername, vmid):
         """Manually shutdown a VM, for use by cloud_admin."""
         output = ""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
+        cluster_retired = self.get_cluster(clustername.lower(), True)
         if cluster:
             vm = cluster.get_vm(vmid)
+            if cluster_retired:
+                vm_retired = cluster_retired.get_vm(vmid)
             if vm:
                 # found the vm - shutdown
                 # move the vmdestroycmd thread into a better place and import so avilable here
-                thread = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
-                thread.start()
-                while thread.is_alive():
-                    time.sleep(1)
-                if not thread.is_alive():
-                    if thread.get_result() != 0:
-                        output = "Destroying VM %s failed. Leaving it for now." % thread.get_vm().id
-                    else:
-                        output = "VM %s has been Destroyed." % thread.get_vm().id
-                    thread.join()
+                self._shutdown_admin(cluster, vm)
+            elif cluster_retired and vm_retired:
+                self._shutdown_admin(cluster_retired, vm_retired)
             else:
                 output = "Could not find VM with ID: %s on Cluster: %s." % (vmid, clustername)
         else:
             output = "Could not find a Cluster with name: %s." % clustername
         return output
 
+    @staticmethod
+    def _shutdown_admin(cluster, vm):
+        thread = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
+        thread.start()
+        while thread.is_alive():
+            time.sleep(1)
+        if not thread.is_alive():
+            if thread.get_result() != 0:
+                output = "Destroying VM %s failed. Leaving it for now." % thread.get_vm().id
+            else:
+                output = "VM %s has been Destroyed." % thread.get_vm().id
+            thread.join()
+
+
     def shutdown_cluster_all(self, clustername):
         """Manually shutdown all VMs on a cluster, for use by cloud_admin."""
         output = ""
         vmdesth = {}
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         if cluster:
             for vm in cluster.vms:
                 th = VMDestroyCmd(cluster, vm, reason="Shutdown request from admin client.")
@@ -1990,14 +1863,24 @@ class ResourcePool:
     def remove_vm_no_shutdown(self, clustername, vmid):
         """Remove a VM entry from Cloudscheduler without issuing a shutdown to the cluster, for use by cloud_admin."""
         output = ""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
+        cluster_retired = self.get_cluster(clustername.lower(), True)
         if cluster:
             vm = cluster.get_vm(vmid)
+            if cluster_retired:
+                vm_retired = cluster_retired.get_vm(vmid)
             if vm:
                 with cluster.vms_lock:
                     cluster.vms.remove(vm)
+                    log.debug("VM: %s, on %s removed from list." % (vm.id, vm.clusteraddr))
                 cluster.resource_return(vm)
                 output = "Removed %s's VM %s from CloudScheduler." % (clustername, vmid)
+                log.debug(output)
+            elif cluster_retired and vm_retired:
+                with cluster_retired.vms_lock:
+                    cluster_retired.vms.remove(vm)
+                    log.debug("VM: %s, on %s removed from list." % (vm.id, vm.clusteraddr))
+                output = "Removed %s's VM %s from CloudScheduler retired resources." % (clustername, vmid)
                 log.debug(output)
             else:
                 output = "Could not find VM ID: %s on Cloud: %s" % (vmid, clustername)
@@ -2007,12 +1890,13 @@ class ResourcePool:
 
     def remove_all_vmcloud_no_shutdown(self, clustername):
         """Remove all VM entries from a cluster without issuing shutdowns to the IaaS, for use by cloud_admin."""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         output = ""
         if cluster:
             for vm in reversed(cluster.vms):
                 with cluster.vms_lock:
                     cluster.vms.remove(vm)
+                    log.debug("VM: %s, on %s removed from list." % (vm.id, vm.clusteraddr))
                 cluster.resource_return(vm)
             output = "Removed all VMs from %s." % clustername
             log.debug(output)
@@ -2033,6 +1917,7 @@ class ResourcePool:
     def force_retire_cluster_vm(self, clustername, vmid):
         output = ""
         cluster = self.get_cluster(clustername)
+        cluster_retired = self.get_cluster(clustername, True)
         if cluster:
             vm = cluster.get_vm(vmid)
             if vm:
@@ -2042,13 +1927,22 @@ class ResourcePool:
                 else:
                     output = "Unable to retire VM."
             else:
-                output = "Could not find VM ID %s." % vmid
+                if cluster_retired:
+                    vm = cluster_retired.get_vm(vmid)
+                    if vm:
+                        if self.force_retire_vm(vm):
+                            output = "Retired VM %s on %s." % (vmid, clustername)
+                            log.debug(output)
+                        else:
+                            output = "Unable to retire VM."
+                    else:
+                        output = "Could not find VM ID %s." % vmid
         else:
             output = "Could not find Cloud %s." % clustername
         return output
     
     def force_retire_cluster_all(self, cloudname):
-        cluster = self.get_cluster(cloudname)
+        cluster = self.get_cluster(cloudname.lower())
         output = ""
         if cluster:
             for vm in cluster.vms:
@@ -2063,7 +1957,7 @@ class ResourcePool:
         return output
 
     def force_retire_cluster_number(self, cloudname, number):
-        cluster = self.get_cluster(cloudname)
+        cluster = self.get_cluster(cloudname.lower())
         output = ""
         try:
             number = int(number)
@@ -2085,7 +1979,7 @@ class ResourcePool:
 
     def disable_cluster(self, clustername):
         """Toggles the enabled flag for a cluster, for use by cloud_admin."""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         ret = ""
         if cluster:
             cluster.enabled = False
@@ -2097,7 +1991,7 @@ class ResourcePool:
     
     def enable_cluster(self, clustername):
         """Toggles the enabled flag for a cluster, for use by cloud_admin."""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         ret = ""
         if cluster:
             cluster.enabled = True
@@ -2109,7 +2003,7 @@ class ResourcePool:
 
     def reset_override_state(self, clustername, vmid):
         output = ""
-        cluster = self.get_cluster(clustername)
+        cluster = self.get_cluster(clustername.lower())
         if cluster:
             vm = cluster.get_vm(vmid)
             if vm:
@@ -2218,9 +2112,9 @@ class ResourcePool:
             if k in self.target_cloud_aliases.keys():
                 exp = self.target_cloud_aliases[k]
                 for cloud in exp:
-                    expanded_amis[cloud] = v
+                    expanded_amis[cloud.lower()] = v
             else:
-                expanded_amis[k] = v
+                expanded_amis[k.lower()] = v
         return expanded_amis
 
     def resolve_vminstancetype_cloud_alias(self, vminstancetypes=None):
@@ -2229,9 +2123,9 @@ class ResourcePool:
             if k in self.target_cloud_aliases.keys():
                 exp = self.target_cloud_aliases[k]
                 for cloud in exp:
-                    expanded_types[cloud] = v
+                    expanded_types[cloud.lower()] = v
             else:
-                expanded_types[k] = v
+                expanded_types[k.lower()] = v
         return expanded_types
 
     def adjust_cloud_allocation(self, cloud_name, number):
@@ -2239,7 +2133,7 @@ class ResourcePool:
             number = int(number)
         except:
             return "Need to use an integer value for vm_allocation"
-        cluster = self.get_cluster(cloud_name)
+        cluster = self.get_cluster(cloud_name.lower())
         if cluster:
             with(cluster.res_lock):
                 # Determine current vm slot value - remaining+current vms
@@ -2271,7 +2165,7 @@ class ResourcePool:
                                 cluster_copy.vms.append(vm)
                                 self.retired_resources.append(cluster_copy)
                             else:
-                                cluster_copy = self.retired_resources.get_cluster(cluster.name)
+                                cluster_copy = self.get_cluster(cluster.name, True)
                                 cluster_copy.vms.append(vm)
                             vm.return_resources = False
                             self.force_retire_vm(vm)
@@ -2284,8 +2178,24 @@ class ResourcePool:
                     return "VM slots already set at %s. Nothing to do." % total_slots
         else:
             return "Unable to find cluster with name: %s" % cloud_name
+
+        self.update_cloud_resources(cluster.name, number)
         return "Attempt adjustment on cloud %s, change to %s slots" % (cloud_name, number)
-    
+
+
+    def update_cloud_resources(self, cloud, slots):
+        try:
+            cloud_config = ConfigParser.ConfigParser()
+            cloud_config.read(self.config_file)
+        except ConfigParser.ParsingError:
+            log.exception("Cloud config problem: Couldn't " \
+                  "parse your cloud config file. Check for spaces " \
+                  "before or after variables.")
+            sys.exit(1)
+        cloud_config.set(cloud, "vm_slots", slots)
+        with open(self.config_file, "wb") as cf:
+            cloud_config.write(cf)
+
 
 class VMDestroyCmd(threading.Thread):
     """
@@ -2332,6 +2242,7 @@ class VMDestroyCmd(threading.Thread):
 #    def get_vm(self):
 #        return self.vm
 
+
 class VMMachine():
     """
     VMMachine - abstraction class to hold information about machines registered with the batch queue
@@ -2370,8 +2281,11 @@ class VMMachine():
         self.remote_owner = remote_owner
         self.slot_type = slot_type
         self.total_slots = total_slots
-    
+
+
     def get_uservmtype(self):
         return ''.join([self.remote_owner, self.vmtype])
+
+
     def __repr__(self):
         return "MachineName: %s, State: %s, Activity: %s, VMType: %s, SlotType: %s, TotalSlots: %s" % (self.machine_name, self.state, self.activity, self.vmtype, self.slot_type, self.total_slots)

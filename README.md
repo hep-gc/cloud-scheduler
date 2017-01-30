@@ -1,4 +1,4 @@
-# Cloud Scheduler 1.11 README
+# Cloud Scheduler 1.12 README
 
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
@@ -19,7 +19,9 @@ For more documentation on Cloud Scheduler, please refer to:
 * [boto](http://code.google.com/p/boto/) for using EC2 API clouds (Amazon, OpenStack)
 * [web.py](http://webpy.org/) for admin and status REST servers
 * [requests](https://github.com/kennethreitz/requests) for admin and status REST clients
-* [OpenStack novaclient](https://pypi.python.org/pypi/python-novaclient/) for using the native OpenStack APIs
+* [OpenStack novaclient](https://pypi.python.org/pypi/python-novaclient/) and [OpenStack keystoneclient](https://pypi.python.org/pypi/python-keystoneclient/) for using the native OpenStack APIs
+* [Google API Python Client](pip install --upgrade google-api-python-client) to use Google Compute Engine
+* [Azure Service Management](https://pypi.python.org/pypi/azure-servicemanagement-legacy/) to use Microsoft Azure
 * redhat-lsb 
 
 ## Optional Prerequisites
@@ -228,29 +230,10 @@ take awhile)
 
     # /etc/init.d/cloud_scheduler forcekill
 
-To Reload the cloud_resources.conf without restarting Cloud Scheduler
+To Reload the cloud_resources.conf and cloud_scheduler.conf with killing VMs
 
-    # /etc/init.d/cloud_scheduler reconfig
+    # /etc/init.d/cloud_scheduler quickrestart
 
-## Configuring a VM for EC2
-
-(Deprecated - use cloud-init and amiconfig files)
-The way Cloud Scheduler manipulates Condor to connect to the correct central
-manager is by writing files which are read by the Condor init script to
-configure itself. Nimbus supports this out of the box, but EC2 requires a 
-helper script to accomplish this. This section explains how to install it.
-
-Install the EC2 Context Helper script to your machine. This is a part of the
-Cloud Scheduler release tarball, and is in the scripts/ec2contexthelper/
-directory.
-
-
-    # /etc/init.d/cloud_scheduler start
-    # cd scripts/ec2contexthelper/
-    # python setup.py install
-    # which contexthelper
-    # /usr/bin/contexthelper
-    # chkconfig context on
 
 
 ## Job Submission
@@ -263,12 +246,11 @@ Jobs meant to be run by VMs started by Cloud Scheduler need a few extra
 parameters to work properly. These are: (Required parameters are highlighted)
 
 * *Requirements = VMType =?= “your.vm.type”* :  The type of VM that the job must run on. This is a custom attribute of the VM advertised to the Condor central manager. It should be specified on the VM’s condor_config or condor_config.local file.
-* *VMLoc* or *VMAMI* : The URL (for Nimbus) or AMI (for EC2-like clusters) of the image required for the job to run
-* VMCPUArch : The CPU architecture that the job requires. x86 or x86_64. Defaults to x86.
+* VMAMI : The AMI (for EC2-like clusters) or image name of the image required for the job to run
 * VMCPUCores : The number of CPU cores for the VM. Defaults to 1.
 * VMStorage : The amount of scratch storage space the job requires. (Currently ignored on EC2-like Clusters)
 * VMMem : The amount of RAM that the VM requires.
-* VMNetwork : The type of networking required for your VM. Only used with Nimbus. Corresponds to Nimbus’s network pool.
+* VMNetwork : The network group used for your VM. Only used with OpenStackNative if default network not available.
 * VMInstanceType : The EC2 instance type of the VM requested. Only used with EC2 clouds like Amazon.
 * VMMaximumPrice : The maximum price in cents per hour for a VM (EC2 Only)
 * VMKeepAlive : Number of minutes a VM should stay up after job finishes
@@ -294,7 +276,6 @@ parameters to work properly. These are: (Required parameters are highlighted)
     Requirements = VMType =?= "vm.for.script"
     +VMLoc         = "http://repository.tld/your.vm.img.gz"
     +VMAMI = "ami-dfasfds"
-    +VMCPUArch     = "x86"
     +VMCPUCores    = "1"
     +VMNetwork     = "private"
     +VMMem         = "512"

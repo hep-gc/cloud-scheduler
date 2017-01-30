@@ -22,7 +22,6 @@ Requirements = VMType =?= "blue" && \
 # User requirements
 +VMName        = "Blue01"
 +VMNetwork     = "public"
-+VMCPUArch     = "x86"
 +VMLoc         = "http://vmrepo.phys.uvic.ca/vms/dev-blue_x86.img.gz"
 +VMMem         = "512"
 +VMCPUCores    = "1"

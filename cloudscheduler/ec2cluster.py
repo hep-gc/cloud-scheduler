@@ -5,7 +5,6 @@ import string
 import json
 import shutil
 import logging
-import nimbus_xml
 import subprocess
 import cluster_tools
 import cloud_init_util
@@ -80,7 +79,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                    aws_secret_access_key=self.secret_access_key,
                                    is_secure=self.secure_connection,
                                    region=region,
-                                   port=8773,
+                                   port=self.port,
                                    path="/services/Eucalyptus",
                                    )
                 log.verbose("Created a connection to Eucalyptus (%s)" % self.name)
@@ -91,7 +90,7 @@ class EC2Cluster(cluster_tools.ICluster):
 
         elif self.cloud_type == "OpenNebula":
 
-            log.error("OpenNebula support isn't ready yet.")
+            log.error("Use the boto3 ec2cluster for OpenNebula support.")
             raise NotImplementedError
 
         elif self.cloud_type == "OpenStack":
@@ -103,7 +102,7 @@ class EC2Cluster(cluster_tools.ICluster):
                                    aws_secret_access_key=self.secret_access_key,
                                    is_secure=self.secure_connection,
                                    region=region,
-                                   port=8773,
+                                   port=self.port,
                                    path="/services/Cloud",
                                    validate_certs=False
                                    )
@@ -121,16 +120,16 @@ class EC2Cluster(cluster_tools.ICluster):
     def __init__(self, name="Dummy Cluster", host="localhost", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, access_key_id=None, secret_access_key=None,
-                 security_group=None, hypervisor='xen', key_name=None, 
-                 boot_timeout=None, secure_connection="", regions=[], vm_domain_name="",
+                 security_group=None, key_name=None,
+                 boot_timeout=None, secure_connection="", regions="",
                  reverse_dns_lookup=False,placement_zone=None, enabled=True, priority=0,
-                 keep_alive=0,):
+                 keep_alive=0, port=8773):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=host, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled,
+                         storage=storage, boot_timeout=boot_timeout, enabled=enabled,
                         priority=priority,keep_alive=keep_alive,)
 
         if not security_group:
@@ -148,9 +147,9 @@ class EC2Cluster(cluster_tools.ICluster):
         self.secure_connection = secure_connection in ['True', 'true', 'TRUE']
         self.total_cpu_cores = -1
         self.regions = regions
-        self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
+        self.port = port
 
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
@@ -206,7 +205,7 @@ class EC2Cluster(cluster_tools.ICluster):
             else:
                 i_type = instance_type["default"]
         except:
-            log.debug("No instance type for %s, trying default" % self.network_address)
+            log.debug("No instance type for %s, trying default" % self.name)
             #try:
             #    i_type = instance_type["default"]
             #except:
@@ -226,24 +225,20 @@ class EC2Cluster(cluster_tools.ICluster):
         if key_name == None:
             key_name = self.key_name
         if customization:
-            if not use_cloud_init:
-                user_data = nimbus_xml.ws_optional(customization)
-            else:
-                user_data = cloud_init_util.build_write_files_cloud_init(customization)
+            user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
             user_data = ""
 
         if pre_customization:
-            if not use_cloud_init:
-                for item in pre_customization:
-                    user_data = '\n'.join([item, user_data])
-            else:
-                user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
+            user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
         elif use_cloud_init:
             user_data = cloud_init_util.inject_customizations([], user_data)[0]
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
+            if not user_data:
+                log.error("Problem building cloud-config user data.")
+                return self.ERROR
 
         if "AmazonEC2" == self.cloud_type and vm_networkassoc != "public":
             log.debug("You requested '%s' networking, but EC2 only supports 'public'" % vm_networkassoc)
@@ -345,21 +340,13 @@ class EC2Cluster(cluster_tools.ICluster):
                 return self.ERROR
             return self.ERROR
 
-        vm_mementry = self.find_mementry(vm_mem)
-        if (vm_mementry < 0):
-            #TODO: this is kind of pointless with EC2...
-            log.debug("Cluster memory list has no sufficient memory " +\
-                      "entries (Not supposed to happen). Returning error.")
-            return self.ERROR
-        log.verbose("vm_create - Memory entry found in given cluster: %d" %
-                                                                    vm_mementry)
         if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
             vm_keepalive = self.keep_alive
         new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
                     clusteraddr = self.network_address,
                     cloudtype = self.cloud_type, network = vm_networkassoc,
                     image= vm_ami, flavor=instance_type,
-                    memory = vm_mem, mementry = vm_mementry,
+                    memory = vm_mem,
                     cpucores = vm_cores, storage = vm_storage, 
                     keep_alive = vm_keepalive, job_per_core = job_per_core)
 
@@ -372,7 +359,7 @@ class EC2Cluster(cluster_tools.ICluster):
             self.resource_checkout(new_vm)
         except:
             log.exception("Unexpected Error checking out resources when creating a VM. Programming error?")
-            self.vm_destroy(new_vm, reason="Failed Resource checkout")
+            self.vm_destroy(new_vm, reason="Failed Resource checkout", return_resources=False)
             return self.ERROR
 
         self.vms.append(new_vm)
@@ -398,7 +385,7 @@ class EC2Cluster(cluster_tools.ICluster):
                     return vm.status
                 except boto.exception.EC2ResponseError, e:
                     log.exception("Problem getting spot info %s: %s" % (vm.spot_id, e))
-                    if e.status == 400 and 'NotFound' in e.error_code:
+                    if e.status == 400:
                         vm.status = self.VM_STATES['error']
                         return vm.status
                 except:
@@ -416,7 +403,7 @@ class EC2Cluster(cluster_tools.ICluster):
                 return vm.status
             except boto.exception.EC2ResponseError, e:
                 log.exception("Unexpected error polling %s: %s" % (vm.id, e))
-                if e.status == 400 and 'NotFound' in e.error_code:
+                if e.status == 400:
                     vm.status = self.VM_STATES['error']
                 elif e.status == 404:
                     vm.status = self.VM_STATES['error']
@@ -445,9 +432,9 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.hostname = self._extract_host_from_dig(dig_out)
             elif self.cloud_type == "OpenStack":
                 if len(instance.public_dns_name) > 0:
-                    vm.hostname = ''.join([instance.public_dns_name, self.vm_domain_name])
+                    vm.hostname = instance.public_dns_name
                 else:
-                    vm.hostname = ''.join([instance.private_dns_name, self.vm_domain_name])
+                    vm.hostname = instance.private_dns_name
             else:
                 if len(instance.public_dns_name) > 0:
                     vm.hostname = instance.public_dns_name
@@ -457,8 +444,8 @@ class EC2Cluster(cluster_tools.ICluster):
                 vm.hostname = instance.public_dns_name
                 vm.alt_hostname = instance.private_dns_name
                 if self.cloud_type == "OpenStack":
-                    vm.hostname = ''.join([vm.hostname, self.vm_domain_name])
-                    vm.alt_hostname = ''.join([vm.alt_hostname, self.vm_domain_name])
+                    vm.hostname = vm.hostname
+                    vm.alt_hostname = vm.alt_hostname
             vm.lastpoll = int(time.time())
         return vm.status
 
@@ -489,7 +476,7 @@ class EC2Cluster(cluster_tools.ICluster):
         except boto.exception.EC2ResponseError, e:
             returnError = True
             log.exception("Couldn't connect to cloud to destroy VM: %s !" % vm.id)
-            if e.status == 400 and 'NotFound' in e.error_code:
+            if e.status == 400:
                 log.exception("VM %s no longer exists... removing from system" % vm.id)
                 returnError = False
             if e.status == 404:
@@ -555,7 +542,7 @@ class EC2Cluster(cluster_tools.ICluster):
             if not utilities.check_popen_timeout(sp):
                 (out, err) = sp.communicate(input=None)
             else:
-                log.warning("Process %s timed out! cmd was %" % (sp.pid, " ".join(cmd)))
+                log.warning("Process %s timed out! cmd was %s" % (sp.pid, " ".join(cmd)))
             return (sp.returncode, out, err)
         except OSError, e:
             try:

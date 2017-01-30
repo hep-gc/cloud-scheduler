@@ -106,10 +106,6 @@ class getCloudsClient:
 
         return str(node.VirtualizationTech.Type)
 
-    def _getWorkerNodeCPUArch(self, node):
-
-        return str(node.CPUArch.MicroArchitecture)
-
     def _getWorkerNodeCPUID(self, node):
 
         return str(node.CPUID.Description)
@@ -133,7 +129,6 @@ class getCloudsClient:
         tDict["Memory"] = self._getWorkerNodeMem(node)
         tDict["VirtualizationTech"] = self._getWorkerNodeVirtualizationTech(node)
         tDict["CPUID"] = self._getWorkerNodeCPUID(node)
-        tDict["CPUArchitecture"] = self._getWorkerNodeCPUArch(node)
 
         retDict = {"Node": tDict}
         return retDict

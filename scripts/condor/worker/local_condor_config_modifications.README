@@ -2,7 +2,7 @@ Customizing the local condor configuration on the VM
 ----------------------------------------------------
 
 The customization of the local condor config file on the VM is done
-via the Nimbus Workspace Customization mechanism.  The variable that
+via cloudinit and a modfied condor.init.d script. The variable that
 needs to be customized needs to be written to the following file on
 the VM:
 

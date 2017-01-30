@@ -12,7 +12,6 @@ from lxml import etree
 import cloudscheduler.config
 import cloudscheduler.cloud_management
 import cloudscheduler.job_management
-import cloudscheduler.nimbus_xml
 import cloudscheduler.utilities as utilities
 
 log = utilities.get_cloudscheduler_logger()
@@ -36,11 +35,8 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         self.cert_file_on_vm = "/path/to/certonvm"
         self.key_file_on_vm = "/path/to/keyonvm"
         self.condor_context_file = "/etc/testlocation"
-        self.image_attach_device = "deva"
-        self.scratch_attach_device = "devb"
         self.cloud_resource_config = "/home/testuser/cloud"
         self.info_server_port = "1234"
-        self.workspace_path = "/path/to/workspace"
         self.persistence_file = "/path/to/persistence"
         self.scheduler_interval = 42
         self.vm_poller_interval = 42
@@ -72,10 +68,7 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
         testconfig.set('global', 'key_file_on_vm', self.key_file_on_vm)
         testconfig.set('global', 'condor_context_file', self.condor_context_file)
         testconfig.set('global', 'cloud_resource_config', self.cloud_resource_config)
-        testconfig.set('global', 'image_attach_device', self.image_attach_device)
-        testconfig.set('global', 'scratch_attach_device', self.scratch_attach_device)
         testconfig.set('global', 'info_server_port', self.info_server_port)
-        testconfig.set('global', 'workspace_path', self.workspace_path)
         testconfig.set('global', 'persistence_file', self.persistence_file)
         testconfig.set('global', 'scheduler_interval', self.scheduler_interval)
         testconfig.set('global', 'vm_poller_interval', self.vm_poller_interval)
@@ -140,17 +133,8 @@ class ConfigParserSetsCorrectValues(unittest.TestCase):
     def test_cloud_resource_config(self):
         self.assertEqual(self.cloud_resource_config, cloudscheduler.config.cloud_resource_config)
 
-    def test_image_attach_device(self):
-        self.assertEqual(self.image_attach_device, cloudscheduler.config.image_attach_device)
-
-    def test_scratch_attach_device(self):
-        self.assertEqual(self.scratch_attach_device, cloudscheduler.config.scratch_attach_device)
-
     def test_info_server_port(self):
         self.assertEqual(int(self.info_server_port), cloudscheduler.config.info_server_port)
-
-    def test_workspace_path(self):
-        self.assertEqual(self.workspace_path, cloudscheduler.config.workspace_path)
 
     def test_persistence_file(self):
         self.assertEqual(self.persistence_file, cloudscheduler.config.persistence_file)
@@ -237,7 +221,7 @@ class ResourcePoolSetup(unittest.TestCase):
         # set values for each option
         self.cloud_name0 = "example0"
         self.host0 = "cloud.example.com"
-        self.cloud_type0 = "Nimbus"
+        self.cloud_type0 = "OpenStackNative"
         self.vm_slots0 = 100
         self.cpu_cores0 = 4
         self.storage0 = 1000
@@ -247,7 +231,37 @@ class ResourcePoolSetup(unittest.TestCase):
 
         self.cloud_name1 = "example1"
         self.host1 = "cloud.example.com"
-        self.cloud_type1 = "Nimbus"
+        self.cloud_type1 = "AmazonEC2"
+        self.vm_slots1 = 100
+        self.cpu_cores1 = 4
+        self.storage1 = 1000
+        self.memory1 = 2048
+        self.cpu_archs1 = "x86"
+        self.networks1 = "private"
+
+        self.cloud_name1 = "example1"
+        self.host1 = "cloud.example.com"
+        self.cloud_type1 = "OpenStack"
+        self.vm_slots1 = 100
+        self.cpu_cores1 = 4
+        self.storage1 = 1000
+        self.memory1 = 2048
+        self.cpu_archs1 = "x86"
+        self.networks1 = "private"
+
+        self.cloud_name1 = "example1"
+        self.host1 = "cloud.example.com"
+        self.cloud_type1 = "gce"
+        self.vm_slots1 = 100
+        self.cpu_cores1 = 4
+        self.storage1 = 1000
+        self.memory1 = 2048
+        self.cpu_archs1 = "x86"
+        self.networks1 = "private"
+
+        self.cloud_name1 = "example1"
+        self.host1 = "cloud.example.com"
+        self.cloud_type1 = "azure"
         self.vm_slots1 = 100
         self.cpu_cores1 = 4
         self.storage1 = 1000
@@ -309,144 +323,6 @@ class ResourcePoolSetup(unittest.TestCase):
     def tearDown(self):
         os.remove(self.configfilename)
 
-class NimbusXMLTests(unittest.TestCase):
-
-    def setUp(self):
-        self.custom_filename = "/tmp/filename"
-        self.custom_string = "stringtoput"
-        self.custom_tasks = [(self.custom_string, self.custom_filename)]
-        self.credential = "fakecredential"
-        self.optional_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><OptionalParameters><filewrite><content>%s</content><pathOnVM>%s</pathOnVM></filewrite><credentialToCopy>%s</credentialToCopy></OptionalParameters>" % (self.custom_string, self.custom_filename, self.credential)
-        self.workspace_id = 42
-        self.bad_workspace_id = "whatev"
-        self.nimbus_hostname = "your.nimbus.tld"
-        self.epr_xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><WORKSPACE_EPR xmlns:ns1=\"http://schemas.xmlsoap.org/ws/2004/03/addressing\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"ns1:EndpointReferenceType\"><ns1:Address xsi:type=\"ns1:AttributedURI\">https://%s:8443/wsrf/services/WorkspaceService</ns1:Address><ns1:ReferenceProperties xsi:type=\"ns1:ReferencePropertiesType\"><ns2:WorkspaceKey xmlns:ns2=\"http://www.globus.org/2008/06/workspace\">%d</ns2:WorkspaceKey></ns1:ReferenceProperties><ns1:ReferenceParameters xsi:type=\"ns1:ReferenceParametersType\"/></WORKSPACE_EPR>" % (self.nimbus_hostname, self.workspace_id)
-
-    def test_for_good_epr_parameters(self):
-        txml = cloudscheduler.nimbus_xml.ws_epr(self.workspace_id, self.nimbus_hostname)
-
-        self.assertEqual(txml, self.epr_xml)
-
-    def test_for_bad_epr_parameters(self):
-        txml = cloudscheduler.nimbus_xml.ws_epr(self.bad_workspace_id, self.nimbus_hostname)
-
-        self.assertEqual(txml, None)
-
-    def test_for_good_optional_parameters(self):
-        txml = cloudscheduler.nimbus_xml.ws_optional_factory(custom_tasks=self.custom_tasks, credential=self.credential)
-        
-        xml_file = open(txml, "r")
-        generated_xml = xml_file.read()
-        # Some versions of python xml insert a newline
-        generated_xml = generated_xml.replace("\n", "")
-        self.assertEqual(generated_xml, self.optional_xml)
-        
-        xml_file.close()
-        os.remove(txml)
-
-    def test_optional_with_bad_path(self):
-
-        bad_filename = "not a filepath"
-        bad_custom_task = [(bad_filename, self.custom_string)]
-
-        txml = cloudscheduler.nimbus_xml.ws_optional_factory(bad_custom_task)
-
-        self.assertEqual(None, txml)
-
-    def test_optional_with_empty_path(self):
-
-        bad_filename = ""
-        bad_custom_task = [(bad_filename, self.custom_string)]
-
-        txml = cloudscheduler.nimbus_xml.ws_optional_factory(bad_custom_task)
-
-        self.assertEqual(None, txml)
-
-class NimbusClusterTests(unittest.TestCase):
-
-    def test_extract_hostname(self):
-        from cloudscheduler.cluster_tools import NimbusCluster
-        nimbus_string = """
-Workspace Factory Service:
-    https://calliopex.phys.uvic.ca:8443/wsrf/services/WorkspaceFactoryService
-
-Read metadata file: "/tmp/nimbus.1276022787.xml"
-Read deployment request file: "/tmp/nimbus.deployment.1276022787.xml"
-Duration argument provided: overriding duration found in deployment request file, it is now: 100 minutes
-
-Creating workspace "http://calliopex.phys.uvic.ca/sl54base_i386.img.gz"... done.
-
-
-
-Workspace created: id 2
-eth0
-      Association: private
-       IP address: 192.168.107.1
-         Hostname: musecloud-01
-          Gateway: 192.168.1.217
-
-       Start time: Tue Jun 08 11:46:29 PDT 2010
-         Duration: 100 minutes.
-    Shutdown time: Tue Jun 08 13:26:29 PDT 2010
- Termination time: Tue Jun 08 13:36:29 PDT 2010
-
-Wrote EPR to "./nimbus.1276022787.epr"
-
-
-Waiting for updates.
-
-"http://calliopex.phys.uvic.ca/sl54base_i386.img.gz" state change: Unstaged --> Unpropagated
-"""
-        extracted_host = NimbusCluster._extract_hostname(nimbus_string)
-        self.assertEqual("musecloud-01", extracted_host)
-
-        bad_host = NimbusCluster._extract_hostname("")
-        self.assertEqual("", bad_host)
-
-    def test_extract_state(self):
-        from cloudscheduler.cluster_tools import NimbusCluster
-        nimbus_string_non_existant = """
-Problem: This workspace is unknown to the service (likely because it was terminated).
-"""
-        nimbus_string_good = """
-
-NIC: eth0
-  - Association: private
-  - IP: 192.168.107.1
-  - Hostname: musecloud01
-  - Gateway: 192.168.1.217
-
-Schedule:
-  -        Start time: Mon Jul 19 11:51:36 PDT 2010
-  -          Duration: 100 minutes.
-  -     Shutdown time: Mon Jul 19 13:31:36 PDT 2010
-  -  Termination time: Mon Jul 19 13:41:36 PDT 2010
-
-State: Unpropagated
-"""
-        nimbus_no_proxy = """
-
-Problem: Problem querying resource properties: ; nested exception is: 
-    GSSException: Defective credential detected [Caused by: Proxy file (/tmp/x509up_u501) not found.]
-"""
-
-        nimbus_expired_proxy = """
-
-Problem: Problem querying resource properties: ; nested exception is: 
-    GSSException: Expired credentials detected
-"""
-
-        extracted_state = NimbusCluster._extract_state(nimbus_string_good)
-        self.assertEqual("Starting", extracted_state)
-
-        destroyed = NimbusCluster._extract_state(nimbus_string_non_existant)
-        self.assertEqual("Destroyed", destroyed)
-
-        no_proxy = NimbusCluster._extract_state(nimbus_no_proxy)
-        self.assertEqual("NoProxy", no_proxy)
-
-        expired_proxy = NimbusCluster._extract_state(nimbus_expired_proxy)
-        self.assertEqual("ExpiredProxy", expired_proxy)
 
 class ResourcePoolTests(unittest.TestCase):
 
@@ -1472,7 +1348,6 @@ class JobPoolTests(unittest.TestCase):
         -- Submitter: canfarpool.phys.uvic.ca : <142.104.63.28:8080> : canfarpool.phys.uvic.ca
         Out = "cal036017b.machoprocess.out"
         VMMem = "2048"
-        VMCPUArch = "x86"
         LastJobStatus = 0
         VMLoc = "http://vmrepo.phys.uvic.ca/vms/canfarbase_i386_seb.img.gz"
         BufferBlockSize = 32768
@@ -1560,7 +1435,6 @@ class JobPoolTests(unittest.TestCase):
 
         Out = "cal036017r.machoprocess.out"
         VMMem = "2048"
-        VMCPUArch = "x86"
         LastJobStatus = 0
         VMLoc = "http://vmrepo.phys.uvic.ca/vms/canfarbase_i386_seb.img.gz"
         BufferBlockSize = 32768
@@ -2257,7 +2131,6 @@ xmlns:condor="urn:condor">
         self.assertEqual(parsed_job.proc_id, test_job.proc_id)
         self.assertEqual(parsed_job.req_vmtype, test_job.req_vmtype)
         self.assertEqual(parsed_job.req_network, test_job.req_network)
-        self.assertEqual(parsed_job.req_cpuarch, test_job.req_cpuarch)
         self.assertEqual(parsed_job.req_image, test_job.req_image)
         self.assertEqual(parsed_job.req_imageloc, test_job.req_imageloc)
         self.assertEqual(parsed_job.req_memory, test_job.req_memory)

@@ -5,7 +5,6 @@ import uuid
 import string
 import shutil
 import logging
-import nimbus_xml
 import subprocess
 import cluster_tools
 import cloud_init_util
@@ -26,22 +25,24 @@ class OpenStackCluster(cluster_tools.ICluster):
             "ACTIVE" : "Running",
             "SHUTOFF" : "Shutdown",
             "SUSPENDED": "Suspended",
+            "STOPPED": "Stopped",
             "PAUSED": "Paused",
             "ERROR" : "Error",
+            "VERIFY_RESIZE": "Error",
     }
     def __init__(self, name="Dummy Cluster", cloud_type="Dummy",
                  memory=[], max_vm_mem= -1, networks=[], vm_slots=0,
                  cpu_cores=0, storage=0, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
-                 hypervisor='xen', key_name=None, boot_timeout=None, secure_connection="",
-                 regions=[], vm_domain_name="", reverse_dns_lookup=False,placement_zone=None, 
+                 key_name=None, boot_timeout=None, secure_connection="",
+                 regions="", reverse_dns_lookup=False,placement_zone=None,
                  enabled=True, priority=0, cacert=None,keep_alive=0,):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=auth_url, cloud_type=cloud_type,
                          memory=memory, max_vm_mem=max_vm_mem, networks=networks,
                          vm_slots=vm_slots, cpu_cores=cpu_cores,
-                         storage=storage, hypervisor=hypervisor, boot_timeout=boot_timeout, enabled=enabled,
+                         storage=storage, boot_timeout=boot_timeout, enabled=enabled,
                          priority=priority, keep_alive=keep_alive,)
         try:
             import novaclient.v2.client as nvclient
@@ -61,7 +62,6 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.secure_connection = secure_connection in ['True', 'true', 'TRUE']
         self.total_cpu_cores = -1
         self.regions = regions
-        self.vm_domain_name = vm_domain_name if vm_domain_name != None else ""
         self.reverse_dns_lookup = reverse_dns_lookup in ['True', 'true', 'TRUE']
         self.placement_zone = placement_zone
         self.flavor_set = set()
@@ -107,10 +107,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         else:
             key_name = self.key_name if self.key_name else ""
         if customization:
-            if not use_cloud_init:
-                user_data = nimbus_xml.ws_optional(customization)
-            else:
-                user_data = cloud_init_util.build_write_files_cloud_init(customization)
+            user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
             user_data = ""
         if pre_customization:
@@ -124,7 +121,11 @@ class OpenStackCluster(cluster_tools.ICluster):
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
-
+            if not user_data:
+                log.error("Problem building cloud-config user data.")
+                return self.ERROR
+        #with open('/tmp/userdata.yaml', 'w') as f:
+            #f.write(user_data)
         # Compress the user data to try and get under the limit
         user_data = utilities.gzip_userdata(user_data)
         
@@ -231,7 +232,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                     vm_keepalive = self.keep_alive
 
                 new_vm = cluster_tools.VM(name = vm_name, id = instance_id, vmtype = vm_type, user = vm_user,
-                            clusteraddr = self.network_address, hostname = ''.join([name, self.vm_domain_name]),
+                            clusteraddr = self.network_address, hostname = name,
                             cloudtype = self.cloud_type, network = vm_networkassoc,
                             image= vm_image, flavor=flavor.name,
                             memory = vm_mem, cpucores = vm_cores, storage = vm_storage, 
@@ -242,7 +243,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                     log.info("Launching 1 VM: %s on %s under tenant: %s" % (instance_id, self.name, self.tenant_name))
                 except:
                     log.error("Unexpected Error checking out resources when creating a VM. Programming error?")
-                    self.vm_destroy(new_vm, reason="Failed Resource checkout")
+                    self.vm_destroy(new_vm, reason="Failed Resource checkout", return_resources=False)
                     return self.ERROR
         
                 self.vms.append(new_vm)
