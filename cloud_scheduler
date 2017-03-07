@@ -1371,9 +1371,7 @@ class Cleanup(threading.Thread):
                         else:
                             numstore = int(cloud.storageGB / job.req_storage)
                         num_fit_cloud = numstore if numstore < num_fit_cloud and numstore != -1 else num_fit_cloud
-                        nummem = 0
-                        for mement in cloud.memory:
-                            nummem += (mement / job.req_memory)
+                        nummem = (cloud.memory / job.req_memory)
                         numcpu = 0
                         if cloud.total_cpu_cores and cloud.total_cpu_cores == -1:
                             numcpu = -1
