@@ -900,6 +900,14 @@ class ResourcePool:
                 matches.append(machine)
         return matches
 
+    def find_in_where_fuzzy_hosts(self, machineList, criteria):
+        """Use the utilities hostname matching"""
+        matches = []
+        for machine in machineList:
+            if utilities.match_host_with_condor_host(criteria['machine_name'], machine['machine_name']):
+                matches.append(machine)
+        return matches
+
     #Creating a usertype version of this function was skipped
     #def get_vmtypes_count_internal(self):
         #"""Get a dictionary of types of VMs the scheduler is currently tracking."""
