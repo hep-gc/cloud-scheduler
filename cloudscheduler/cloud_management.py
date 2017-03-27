@@ -904,7 +904,7 @@ class ResourcePool:
         """Use the utilities hostname matching"""
         matches = []
         for machine in machineList:
-            if utilities.match_host_with_condor_host(criteria['machine_name'], machine['machine_name']):
+            if utilities.match_host_with_condor_host(criteria['machine_name'], machine.machine_name):
                 matches.append(machine)
         return matches
 
