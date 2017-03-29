@@ -2177,9 +2177,11 @@ class ResourcePool:
                                 cluster_copy.vms.append(vm)
                             vm.return_resources = False
                             self.force_retire_vm(vm)
+                        cluster.max_slots = number
                     else:
                         # we have free space in vm_slots
                         cluster.vm_slots -= num_remove
+                        cluster.max_slots -= num_remove
                         log.info("Reducing quota on %s to %s using spare slots " % (cluster.name,number))
                         pass
                 else:
