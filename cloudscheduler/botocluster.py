@@ -229,6 +229,9 @@ class BotoCluster(cluster_tools.ICluster):
             client = self._get_connection()
             #Uncomment for debugging boto calls
             #boto3.set_stream_logger('botocore')
+            #boto_file_handler = logging.handlers.WatchedFileHandler('/tmp/csboto3.yaml', )
+            #botolog = logging.getLogger('botocore')
+            #botolog.addHandler(boto_file_handler)
             resp = client.run_instances(ImageId=vm_ami, MinCount=1, MaxCount=1, InstanceType=instance_type, UserData=user_data, KeyName=key_name, SecurityGroups=sec_group)
             # will need to figure out how PlacementGroups will work still will probably just be Placement={"AvailabilityZone':placement_zone}
         except Exception as e:

@@ -900,6 +900,14 @@ class ResourcePool:
                 matches.append(machine)
         return matches
 
+    def find_in_where_fuzzy_hosts(self, machineList, criteria):
+        """Use the utilities hostname matching"""
+        matches = []
+        for machine in machineList:
+            if utilities.match_host_with_condor_host(criteria['machine_name'], machine.machine_name):
+                matches.append(machine)
+        return matches
+
     #Creating a usertype version of this function was skipped
     #def get_vmtypes_count_internal(self):
         #"""Get a dictionary of types of VMs the scheduler is currently tracking."""
@@ -2169,9 +2177,11 @@ class ResourcePool:
                                 cluster_copy.vms.append(vm)
                             vm.return_resources = False
                             self.force_retire_vm(vm)
+                        cluster.max_slots = number
                     else:
                         # we have free space in vm_slots
                         cluster.vm_slots -= num_remove
+                        cluster.max_slots -= num_remove
                         log.info("Reducing quota on %s to %s using spare slots " % (cluster.name,number))
                         pass
                 else:

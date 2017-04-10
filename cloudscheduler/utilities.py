@@ -256,16 +256,17 @@ def match_host_with_condor_host_master(hostname, condor_hostname):
         socket.inet_aton(condor_hostname)
         return False
     except:
-        # If it's a hostname, let's try to match the first bit of the
-        # name, otherwise, it'll never match
-        condor_hostname_parts = condor_hostname.split(".")
-        condor_hostname = condor_hostname_parts[0]
+        pass
+    # If it's a hostname, let's try to match the first bit of the
+    # name, otherwise, it'll never match
+    condor_hostname_parts = condor_hostname.split(".")
+    condor_hostname = condor_hostname_parts[0]
 
-        hostname_parts = hostname.split(".")
-        hostname = hostname_parts[0]
+    hostname_parts = hostname.split(".")
+    hostname = hostname_parts[0]
 
-        if hostname == condor_hostname:
-            return True
+    if hostname == condor_hostname:
+        return True
 
     return False
 

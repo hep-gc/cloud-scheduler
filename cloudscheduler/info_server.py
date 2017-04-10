@@ -124,7 +124,7 @@ class views:
                     return self.view_cluster(cluster_name)
             else:
                 if json:
-                    return '\n'.join([ResourcePoolJSONEncoder().encode(web.cloud_resources), ResourcePoolJSONEncoder().encode(web.cloud_resources.retired_resources)])
+                    return ResourcePoolJSONEncoder().encode(web.cloud_resources)
                 else:
                     return self.view_resources()
 
