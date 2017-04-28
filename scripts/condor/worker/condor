@@ -523,6 +523,7 @@ start() {
             setup_ccb_gce
         else
             setup_on_ec2
+            setup_ccb_ec2
         fi
     fi
 	set_central_manager $CENTRAL_MANAGER
