@@ -478,6 +478,14 @@ setup_on_azure() {
     replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
 }
 
+setup_on_openneb() {
+    local_file=`get_condor_config_val LOCAL_CONFIG_FILE`
+    #tcp_forwarding_host=
+    #replace_or_append "TCP_FORWARDING_HOST" "TCP_FORWARDING_HOST=$tcp_forwarding_host" $local_file
+    private_network_interface=`/sbin/ifconfig eth0 | grep "inet addr" | awk '{print $2}' | sed s/addr://`
+    replace_or_append "PRIVATE_NETWORK_INTERFACE" "PRIVATE_NETWORK_INTERFACE=$private_network_interface" $local_file
+}
+
 # Make sure the permissions on the grid hostkey
 # are restrictive enough, else GSI will fail.
 set_hostkey_permissions () {
@@ -521,6 +529,9 @@ start() {
         elif [ "$cloud_type" = "gce" ]; then
             setup_on_gce
             setup_ccb_gce
+        elif [ "$cloud_type" = "OpenNebula" ]; then
+            setup_ccb_azure
+            setup_on_openneb
         else
             setup_on_ec2
             setup_ccb_ec2
