@@ -380,6 +380,8 @@ class ResourcePool:
                     priority = priority,
                     cacert = get_or_none(cconfig, cluster, "cacert"),
                     keep_alive=keep_alive,
+                    user_domain_name=get_or_none(cconfig, cluster, "user_domain_name"),
+                    project_domain_name=get_or_none(cconfig, cluster, "project_domain_name")
                     )
         elif cloud_type.lower() == "azure" and cloudconfig.verify_cloud_conf_azure(cconfig, cluster):
             return azurecluster.AzureCluster(name = cluster.lower(),
