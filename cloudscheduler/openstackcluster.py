@@ -36,7 +36,8 @@ class OpenStackCluster(cluster_tools.ICluster):
                  username=None, password=None, tenant_name=None, auth_url=None,
                  key_name=None, boot_timeout=None, secure_connection="",
                  regions="", reverse_dns_lookup=False,placement_zone=None,
-                 enabled=True, priority=0, cacert=None,keep_alive=0,):
+                 enabled=True, priority=0, cacert=None,keep_alive=0, user_domain_name=None,
+                 project_domain_name=None):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=auth_url, cloud_type=cloud_type,
@@ -66,7 +67,19 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.placement_zone = placement_zone
         self.flavor_set = set()
         self.cacert = cacert
-        self.session = self._get_keystone_session()
+        self.user_domain_name = user_domain_name if user_domain_name is not None else "Default"
+        self.project_domain_name = project_domain_name if project_domain_name is not None else "Default"
+        try:
+            authsplit = self.auth_url.split('/')
+            version = int(float(authsplit[-1][1:])) if len(authsplit[-1]) > 0 else int(float(authsplit[-2][1:]))
+            if version == 2:
+                self.session = self._get_keystone_session()
+            elif version == 3:
+                self.session = self._get_keystone_session_v3()
+        except:
+            log.error("Error determining keystone version from auth url.")
+            return None
+
     
     def __getstate__(self):
         """Override to work with pickle module."""
@@ -89,7 +102,7 @@ class OpenStackCluster(cluster_tools.ICluster):
 
         import novaclient.exceptions
         use_cloud_init = use_cloud_init or config.use_cloud_init
-        nova = self._get_creds_nova()
+        nova = self._get_creds_nova_updated()
         if len(securitygroup) != 0:
             sec_group = []
             for group in securitygroup:
@@ -124,8 +137,8 @@ class OpenStackCluster(cluster_tools.ICluster):
             if not user_data:
                 log.error("Problem building cloud-config user data.")
                 return self.ERROR
-        #with open('/tmp/userdata.yaml', 'w') as f:
-            #f.write(user_data)
+        with open('/tmp/userdata.yaml', 'w') as f:
+            f.write(user_data)
         # Compress the user data to try and get under the limit
         user_data = utilities.gzip_userdata(user_data)
         
@@ -327,21 +340,51 @@ class OpenStackCluster(cluster_tools.ICluster):
             #client = nvclient.Client(username=self.username, api_key=self.password, auth_url=self.auth_url, project_id=self.tenant_name,
             #                        region_name=self.regions[0], cacert=self.cacert)
             client = nvclient.Client(session=self.session, region_name=self.regions[0], timeout=10)
+
         except Exception as e:
             log.error("Unable to create connection to %s: Reason: %s" % (self.name, e))
+            return None
         return client
+
+    def _get_creds_nova_updated(self):
+        """Get an auth token to Nova."""
+        try:
+            from novaclient import client as nvclient
+        except Exception as e:
+                print "Unable to import novaclient - cannot use native openstack cloudtypes"
+                print e
+                sys.exit(1)
+        try:
+            client = nvclient.Client("2.0", session=self.session, region_name=self.regions[0], timeout=10)
+            return client
+        except Exception as e:
+            log.error("Unable to create connection to %s: Reason: %s" % (self.name, e))
+        return None
 
     def _get_keystone_session(self):
         try:
-            from keystoneclient.auth.identity import v2
-            from keystoneclient import session
+            from keystoneauth1.identity import v2
+            from keystoneauth1 import session
             auth = v2.Password(auth_url=self.auth_url, username=self.username, password=self.password, tenant_name=self.tenant_name)
             sess = session.Session(auth=auth, verify=self.cacert)
         except Exception as e:
             log.error("Problem importing keystone modules, and getting session: %s" % e)
         log.debug("Session object for %s created" % self.name)
         return sess
-    
+
+    def _get_keystone_session_v3(self):
+        try:
+            from keystoneauth1.identity import v3
+            from keystoneauth1 import session
+            auth = v3.Password(auth_url=self.auth_url, username=self.username, password=self.password,
+                               project_name=self.tenant_name, project_domain_name=self.project_domain_name,
+                               user_domain_name=self.user_domain_name)
+            sess = session.Session(auth=auth, verify=self.cacert)
+        except Exception as e:
+            log.error("Problem importing keystone modules, and getting session: %s" % e)
+        log.debug("Session object for %s created" % self.name)
+        return sess
+
     def _find_network(self, name):
         nova = self._get_creds_nova()
         network = None
