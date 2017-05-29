@@ -235,10 +235,7 @@ class BotoCluster(cluster_tools.ICluster):
             resp = client.run_instances(ImageId=vm_ami, MinCount=1, MaxCount=1, InstanceType=instance_type, UserData=user_data, KeyName=key_name, SecurityGroups=sec_group)
             # will need to figure out how PlacementGroups will work still will probably just be Placement={"AvailabilityZone':placement_zone}
         except Exception as e:
-            #print e
-            #print e.__dict__
-
-            log.error("Problem creating instance %s" % e)
+            log.error("Problem creating instance %s" % e.__dict__)
             return self.ERROR
 
         if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
