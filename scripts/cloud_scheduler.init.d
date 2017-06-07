@@ -6,8 +6,6 @@
 # Source LSB function library.
 if [ -r /lib/lsb/init-functions ]; then
     . /lib/lsb/init-functions
-else
-    exit 1
 fi
 
 # Get instance specific config file
