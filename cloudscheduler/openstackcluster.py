@@ -271,7 +271,7 @@ class OpenStackCluster(cluster_tools.ICluster):
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
         """ Destroy a VM on OpenStack."""
-        nova = self._get_creds_nova()
+        nova = self._get_creds_nova_updated()
         import novaclient.exceptions
         log.info("Destroying VM: %s Name: %s on %s tenant: %s Reason: %s" % (vm.id, vm.hostname, self.name, self.tenant_name, reason))
         try:
@@ -302,7 +302,7 @@ class OpenStackCluster(cluster_tools.ICluster):
     def vm_poll(self, vm):
         """ Query OpenStack for status information of VMs."""
         import novaclient.exceptions
-        nova = self._get_creds_nova()
+        nova = self._get_creds_nova_updated()
         instance = None
         try:
             instance = nova.servers.get(vm.id)
