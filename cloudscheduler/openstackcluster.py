@@ -386,7 +386,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         return sess
 
     def _find_network(self, name):
-        nova = self._get_creds_nova()
+        nova = self._get_creds_nova_updated()
         network = None
         try:
             networks = nova.networks.list()
