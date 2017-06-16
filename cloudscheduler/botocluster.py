@@ -273,20 +273,22 @@ class BotoCluster(cluster_tools.ICluster):
     def vm_poll(self, vm):
         """Query the cloud service for information regarding a VM."""
         client = self._get_connection()
-        response = client.describe_instances(InstanceIds=[vm.id])
-        if response:
-            for instance in response['Reservations'][0]['Instances']:
-                if instance['InstanceId'] == vm.id:
-                    if vm.status != instance['State']['Name']:
-                        vm.last_state_change = int(time.time())
-                    vm.status = instance['State']['Name']
-                    if not vm.hostname:
-                        vm.hostname = instance['PublicDnsName']
-                    break
-            else:
-                log.debug("Unable to find vm: %s" % vm.id)
-                return 'Error'
-
+        try:
+            response = client.describe_instances(InstanceIds=[vm.id])
+            if response:
+                for instance in response['Reservations'][0]['Instances']:
+                    if instance['InstanceId'] == vm.id:
+                        if vm.status != instance['State']['Name']:
+                            vm.last_state_change = int(time.time())
+                        vm.status = instance['State']['Name']
+                        if not vm.hostname:
+                            vm.hostname = instance['PublicDnsName']
+                        break
+                else:
+                    log.debug("Unable to find vm: %s" % vm.id)
+                    return 'Error'
+        except Exception as e:
+            log.debug("Problem Polling vm: %s" % e.__dict__)
         return vm.status
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
@@ -302,7 +304,7 @@ class BotoCluster(cluster_tools.ICluster):
         try:
             client.terminate_instances(InstanceIds=[vm.id])
         except Exception as e:
-            log.error("Problem destroying VM %s: %s" %(vm.hostname, e))
+            log.error("Problem destroying VM %s: %s" %(vm.hostname, e.__dict__))
             # will need to detect correct exception / message for no longer existing VM and clean it from CS by falling
             # through and continuing with the resource return, if other exception return error
             return self.ERROR
