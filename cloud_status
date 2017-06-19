@@ -11,7 +11,7 @@ import urllib
 import cloudscheduler.utilities as utilities 
 log = utilities.get_cloudscheduler_logger()
 
-import cloudscheduler.config as config
+import cloudscheduler.configstatus as config
 import cloudscheduler.__version__ as version
 
 

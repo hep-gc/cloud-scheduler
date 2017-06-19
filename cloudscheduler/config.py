@@ -247,8 +247,9 @@ def setup(path=None):
                   "seem to be a configuration file. " \
                   "You can specify one with the --config-file parameter, " \
                   "or put one in ~/.cloudscheduler/cloud_scheduler.conf or "\
-                  "/etc/cloudscheduler/cloud_scheduler.conf"
-            sys.exit(1)
+                  "/etc/cloudscheduler/cloud_scheduler.conf "\
+                  "Running in full default value mode."
+            return
 
     # Read config file
     config_file = ConfigParser.ConfigParser()
