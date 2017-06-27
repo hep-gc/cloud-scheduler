@@ -1500,7 +1500,7 @@ class Cleanup(threading.Thread):
         for cluster in resources:
             for vm in cluster.vms:
                 foundvm = False
-                if vm.status == 'Running' and machineList != None:
+                if vm.status.lower() == 'running' and machineList != None:
                     check_next = 0 # count for dynamic slots in VM
                     is_part_of_machine = {'machine_name': vm.hostname}
                     slots_of_machine = self.resource_pool.find_in_where_fuzzy_hosts(machineList, is_part_of_machine)
@@ -1539,7 +1539,7 @@ class Cleanup(threading.Thread):
         for cluster in self.resource_pool.resources:
             for vm in cluster.vms:
                 foundvm = False
-                if vm.status == 'Running' and masterList:
+                if vm.status.lower() == 'running' and masterList:
                     for machine in masterList:
                         if utilities.match_host_with_condor_host_master(vm.hostname, machine.machine_name) \
                         or utilities.match_host_with_condor_host_master(vm.alt_hostname, machine.machine_name):
