@@ -149,8 +149,8 @@ class OpenStackCluster(cluster_tools.ICluster):
             if not user_data:
                 log.error("Problem building cloud-config user data.")
                 return self.ERROR
-        with open('/tmp/userdata.yaml', 'w') as f:
-            f.write(user_data)
+        #with open('/tmp/userdata.yaml', 'w') as f:
+        #    f.write(user_data)
         # Compress the user data to try and get under the limit
         user_data = utilities.gzip_userdata(user_data)
         
