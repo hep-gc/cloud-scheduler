@@ -19,6 +19,7 @@ setup(name = "cloud-scheduler",
         "web.py>=0.3",
         "boto3",
         "botocore",
+        "keystoneauth1"
         ],
     description = "A cloud-enabled distributed resource manager",
     author = "Duncan Penfold-Brown, Chris Usher, Patrick Armstrong, Ian Gable, Michael Paterson, Andre Charbonneau",

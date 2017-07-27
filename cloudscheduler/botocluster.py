@@ -304,14 +304,17 @@ class BotoCluster(cluster_tools.ICluster):
         try:
             response = client.terminate_instances(InstanceIds=[vm.id])
             if 'TerminatingInstances' in response.keys():
-                if response['TerminatingInstances'][0]['InstanceId'] == vm['id'] and response['TerminatingInstances'][0]['CurrentState']['Name'] == 'shutting-down'\
+                if response['TerminatingInstances'][0]['InstanceId'] == vm.id and response['TerminatingInstances'][0]['CurrentState']['Name'] == 'shutting-down'\
                         or response['TerminatingInstances'][0]['CurrentState']['Name'] == 'terminated':
                     return_resources = return_resources and True
                 else:
                     log.debug("State problem trying to terminate: %s" % response)
                     return self.ERROR
         except Exception as e:
+            log.error("Problem destroying VM %s: %s" % (vm.hostname, e))
             log.error("Problem destroying VM %s: %s" %(vm.hostname, e.__dict__))
+            if response:
+                log.error(response)
             # will need to detect correct exception / message for no longer existing VM and clean it from CS by falling
             # through and continuing with the resource return, if other exception return error
             return self.ERROR

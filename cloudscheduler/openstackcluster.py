@@ -69,6 +69,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.cacert = cacert
         self.user_domain_name = user_domain_name if user_domain_name is not None else "Default"
         self.project_domain_name = project_domain_name if project_domain_name is not None else "Default"
+        self.session = None
         try:
             authsplit = self.auth_url.split('/')
             version = int(float(authsplit[-1][1:])) if len(authsplit[-1]) > 0 else int(float(authsplit[-2][1:]))
@@ -84,15 +85,26 @@ class OpenStackCluster(cluster_tools.ICluster):
     def __getstate__(self):
         """Override to work with pickle module."""
         state = cluster_tools.ICluster.__getstate__(self)
-        del state['flavor_set']
-        del state['session']
+        try:
+            del state['flavor_set']
+            del state['session']
+        except:
+            log.error("no session to remove")
         return state
 
     def __setstate__(self, state):
         """Override to work with pickle module."""
         cluster_tools.ICluster.__setstate__(self, state)
         self.flavor_set = set()
-        self.session = self._get_keystone_session()
+        try:
+            authsplit = self.auth_url.split('/')
+            version = int(float(authsplit[-1][1:])) if len(authsplit[-1]) > 0 else int(float(authsplit[-2][1:]))
+            if version == 2:
+                self.session = self._get_keystone_session()
+            elif version == 3:
+                self.session = self._get_keystone_session_v3()
+        except:
+            log.error("Error determining keystone version from auth url")
     
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
