@@ -243,12 +243,12 @@ def setup(path=None):
         elif os.path.exists("/usr/local/share/cloud-scheduler/cloud_scheduler.conf"):
             path = "/usr/local/share/cloud-scheduler/cloud_scheduler.conf"
         else:
-            print >> sys.stderr, "Configuration file problem: There doesn't " \
-                  "seem to be a configuration file. " \
-                  "You can specify one with the --config-file parameter, " \
-                  "or put one in ~/.cloudscheduler/cloud_scheduler.conf or "\
-                  "/etc/cloudscheduler/cloud_scheduler.conf "\
-                  "Running in full default value mode."
+            #print >> sys.stderr, "Configuration file problem: There doesn't " \
+            #      "seem to be a configuration file. " \
+            #      "You can specify one with the --config-file parameter, " \
+            #      "or put one in ~/.cloudscheduler/cloud_scheduler.conf or "\
+            #      "/etc/cloudscheduler/cloud_scheduler.conf "\
+            #      "Running in full default value mode."
             return
 
     # Read config file
