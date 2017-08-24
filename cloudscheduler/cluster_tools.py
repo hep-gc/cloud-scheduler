@@ -392,7 +392,10 @@ class ICluster:
 
     def slot_fill_ratio(self):
         """Return a ratio of how 'full' the cluster is based on used slots / total slots."""
-        return (self.max_slots - self.vm_slots) / float(self.max_slots)
+        if self.max_slots != 0:
+            return (self.max_slots - self.vm_slots) / float(self.max_slots)
+        else:
+            return 1
 
     def get_cluster_info_short(self):
         """Return a short form of cluster information."""
