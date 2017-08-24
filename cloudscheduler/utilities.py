@@ -334,15 +334,6 @@ def check_popen_timeout(process, timeout=180):
                     raise
     return ret
 
-def gzip_userdata(user_data):
-    # Compress the user data to try and get under the limit
-    udbuf = StringIO()
-    udf = gzip.GzipFile(mode='wb', fileobj=udbuf)
-    try:
-        udf.write(user_data)
-    finally:
-        udf.close()
-    return udbuf.getvalue()
 
 def gzip_userdata(user_data):
     # Compress the user data to try and get under the limit
