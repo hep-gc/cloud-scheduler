@@ -222,6 +222,9 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.flavor_set.add(flavor)
         # find the network id to use if more than one network
         if vm_networkassoc:
+
+            ### TODO - Check version of novaclient to see if need to use neutron
+
             network = self._find_network(vm_networkassoc)
             if network:
                 netid = [{'net-id': network.id}]
@@ -396,6 +399,22 @@ class OpenStackCluster(cluster_tools.ICluster):
             log.error("Problem importing keystone modules, and getting session: %s" % e)
         log.debug("Session object for %s created" % self.name)
         return sess
+
+    def _find_network_neutron(self, name):
+        try:
+            from neutronclient.v2_0 import client as neuclient
+        except:
+            log.error("Unable to import neutronclient")
+            return None
+        neutron = neuclient.Client(session=self.session)
+        network = None
+        try:
+            networks = neutron.list_networks()
+            for net in networks:
+                if net.label == name:
+                    network = net
+        except Exception as e:
+            log.error("Unable to list networks via neutron on %s: %s" % (self.name, e))
 
     def _find_network(self, name):
         nova = self._get_creds_nova_updated()
