@@ -41,7 +41,7 @@ def main(argv=None):
                       dest="proxy_refresh", type="choice", choices=['vm','job'], help="Refresh Proxies for user")
     parser.add_option("-u", "--user", dest="user", action="store", metavar="USER", help="User to perform operation on")
     parser.add_option("-r", "--reconfig", dest="reconfig", action="store_true", default=False, help="Reload cloud_resources.conf")
-    parser.add_option("-l", "--log-level", dest="log_level", action="store", type="choice", choices=['VERBOSE', 'DEBUG', 'WARNING', 'ERROR', 'INFO', 'CRITICAL'], help="Change the logging level")
+    parser.add_option("-l", "--log-level", dest="log_level", action="store", type="choice", choices=['VERBOSE', 'DEBUG', 'WARNING', 'ERROR', 'INFO', 'CRITICAL', 'verbose', 'debug', 'warning', 'error', 'info', 'critical', 'Verbose', 'Debug', 'Warning', 'Error', 'Info', 'Critical'], help="Change the logging level")
     parser.add_option("-e", "--enable", dest="enable", action="store", metavar="NAME", help="Enable cloud NAME")
     parser.add_option("-d", "--disable", dest="disable", action="store", metavar="NAME", help="Disable cloud NAME")
     parser.add_option("-m", "--remove", dest="remove", action="store_true", help="Remove a VM from Cloudscheduler management, leave VM running. Requires -c name, and -n id or -a all.")

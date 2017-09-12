@@ -5,6 +5,7 @@
 
 import logging
 import threading
+import string
 import socket
 import sys
 import web
@@ -80,7 +81,7 @@ class views:
     class config:
         def PUT(self):
             if 'log_level' in web.input():
-                log.setLevel(utilities.LEVELS[web.input().log_level])
+                log.setLevel(utilities.LEVELS[string.upper(web.input().log_level)])
                 return ''
 
             raise web.notfound()
