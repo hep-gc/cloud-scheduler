@@ -392,32 +392,13 @@ class OpenStackCluster(cluster_tools.ICluster):
         log.debug("Session object for %s created" % self.name)
         return sess
 
-    def _find_network_neutron(self, name):
-        try:
-            from neutronclient.v2_0 import client as neuclient
-        except:
-            log.error("Unable to import neutronclient")
-            return None
-        neutron = neuclient.Client(session=self.session)
-        network = None
-        try:
-            networks = neutron.list_networks()
-            for net in networks:
-                if net.label == name:
-                    network = net
-        except Exception as e:
-            log.error("Unable to list networks via neutron on %s: %s" % (self.name, e))
 
     def _find_network(self, name):
         nova = self._get_creds_nova_updated()
         network = None
         try:
-            networks = nova.networks.list()
-            #networks = nova.neutron.list_networks()
-            for net in networks:
-                if net.label == name:
-                    network = net
+            networks = nova.neutron.find_network(name)
         except Exception as e:
-            log.error("Unable to list networks on %s Exception: %s" % (self.name, e))
+            log.error("Unable to find network %s on %s Exception: %s" % (name, self.name, e))
         return network
 
