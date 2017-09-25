@@ -175,22 +175,14 @@ class OpenStackCluster(cluster_tools.ICluster):
                     log.exception("Can't find a suitable AMI")
                     return
         try:
-            imageobj = nova.images.find(name=image)
+            imageobj = nova.glance.find_image(image)
         except novaclient.exceptions.EndpointNotFound:
             log.error("Endpoint not found, are your region settings correct for %s" % self.name)
             return -4
         except Exception as e:
-            log.warning("Exception occurred while trying to fetch image via name: %s %s" % (image, e))
-            try:
-                imageobj = nova.images.get(image)
-                log.debug("Got image via uuid: %s" % image)
-            except novaclient.exceptions.EndpointNotFound:
-                log.error("Endpoint not found, are your region settings correct for %s" % self.name)
-                return -4
-            except Exception as e:
-                log.exception("Unable to fetch image via uuid: %s %s" % (image, e))
-                self.failed_image_set.add(image)
-                return
+            log.warning("Exception occurred while trying to fetch image: %s %s" % (image, e))
+            self.failed_image_set.add(image)
+            return
 
         try:
             if self.name in instance_type.keys():
@@ -222,6 +214,9 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.flavor_set.add(flavor)
         # find the network id to use if more than one network
         if vm_networkassoc:
+
+            ### TODO - Check version of novaclient to see if need to use neutron
+
             network = self._find_network(vm_networkassoc)
             if network:
                 netid = [{'net-id': network.id}]
@@ -397,15 +392,13 @@ class OpenStackCluster(cluster_tools.ICluster):
         log.debug("Session object for %s created" % self.name)
         return sess
 
+
     def _find_network(self, name):
         nova = self._get_creds_nova_updated()
         network = None
         try:
-            networks = nova.networks.list()
-            for net in networks:
-                if net.label == name:
-                    network = net
+            networks = nova.neutron.find_network(name)
         except Exception as e:
-            log.error("Unable to list networks on %s Exception: %s" % (self.name, e))
+            log.error("Unable to find network %s on %s Exception: %s" % (name, self.name, e))
         return network
 
