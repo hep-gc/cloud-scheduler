@@ -20,6 +20,7 @@ setup(name = "cloud-scheduler",
         "boto3",
         "botocore",
         "keystoneauth1"
+        "python-novaclient>=9.0.0",
         ],
     description = "A cloud-enabled distributed resource manager",
     author = "Duncan Penfold-Brown, Chris Usher, Patrick Armstrong, Ian Gable, Michael Paterson, Andre Charbonneau",
