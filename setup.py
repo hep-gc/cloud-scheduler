@@ -19,7 +19,7 @@ setup(name = "cloud-scheduler",
         "web.py>=0.3",
         "boto3",
         "botocore",
-        "keystoneauth1"
+        "keystoneauth1",
         "python-novaclient>=9.0.0",
         ],
     description = "A cloud-enabled distributed resource manager",
