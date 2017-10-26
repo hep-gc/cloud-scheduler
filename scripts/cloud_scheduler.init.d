@@ -13,12 +13,7 @@ if [ -r "/etc/sysconfig/cloud_scheduler" ]; then
     . /etc/sysconfig/cloud_scheduler
 fi
 
-# For SELinux we need to use 'runuser' not 'su'
-if [ -x "/sbin/runuser" ]; then
-    SU="/sbin/runuser -s /bin/sh"
-else
-    SU="su - -s /bin/sh"
-fi
+SU="su - -s /bin/sh"
 
 LOGFILE=$(awk '/log_location:/ {print $2}' ${CS_CONFIG_DIR}/cloud_scheduler.conf | tail -n 1)
 PERSISTFILE=$(awk '/persistence_file:/ {print $2}' ${CS_CONFIG_DIR}/cloud_scheduler.conf | tail -n 1)
