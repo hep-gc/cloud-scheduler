@@ -324,6 +324,8 @@ class BotoCluster(cluster_tools.ICluster):
         with self.vms_lock:
             try:
                 self.vms.remove(vm)
+                if config.monitor_url:
+                    self._report_monitor(vm)
             except Exception as e:
                 log.error("Unable to remove VM %s on %s: %s" % (vm.id, self.name, e))
 

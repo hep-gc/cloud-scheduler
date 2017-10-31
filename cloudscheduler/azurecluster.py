@@ -284,6 +284,8 @@ class AzureCluster(cluster_tools.ICluster):
             with self.vms_lock:
                 self.vms.remove(vm)
                 log.info("VM %s removed from %s list" % (vm.id, self.name))
+            if config.monitor_url:
+                self._report_monitor(vm)
         except Exception as e:
             log.error("Error removing vm from list: %s" % e)
             return 1

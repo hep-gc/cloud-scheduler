@@ -21,6 +21,7 @@ import string
 import shutil
 import logging
 import datetime
+import requests
 import tempfile
 import subprocess
 import threading
@@ -509,3 +510,11 @@ class ICluster:
         if collision:
             name = None
         return name
+
+    def _report_monitor(self, vm):
+        r = requests.get(config.monitor_url, params={'cs_vm_fqdn':vm.hostname, 'boot_time':vm.initialize_time})
+        if r.status_code == requests.codes.ok:
+            log.debug("Sent update to report monitor: %s: hostname: %s" % (config.monitor_url, vm.hostname))
+        else:
+            log.debug("problem sending update to report monitor at: %s: code: %s" % (config.monitor_url, r.status_code))
+

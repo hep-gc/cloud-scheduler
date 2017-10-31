@@ -301,6 +301,8 @@ class OpenStackCluster(cluster_tools.ICluster):
                 self.resource_return(vm)
             with self.vms_lock:
                 self.vms.remove(vm)
+            if config.monitor_url:
+                self._report_monitor(vm)
         except Exception as e:
             log.error("Error removing vm from list: %s" % e)
             return 1
