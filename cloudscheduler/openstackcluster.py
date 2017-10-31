@@ -222,14 +222,20 @@ class OpenStackCluster(cluster_tools.ICluster):
                 netid = [{'net-id': network.id}]
             else:
                 log.debug("Unable to find network named: %s on %s" % (vm_networkassoc, self.name))
-                netid = []
+                if len(vm_networkassoc.split('-')) == 5: #uuid
+                    netid = [{'net-id': vm_networkassoc}]
+                else:
+                    netid = []
         elif self.network_pools and len(self.network_pools) > 0:
             network = self._find_network(self.network_pools[0])
             if network:
                 netid = [{'net-id': network.id}]
             else:
                 log.debug("Unable to find network named: %s on %s" % (self.network_pools[0], self.name))
-                netid = []
+                if len(self.network_pools[0].split('-')) == 5: #uuid
+                    netid = [{'net-id': self.network_pools[0]}]
+                else:
+                    netid = []
         else:
             netid = []
         # Need to get the rotating hostname from the google code to use for here.  
