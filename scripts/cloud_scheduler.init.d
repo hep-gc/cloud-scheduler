@@ -13,7 +13,7 @@ if [ -r "/etc/sysconfig/cloud_scheduler" ]; then
     . /etc/sysconfig/cloud_scheduler
 fi
 
-SU="su - -s /bin/sh"
+SU="su - ${CS_USER} -s /bin/sh"
 
 LOGFILE=$(awk '/log_location:/ {print $2}' ${CS_CONFIG_DIR}/cloud_scheduler.conf | tail -n 1)
 PERSISTFILE=$(awk '/persistence_file:/ {print $2}' ${CS_CONFIG_DIR}/cloud_scheduler.conf | tail -n 1)
@@ -38,7 +38,7 @@ start () {
     echo -n $"Starting ${SERVICE}:"
     touch  ${CRASHLOG} ${LOGFILE} ${PIDFILE} ${PERSISTFILE}
     chown ${CS_USER}:${CS_USER} ${CRASHLOG} ${LOGFILE} ${PIDFILE} ${PERSISTFILE}
-    ${SU} - ${CS_USER} -c "nohup ${CS_EXEC}" </dev/null >>${CRASHLOG} 2>&1 &
+    ${SU} -c "nohup ${CS_EXEC}" </dev/null >>${CRASHLOG} 2>&1 &
     echo $! > ${PIDFILE}
     RETVAL=$?
     touch /var/lock/subsys/${SERVICE}
