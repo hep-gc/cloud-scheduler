@@ -1123,7 +1123,7 @@ class ResourcePool:
         with self.setup_lock:
             try:
                 persistence_file = open(config.persistence_file, "wb")
-                pickle.dump(self.resources, persistence_file)
+                pickle.dump([self.resources,self.retired_resources], persistence_file)
                 persistence_file.close()
             except IOError, e:
     
@@ -1150,7 +1150,9 @@ class ResourcePool:
             return
 
         try:
-            old_resources = pickle.load(persistence_file)
+            all_resources = pickle.load(persistence_file)
+            old_resources = all_resources[0]
+            old_retired_resources = all_resources[1]
         except:
             log.exception("Unknown problem unpickling persistence file!")
             try:
@@ -1162,10 +1164,12 @@ class ResourcePool:
                 log.error("Problem trying to create backup pickle: %s" % e)
             return
         persistence_file.close()
-        
+
+        self.retired_resources = old_retired_resources
+
         empty_vm = cluster_tools.VM()
         empty_vm_key_set = set(empty_vm.__dict__)
-        
+
         for old_cluster in old_resources:
             old_cluster.setup_logging()
             new_cluster = self.get_cluster(old_cluster.name)
