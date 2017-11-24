@@ -405,7 +405,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         nova = self._get_creds_nova_updated()
         network = None
         try:
-            networks = nova.neutron.find_network(name)
+            network = nova.neutron.find_network(name)
         except Exception as e:
             log.error("Unable to find network %s on %s Exception: %s" % (name, self.name, e))
         return network
