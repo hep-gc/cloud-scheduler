@@ -290,6 +290,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                     self.resource_return(vm)
                 with self.vms_lock:
                     self.vms.remove(vm)
+                if config.monitor_url:
+                    self._report_monitor(vm)
                 return 0
             else:
                 log.debug("Error Destroying GCE VM: %s" % (vm.name))

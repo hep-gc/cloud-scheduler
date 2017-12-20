@@ -116,6 +116,7 @@ log_syslog = False
 log_max_size = None
 log_format = "%(asctime)s - %(levelname)s - %(threadName)s - %(message)s"
 
+monitor_url = None
 use_pyopenssl = False
 
 
@@ -230,6 +231,7 @@ def setup(path=None):
     global log_max_size
     global log_format
 
+    global monitor_url
     global use_pyopenssl
 
     homedir = os.path.expanduser('~')
@@ -875,3 +877,7 @@ def setup(path=None):
 
     if config_file.has_option("global", "use_pyopenssl"):
         use_pyopenssl = config_file.getboolean("global", "use_pyopenssl")
+
+    if config_file.has_option("global", "monitor_url"):
+        monitor_url = config_file.get("global", "monitor_url")
+

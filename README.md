@@ -1,4 +1,4 @@
-# Cloud Scheduler 1.13.1 README
+# Cloud Scheduler 1.13.2 README
 
 ## Introduction
 Cloud Scheduler: Automatically boot VMs for your HTC jobs
@@ -15,8 +15,9 @@ For more documentation on Cloud Scheduler, please refer to:
 ## Prerequisites
 
 * A working Condor 7.5.x or later install (details below)
-* [Python 2.6+](http://www.python.org/)
-* [boto](http://code.google.com/p/boto/) for using EC2 API clouds (Amazon, OpenStack)
+* [Python 2.7+](http://www.python.org/)
+* [boto](https://github.com/boto/boto) for using EC2 API clouds (Amazon, OpenStack)
+* [boto3](https://github.com/boto/boto3) for OpenNebula clouds
 * [web.py](http://webpy.org/) for admin and status REST servers
 * [requests](https://github.com/kennethreitz/requests) for admin and status REST clients
 * [OpenStack novaclient](https://pypi.python.org/pypi/python-novaclient/) and [OpenStack keystoneclient](https://pypi.python.org/pypi/python-keystoneclient/) for using the native OpenStack APIs
@@ -139,6 +140,9 @@ Make sure you can run condor_status and condor_q, and make sure your
 [HOST]ALLOW_WRITE will permit the VMs you will start to add themselves to your Condor
 Pool.
 
+Depending on your clouds and networking it may be required to alter the
+TCP_FORWARDING_HOST on any VMs booted to allow condor to connect, there
+are scripts that attempt to do this automatically, but they're imperfect.
 ## Preparing VM Images
 
 The VM images you would like to run jobs with need to be prepared to join your
@@ -165,7 +169,8 @@ All of its options are described inline in the example configuration file
 cloud_scheduler.conf, which is included with Cloud Scheduler. 
 
 By default, the Cloud Scheduler setup script installs its configuration files
-to /etc/cloudscheduler/, but you can manually select a different configuration
+to /usr/local/share/cloudscheduler it is suggested to copy these to 
+/etc/cloudscheduler, you can manually select a different configuration
 by running cloud_scheduler with the -f option. If you're running as a non-root
 user, Cloud Scheduler will also check for config files in ~/.cloud_scheduler/
 
@@ -175,6 +180,13 @@ Cloud Scheduler checks for config files in the following order, and will use the
     ~/.cloudscheduler/cloud_scheduler.conf
     /etc/cloudscheduler/cloud_scheduler.conf
     /usr/local/share/cloud-scheduler/cloud_scheduler.conf
+
+There are a few settings that should be modified depending on your system to get up and running:
+condor_context_file
+condor_host_on_vm
+default_yaml
+
+Descriptions of these values are in the cloud_scheduler.conf
 
 #### cloud init files
 

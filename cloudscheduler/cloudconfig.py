@@ -92,10 +92,10 @@ def verify_sections_base(conf, name):
     valid_option_names = {'access_key_id', 'auth_dat_file', 'auth_url', 'blob_url', 'boot_timeout', 'cacert',
                           'cloud_type', 'contextualization', 'cpu_archs', 'cpu_cores', 'host',
                           'image_attach_device', 'key_name', 'keycert', 'max_vm_mem', 'max_vm_storage', 'memory',
-                          'networks', 'password', 'placement_zone', 'port', 'priority', 'project_id', 'regions',
-                          'reverse_dns_lookup', 'scratch_attach_device', 'secret_access_key', 'secret_file',
+                          'networks', 'password', 'placement_zone', 'port', 'priority', 'project_id', 'project_domain_name',
+                          'regions', 'reverse_dns_lookup', 'scratch_attach_device', 'secret_access_key', 'secret_file',
                           'secure_connection', 'security_group', 'service_name', 'storage', 'temp_lease_storage',
-                          'tenant_name', 'total_cpu_cores', 'username', 'vm_keep_alive', 'vm_lifetime', 'vm_slots'}
+                          'tenant_name', 'total_cpu_cores', 'user_domain_name', 'username', 'vm_keep_alive', 'vm_lifetime', 'vm_slots'}
     options = set(conf.options(name))
     diff = options - valid_option_names
     if len(diff) > 0:

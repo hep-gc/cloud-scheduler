@@ -222,14 +222,20 @@ class OpenStackCluster(cluster_tools.ICluster):
                 netid = [{'net-id': network.id}]
             else:
                 log.debug("Unable to find network named: %s on %s" % (vm_networkassoc, self.name))
-                netid = []
+                if len(vm_networkassoc.split('-')) == 5: #uuid
+                    netid = [{'net-id': vm_networkassoc}]
+                else:
+                    netid = []
         elif self.network_pools and len(self.network_pools) > 0:
             network = self._find_network(self.network_pools[0])
             if network:
                 netid = [{'net-id': network.id}]
             else:
                 log.debug("Unable to find network named: %s on %s" % (self.network_pools[0], self.name))
-                netid = []
+                if len(self.network_pools[0].split('-')) == 5: #uuid
+                    netid = [{'net-id': self.network_pools[0]}]
+                else:
+                    netid = []
         else:
             netid = []
         # Need to get the rotating hostname from the google code to use for here.  
@@ -301,6 +307,8 @@ class OpenStackCluster(cluster_tools.ICluster):
                 self.resource_return(vm)
             with self.vms_lock:
                 self.vms.remove(vm)
+            if config.monitor_url:
+                self._report_monitor(vm)
         except Exception as e:
             log.error("Error removing vm from list: %s" % e)
             return 1
@@ -397,7 +405,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         nova = self._get_creds_nova_updated()
         network = None
         try:
-            networks = nova.neutron.find_network(name)
+            network = nova.neutron.find_network(name)
         except Exception as e:
             log.error("Unable to find network %s on %s Exception: %s" % (name, self.name, e))
         return network

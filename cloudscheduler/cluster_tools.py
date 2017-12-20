@@ -21,6 +21,7 @@ import string
 import shutil
 import logging
 import datetime
+import requests
 import tempfile
 import subprocess
 import threading
@@ -400,7 +401,7 @@ class ICluster:
     def get_cluster_info_short(self):
         """Return a short form of cluster information."""
         output = "Cluster: {0} \n".format(self.name)
-        output += "{0:25}  {1:^15}  {2:^15}  {3:^12} {4:^15} {5:^12} {6:^12}\n".format("ADDRESS", "CLOUD TYPE", "VM SLOTS", "MEMORY", "STORAGE", "PRIORITY", "ENABLED")
+        output += "{0:25}  {1:^15}  {2:^15}  {3:^12} {4:^15} {5:^12} {6:^12}\n".format("ADDRESS", "CLOUD TYPE", "VMS/MAX", "MEMORY", "STORAGE", "PRIORITY", "ENABLED")
         output += "{0:^25}  {1:^15}  {2:>5} / {3:<8}  {4:^12} {5:^15} {6:^12} {7:^12}\n".format(self.network_address[0:24], self.cloud_type, self.num_vms(), self.max_slots, self.memory, self.storageGB, self.priority, str(self.enabled))
         return output
 
@@ -509,3 +510,14 @@ class ICluster:
         if collision:
             name = None
         return name
+
+    def _report_monitor(self, vm):
+        try:
+            r = requests.get(config.monitor_url, params={'cs_vm_fqdn':vm.hostname, 'boot_time':vm.initialize_time})
+            if r.status_code == requests.codes.ok:
+                log.debug("Sent update to report monitor: %s: hostname: %s" % (config.monitor_url, vm.hostname))
+            else:
+                log.debug("problem sending update to report monitor at: %s: code: %s" % (config.monitor_url, r.status_code))
+        except Exception as e:
+            log.error("Problem trying to send monitor update: %s" % e)
+
