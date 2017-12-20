@@ -13,12 +13,8 @@ if [ -r "/etc/sysconfig/cloud_scheduler" ]; then
     . /etc/sysconfig/cloud_scheduler
 fi
 
-<<<<<<< HEAD
-SU="su - -s /bin/sh"
-=======
 SU="su - ${CS_USER} -s /bin/sh"
 
->>>>>>> dev
 LOGFILE=$(awk '/log_location:/ {print $2}' ${CS_CONFIG_DIR}/cloud_scheduler.conf | tail -n 1)
 PERSISTFILE=$(awk '/persistence_file:/ {print $2}' ${CS_CONFIG_DIR}/cloud_scheduler.conf | tail -n 1)
 
