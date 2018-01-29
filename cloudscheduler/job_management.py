@@ -1114,7 +1114,7 @@ class JobPool:
             if job.job_status == self.RUNNING:
                 if int(job.jobstarttime) > 0:
                     if job.running_vm != None:
-                        job.running_vm.job_run_times.append(int(job.servertime) - int(job.jobstarttime))
+                        job.running_vm.job_run_times.data.append(int(job.servertime) - int(job.jobstarttime))
 
     def fetch_job_failure_reasons(self):
         reasons = []
