@@ -6,7 +6,6 @@ Created on Jun 23, 2014
 import os
 import logging
 import urllib2
-import cloudscheduler.config as config
 
 log = logging.getLogger("cloudscheduler")
 
@@ -20,7 +19,7 @@ def inject_customizations(pre_init, cloud_init):
     splitscript = []
     for initscript in pre_init:
         splitscript = initscript.split('\n')
-        
+
         for i, line in enumerate(splitscript): # need to iterate with index counts as well
             if line == '#cloud-config':
                 found_cloud_init = True
@@ -40,7 +39,7 @@ def inject_customizations(pre_init, cloud_init):
     if not found_cloud_init:
         splitscript.insert(0, '#cloud-config')
     return '\n'.join(splitscript)
-    
+
 def build_write_files_cloud_init(custom_tasks):
     """
     Argument:
@@ -58,7 +57,7 @@ def build_write_files_cloud_init(custom_tasks):
         lines = task[0].split('\n')
         for line in lines:
             formatted_task.append(''.join(['        ', line]))
-        
+
         cloud_init.append('\n'.join(formatted_task))
         cloud_init.append('    path: %s' % task[1])
         if len(task) > 2:
@@ -75,10 +74,10 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
 
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
-    
+
     if len(file_type_pairs) == 0:
         return ""
-    
+
     combined_message = MIMEMultipart()
     for i in file_type_pairs:
         #try:
@@ -94,7 +93,7 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
         #with open(filename) as fh:
         #    contents = fh.read()
         (contents, format_type) = read_file_type_pairs(i)
-        if contents == None or format_type == None:
+        if contents is None or format_type is None:
             return None
         sub_message = MIMEText(contents, format_type, sys.getdefaultencoding())
         sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % (i))
@@ -106,7 +105,7 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
         else:
             sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' % ("cs-cloud-init.yaml"))
         combined_message.attach(sub_message)
-    
+
     return str(combined_message)
 
 def read_file_type_pairs(file_type_pair):
@@ -128,8 +127,8 @@ def read_file_type_pairs(file_type_pair):
                 format_type = "cloud-config"
         try:
             content = urllib2.urlopen(http_loc).read()
-        except Exception as e:
-            log.error("Unable to read url: %s" % http_loc)
+        except Exception:
+            log.error("Unable to read url: %s", http_loc)
             return (None, None)
     else:
         try:
@@ -140,10 +139,10 @@ def read_file_type_pairs(file_type_pair):
             filename = file_type_pair
             format_type = "cloud-config"
         if not os.path.exists(filename):
-            log.error("Unable to find file: %s skipping" % filename)
+            log.error("Unable to find file: %s skipping", filename)
             return (None, None)
-        with open(filename) as fh:
-            content = fh.read()
+        with open(filename) as read_file:
+            content = read_file.read()
 
     if len(content) == 0:
         return (None, None)
@@ -154,13 +153,14 @@ def validate_yaml(content):
     """ Try to load yaml to see if it passes basic validation."""
     try:
         import yaml
-        y = yaml.load(content)
-        if not y.has_key('merge_type'):
+        valid = yaml.load(content)
+        if not valid.has_key('merge_type'):
             log.error("Yaml submitted without a merge_type.")
             return "Missing merge_type:"
     except yaml.YAMLError as e:
-        log.error("Problem validating yaml: %s" % e)
-        return ' '.join(['Line: ', str(e.problem_mark.line), ' Col: ', str(e.problem_mark.column)]) # use e.problem_mark.[name,column,line]
+        log.error("Problem validating yaml: %s", e)
+        # use e.problem_mark.[name,column,line]
+        return ' '.join(['Line: ', str(e.problem_mark.line), ' Col: ', str(e.problem_mark.column)])
     except UnboundLocalError as e:
         log.error("Caught an exception trying to validate yaml. Is the pyyaml module installed?")
     return None

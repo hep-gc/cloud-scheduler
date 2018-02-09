@@ -17,8 +17,8 @@
  * limitations under the License.
  *
  * AUTHOR - Adam Bishop - ahbishop@uvic.ca
- *       
- * For comments or questions please contact the above e-mail address 
+ *
+ * For comments or questions please contact the above e-mail address
  * or Ian Gable - igable@uvic.ca
  *
  * """
@@ -26,7 +26,7 @@
 
 import logging
 
-class Logger:
+class Logger(object):
     """ A class to encapsulate useful logging features and setup
 
     """
@@ -38,16 +38,16 @@ class Logger:
         self.logger.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s : %(name)s : %(levelname)s : %(message)s')
 
-        debugHndlr = logging.StreamHandler()
-        debugHndlr.setLevel(logging.DEBUG)
-        debugHndlr.setFormatter(formatter)
+        debug_handler = logging.StreamHandler()
+        debug_handler.setLevel(logging.DEBUG)
+        debug_handler.setFormatter(formatter)
 
-        fileOutputHndlr = logging.FileHandler(errorLogFile)
-        fileOutputHndlr.setFormatter(formatter)
-        fileOutputHndlr.setLevel(logging.INFO)
+        file_output_handlr = logging.FileHandler(errorLogFile)
+        file_output_handlr.setFormatter(formatter)
+        file_output_handlr.setLevel(logging.INFO)
 
-        self.logger.addHandler(fileOutputHndlr)
-        self.logger.addHandler(debugHndlr)
+        self.logger.addHandler(file_output_handlr)
+        self.logger.addHandler(debug_handler)
 
     def warning(self, msg):
         self.logger.warning(msg)
