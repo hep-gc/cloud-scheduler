@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 
 """ cloud_status - tool to display information about cloud scheduler. """
-
-import requests
 import sys
 from optparse import OptionParser
 import platform
 import urllib
+import requests
 
-import cloudscheduler.utilities as utilities 
-log = utilities.get_cloudscheduler_logger()
-
+import cloudscheduler.utilities as utilities
 import cloudscheduler.configstatus as config
 import cloudscheduler.__version__ as version
+log = utilities.get_cloudscheduler_logger()
+
 
 
 def main(argv=None):
@@ -28,15 +27,15 @@ def main(argv=None):
     parser.add_option("-p", "--port", dest="port", metavar="PORT",
                       help="Pick a custom port to connect to Cloud Scheduler"
                            "information server")
-    parser.add_option("-a", "--all-cluster", action="store_true", 
-                      dest="all_cluster", default=False, 
+    parser.add_option("-a", "--all-cluster", action="store_true",
+                      dest="all_cluster", default=False,
                       help="Get All clusters in Cloud Scheduler, and displays remaining resources")
-    parser.add_option("-c", "--cluster", dest="cluster_name", metavar="NAME", 
+    parser.add_option("-c", "--cluster", dest="cluster_name", metavar="NAME",
                       help="Get Information on a cluster")
-    parser.add_option("-m", "--virtual-machines",action="store_true", 
-                      dest="vms", default=False, 
+    parser.add_option("-m", "--virtual-machines", action="store_true",
+                      dest="vms", default=False,
                       help="Get all VMs in Cloud Scheduler")
-    parser.add_option("-n", "--vm-info", dest="vm_id", metavar="ID", 
+    parser.add_option("-n", "--vm-info", dest="vm_id", metavar="ID",
                       help="Get information on a virtual machine")
     parser.add_option("-j", "--json", dest="json", action="store_true",
                       default=False, help="Get JSON output")
@@ -45,8 +44,10 @@ def main(argv=None):
                       help="Show developer information about cloud_scheduler")
     parser.add_option("-q", "--job-queue", metavar="QUEUE",
                       action="store", dest="job_queue",
-                      type="choice", choices=['all', 'new', 'sched', 'high', 'running', 'idle', 'held', 'complete'],
-                      help="Get Information about the job queues. [all, new, sched, high, running, idle, held, complete]")
+                      type="choice", choices=['all', 'new', 'sched', 'high', 'running',
+                                              'idle', 'held', 'complete'],
+                      help="Get Information about the job queues. [all, new, sched, high, running, \
+                            idle, held, complete]")
     parser.add_option("-i", "--ip-address", default=False, action="store_true",
                       dest="ips",
                       help="output ip information for munin monitoring")
@@ -66,10 +67,10 @@ def main(argv=None):
                       help="Print a list of Condor class ads CS has no matching VM for.")
     parser.add_option("-x", "--heart-beats", dest="heart_beats", action="store_true", default=False,
                       help="Print thread heart beat times since thread last completed cycle.")
-    parser.add_option("-z", "--boot-failures", dest="boot_failures", action="store_true", default=False,
-                      help="Print list of reasons jobs have not booted a VM.")
-    parser.add_option("-w", "--image-failures", dest="image_failures", action="store_true", default=False,
-                      help="Print list of images failing to properly boot.")
+    parser.add_option("-z", "--boot-failures", dest="boot_failures", action="store_true",
+                      default=False, help="Print list of reasons jobs have not booted a VM.")
+    parser.add_option("-w", "--image-failures", dest="image_failures", action="store_true",
+                      default=False, help="Print list of images failing to properly boot.")
     parser.add_option("-v", "--version", dest="version", action="store_true", default=False,
                       help="Print version imformation.")
     (cli_options, args) = parser.parse_args()
@@ -108,14 +109,16 @@ def main(argv=None):
             print requests.get(base_url + 'vms').text
         elif cli_options.status:
             if cli_options.cluster_name:
-                print requests.get(base_url + 'clusters/' + cluster_name + '/vms', params={'metric': 'all'}).text
+                print requests.get(base_url + 'clusters/' + cluster_name + '/vms',
+                                   params={'metric': 'all'}).text
             else:
                 print requests.get(base_url + 'vms', params={'metric': 'all'}).text
         elif not cli_options.json and cli_options.vm_id and cli_options.cluster_name:
             print requests.get(base_url + 'clusters/' + cluster_name + '/vms/' + vm_id).text
         elif cli_options.vm_id and not cli_options.cluster_name:
             print "Please provide -c cluster_name with vm ID"
-        elif not cli_options.json and cli_options.cluster_name and not cli_options.vm_id and not cli_options.totals:
+        elif not cli_options.json and cli_options.cluster_name and not \
+       cli_options.vm_id and not cli_options.totals:
             print requests.get(base_url + 'clusters/' + cluster_name).text
         elif cli_options.json and cli_options.all_cluster:
             print requests.get(base_url + 'clusters.json').text
@@ -123,7 +126,7 @@ def main(argv=None):
             print requests.get(base_url + 'clusters/' + cluster_name + '/vms/' + vm_id + '.json').text
         elif cli_options.json and cli_options.cluster_name and not cli_options.vm_id:
             print requests.get(base_url + 'clusters/' + cluster_name + '.json').text
-        elif (cli_options.dev_info):
+        elif cli_options.dev_info:
             print requests.get(base_url + 'developer-info').text
         elif cli_options.job_queue:
             if cli_options.job_queue.startswith('a'):
@@ -165,7 +168,8 @@ def main(argv=None):
         elif cli_options.cloud_conf:
             print requests.get(base_url + 'cloud/config').text
         elif cli_options.totals and cli_options.cluster_name:
-            print requests.get(base_url + 'clusters/' + cluster_name + '/vms', params={'metric': 'total'}).text
+            print requests.get(base_url + 'clusters/' + cluster_name + '/vms',
+                               params={'metric': 'total'}).text
         elif cli_options.totals:
             print requests.get(base_url + 'vms', params={'metric': 'total'}).text
         elif cli_options.missing_vms:

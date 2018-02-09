@@ -6,17 +6,16 @@
 import logging
 import threading
 import string
-import socket
 import sys
+import urllib
 import web
 import web.wsgiserver
-import urllib
 import cloudscheduler.utilities as utilities
 import cloudscheduler.config as config
-from proxy_refreshers import MyProxyProxyRefresher
+from cloudscheduler.proxy_refreshers import MyProxyProxyRefresher
 
 log = None
-
+config_val = config.get_config_parser()
 
 class AdminServer(threading.Thread,):
 
@@ -28,7 +27,8 @@ class AdminServer(threading.Thread,):
     scheduler = None
     cleaner = None
 
-    def __init__(self, c_resources, c_job_pool, c_job_poller, c_machine_poller, c_vm_poller, c_scheduler, c_cleaner):
+    def __init__(self, c_resources, c_job_pool, c_job_poller,
+                 c_machine_poller, c_vm_poller, c_scheduler, c_cleaner):
 
         global log
         log = logging.getLogger("cloudscheduler")
@@ -37,7 +37,7 @@ class AdminServer(threading.Thread,):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.done = False
         host_name = "0.0.0.0"
-        
+
         # Set up Web.py server
         web.cloud_resources = c_resources
         web.job_pool = c_job_pool
@@ -48,28 +48,30 @@ class AdminServer(threading.Thread,):
         web.scheduler = c_scheduler
         web.config.debug = False
         self.app = None
-        self.listen = (host_name, config.admin_server_port)
+        self.listen = (host_name, config_val.getint('global', 'admin_server_port'))
         self.urls = (
-            r'/',                                 views.config,
-            r'/clouds/([\w\%-]+)',                views.clouds,
-            r'/clouds/([\w\%-]+)/vms',            views.vms,
-            r'/clouds/([\w\%-]+)/vms/([\w\%-]+)', views.vms,
-            r'/cloud-aliases',                    views.cloud_aliases,
-            r'/users/([\w\%-]+)',                 views.users,
-            r'/user-limits',                      views.user_limits,
+            r'/', Views.Config,
+            r'/clouds/([\w\%-]+)', Views.Clouds,
+            r'/clouds/([\w\%-]+)/vms', Views.Vms,
+            r'/clouds/([\w\%-]+)/vms/([\w\%-]+)', Views.Vms,
+            r'/cloud-aliases', Views.Cloud_aliases,
+            r'/users/([\w\%-]+)', Views.Users,
+            r'/user-limits', Views.User_limits,
         )
 
     def run(self):
 
         # Run the server's main loop
-        log.info("Started admin server on port %s" % config.admin_server_port)
+        log.info("Started admin server on port %s", config_val.get('global', 'admin_server_port'))
         try:
             self.app = web.application(self.urls, globals())
-            self.server = web.wsgiserver.CherryPyWSGIServer(self.listen, self.app.wsgifunc(), server_name="localhost")
+            self.server = web.wsgiserver.CherryPyWSGIServer(self.listen,
+                                                            self.app.wsgifunc(),
+                                                            server_name="localhost")
             self.server.start()
 
-        except Exception as e:
-            log.error("Could not start webpy server.\n{0}".format(e))
+        except Exception as error:
+            log.error("Could not start webpy server.\n{0}".format(error))
             sys.exit(1)
 
     def stop(self):
@@ -77,15 +79,15 @@ class AdminServer(threading.Thread,):
         self.done = True
 
 
-class views:
-    class config:
+class Views(object):
+    class Config(object):
         def PUT(self):
             if 'log_level' in web.input():
                 log.setLevel(utilities.LEVELS[string.upper(web.input().log_level)])
                 return ''
 
             raise web.notfound()
-        
+
         def POST(self):
             if 'action' in web.input():
                 action = web.input().action
@@ -98,7 +100,7 @@ class views:
 
             raise web.notfound()
 
-    class clouds:
+    class Clouds(object):
         def PUT(self, cloudname):
             cloudname = urllib.unquote(cloudname)
 
@@ -113,22 +115,23 @@ class views:
 
                 return web.input().action + "_cloud(" + cloudname + ")"
             elif 'allocations' in web.input():
-                return web.cloud_resources.adjust_cloud_allocation(cloudname, web.input().allocations)
+                return web.cloud_resources.adjust_cloud_allocation(cloudname,
+                                                                   web.input().allocations)
 
             raise web.notfound()
 
-    class cloud_aliases:
+    class Cloud_aliases(object):
         def GET(self):
             return str(web.cloud_resources.target_cloud_aliases)
 
         def POST(self):
-            if config.target_cloud_alias_file:
-                web.cloud_resources.target_cloud_aliases = web.cloud_resources.load_cloud_aliases(config.target_cloud_alias_file)
+            if config_val.get('global', 'target_cloud_alias_file') is not None:
+                web.cloud_resources.target_cloud_aliases = web.cloud_resources.load_cloud_aliases(config_val.get('global', 'target_cloud_alias_file'))
                 return True if len(web.cloud_resources.target_cloud_aliases) > 0 else False
             else:
                 return False
 
-    class users:
+    class Users(object):
         def POST(self, user):
             user = urllib.unquote(user)
 
@@ -136,26 +139,26 @@ class views:
                 if web.input().refresh == 'job_proxy':
                     return MyProxyProxyRefresher.renew_job_proxy_user(web.job_pool, user)
                 elif web.input().refresh == 'vm_proxy':
-                    return MyProxyProxyRefresher.renew_vm_proxy_user(web.job_pool, user)
-            
+                    return MyProxyProxyRefresher.renew_vm_proxy_user(web.job_pool)
+
             raise web.notfound()
 
-    class user_limits:
+    class User_limits(object):
         def GET(self):
             return str(web.cloud_resources.user_vm_limits)
 
         def POST(self):
-            web.cloud_resources.user_vm_limits = web.cloud_resources.load_user_limits(config.user_limit_file)
+            web.cloud_resources.user_vm_limits = web.cloud_resources.load_user_limits(config_val.get('global', 'user_limit_file'))
             return True if len(web.cloud_resources.user_vm_limits) > 0 else False
 
-    class vms:
+    class Vms(object):
         def PUT(self, cloudname, vmid=None):
             cloudname = urllib.unquote(cloudname)
             if vmid: vmid = urllib.unquote(vmid)
 
             if 'action' in web.input():
                 action = web.input().action
-
+ 
                 if action == 'force_retire':
                     if vmid:
                         return web.cloud_resources.force_retire_cluster_vm(cloudname, vmid)
@@ -173,10 +176,10 @@ class views:
                             return web.cloud_resources.shutdown_cluster_all(cloudname)
                         else:
                             return web.cloud_resources.shutdown_cluster_number(cloudname, web.input().count)
-                
+
                 elif action == 'reset_override_state' and vmid:
                     return web.cloud_resources.reset_override_state(cloudname, vmid)
-            
+
                 elif action == 'remove':
                     if vmid:
                         return web.cloud_resources.remove_vm_no_shutdown(cloudname, vmid)

@@ -7,14 +7,14 @@ import cloudscheduler.config as config
 
 # Use this global variable for logging.
 log = None
-
+config_val = config.config_options
 #
 # This is an abstract base class; do not instantiate directly.
 #
 # API documentation should go in here, as opposed to writing specific
 # documentation for each concrete subclasses.
 #
-class JobContainer():
+class JobContainer(object):
     __metclass__ = ABCMeta
 
     # Use this lock if you require to threadsafe an operation.
@@ -33,7 +33,7 @@ class JobContainer():
     @abstractmethod
     def has_job(self, jobid):
         pass
-   
+
     # Add a job to the container.
     # If the job already exist, it will be replaced.
     @abstractmethod
@@ -82,7 +82,7 @@ class JobContainer():
     def remove_all_not_in(self, jobs_to_keep):
         pass
 
-    # Updates the status and remote host of a job (job.job_status attribute) 
+    # Updates the status and remote host of a job (job.job_status attribute)
     # in the container.
     # Returns True if the job was found in the container, False otherwise.
     @abstractmethod
@@ -91,14 +91,16 @@ class JobContainer():
 
     # Mark a job as being scheduled.
     # This will update the job's status attribute to "Scheduled".
-    # Returns True if the job exist in the container and was previously unscheduled, returns False otherwise.
+    # Returns True if the job exist in the container and was previously unscheduled
+    # returns False otherwise.
     @abstractmethod
     def schedule_job(self, job):
         pass
 
     # Mark a job as being unscheduled.
     # This will update the job's status attribute to "Unscheduled".
-    # Returns True if the job exist in the container and was previously scheduled, returns False otherwise.
+    # Returns True if the job exist in the container and was previously scheduled
+    # returns False otherwise.
     @abstractmethod
     def unschedule_job(self, job):
         pass
@@ -111,7 +113,8 @@ class JobContainer():
     def get_users(self):
         pass
 
-    # Returns a list of all jobs in the container, in no particular order, or [] if the container is empty.
+    # Returns a list of all jobs in the container, in no particular order
+    # or [] if the container is empty.
     @abstractmethod
     def get_all_jobs(self):
         pass
@@ -123,8 +126,10 @@ class JobContainer():
         pass
 
     # Get a list of all jobs for a user.
-    # Returns list of jobs for the user, or an empty list if the container has no jobs for the given user.
-    # If prioritized is True, then the returned list of jobs will be sorted by job.priority, high to low.
+    # Returns list of jobs for the user
+    # or an empty list if the container has no jobs for the given user.
+    # If prioritized is True, then the returned list of jobs
+    # will be sorted by job.priority, high to low.
     @abstractmethod
     def get_jobs_for_user(self, user, prioritized=False):
         pass
@@ -133,8 +138,9 @@ class JobContainer():
     @abstractmethod
     def get_scheduled_jobs(self):
         pass
-    
-    # Get a list of all scheduled jobs in the container sorted by their job.id, or [] if no unscheduled jobs.
+
+    # Get a list of all scheduled jobs in the container sorted by their job.id
+    # or [] if no unscheduled jobs.
     @abstractmethod
     def get_scheduled_jobs_sorted_by_id(self):
         pass
@@ -143,7 +149,8 @@ class JobContainer():
     # Returns dictionary where the items are:
     # (user, [list of scheduled jobs])
     # If a user does not have any scheduled jobs, then there will be no entry for that user.
-    # If prioritized is True, then the returned lists of jobs will be sorted by job.priority, high to low.
+    # If prioritized is True, then the returned lists of jobs
+    # will be sorted by job.priority, high to low.
     @abstractmethod
     def get_scheduled_jobs_by_users(self, prioritized=False):
         pass
@@ -151,7 +158,8 @@ class JobContainer():
     # Get a list of all scheduled jobs per type.
     # Returns dictionary where the items are:
     # {type, [list of scheduled jobs]}
-    # If prioritized i True, then the returned lists of jobs will be sorted by job.priority, high to low.
+    # If prioritized is True, then the returned lists of jobs
+    # will be sorted by job.priority, high to low.
     @abstractmethod
     def get_scheduled_jobs_by_type(self, prioritized=False):
         pass
@@ -160,8 +168,9 @@ class JobContainer():
     @abstractmethod
     def get_unscheduled_jobs(self):
         pass
-    
-    # Get a list of all unscheduled jobs in the container sorted by their job.id, or [] if no unscheduled jobs.
+
+    # Get a list of all unscheduled jobs in the container sorted by their job.id
+    # or [] if no unscheduled jobs.
     @abstractmethod
     def get_unscheduled_jobs_sorted_by_id(self):
         pass
@@ -170,7 +179,8 @@ class JobContainer():
     # Returns dictionary where the items are:
     # (user, [list of unscheduled jobs])
     # If a user does not have any unscheduled jobs, then there will be no entry for that user.
-    # If prioritized is True, then the returned lists of jobs will be sorted by job.priority, high to low.
+    # If prioritized is True, then the returned lists of jobs
+    # will be sorted by job.priority, high to low.
     @abstractmethod
     def get_unscheduled_jobs_by_users(self, prioritized=False):
         pass
@@ -178,12 +188,14 @@ class JobContainer():
     # Get a list of all unscheduled jobs per type.
     # Returns dictionary where the items are:
     # {type, [list of unscheduled jobs]}
-    # If prioritized i True, then the returned lists of jobs will be sorted by job.priority, high to low.
+    # If prioritized i True, then the returned lists of jobs
+    # will be sorted by job.priority, high to low.
     @abstractmethod
     def get_unscheduled_jobs_by_type(self, prioritized=False):
         pass
 
-    # Get a list of all high priority jobs in the container, or [] if there are no high priority jobs.
+    # Get a list of all high priority jobs in the container
+    # or [] if there are no high priority jobs.
     # A job is said to have high priority if job.high_priority != 0
     @abstractmethod
     def get_high_priority_jobs(self):
@@ -255,7 +267,7 @@ class HashTableJobContainer(JobContainer):
             self.jobs_by_user[job.user][job.id] = job
 
             # Update scheduled/unscheduled maps too:
-            if(job.status == "Unscheduled"):
+            if job.status == "Unscheduled":
                 self.new_jobs[job.id] = job
             else:
                 self.sched_jobs[job.id] = job
@@ -337,7 +349,7 @@ class HashTableJobContainer(JobContainer):
             if job.job_status == HELD:
                 held_jobs.append(job)
         return held_jobs
-    
+
     def get_idle_jobs(self):
         IDLE = 1
         idle_jobs = []
@@ -377,7 +389,7 @@ class HashTableJobContainer(JobContainer):
 
     def get_scheduled_jobs(self):
         return self.sched_jobs.values()
-    
+
     def get_scheduled_jobs_sorted_by_id(self):
         return_value = []
         for jobid in sorted(self.sched_jobs.iteritems()):
@@ -419,13 +431,13 @@ class HashTableJobContainer(JobContainer):
 
     def get_unscheduled_jobs(self):
         return self.new_jobs.values()
-    
+
     def get_unscheduled_jobs_sorted_by_id(self):
         return_value = []
         for jobid in sorted(self.new_jobs.iteritems()):
             return_value.append(jobid[1])
         return return_value
-        
+
     def get_unscheduled_jobs_by_users(self, prioritized=False):
         with self.lock:
             return_value = defaultdict(list)
@@ -517,12 +529,12 @@ class HashTableJobContainer(JobContainer):
             job.servertime = int(servertime)
             job.jobstarttime = int(starttime)
             if job.banned and job.ban_time:
-                if (time.time() - job.ban_time) > config.job_ban_timeout:
+                if (time.time() - job.ban_time) > config_val.getint('global', 'job_ban_timeout'):
                     job.banned = False
                     job.ban_time = None
                     job.override_status = None
             if len(job.blocked_clouds) > 0:
-                if (time.time() - job.block_time) > config.job_ban_timeout:
+                if (time.time() - job.block_time) > config_val.getint('global', 'job_ban_timeout'):
                     job.blocked_clouds = []
                     job.block_time = None
             return True
@@ -540,7 +552,7 @@ class HashTableJobContainer(JobContainer):
                 return True
             else:
                 return False
-                
+
 
     def unschedule_job(self, jobid):
         with self.lock:
@@ -600,7 +612,7 @@ class HashTableJobContainer(JobContainer):
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
         return return_value
-    
+
     def get_scheduled_user_jobs_by_type(self, user, prioritized=False):
         with self.lock:
             sched = self.get_scheduled_jobs_by_users()
@@ -613,7 +625,7 @@ class HashTableJobContainer(JobContainer):
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
         return return_value
-    
+
     def get_scheduled_user_jobs_by_usertype(self, user, prioritized=False):
         with self.lock:
             sched = self.get_scheduled_jobs_by_users()
@@ -626,3 +638,4 @@ class HashTableJobContainer(JobContainer):
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
         return return_value
+

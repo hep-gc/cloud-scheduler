@@ -1,42 +1,32 @@
 #!/usr/bin/env python
 # vim: set expandtab ts=4 sw=4:
+"""
+Copyright (C) 2009 University of Victoria
+You may distribute under the terms of either the GNU General Public
+License or the Apache v2 License, as specified in the README file.
 
-# Copyright (C) 2009 University of Victoria
-# You may distribute under the terms of either the GNU General Public
-# License or the Apache v2 License, as specified in the README file.
 
-
-##
-## This file contains the VM class, ICluster interface, as well as the
-## implementations of this interface.
-
+This file contains the VM class, ICluster interface, as well as the
+implementations of this interface.
+"""
 from __future__ import with_statement
 
-import os
-import re
-import sys
 import time
 import uuid
 import string
-import shutil
 import logging
 import datetime
-import requests
-import tempfile
-import subprocess
 import threading
+import requests
 
-from subprocess import Popen
-from urlparse import urlparse
-
-import config
+from cloudscheduler import config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.utilities import get_cert_expiry_time
 
 log = utilities.get_cloudscheduler_logger()
+config_val = config.setup()
 
-
-class VM:
+class VM(object):
     """
     A class for storing created VM information. Used to populate Cluster classes
     'vms' lists.
@@ -53,12 +43,13 @@ class VM:
     """
 
     def __init__(self, name="", id="", vmtype="", user="",
-            hostname="", ipaddress="", clusteraddr="", clusterport="",
-            cloudtype="", network="public",
-            image="", memory=0, flavor="",
-            cpucores=0, storage=0, keep_alive=0, spot_id="",
-            proxy_file=None, myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None, 
-            myproxy_renew_time="12", job_per_core=False, ssh_port=22):
+                 hostname="", ipaddress="", clusteraddr="", clusterport="",
+                 cloudtype="", network="public",
+                 image="", memory=0, flavor="",
+                 cpucores=0, storage=0, keep_alive=0, spot_id="",
+                 proxy_file=None, myproxy_creds_name=None,
+                 myproxy_server=None, myproxy_server_port=None,
+                 myproxy_renew_time="12", job_per_core=False, ssh_port=22):
         """
         Constructor
 
@@ -85,14 +76,15 @@ class VM:
         myproxy_server_port - (str) The port of the myproxy server to retreive user creds from
         errorcount   - (int) Number of Polling Errors VM has had
         force_retire - (bool) Flag to prevent a retiring VM from being turned back on
-        return_resources - (bool) Flag to set if resources from this VM should be returned to cluster
+        return_resources - (bool) Flag to set if resources from
+                                  this VM should be returned to cluster
         ssh_port - (int) the ssh port of the VM
         """
         self.name = name
         self.id = id
         self.vmtype = vmtype
         self.user = user
-        self.uservmtype = ':'.join([user,vmtype])
+        self.uservmtype = ':'.join([user, vmtype])
         self.hostname = hostname
         self.alt_hostname = None
         self.ipaddress = ipaddress
@@ -130,22 +122,24 @@ class VM:
         self.job_run_times = utilities.JobRunTrackQueue('Run_Times')
         self.x509userproxy_expiry_time = None
         self.ssh_port = ssh_port
-        
+
         # Set a status variable on new creation
         self.status = "Starting"
 
         global log
         log = logging.getLogger("cloudscheduler")
-        log.verbose("New VM Object - Name: %s, id: %s, host: %s, image: %s, memory: %d" \
-          % (name, id, clusteraddr, image, memory))
-        log.info("Created VM cloud: %s id: %s"%(clusteraddr,self.id))
+        log.verbose("New VM Object - Name: %s, id: %s, host: %s, image: %s, memory: %d", name,
+                    id, clusteraddr, image, memory)
+        log.info("Created VM cloud: %s id: %s", clusteraddr, self.id)
 
     def log(self):
         """Log the VM to the info level."""
-        log.info("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype,  self.user, self.status, self.clusteraddr))
+        log.info("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s", self.name, self.id,
+                 self.vmtype, self.user, self.status, self.clusteraddr)
     def log_dbg(self):
         """Log the VM to the debug level."""
-        log.debug("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s" % (self.name, self.id, self.vmtype, self.user, self.status, self.clusteraddr))
+        log.debug("VM Name: %s, ID: %s, Type: %s, User: %s, Status: %s on %s", self.name, self.id,
+                  self.vmtype, self.user, self.status, self.clusteraddr)
 
     def get_vm_info(self):
         """Formatted VM information for use with cloud_status."""
@@ -214,7 +208,7 @@ class VM:
         Returns the expiry time as a datetime.datetime instance (UTC), or None
         if there is no user proxy associated with this VM.
         """
-        if (self.x509userproxy_expiry_time == None) and (self.get_proxy_file() != None):
+        if (self.x509userproxy_expiry_time is None) and (self.get_proxy_file() != None):
             self.x509userproxy_expiry_time = get_cert_expiry_time(self.get_proxy_file())
         return self.x509userproxy_expiry_time
 
@@ -233,7 +227,7 @@ class VM:
         Returns True if the proxy is expired, False otherwise.
         """
         expiry_time = self.get_x509userproxy_expiry_time()
-        if expiry_time == None:
+        if expiry_time is None:
             return False
         return expiry_time <= datetime.datetime.utcnow()
 
@@ -242,16 +236,17 @@ class VM:
         """Test if a VM's user proxy needs to be refreshed, according
         the VM proxy refresh threshold found in the cloud scheduler configuration.
 
-        Returns: True if the proxy needs to be refreshed, or 
+        Returns: True if the proxy needs to be refreshed, or
                  False otherwise (or if the VM has no user proxy associated with it).
         """
         expiry_time = self.get_x509userproxy_expiry_time()
-        if expiry_time == None:
+        if expiry_time is None:
             return False
         td = expiry_time - datetime.datetime.utcnow()
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        log.verbose("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_renewal_threshold))
-        return td_in_seconds < config.vm_proxy_renewal_threshold
+        log.verbose("needs_proxy_renewal td: %d, threshold: %d", td_in_seconds,
+                    config_val.getint('global', 'vm_proxy_renewal_threshold'))
+        return td_in_seconds < config_val.getint('global', 'vm_proxy_renewal_threshold')
 
     def needs_proxy_shutdown(self):
         """This method will test if a VM needs to be shutdown before proxy expiry, according
@@ -261,12 +256,13 @@ class VM:
                  False otherwise (or if the VM has no user proxy associated with it).
         """
         expiry_time = self.get_x509userproxy_expiry_time()
-        if expiry_time == None:
+        if expiry_time is None:
             return False
         td = expiry_time - datetime.datetime.utcnow()
         td_in_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        log.verbose("needs_proxy_renewal td: %d, threshold: %d" % (td_in_seconds, config.vm_proxy_shutdown_threshold))
-        return td_in_seconds < config.vm_proxy_shutdown_threshold
+        log.verbose("needs_proxy_renewal td: %d, threshold: %d", td_in_seconds,
+                    config_val.getint('global', 'vm_proxy_shutdown_threshold'))
+        return td_in_seconds < config_val.getint('global', 'vm_proxy_shutdown_threshold')
 
     def get_env(self):
         """The following method will return the environment that should
@@ -290,7 +286,7 @@ class NoResourcesError(Exception):
         self.resource = resource
 
 
-class ICluster:
+class ICluster(object):
     """
     The ICluster interface is the framework for implementing support for
     a specific IaaS cloud implementation. In general, you'll need to
@@ -299,7 +295,7 @@ class ICluster:
     """
 
     def __init__(self, name="Dummy Cluster", host="localhost",
-                 cloud_type="Dummy", memory=0, max_vm_mem= -1, networks=[],
+                 cloud_type="Dummy", memory=0, max_vm_mem=-1, networks=[],
                  vm_slots=0, cpu_cores=0, storage=0, boot_timeout=None, enabled=True, priority=0,
                  keep_alive=0):
         self.name = name
@@ -319,8 +315,8 @@ class ICluster:
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
         self.enabled = enabled
-        self.boot_timeout = int(boot_timeout) if boot_timeout != None else config.vm_start_running_timeout
-        self.connection_fail_disable_time = config.connection_fail_disable_time
+        self.boot_timeout = int(boot_timeout) if boot_timeout != None else config_val.getint('global', 'vm_start_running_timeout')
+        self.connection_fail_disable_time = config_val.getint('global', 'connection_fail_disable_time')
         self.connection_problem = False
         self.errorconnect = None
         self.priority = priority
@@ -328,7 +324,7 @@ class ICluster:
         self.keep_alive = keep_alive
 
         self.setup_logging()
-        log.debug("New cluster %s created" % self.name)
+        log.debug("New cluster %s created", self.name)
 
     def __getstate__(self):
         """Override to work with pickle module."""
@@ -357,28 +353,27 @@ class ICluster:
     def log_cluster(self):
         """Print cluster information to the log."""
         log.info("-" * 30 +
-            "Name:\t\t%s\n"        % self.name +
-            "Address:\t%s\n"       % self.network_address +
-            "Type:\t\t%s\n"        % self.cloud_type +
-            "VM Slots:\t%s\n"      % self.vm_slots +
-            "CPU Cores:\t%s\n"     % self.cpu_cores +
-            "Storage:\t%s\n"       % self.storageGB +
-            "Memory:\t\t%s\n"      % self.memory +
-            "Network Pools:\t%s\n" % string.join(self.network_pools, ", ") +
-            "-" * 30)
+                 "Name:\t\t%s\n"        % self.name +
+                 "Address:\t%s\n"       % self.network_address +
+                 "Type:\t\t%s\n"        % self.cloud_type +
+                 "VM Slots:\t%s\n"      % self.vm_slots +
+                 "CPU Cores:\t%s\n"     % self.cpu_cores +
+                 "Storage:\t%s\n"       % self.storageGB +
+                 "Memory:\t\t%s\n"      % self.memory +
+                 "Network Pools:\t%s\n" % string.join(self.network_pools, ", ") +
+                 "-" * 30)
 
     def log(self):
         """Print a short form of cluster information to the log."""
-        log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s" \
-          % (self.name, self.network_address, self.cloud_type, self.vm_slots, \
-          self.memory))
+        log.debug("CLUSTER Name: %s, Address: %s, Type: %s, VM slots: %d, Mem: %s", self.name,
+                  self.network_address, self.cloud_type, self.vm_slots, self.memory)
 
     def log_vms(self):
         """Print the cluster 'vms' list (via VM print)."""
         if len(self.vms) == 0:
-            log.info("CLUSTER %s has no running VMs..." % (self.name))
+            log.info("CLUSTER %s has no running VMs...", self.name)
         else:
-            log.info("CLUSTER %s running VMs:" % (self.name))
+            log.info("CLUSTER %s running VMs:", self.name)
             for vm in self.vms:
                 vm.log_short("\t")
 
@@ -435,15 +430,15 @@ class ICluster:
     #       - OpenStack vm_ids are uuids
     #       - OpenNebula (and Eucalyptus?) vm_ids are names/numbers
 
-    def vm_create(self, **args):
+    def vm_create(self):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_create'
 
-    def vm_destroy(self, vm, return_resources=True, reason=""):
+    def vm_destroy(self):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_destroy'
 
-    def vm_poll(self, vm):
+    def vm_poll(self):
         log.debug('This method should be defined by all subclasses of Cluster\n')
         assert 0, 'Must define workspace_poll'
 
@@ -505,7 +500,7 @@ class ICluster:
         collision = False
         for vm in self.vms:
             if name == vm.hostname:
-                collision= True
+                collision = True
                 break
         if collision:
             name = None
@@ -513,11 +508,12 @@ class ICluster:
 
     def _report_monitor(self, vm):
         try:
-            r = requests.get(config.monitor_url, params={'cs_vm_fqdn':vm.hostname, 'boot_time':vm.initialize_time})
-            if r.status_code == requests.codes.ok:
-                log.debug("Sent update to report monitor: %s: hostname: %s" % (config.monitor_url, vm.hostname))
+            req = requests.get(config_val.get('global', 'monitor_url'),
+                               params={'cs_vm_fqdn':vm.hostname, 'boot_time':vm.initialize_time})
+            if req.status_code == requests.codes.ok:
+                log.debug("Sent update to report monitor: %s: hostname: %s", config_val.get('global', 'monitor_url'), vm.hostname)
             else:
-                log.debug("problem sending update to report monitor at: %s: code: %s" % (config.monitor_url, r.status_code))
+                log.debug("problem sending update to report monitor at: %s: code: %s", config_val.get('global', 'monitor_url'), r.status_code)
         except Exception as e:
-            log.error("Problem trying to send monitor update: %s" % e)
+            log.error("Problem trying to send monitor update: %s", e)
 
