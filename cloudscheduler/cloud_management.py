@@ -46,6 +46,10 @@ try:
     from cloudscheduler import  botocluster
 except ImportError:
     pass
+try:
+    import localcluster
+except ImportError
+    pass
 
 import cloudscheduler.config as config
 from cloudscheduler import cloudconfig
@@ -435,6 +439,15 @@ class ResourcePool(object):
                                                keep_alive=keep_alive,
                                                port=port,
                                               )
+        elif cloud_type.lower() == "localhost" and cloudconfig.verify_cloud_conf_localhost(cconfig, cluster):
+            return localcluster.LocalCluster(name=cluster.lower(),
+                   cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
+                   memory=int(get_or_none(cconfig, cluster, 'memory')),
+                   networks=networks,
+                   cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
+                   key_name=get_or_none(cconfig, cluster, "key_name"),
+                   vm_slots=int(get_or_none(cconfig, cluster, "vm_slots"))
+                   )
         else:
             log.error("ResourcePool.setup encountered a problem creating entry for %s", cluster)
         return None
