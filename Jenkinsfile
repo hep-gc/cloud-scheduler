@@ -1,11 +1,12 @@
 pipeline {
-    agent {
-        docker {
-            image 'cloud:base'
-        }
-    }
+    agent none
     stages {
         stage('Build') {
+            agent {
+                docker {
+                    image 'cloud:base'
+                }
+            }
             steps {
                 sh 'python setup.py install'
                 sh 'cp scripts/cloud_scheduler.init.d /etc/init.d/cloud_scheduler'
@@ -13,6 +14,11 @@ pipeline {
             }
         }
         stage('Test') {
+            agent {
+                docker {
+                    image 'cloud:base'
+                }
+            }
             steps {
                  sh '/etc/init.d/cloud_scheduler start'
             }
