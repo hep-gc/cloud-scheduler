@@ -15,6 +15,7 @@ pipeline {
         stage('Test') {
             steps {
                  sh '/etc/init.d/cloud_scheduler start'
+            }
         }
     }
 }
