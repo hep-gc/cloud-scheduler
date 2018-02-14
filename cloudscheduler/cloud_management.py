@@ -48,7 +48,7 @@ except ImportError:
     pass
 try:
     import localcluster
-except ImportError
+except ImportError:
     pass
 
 import cloudscheduler.config as config
