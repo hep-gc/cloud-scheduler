@@ -3,7 +3,7 @@ node{
         stage('Test'){
             sh 'systemctl start libvirtd'
             sh 'systemctl start condor'
-            sh 'condor_q'
+            sh 'ls /var/log/condor'
         }
     }
 }
