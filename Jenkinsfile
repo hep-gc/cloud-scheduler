@@ -15,6 +15,7 @@ pipeline {
                    cp scripts/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
 
                    /etc/init.d/cloud_scheduler start
+                   cloud_status
                    cat /tmp/cloud_scheduler.crash.log
                    '''
             }
