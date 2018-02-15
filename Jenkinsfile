@@ -15,7 +15,8 @@ pipeline {
                    cp scripts/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
                    '''
                 sh '/etc/init.d/cloud_scheduler start'
-                sh 'ls /home'
+                sh 'ls'
+                sh 'cloud_status'
             }
         }
     }
