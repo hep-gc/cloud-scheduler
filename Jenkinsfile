@@ -16,7 +16,7 @@ pipeline {
                    '''
                 sh '/etc/init.d/cloud_scheduler start'
                 sh 'ls /'
-                sh 'cat /tmp/cloud_scheduler.crash.log'
+                readFile('/tmp/cloud_scheduler.crash.log')
             }
         }
     }
