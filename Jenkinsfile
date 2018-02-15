@@ -9,14 +9,14 @@ pipeline {
                 }
             }
             steps {
-                script{ 
-                    python setup.py install
-                    cp scripts/cloud_scheduler.init.d /etc/init.d/cloud_scheduler
-                    cp scripts/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
+                sh '''
+                   python setup.py install
+                   cp scripts/cloud_scheduler.init.d /etc/init.d/cloud_scheduler
+                   cp scripts/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
 
-                    /etc/init.d/cloud_scheduler start
-                    cat /tmp/cloud_scheduler.crash.log
-                }
+                   /etc/init.d/cloud_scheduler start
+                   cat /tmp/cloud_scheduler.crash.log
+                   '''
             }
         }
     }
