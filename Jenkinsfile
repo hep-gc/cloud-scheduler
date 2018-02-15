@@ -15,7 +15,7 @@ pipeline {
                    cp scripts/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
                    '''
                 sh '/etc/init.d/cloud_scheduler start'
-                sh 'cp /home/Documents/CentOS-7-x86_64-GenericCloud.img /jobs/instances/base'
+                sh 'ls /home'
             }
         }
     }
