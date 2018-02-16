@@ -10,7 +10,6 @@ import os
 import sys
 import ConfigParser
 
-import utilities
 
 config_options = ConfigParser.ConfigParser()
 
