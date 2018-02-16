@@ -19,7 +19,6 @@ try:
     from OpenSSL import crypto
 except ImportError:
     pass
-import config
 
 def determine_path():
     """Borrowed from wxglade.py"""
@@ -87,15 +86,14 @@ def get_globus_path(executable="grid-proxy-init"):
     """
 
     try:
-        os.environ["GLOBUS_LOCATION"]
-        retcode = subprocess.call("$GLOBUS_LOCATION/bin/%s -help" % executable, shell=True,
+        if os.environ["GLOBUS_LOCATION"]:
+            retcode = subprocess.call("$GLOBUS_LOCATION/bin/%s -help" % executable, shell=True,
                                   stdout=open('/dev/null', 'w'), stderr=subprocess.STDOUT)
-
-        if retcode != 0:
-            raise EnvironmentError(retcode, "GLOBUS_LOCATION is in your environment, \
+            if retcode != 0:
+                raise EnvironmentError(retcode, "GLOBUS_LOCATION is in your environment,\
                                    but unable to call '%s'" % executable)
-        else:
-            return os.environ["GLOBUS_LOCATION"] + "/bin/"
+            else:
+                return os.environ["GLOBUS_LOCATION"] + "/bin/"
 
     except:
         retcode = subprocess.call("%s -help" % executable, shell=True,
