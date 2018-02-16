@@ -290,7 +290,7 @@ class ErrTrackQueue(object):
         return 1.0 - self.dist_true()
 
 
-class JobRunTrackQueue():
+class JobRunTrackQueue(object):
     """Job Run-[time] Tracking Queue. Keeps a list of job runtimes for  stats purposes."""
     def __init__(self, name):
         """Initizlizes new queue, of length 10."""
