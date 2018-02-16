@@ -50,14 +50,18 @@ class Logger(object):
         self.logger.addHandler(debug_handler)
 
     def warning(self, msg):
+        """Log message at warning level."""
         self.logger.warning(msg)
 
     def info(self, msg):
+        """Log message at info level."""
         self.logger.info(msg)
 
     def error(self, msg):
+        """Log message at error level."""
         self.logger.error(msg)
 
     def debug(self, msg):
+        """Log message at debug level."""
         self.logger.debug(msg)
 

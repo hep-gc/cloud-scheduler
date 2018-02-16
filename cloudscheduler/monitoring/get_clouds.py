@@ -43,9 +43,11 @@ CLOUDS_KEY = "Clouds_Key"
 
 ConfigMapping = {}
 
-# This global method loads all the user configured options from the configuration file
-# and saves them into the global ConfigMapping dictionary
 def loadGetCloudsClientConfig(logger):
+    """
+    This global method loads all the user configured options from the configuration file
+    and saves them into the global ConfigMapping dictionary
+    """
 
     cfgFile = ConfigParser.ConfigParser()
     # Prevent an exception from being generated should the config file
@@ -65,7 +67,7 @@ def loadGetCloudsClientConfig(logger):
             logger.error("Unable to locate "+CONF_FILE_SECTION+" section in conf file \
                           - Malformed config file?")
             sys.exit(RET_CRITICAL)
-        except ConfigParser.NoOptionError, nopt:
+        except ConfigParser.NoOptionError as nopt:
             logger.error(nopt.message+" of configuration file")
             sys.exit(RET_CRITICAL)
     else:
@@ -73,6 +75,7 @@ def loadGetCloudsClientConfig(logger):
         sys.exit(RET_CRITICAL)
 
 class getCloudsClient(object):
+
     """
      This class is responsible for querying the RedisDB for the Sky XML and binding it back into
      a usable data structure. This data structure format is a nested Dictionary of dictionaries
@@ -83,6 +86,7 @@ class getCloudsClient(object):
 
     """
     def __init__(self, logger=None):
+        """Constructor for getClient."""
         if logger:
             self.logger = logger
         else:
@@ -99,7 +103,7 @@ class getCloudsClient(object):
             sys.exit(RET_CRITICAL)
 
     def _lookupCloudsXML(self):
-
+        """Get the aggregate XML file from redis."""
         # Query the Redis DB for the complete, aggregated XML file
         clouds_xml = self.db.get(ConfigMapping[CLOUDS_KEY])
         # amDoc will contain a data structure that mirrors the public XML Schema,
@@ -108,19 +112,24 @@ class getCloudsClient(object):
 
         return am_doc
 
-    def _getWorkerNodeVirtualizationTech(self, node):
-
+    @staticmethod
+    def _getWorkerNodeVirtualizationTech(node):
+        """Get the virtualization info from a node."""
         return str(node.VirtualizationTech.Type)
 
-    def _getWorkerNodeCPUID(self, node):
-
+    @staticmethod
+    def _getWorkerNodeCPUID(node):
+        """Get the CPU id of a node."""
         return str(node.CPUID.Description)
 
-    def _getWorkerNodeCPUCores(self, node):
+    @staticmethod
+    def _getWorkerNodeCPUCores(node):
+        """Get the number of cores of a node."""
         return str(node.CPUCores)
 
-    def _getWorkerNodeMem(self, node):
-
+    @staticmethod
+    def _getWorkerNodeMem(node):
+        """Get the memory info of a node."""
         total_dict = {}
 
         total_dict["TotalMB"] = str(node.Memory.TotalMB)
@@ -129,7 +138,7 @@ class getCloudsClient(object):
         return total_dict
 
     def _populateWorkerNode(self, node):
-
+        """Construct worker node dict."""
         t_dict = {}
         t_dict["CPUCores"] = self._getWorkerNodeCPUCores(node)
         t_dict["Memory"] = self._getWorkerNodeMem(node)
@@ -140,14 +149,16 @@ class getCloudsClient(object):
         return ret_dict
 
     def _getCloudWorkerNodes(self, cloud):
-
+        """Get all nodes for a cloud."""
         temp_nodes = []
         for curnode in cloud.WorkerNodes.Node:
             temp_nodes.append(self._populateWorkerNode(curnode))
 
         return temp_nodes
 
-    def _getCloudVMMemoryPools(self, cloud):
+    @staticmethod
+    def _getCloudVMMemoryPools(cloud):
+        """Get all Memory pools for a cloud."""
         temp_nodes = []
         for curnode in cloud.VMM_Pools.Pool:
             t_dict = {}
@@ -157,8 +168,9 @@ class getCloudsClient(object):
             temp_nodes.append(t_dict)
         return temp_nodes
 
-    def _getCloudNetworkPools(self, cloud):
-
+    @staticmethod
+    def _getCloudNetworkPools(cloud):
+        """Get network pools for a cloud."""
         temp_nodes = []
 
         for curnode in cloud.Network_Pools.Pool:
@@ -169,7 +181,9 @@ class getCloudsClient(object):
             temp_nodes.append(t_dict)
         return temp_nodes
 
-    def _getCloudServiceData(self, cloud):
+    @staticmethod
+    def _getCloudServiceData(cloud):
+        """Get the service info for a cloud."""
         t_dict = {}
         t_dict["Path"] = str(cloud.Service.Path)
         t_dict["HostName"] = str(cloud.Service.HostName)
@@ -179,14 +193,16 @@ class getCloudsClient(object):
 
         return t_dict
 
-    def _getCloudIaaSDiagnostics(self, cloud):
+    @staticmethod
+    def _getCloudIaaSDiagnostics(cloud):
+        """Get the IaaS Diagnostics info for a cloud."""
         t_dict = {}
         t_dict["InternalRepresentation"] = str(cloud.IaasDiagnostics.InternalRepresentation)
 
         return t_dict
 
     def getCloudsView(self):
-
+        """get the overall view of all clouds."""
         clouds = []
         boundXML = self._lookupCloudsXML()
 
@@ -206,4 +222,4 @@ if __name__ == '__main__':
     cloud_client = getCloudsClient()
     cloud_view = cloud_client.getCloudsView()
 
-    print cloud_view
+    print(cloud_view)
