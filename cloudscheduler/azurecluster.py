@@ -1,3 +1,6 @@
+"""
+Cloud Connector for Microsoft's Azure cloud service.
+"""
 import sys
 import time
 try:
@@ -15,6 +18,10 @@ log = utilities.get_cloudscheduler_logger()
 config_val = config.config_options
 
 class AzureCluster(cluster_tools.ICluster):
+
+    """
+    Connector class for Microsoft's Azure cloud service.
+    """
     ERROR = 1
     DEFAULT_INSTANCE_TYPE = config_val.get('job', 'default_VMInstanceType') if \
         config_val.get('job', 'default_VMInstanceType') else "m1.small"
@@ -98,7 +105,7 @@ class AzureCluster(cluster_tools.ICluster):
     def vm_create(self, vm_name, vm_type, vm_user,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type={}, job_per_core=False,
-                  pre_customization=None, extra_userdata=[]):
+                  pre_customization=None, extra_userdata=None):
         """ Create a VM on Azure."""
 
         use_cloud_init = True
@@ -111,7 +118,7 @@ class AzureCluster(cluster_tools.ICluster):
             user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
         elif use_cloud_init:
             user_data = cloud_init_util.inject_customizations([], user_data)
-        if len(extra_userdata) > 0:
+        if extra_userdata:
             # need to use the multi-mime type functions
             user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config',
                                                                    'cloud_conf.yaml')],
@@ -169,11 +176,12 @@ class AzureCluster(cluster_tools.ICluster):
         if name:
             sms = self._get_service_connection()
             try:
-                conf_set = azure.servicemanagement.LinuxConfigurationSet(host_name=name,
-                                                                         user_name=self.username,
-                                                                         user_password=self.password,
-                                                                         disable_ssh_password_authentication=False,
-                                                                         custom_data=user_data)
+                conf_set = azure.servicemanagement.\
+                    LinuxConfigurationSet(host_name=name,
+                                          user_name=self.username,
+                                          user_password=self.password,
+                                          disable_ssh_password_authentication=False,
+                                          custom_data=user_data)
                 net_set = azure.servicemanagement.ConfigurationSet()
                 vm_ssh_port = 20000+self.count
                 net_set.input_endpoints.input_endpoints.append(
