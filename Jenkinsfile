@@ -36,8 +36,8 @@ node{
             try{
                 sh '''
                    su hep
+                   ls
                    condor_submit /home/containers/update-test/try.job
-                   exit
                    condor_q
                    cloud_status -m
                    '''
