@@ -1,6 +1,6 @@
 node{
     checkout scm
-    docker.image('cloud:base').inside('-v /home:/home'){
+    docker.image('cloud:base').inside('-v "$HOME":/home'){
         stage('Test'){
             sh '''
                systemctl start libvirtd
