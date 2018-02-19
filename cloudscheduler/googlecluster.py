@@ -16,7 +16,6 @@ except Exception as e:
     print e
 
 log = utilities.get_cloudscheduler_logger()
-config_val = config.config_options
 
 class GoogleComputeEngineCluster(cluster_tools.ICluster):
     VM_STATES = {
@@ -35,7 +34,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
     DEFAULT_ZONE = 'us-central1-b' # will need to be option in job
     DEFAULT_MACHINE_TYPE = 'n1-standard-1'  # option specified in job config
-    DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config_val.get('job', 'default_VMInstanceTypeList'))
+    DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config.config_options.get('job', 'default_VMInstanceTypeList'))
     DEFAULT_IMAGE = 'cloudscheduler-centos-9'
     DEFAULT_ROOT_PD_NAME = 'hepgc-uvic-root-pd'
 
@@ -158,7 +157,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         except:
             log.exception('Error Trying to create disk, one already exists ... returning ')
             return
-        use_cloud_init = use_cloud_init or config_val.getboolean('global', 'use_cloud_init')
+        use_cloud_init = use_cloud_init or config.config_options.getboolean('global', 'use_cloud_init')
         if customization:
             user_data = cloud_init_util.build_write_files_cloud_init(customization)
         else:
@@ -288,7 +287,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                     self.resource_return(vm)
                 with self.vms_lock:
                     self.vms.remove(vm)
-                if config_val.get('global', 'monitor_url'):
+                if config.config_options.get('global', 'monitor_url'):
                     self._report_monitor(vm)
                 return 0
             else:
