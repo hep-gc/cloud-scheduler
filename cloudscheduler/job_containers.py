@@ -292,13 +292,13 @@ class JobContainer(object):
         pass
 
     @abstractmethod
-    def find_unscheduled_jobs_with_matching_reqs(self, user, job, N=0):
+    def find_unscheduled_jobs_with_matching_reqs(self, user, job, num=0):
         """
         Finds up to N jobs matching the requirements of the given job.
         If N == 0, then all matching jobs are returned.
         :param user:
         :param job:
-        :param N:
+        :param num:
         """
         pass
 
@@ -431,34 +431,50 @@ class HashTableJobContainer(JobContainer):
             return None
 
     def get_held_jobs(self):
-        HELD = 5
+        """
+        get the jobs in held state.
+        :return:
+        """
+        held = 5
         held_jobs = []
         for job in self.all_jobs.values():
-            if job.job_status == HELD:
+            if job.job_status == held:
                 held_jobs.append(job)
         return held_jobs
 
     def get_idle_jobs(self):
-        IDLE = 1
+        """
+        get the jobs in idle state.
+        :return:
+        """
+        idle = 1
         idle_jobs = []
         for job in self.all_jobs.values():
-            if job.job_status == IDLE:
+            if job.job_status == idle:
                 idle_jobs.append(job)
         return idle_jobs
 
     def get_running_jobs(self):
-        RUNNING = 2
+        """
+        Gets the jobs in running state.
+        :return:
+        """
+        running = 2
         run_jobs = []
         for job in self.all_jobs.values():
-            if job.job_status == RUNNING:
+            if job.job_status == running:
                 run_jobs.append(job)
         return run_jobs
 
     def get_complete_jobs(self):
-        COMPLETE = 4
+        """
+        Gets all the completed jobs.
+        :return:
+        """
+        complete = 4
         comp_jobs = []
         for job in self.all_jobs.values():
-            if job.job_status == COMPLETE:
+            if job.job_status == complete:
                 comp_jobs.append(job)
         return comp_jobs
 
@@ -476,15 +492,28 @@ class HashTableJobContainer(JobContainer):
                 return self.jobs_by_user[user].values()
 
     def get_scheduled_jobs(self):
+        """
+        get all scheduled jobs.
+        :return:
+        """
         return self.sched_jobs.values()
 
     def get_scheduled_jobs_sorted_by_id(self):
+        """
+        get scheduled jobs sorted by condor id.
+        :return:
+        """
         return_value = []
         for jobid in sorted(self.sched_jobs.iteritems()):
             return_value.append(jobid[1])
         return return_value
 
     def get_scheduled_jobs_by_users(self, prioritized=False):
+        """
+        get scheduled jobs grouped by user.
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             return_value = defaultdict(list)
             for job in self.sched_jobs.values():
@@ -496,6 +525,11 @@ class HashTableJobContainer(JobContainer):
             return return_value
 
     def get_scheduled_jobs_by_type(self, prioritized=False):
+        """
+        get scheduled jobs grouped by vmtype.
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             return_value = defaultdict(list)
             for job in self.sched_jobs.values():
@@ -507,6 +541,11 @@ class HashTableJobContainer(JobContainer):
             return return_value
 
     def get_scheduled_jobs_by_usertype(self, prioritized=False):
+        """
+        get scheduled jobs gruoped by user:type.
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             return_value = defaultdict(list)
             for job in self.sched_jobs.values():
@@ -518,15 +557,28 @@ class HashTableJobContainer(JobContainer):
             return return_value
 
     def get_unscheduled_jobs(self):
+        """
+        Get all unscheduled jobs.
+        :return:
+        """
         return self.new_jobs.values()
 
     def get_unscheduled_jobs_sorted_by_id(self):
+        """
+        Get unscheduled jobs sorted by condor id.
+        :return:
+        """
         return_value = []
         for jobid in sorted(self.new_jobs.iteritems()):
             return_value.append(jobid[1])
         return return_value
 
     def get_unscheduled_jobs_by_users(self, prioritized=False):
+        """
+        Get the unscheduled jobs grouped by user.
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             return_value = defaultdict(list)
             for job in self.new_jobs.values():
@@ -538,6 +590,11 @@ class HashTableJobContainer(JobContainer):
             return return_value
 
     def get_unscheduled_jobs_by_type(self, prioritized=False):
+        """
+        Get the unscheduled jobs grouped by vmtype.
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             return_value = defaultdict(list)
             for job in self.new_jobs.values():
@@ -549,6 +606,11 @@ class HashTableJobContainer(JobContainer):
             return return_value
 
     def get_unscheduled_jobs_by_usertype(self, prioritized=False):
+        """
+        Get the unscheduled jobs grouped by user:type.
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             return_value = defaultdict(list)
             for job in self.new_jobs.values():
@@ -560,6 +622,10 @@ class HashTableJobContainer(JobContainer):
             return return_value
 
     def get_high_priority_jobs(self):
+        """
+        Get all the jobs flagged high priority.
+        :return:
+        """
         jobs = []
         for job in self.all_jobs.values():
             if job.high_priority:
@@ -567,6 +633,11 @@ class HashTableJobContainer(JobContainer):
         return jobs
 
     def get_high_priority_jobs_by_users(self, prioritized=False):
+        """
+        Get all high priority flagged jobs group by user.
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             return_value = defaultdict(list)
             for job in self.get_high_priority_jobs():
@@ -576,11 +647,13 @@ class HashTableJobContainer(JobContainer):
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
 
-            #log.verbose("(OUT) get_high_priority_jobs_by_users")
-
             return return_value
 
     def get_unscheduled_high_priority_jobs(self):
+        """
+        Get the unscheduled jobs flagged high priority.
+        :return:
+        """
         jobs = []
         for job in self.all_jobs.values():
             if job.high_priority and job.status == 'Unscheduled':
@@ -588,6 +661,11 @@ class HashTableJobContainer(JobContainer):
         return jobs
 
     def get_unscheduled_high_priority_jobs_by_users(self, prioritized=False):
+        """
+        Return jobs flagged high priority grouped by user.
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             return_value = defaultdict(list)
             for job in self.get_unscheduled_high_priority_jobs():
@@ -597,14 +675,25 @@ class HashTableJobContainer(JobContainer):
                 for job_list in return_value.values():
                     job_list.sort(key=lambda job: job.get_priority(), reverse=True)
 
-            #log.verbose("(OUT) get_unscheduled_high_priority_jobs_by_users")
-
             return return_value
 
     def is_empty(self):
+        """
+        Check if container is empty.
+        :return:
+        """
         return len(self.all_jobs) == 0
 
     def update_job_status(self, jobid, status, remote, servertime, starttime):
+        """
+        Update the status of all jobs.
+        :param jobid:
+        :param status:
+        :param remote:
+        :param servertime:
+        :param starttime:
+        :return:
+        """
         with self.lock:
             job = self.get_job_by_id(jobid)
         if job != None:
@@ -631,31 +720,45 @@ class HashTableJobContainer(JobContainer):
             return False
 
     def schedule_job(self, jobid):
+        """
+        Set a job's state to scheduled.
+        :param jobid:
+        :return:
+        """
         with self.lock:
             if jobid in self.new_jobs:
                 job = self.new_jobs[jobid]
                 job.set_status("Scheduled")
                 self.sched_jobs[jobid] = job
                 del self.new_jobs[jobid]
-                #log.verbose('Job %s marked as scheduled in the job container' % (jobid))
                 return True
             else:
                 return False
 
-
     def unschedule_job(self, jobid):
+        """
+        Change a job's state to unscheduled.
+        :param jobid:
+        :return:
+        """
         with self.lock:
             if jobid in self.sched_jobs:
                 job = self.sched_jobs[jobid]
                 job.set_status("Unscheduled")
                 self.new_jobs[jobid] = job
                 del self.sched_jobs[jobid]
-                #log.verbose('Job %s marked as unscheduled in the job container' % (jobid))
                 return True
             else:
                 return False
 
-    def find_unscheduled_jobs_with_matching_reqs(self, user, job, N=0):
+    def find_unscheduled_jobs_with_matching_reqs(self, user, job, num=0):
+        """
+        Look for unscheduled jobs with the same requirements as job.
+        :param user:
+        :param job:
+        :param num:
+        :return:
+        """
         with self.lock:
             counter = 0
             unscheduled_jobs_for_user = []
@@ -671,12 +774,18 @@ class HashTableJobContainer(JobContainer):
                 if j.has_same_reqs(job):
                     matching_jobs.append(j)
                     counter += 1
-                    if counter > 0 and counter == N:
+                    if counter > 0 and counter == num:
                         break
 
             return matching_jobs
 
     def get_unscheduled_user_jobs_by_type(self, user, prioritized=False):
+        """
+        Get unscheduled jobs for user by their vmtype.
+        :param user:
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             unsched = self.get_unscheduled_jobs_by_users()
             return_value = defaultdict(list)
@@ -690,6 +799,12 @@ class HashTableJobContainer(JobContainer):
         return return_value
 
     def get_unscheduled_user_jobs_by_usertype(self, user, prioritized=False):
+        """
+        Get unscheduled jobs for user by their usertype.
+        :param user:
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             unsched = self.get_unscheduled_jobs_by_users()
             return_value = defaultdict(list)
@@ -703,6 +818,13 @@ class HashTableJobContainer(JobContainer):
         return return_value
 
     def get_scheduled_user_jobs_by_type(self, user, prioritized=False):
+        """
+        Get scheduled jobs belonging to user, by only their vmtype.
+        I think this function isn't really used much.
+        :param user:
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             sched = self.get_scheduled_jobs_by_users()
             return_value = defaultdict(list)
@@ -716,6 +838,12 @@ class HashTableJobContainer(JobContainer):
         return return_value
 
     def get_scheduled_user_jobs_by_usertype(self, user, prioritized=False):
+        """
+        Get scheduled jobs belonging to user, by their user:type value.
+        :param user:
+        :param prioritized:
+        :return:
+        """
         with self.lock:
             sched = self.get_scheduled_jobs_by_users()
             return_value = defaultdict(list)
