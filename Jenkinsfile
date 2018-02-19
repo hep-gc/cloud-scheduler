@@ -20,7 +20,7 @@ node{
                 sh '''
                    cp /var/log/condor/MasterLog .
                    cp /tmp/cloud_scheduler.crash.log .
-                   cp /var/log/cloudsceduler.log .
+                   cp /var/log/cloudscheduler.log .
                    '''
                 readFile "cloudscheduler.log"
                 archiveArtifacts artifacts: 'MasterLog'
