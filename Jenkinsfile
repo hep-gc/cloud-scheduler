@@ -35,7 +35,6 @@ node{
                '''
             try{
                 sh '''
-                   useradd hep
                    su hep
                    condor_submit /home/containers/update-test/try.job
                    exit
