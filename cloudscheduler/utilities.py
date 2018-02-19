@@ -289,6 +289,10 @@ class ErrTrackQueue(object):
         """Calculate the distribution of False(failed) starts."""
         return 1.0 - self.dist_true()
 
+    def append(self, item):
+        """Append item to the queue's data."""
+        self.data.append(item)
+
 
 class JobRunTrackQueue(object):
     """Job Run-[time] Tracking Queue. Keeps a list of job runtimes for  stats purposes."""
