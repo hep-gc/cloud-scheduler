@@ -119,7 +119,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                 else:
                     i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
             except:
-                log.debug("No default instance type found for %s, trying single default", self.network_address)
+                log.debug("No default instance type found for %s, trying single default",
+                          self.network_address)
                 i_type = self.DEFAULT_MACHINE_TYPE
         vm_instance_type = i_type
 
@@ -128,16 +129,12 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         else:
             vm_image_name = self.DEFAULT_IMAGE
 
-        #this should replace disk_url when cloud-init supports GCE in CERNVM3
-        #image_url = '%s%s/global/images/%s' % (
-            #self.GCE_URL, self.project_id, vm_image_name)
-
         #Ensures the VM's Root Disks are Unique
         self.DEFAULT_ROOT_PD_NAME = '%s-%s'%('hepgc-uvic-root-pd', self.generate_next_instance_name())
 
         #temporary variable for disk_url
-        #https://www.googleapis.com/compute/v1/projects/atlasgce/zones/us-central1-b/disks/hepgc-uvic-root-pd
-        disk_url = '%s%s/zones/%s/disks/%s'%(self.GCE_URL, self.project_id, self.DEFAULT_ZONE, self.DEFAULT_ROOT_PD_NAME)
+        disk_url = '%s%s/zones/%s/disks/%s'%(self.GCE_URL, self.project_id,
+                                             self.DEFAULT_ZONE, self.DEFAULT_ROOT_PD_NAME)
 
         machine_type_url = '%s/zones/%s/machineTypes/%s' % (
             self.project_url, self.DEFAULT_ZONE, vm_instance_type)
@@ -147,7 +144,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         # Construct the request body
         disk = {
             'name': self.DEFAULT_ROOT_PD_NAME,
-            'sourceSnapshot':'https://www.googleapis.com/compute/v1/projects/atlasgce/global/snapshots/%s'%vm_image_name,
+            'sourceSnapshot':
+                'https://www.googleapis.com/compute/v1/projects/atlasgce/global/snapshots/%s'%vm_image_name,
             'sizeGb':vm_storage
         }
 
@@ -173,7 +171,9 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             user_data = cloud_init_util.inject_customizations([], user_data)[0]
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
-            user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config')], extra_userdata)
+            user_data = cloud_init_util.build_multi_mime_message([(user_data,
+                                                                   'cloud-config')],
+                                                                 extra_userdata)
             if not user_data:
                 log.error("Problem building cloud-config user data.")
                 return 1
@@ -277,7 +277,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             response = self._blocking_call(self.gce_service, self.auth_http, response)
             #log.info("Destroy vm, response waiting  %s"%vm.name)
         except:
-            log.error("Failure while destroying VM %s. return leaving with removing resource from cloud sched", vm.name)
+            log.error("Failure while destroying VM %s."
+                      " return leaving with removing resource from cloud sched", vm.name)
             return
         #log.info("Destroy VM %s, check response %s"%(vm.name,response))
         try:
@@ -314,8 +315,10 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             for instance in instances:
 
                 if 'id' in instance and instance['id'] == vm.id:
-                    log.info("googlecluster::state::%s::inst %s::vm %s", vm.name, instance['status'], vm.status)
-                    if instance and hasattr(vm, 'status') and vm.status != self.VM_STATES.get(instance['status'], "Starting"):
+                    log.info("googlecluster::state::%s::inst %s::vm %s",
+                             vm.name, instance['status'], vm.status)
+                    if instance and hasattr(vm, 'status') and vm.status != \
+                            self.VM_STATES.get(instance['status'], "Starting"):
                         vm.last_state_change = int(time.time())
 
 

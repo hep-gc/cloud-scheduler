@@ -151,15 +151,18 @@ class VM(object):
             idout = self.spot_id
         if self.ssh_port != 22:
             nameout = ':'.join([nameout, str(self.ssh_port)])
-        output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout, self.vmtype, self.user, self.status)
+        output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout,
+                                                     self.vmtype, self.user, self.status)
         if self.override_status != None:
-            output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout, self.vmtype, self.user, self.override_status)
+            output = "%-6s %-25s %-20s %-10s %-12s\n" % (idout, nameout, self.vmtype,
+                                                         self.user, self.override_status)
         return output
 
     @staticmethod
     def get_vm_info_header():
         """Formatted header for use with cloud_status vm info output."""
-        return "%-6s %-25s %-20s %-10s %-12s %-23s\n" % ("ID", "HOSTNAME", "VMTYPE", "USER", "STATUS", "CLUSTER")
+        return "%-6s %-25s %-20s %-10s %-12s %-23s\n" %\
+               ("ID", "HOSTNAME", "VMTYPE", "USER", "STATUS", "CLUSTER")
 
     def get_vm_info_pretty(self):
         """Header + VM info formatted output."""
@@ -315,7 +318,8 @@ class ICluster(object):
         self.vms_lock = threading.RLock()
         self.res_lock = threading.RLock()
         self.enabled = enabled
-        self.boot_timeout = int(boot_timeout) if boot_timeout != None else config_val.getint('global', 'vm_start_running_timeout')
+        self.boot_timeout = int(boot_timeout) if boot_timeout != None else \
+            config_val.getint('global', 'vm_start_running_timeout')
         self.connection_fail_disable_time = config_val.getint('global', 'connection_fail_disable_time')
         self.connection_problem = False
         self.errorconnect = None
@@ -396,8 +400,11 @@ class ICluster(object):
     def get_cluster_info_short(self):
         """Return a short form of cluster information."""
         output = "Cluster: {0} \n".format(self.name)
-        output += "{0:25}  {1:^15}  {2:^15}  {3:^12} {4:^15} {5:^12} {6:^12}\n".format("ADDRESS", "CLOUD TYPE", "VMS/MAX", "MEMORY", "STORAGE", "PRIORITY", "ENABLED")
-        output += "{0:^25}  {1:^15}  {2:>5} / {3:<8}  {4:^12} {5:^15} {6:^12} {7:^12}\n".format(self.network_address[0:24], self.cloud_type, self.num_vms(), self.max_slots, self.memory, self.storageGB, self.priority, str(self.enabled))
+        output += "{0:25}  {1:^15}  {2:^15}  {3:^12} {4:^15} {5:^12} {6:^12}\n".\
+            format("ADDRESS", "CLOUD TYPE", "VMS/MAX", "MEMORY", "STORAGE", "PRIORITY", "ENABLED")
+        output += "{0:^25}  {1:^15}  {2:>5} / {3:<8}  {4:^12} {5:^15} {6:^12} {7:^12}\n".\
+            format(self.network_address[0:24], self.cloud_type, self.num_vms(), self.max_slots,
+                   self.memory, self.storageGB, self.priority, str(self.enabled))
         return output
 
     def get_cluster_vms_info(self):
@@ -511,9 +518,11 @@ class ICluster(object):
             req = requests.get(config_val.get('global', 'monitor_url'),
                                params={'cs_vm_fqdn':vm.hostname, 'boot_time':vm.initialize_time})
             if req.status_code == requests.codes.ok:
-                log.debug("Sent update to report monitor: %s: hostname: %s", config_val.get('global', 'monitor_url'), vm.hostname)
+                log.debug("Sent update to report monitor: %s: hostname: %s",
+                          config_val.get('global', 'monitor_url'), vm.hostname)
             else:
-                log.debug("problem sending update to report monitor at: %s: code: %s", config_val.get('global', 'monitor_url'), r.status_code)
+                log.debug("problem sending update to report monitor at: %s: code: %s",
+                          config_val.get('global', 'monitor_url'), r.status_code)
         except Exception as e:
             log.error("Problem trying to send monitor update: %s", e)
 

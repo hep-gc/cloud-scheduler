@@ -16,8 +16,8 @@ try:
     import boto.ec2
     import boto
 except ImportError:
-    log.error("To use EC2-style clouds, you need to have boto " \
-            "installed. You can install it from your package manager, " \
+    log.error("To use EC2-style clouds, you need to have boto "
+            "installed. You can install it from your package manager, "
             "or get it from http://code.google.com/p/boto/")
 
 
@@ -32,7 +32,8 @@ class EC2Cluster(cluster_tools.ICluster):
     }
 
     ERROR = 1
-    DEFAULT_INSTANCE_TYPE = config_val.get('job', 'default_VMInstanceType') if config_val.get('job', 'default_VMInstanceType') else "m1.small"
+    DEFAULT_INSTANCE_TYPE = config_val.get('job', 'default_VMInstanceType') if\
+        config_val.get('job', 'default_VMInstanceType') else "m1.small"
     DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config_val.get('job', 'default_VMInstanceTypeList'))
 
     def _get_connection(self):
@@ -223,7 +224,10 @@ class EC2Cluster(cluster_tools.ICluster):
             user_data = cloud_init_util.inject_customizations([], user_data)[0]
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
-            user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
+            user_data = cloud_init_util.build_multi_mime_message([(user_data,
+                                                                   'cloud-config',
+                                                                   'cloud_conf.yaml')],
+                                                                 extra_userdata)
             if not user_data:
                 log.error("Problem building cloud-config user data.")
                 return self.ERROR
@@ -376,7 +380,8 @@ class EC2Cluster(cluster_tools.ICluster):
                 reservations = connection.get_all_instances([vm.id])
                 instance = reservations[0].instances[0]
             except IndexError:
-                log.error("%s on %s doesn't seem to exist anymore, setting status to Error", vm.id, self.network_address)
+                log.error("%s on %s doesn't seem to exist anymore, setting status to Error",
+                          vm.id, self.network_address)
                 vm.status = self.VM_STATES['error']
                 vm.last_state_change = int(time.time())
                 return vm.status
@@ -528,7 +533,8 @@ class EC2Cluster(cluster_tools.ICluster):
             return (sub_p.returncode, out, err)
         except OSError, e:
             try:
-                log.error("Problem running %s, got errno %d \"%s\"", string.join(cmd, " "), e.errno, e.strerror)
+                log.error("Problem running %s, got errno %d \"%s\"", string.join(cmd, " "),
+                          e.errno, e.strerror)
             except:
                 log.error("Problem running command, OSError.")
             return (-1, "", "")
@@ -545,7 +551,9 @@ class EC2Cluster(cluster_tools.ICluster):
     """ img_type examples 't1.micro','m3.medium','c3.2xlarge',
     'm3.large','cc2.8xlarge','m1.medium' """
     def get_current_us_west_2_spot_price(self, img_type, connection):
-        result = self._get_current_spot_price(["Linux/UNIX"], [img_type], [self.regions], [], "none", "json", connection)
+        result = self._get_current_spot_price(["Linux/UNIX"], [img_type],
+                                              [self.regions], [], "none",
+                                              "json", connection)
         lowest_price = result[0]['price']
         for idx, _ in enumerate(result):
             if lowest_price > result[idx]['price']:
@@ -635,8 +643,8 @@ class EC2Cluster(cluster_tools.ICluster):
                             max_results = 100
                             next_token = None
                             filters = None
-                            price = conn.get_spot_price_history(start_time, end_time,
-                                                                instance_type, product_description, availability_zone,
+                            price = conn.get_spot_price_history(start_time, end_time, instance_type,
+                                                                product_description, availability_zone,
                                                                 dry_run, max_results, next_token, filters)
                             #price_obj = price.pop()
                             for price_obj in price:
@@ -668,8 +676,9 @@ class EC2Cluster(cluster_tools.ICluster):
                             next_token = None
                             filters = None
                             price = conn.get_spot_price_history(start_time, end_time,
-                                                                instance_type, product_description, availability_zone,
-                                                                dry_run, max_results, next_token, filters)
+                                                                instance_type, product_description,
+                                                                availability_zone, dry_run, max_results,
+                                                                next_token, filters)
 
                             for price_obj in price:
                                 json_data = {}
@@ -718,7 +727,9 @@ class EC2Cluster(cluster_tools.ICluster):
             while len(remove_idx) > 0:
                 idx = remove_idx.pop()
                 del json_resp[idx]
-            json_str = '{"zone":"","image_type":"","timestamp":"","region":"","instance_type":"","price":%s}'%average
+            json_str = \
+                '{"zone":"","image_type":"","timestamp":"","region":"","instance_type":"","price":%s}'%\
+                average
 
             json_obj = json.loads(json_str)
             json_resp.append(json_obj)
