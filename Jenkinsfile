@@ -27,7 +27,12 @@ node{
                 archiveArtifacts artifacts: 'MasterLog'
                 def crash = readFile "cloud_scheduler.crash.log"
                 echo crash
+                return
             }
+            sh '''
+               ls -l /home
+               ls /jobs
+               '''
         }
     }
 }
