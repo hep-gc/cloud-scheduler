@@ -5,7 +5,7 @@ node{
             sh 'systemctl start libvirtd'
             sh 'systemctl start condor'
             sh '''
-               cp /var/log/condor/MasterLog /output
+               cp /var/log/condor/MasterLog .
                ls
                '''
         }
