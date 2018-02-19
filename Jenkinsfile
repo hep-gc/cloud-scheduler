@@ -1,12 +1,12 @@
 node{
     checkout scm
-    docker.image('cloud:base').inside{
+    docker.image('cloud:base').inside('-v $WORKSPACE:/output'){
         stage('Test'){
             sh 'systemctl start libvirtd'
             sh 'systemctl start condor'
             sh 'ls /var/log/condor'
-            def condor = readFile "/var/log/condor/MasterLog"
-            echo condor
+            sh 'cp /var/log/condor/MasterLog /output'
         }
     }
+    archiveArtifacts artifacts: 'MasterLog'
 }
