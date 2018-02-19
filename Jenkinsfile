@@ -9,11 +9,21 @@ node{
                cp scripts/cloud_scheduler.init.d /etc/init.d/cloud_scheduler
                cp scripts/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
                /etc/init.d/cloud_scheduler start
-               cp /var/log/condor/MasterLog .
-               cp /tmp/cloud_scheduler.crash.log .
                '''
-            archiveArtifacts artifacts: 'MasterLog'
-            archiveArtifacts artifacts: 'cloud_scheduler.crash.log'
+            try{
+                sh '''
+                   condor_q
+                   cloud_status
+                   '''
+            }
+            catch(exc){
+                sh '''
+                   cp /var/log/condor/MasterLog .
+                   cp /tmp/cloud_scheduler.crash.log .
+                   '''
+                archiveArtifacts artifacts: 'MasterLog'
+                archiveArtifacts artifacts: 'cloud_scheduler.crash.log'
+            }
         }
     }
 }
