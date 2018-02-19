@@ -1,6 +1,6 @@
 node{
     checkout scm
-    docker.image('cloud:base').inside('-v /hepuser/tahyaw:/home'){
+    docker.image('cloud:base').inside('-v /hepuser/tahyaw/Documents:/home'){
         stage('Test'){
             sh '''
                systemctl start libvirtd
@@ -31,8 +31,33 @@ node{
             }
             sh '''
                ls -l /home
-               ls /jobs
+               ls -l /home/containers/update-test
                '''
+            try{
+                sh '''
+                   condor_submit /home/containers/update-test/try.job
+                   condor_q
+                   cloud_status -m
+                   '''
+                sleep 15
+                sh '''
+                   condor_q
+                   cloud_status -m
+                   virsh list --all
+                   '''
+            }
+            catch(exc){
+                sh '''
+                   cp /var/log/condor/MasterLog .
+                   cp /tmp/cloud_scheduler.crash.log .
+                   cp /var/log/cloudscheduler.log .
+                   '''
+                archiveArtifacts artifacts: "cloudscheduler.log"
+                archiveArtifacts artifacts: 'MasterLog'
+                def crash = readFile "cloud_scheduler.crash.log"
+                echo crash
+                return
+            }
         }
     }
 }
