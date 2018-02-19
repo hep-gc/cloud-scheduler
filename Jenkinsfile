@@ -10,6 +10,7 @@ node{
                cp scripts/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
                /etc/init.d/cloud_scheduler start
                '''
+            do sleep 10
             try{
                 sh '''
                    condor_q
@@ -22,8 +23,7 @@ node{
                    cp /tmp/cloud_scheduler.crash.log .
                    cp /var/log/cloudscheduler.log .
                    '''
-                def cloud = readFile "cloudscheduler.log"
-                echo cloud
+                archiveArtifacts artifacts: "cloudscheduler.log"
                 archiveArtifacts artifacts: 'MasterLog'
                 def crash = readFile "cloud_scheduler.crash.log"
                 echo crash
