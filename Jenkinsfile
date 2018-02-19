@@ -9,7 +9,7 @@ node{
                ls
                '''
             readFile "MasterLog"
-            archiveArtifacts artifact: 'MasterLog'
+            archiveArtifacts artifacts: 'MasterLog'
         }
     }
 }
