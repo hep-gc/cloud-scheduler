@@ -11,9 +11,6 @@ import threading
 import logging
 import cloudscheduler.config as config
 
-# Use this global variable for logging.
-log = None
-config_val = config.config_options
 
 class JobContainer(object):
 
@@ -35,8 +32,7 @@ class JobContainer(object):
         Constructor for job container base class.
         """
         self.lock = threading.RLock()
-        global log
-        log = logging.getLogger("cloudscheduler")
+        self.log = logging.getLogger("cloudscheduler")
 
     @abstractmethod
     def has_job(self, jobid):
@@ -340,7 +336,7 @@ class HashTableJobContainer(JobContainer):
         self.new_jobs = {}
         self.sched_jobs = {}
         self.jobs_by_user = defaultdict(dict)
-        log.verbose('HashTableJobContainer instance created.')
+        self.self.log.verbose('HashTableJobContainer instance created.')
 
     def __str__(self):
         return 'HashTableJobContainer [# of jobs: %d (unshed: %d sched: %d)]' %\
@@ -360,7 +356,7 @@ class HashTableJobContainer(JobContainer):
             else:
                 self.sched_jobs[job.id] = job
 
-            #log.debug('job %s added to job container' % (job.id))
+            #self.log.debug('job %s added to job container' % (job.id))
 
     def add_jobs(self, jobs, add_type):
         with self.lock:
@@ -373,7 +369,7 @@ class HashTableJobContainer(JobContainer):
             self.jobs_by_user.clear()
             self.new_jobs.clear()
             self.sched_jobs.clear()
-            log.verbose('job container cleared')
+            self.log.verbose('job container cleared')
 
     def remove_job(self, job):
         with self.lock:
@@ -387,7 +383,7 @@ class HashTableJobContainer(JobContainer):
                 del self.new_jobs[job.id]
             if job.id in self.sched_jobs:
                 del self.sched_jobs[job.id]
-            #log.debug('job %s removed from container' % job.id)
+            #self.log.debug('job %s removed from container' % job.id)
 
     def remove_jobs(self, jobs):
         with self.lock:
@@ -700,19 +696,19 @@ class HashTableJobContainer(JobContainer):
             if job.job_status != status and job.override_status != None:
                 job.override_status = None
             if job.job_status != status:
-                log.debug("Job %s status change: %s -> %s" % (job.id, self.job_status_list[job.job_status],
+                self.log.debug("Job %s status change: %s -> %s" % (job.id, self.job_status_list[job.job_status],
                                                               self.job_status_list[status]))
             job.job_status = status
             job.remote_host = remote
             job.servertime = int(servertime)
             job.jobstarttime = int(starttime)
             if job.banned and job.ban_time:
-                if (time.time() - job.ban_time) > config_val.getint('global', 'job_ban_timeout'):
+                if (time.time() - job.ban_time) > config.config_options.getint('global', 'job_ban_timeout'):
                     job.banned = False
                     job.ban_time = None
                     job.override_status = None
             if len(job.blocked_clouds) > 0:
-                if (time.time() - job.block_time) > config_val.getint('global', 'job_ban_timeout'):
+                if (time.time() - job.block_time) > config.config_options.getint('global', 'job_ban_timeout'):
                     job.blocked_clouds = []
                     job.block_time = None
             return True
