@@ -1,6 +1,6 @@
 node{
     checkout scm
-    docker.image('cloud:base').inside('-v $WORKSPACE:/output'){
+    docker.image('cloud:base').inside('-v /home:/home'){
         stage('Test'){
             sh '''
                systemctl start libvirtd
@@ -28,6 +28,9 @@ node{
                 def crash = readFile "cloud_scheduler.crash.log"
                 echo crash
             }
+            sh '''
+               ls /home
+               '''
         }
     }
 }
