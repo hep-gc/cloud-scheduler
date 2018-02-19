@@ -28,9 +28,6 @@ node{
                 def crash = readFile "cloud_scheduler.crash.log"
                 echo crash
             }
-            sh '''
-               ls /home
-               '''
         }
     }
 }
