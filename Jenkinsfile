@@ -8,6 +8,8 @@ node{
                cp /var/log/condor/MasterLog .
                ls
                '''
+            def condor = readFile "MasterLog"
+            echo condor
         }
     }
 }
