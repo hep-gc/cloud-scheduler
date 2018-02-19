@@ -883,7 +883,7 @@ class ResourcePool(object):
                 except:
                     log.error("Failed to parse out remote owner on %s", vm.machine_name)
             elif vm.start_req:
-                userexp = re.search('(?<=Owner == ")\w+', vm.start_req)
+                userexp = re.search(r'(?<=Owner == ")\w+', vm.start_req)
                 if userexp:
                     user = userexp.group(0)
                     vmusertype = ':'.join([user, vm.vmtype])

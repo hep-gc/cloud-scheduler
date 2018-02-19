@@ -88,7 +88,7 @@ def get_globus_path(executable="grid-proxy-init"):
     try:
         if os.environ["GLOBUS_LOCATION"]:
             retcode = subprocess.call("$GLOBUS_LOCATION/bin/%s -help" % executable, shell=True,
-                                  stdout=open('/dev/null', 'w'), stderr=subprocess.STDOUT)
+                                      stdout=open('/dev/null', 'w'), stderr=subprocess.STDOUT)
             if retcode != 0:
                 raise EnvironmentError(retcode, "GLOBUS_LOCATION is in your environment,\
                                    but unable to call '%s'" % executable)
@@ -130,7 +130,8 @@ def get_cert_DN(cert_file_path):
             log.exception('Error extracting cert subject using pyopenssl.')
             return None
     else:
-        openssl_cmd = [config_val.get('global', 'openssl_path'), 'x509', '-in', cert_file_path, '-subject', '-noout']
+        openssl_cmd = [config_val.get('global', 'openssl_path'), 'x509', '-in',
+                       cert_file_path, '-subject', '-noout']
         try:
             sub_dn = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
             return sub_dn
@@ -168,7 +169,8 @@ def get_cert_expiry_time(cert_file_path):
             log.exception('Error extracting cert expiry time using pyopenssl.')
             return None
     else:
-        openssl_cmd = [config_val.get('global', 'openssl_path'), 'x509', '-in', cert_file_path, '-enddate', '-noout']
+        openssl_cmd = [config_val.get('global', 'openssl_path'), 'x509', '-in',
+                       cert_file_path, '-enddate', '-noout']
         try:
             stdout_stderr = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()
             datetime_string = stdout_stderr[0].strip().split('=')[1]
