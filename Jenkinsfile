@@ -22,9 +22,11 @@ node{
                    cp /tmp/cloud_scheduler.crash.log .
                    cp /var/log/cloudscheduler.log .
                    '''
-                echo readFile "cloudscheduler.log"
+                def cloud = readFile "cloudscheduler.log"
+                echo cloud
                 archiveArtifacts artifacts: 'MasterLog'
-                echo readFile "cloud_scheduler.crash.log"
+                def crash = readFile "cloud_scheduler.crash.log"
+                echo crash
             }
         }
     }
