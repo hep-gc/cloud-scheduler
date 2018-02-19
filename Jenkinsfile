@@ -6,7 +6,8 @@ node{
             sh 'systemctl start condor'
             sh 'ls /var/log/condor'
             sh 'cp /var/log/condor/MasterLog /output'
+            def condor = readFile "MasterLog"
+            echo condor
         }
     }
-    archiveArtifacts artifacts: 'MasterLog'
 }
