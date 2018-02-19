@@ -10,7 +10,7 @@ node{
                cp scripts/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
                /etc/init.d/cloud_scheduler start
                '''
-            do sleep 10
+            sleep 10
             try{
                 sh '''
                    condor_q
