@@ -1,22 +1,23 @@
 import sys
 import time
+try:
+    import azure
+    import azure.servicemanagement
+except ImportError:
+    pass
 from cloudscheduler import cluster_tools
 from cloudscheduler import cloud_init_util
 import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 from cloudscheduler.job_management import _attr_list_to_dict
 
-try:
-    import azure
-    import azure.servicemanagement
-except ImportError:
-    pass
 log = utilities.get_cloudscheduler_logger()
 config_val = config.config_options
 
 class AzureCluster(cluster_tools.ICluster):
     ERROR = 1
-    DEFAULT_INSTANCE_TYPE = config_val.get('job', 'default_VMInstanceType') if config_val.get('job', 'default_VMInstanceType') else "m1.small"
+    DEFAULT_INSTANCE_TYPE = config_val.get('job', 'default_VMInstanceType') if \
+        config_val.get('job', 'default_VMInstanceType') else "m1.small"
     DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config_val.get('job', 'default_VMInstanceTypeList'))
     AZURE_SERVICE_NAME = "CloudSchedulerService"
     VM_STATES = {
@@ -48,7 +49,7 @@ class AzureCluster(cluster_tools.ICluster):
     }
 
     def __init__(self, name="Dummy Cluster", cloud_type="Dummy",
-                 memory=[], max_vm_mem=-1, networks=[], vm_slots=0,
+                 memory=None, max_vm_mem=-1, networks=None, vm_slots=0,
                  cpu_cores=0, storage=0, security_group=None,
                  username=None, password=None, tenant_name=None, auth_url=None,
                  key_name=None, boot_timeout=None, secure_connection="",

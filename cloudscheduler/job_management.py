@@ -613,19 +613,22 @@ class JobPool(object):
             if config_val.getboolean('global', 'vm_reqs_from_condor_reqs'):
                 if not classad.has_key("VMMem"):
                     try:
-                        classad["VMMem"] = int(_attribute_from_requirements_alt(classad["Requirements"], "Memory"))
+                        classad["VMMem"] = \
+                            int(_attribute_from_requirements_alt(classad["Requirements"], "Memory"))
                     except:
                         log.exception("Problem extracting Memory from Requirements")
                 if not classad.has_key("VMStorage"):
                     try:
-                        classad["VMStorage"] = int(_attribute_from_requirements_alt(classad["Requirements"], "Disk")) / 1000000
+                        classad["VMStorage"] = \
+                            int(_attribute_from_requirements_alt(classad["Requirements"], "Disk")) / 1000000
                         if classad["VMStorage"] < 1:
                             classad["VMStorage"] = 1
                     except:
                         log.exception("Problem extracting Disk from Requirements")
                 if not classad.has_key("VMCPUCores"):
                     try:
-                        classad["VMCPUCores"] = int(_attribute_from_requirements_alt(classad["Requirements"], "Cpus"))
+                        classad["VMCPUCores"] = \
+                            int(_attribute_from_requirements_alt(classad["Requirements"], "Cpus"))
                     except:
                         log.exception("Problem extracting Cpus from Requirements")
             # VMAMI requires special fiddling
@@ -863,7 +866,8 @@ class JobPool(object):
 
         type_desired = defaultdict(int)
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized=True)
-        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
+        high_priority_jobs_by_users = \
+            self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
         held_user_adjust = 0
         for user in new_jobs_by_users.keys():
             vmtype = None
@@ -874,8 +878,9 @@ class JobPool(object):
             if vmtype is None:
                 held_user_adjust -= 1 #This user is completely held
                 break
-            type_desired[vmtype] += 1 * (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) if \
-            high_priority_jobs_by_users else 1)
+            type_desired[vmtype] += 1 * (1 / Decimal(config_val.getint('global',
+                                                                       'high_priority_job_weight'))
+                                         if high_priority_jobs_by_users else 1)
         for user in high_priority_jobs_by_users.keys():
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
@@ -903,7 +908,8 @@ class JobPool(object):
         """
         type_desired = defaultdict(int)
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized=True)
-        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
+        high_priority_jobs_by_users = \
+            self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
         held_user_adjust = 0
         for user in new_jobs_by_users.keys():
             vmtype = None
@@ -914,7 +920,9 @@ class JobPool(object):
             if vmtype is None:
                 held_user_adjust -= 1 #This user is completely held
                 continue
-            type_desired[vmtype] += 1 * (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) if high_priority_jobs_by_users else 1)
+            type_desired[vmtype] += 1 * (1 / Decimal(config_val.getint('global',
+                                                                       'high_priority_job_weight'))
+                                         if high_priority_jobs_by_users else 1)
         for user in high_priority_jobs_by_users.keys():
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
@@ -925,7 +933,8 @@ class JobPool(object):
                 held_user_adjust -= 1 # this user is completely held
                 continue
             type_desired[vmtype] += 1 * config_val.getint('global', 'high_priority_job_weight')
-        num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
+        num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) +
+                            len(high_priority_jobs_by_users.keys()))
         if num_users == 0:
             log.verbose("All users held, completed, or banned")
             return {}
@@ -942,7 +951,8 @@ class JobPool(object):
         """
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized=True)
-        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
+        high_priority_jobs_by_users = \
+            self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
         held_user_adjust = 0
         user_types = {}
         high_user_types = {}
@@ -973,13 +983,15 @@ class JobPool(object):
         for user in user_types.keys():
             for vmtype in user_types[user]:
                 if vmtype in type_desired.keys():
-                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) * \
-                                            (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) \
-                                            if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) *\
+                                            (1 / Decimal(config_val.getint('global',
+                                                                           'high_priority_job_weight'))
+                                             if high_priority_jobs_by_users else 1)
                 else:
-                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) * \
-                                           (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) \
-                                           if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) *\
+                                           (1 / Decimal(config_val.getint('global',
+                                                                          'high_priority_job_weight'))
+                                            if high_priority_jobs_by_users else 1)
         for user in high_user_types.keys():
             for vmtype in high_user_types[user]:
                 if vmtype in type_desired.keys():
@@ -1009,7 +1021,8 @@ class JobPool(object):
 
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized=True)
-        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
+        high_priority_jobs_by_users = \
+            self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
         held_user_adjust = 0
         user_types = {}
         high_user_types = {}
@@ -1040,19 +1053,23 @@ class JobPool(object):
         for user in user_types.keys():
             for vmtype in user_types[user]:
                 if vmtype in type_desired.keys():
-                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) * \
-                                            (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) \
-                                            if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) *\
+                                            (1 / Decimal(config_val.getint('global',
+                                                                           'high_priority_job_weight'))
+                                             if high_priority_jobs_by_users else 1)
                 else:
-                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) * \
-                                           (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) \
-                                           if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) *\
+                                           (1 / Decimal(config_val.getint('global',
+                                                                          'high_priority_job_weight'))
+                                            if high_priority_jobs_by_users else 1)
         for user in high_user_types.keys():
             for vmtype in high_user_types[user]:
                 if vmtype in type_desired.keys():
-                    type_desired[vmtype] += Decimal('1.0') / len(high_user_types[user]) * config_val.getint('global', 'high_priority_job_weight')
+                    type_desired[vmtype] += Decimal('1.0') / len(high_user_types[user]) *\
+                                            config_val.getint('global', 'high_priority_job_weight')
                 else:
-                    type_desired[vmtype] = Decimal('1.0') / len(high_user_types[user]) * config_val.getint('global', 'high_priority_job_weight')
+                    type_desired[vmtype] = Decimal('1.0') / len(high_user_types[user]) *\
+                                           config_val.getint('global', 'high_priority_job_weight')
         num_users = held_user_adjust + len(set(user_types.keys() + high_user_types.keys()))
         if num_users != 0:
             num_users = Decimal('1.0') / num_users

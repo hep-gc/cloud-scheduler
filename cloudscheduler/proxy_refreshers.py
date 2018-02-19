@@ -1,3 +1,8 @@
+"""
+Proxy Renewal Classes.
+I think this was mainly for dealing with Nimbus proxy to control VMs.
+But it may also have been used for the proxies for condor jobs.
+"""
 import os
 import threading
 import time
@@ -18,12 +23,11 @@ log = utilities.get_cloudscheduler_logger()
 config_val = config.config_options
 
 class JobProxyRefresher(threading.Thread):
+
     """
     JobProxyRefresher - Periodically checks the expiry time on job user proxies and attempt
                         to renew the ones about to expire using MyProxy.
     """
-
-
     def __init__(self, job_pool):
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.job_pool = job_pool
@@ -96,13 +100,16 @@ class JobProxyRefresher(threading.Thread):
             log.error(traceback.format_exc())
 
 class VMProxyRefresher(threading.Thread):
+
     """
     VMProxyRefresher - Periodically checks the expiry time on VM user proxies and attempt
                         to renew the ones about to expire using MyProxy.
     """
-
-
     def __init__(self, cloud_resources):
+        """
+        Constructor for Refreshing VM Proxies - probably not used due to Nimbus.
+        :param cloud_resources:
+        """
         threading.Thread.__init__(self, name=self.__class__.__name__)
         self.cloud_resources = cloud_resources
         self.quit = False
@@ -248,9 +255,10 @@ class MyProxyProxyRefresher(object):
     def renew_proxy_meta(self, joborvm):
         """Single function to accept a job or vm proxy to refresh."""
         if joborvm is isinstance(Job):
-            if MyProxyProxyRefresher().renew_proxy(joborvm.get_x509userproxy(), \
-           joborvm.get_myproxy_creds_name(), joborvm.get_myproxy_server(), \
-           joborvm.get_myproxy_server_port()):
+            if MyProxyProxyRefresher().renew_proxy(joborvm.get_x509userproxy(),
+                                                   joborvm.get_myproxy_creds_name(),
+                                                   joborvm.get_myproxy_server(),
+                                                   joborvm.get_myproxy_server_port()):
                 # Yay, proxy renewal worked! :-)
                 log.verbose("Proxy for job %s renewed.", joborvm.id)
                 # Don't forget to reset the proxy expiry time cache.
@@ -258,8 +266,8 @@ class MyProxyProxyRefresher(object):
             else:
                 log.error("Error renewing proxy for job %s", joborvm.id)
         elif joborvm is isinstance(VM):
-            if self.renew_proxy(joborvm.get_proxy_file(), joborvm.get_myproxy_creds_name(), \
-           joborvm.get_myproxy_server(), joborvm.get_myproxy_server_port()):
+            if self.renew_proxy(joborvm.get_proxy_file(), joborvm.get_myproxy_creds_name(),
+                                joborvm.get_myproxy_server(), joborvm.get_myproxy_server_port()):
                 # Yay, proxy renewal worked! :-)
                 log.verbose("Proxy for VM %s renewed.", joborvm.id)
                 # Don't forget to reset the proxy expiry time cache.
