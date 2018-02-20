@@ -34,10 +34,10 @@ node{
                '''
             try{
                 sh '''
-                   sudo -u hep mkdir -p /home/hep/logs
-                   ls -l /home/hep
-                   ls -l /home
-                   sudo -u hep condor_submit try.job
+                   useradd hepsubmit
+                   sudo -u hepsubmit mkdir -p /home/hepsubmit/logs
+                   ls -l /home/hepsubmit
+                   sudo -u hepsubmit condor_submit try.job
                    condor_q
                    cloud_status -m
                    '''
