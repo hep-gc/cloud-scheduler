@@ -30,7 +30,6 @@ node{
                 return
             }
             sh '''
-               useradd hep
                ls -l /home
                '''
             try{
