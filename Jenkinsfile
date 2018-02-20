@@ -1,6 +1,6 @@
 node{
     checkout scm
-    docker.image('cloud-jenkins:logs').inside('-v /hepuser/tahyaw/Documents:/home'){
+    docker.image('cloud-jenkins:logs').inside('-v /hepuser/tahyaw/Documents:/user'){
         stage('Test'){
             sh '''
                systemctl start libvirtd
@@ -30,8 +30,8 @@ node{
                 return
             }
             sh '''
-               ls -l /home
-               ls -l /home/containers/update-test
+               ls -l /user
+               ls -l /user/containers/update-test
                '''
             try{
                 sh '''
