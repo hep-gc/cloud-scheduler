@@ -30,14 +30,14 @@ node{
                 return
             }
             sh '''
+               useradd hep
                ls -l /home
                '''
             try{
                 sh '''
-                   useradd hepsubmit
-                   sudo -u hepsubmit mkdir -p /home/hepsubmit/logs
-                   ls -l /home/hepsubmit
-                   sudo -u hepsubmit condor_submit try.job
+                   sudo -u hep mkdir -p /home/hep/logs
+                   ls -l /home/hep
+                   sudo -u hep condor_submit try.job
                    condor_q
                    cloud_status -m
                    '''
