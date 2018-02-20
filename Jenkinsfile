@@ -1,6 +1,6 @@
 node{
     checkout scm
-    docker.image('cloud:base').inside('-u hep -v /hepuser/tahyaw/Documents:/home'){
+    docker.image('cloud:base').inside('-v /hepuser/tahyaw/Documents:/home'){
         stage('Test'){
             sh '''
                systemctl start libvirtd
