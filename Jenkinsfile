@@ -30,12 +30,10 @@ node{
                 return
             }
             sh '''
-               ls -l /user
-               ls -l /user/containers/update-test
+               ls -l /home
                '''
             try{
                 sh '''
-                   ls /home/hep
                    sudo -u hep condor_submit try.job
                    condor_q
                    cloud_status -m
