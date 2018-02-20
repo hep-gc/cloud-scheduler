@@ -36,12 +36,19 @@ node{
                 sh '''
                    sudo -u hep condor_submit try.job
                    condor_q
-                   cloud_status -m
+                   cloud_status -q all
                    '''
                 sleep 15
                 sh '''
                    condor_q
                    cloud_status -m
+                   virsh list --all
+                   '''
+                sleep 15
+                sh '''
+                   condor_q 
+                   cloud_status -m
+                   cloud_status -q all
                    virsh list --all
                    '''
             }
@@ -57,6 +64,15 @@ node{
                 echo crash
                 return
             }
+            sh '''
+               cp /var/log/condor/MasterLog .
+               cp /tmp/cloud_scheduler.crash.log .
+               cp /var/log/cloudscheduler.log .
+               '''
+            archiveArtifacts artifacts: "cloudscheduler.log"
+            archiveArtifacts artifacts: 'MasterLog'
+            def crash = readFile "cloud_scheduler.crash.log"
+            echo crash
         }
     }
 }
