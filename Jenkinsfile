@@ -1,6 +1,6 @@
 node{
     checkout scm
-    docker.image('cloud:base').inside('-v /hepuser/tahyaw/Documents:/home'){
+    docker.image('cloud-jenkins').inside('-v /hepuser/tahyaw/Documents:/home'){
         stage('Test'){
             sh '''
                systemctl start libvirtd
@@ -35,7 +35,6 @@ node{
                '''
             try{
                 sh '''
-                   yum -y install sudo
                    sudo -u hep condor_submit /home/containers/update-test/try.job
                    condor_q
                    cloud_status -m
