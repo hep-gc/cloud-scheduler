@@ -13,7 +13,7 @@ when_to_transfer_output = ON_EXIT
 +VMType = "cloudscheduler-worker"
 +VMCPUArch = "X86_64"
 +VMName = "cloudscheduler-worker"
-+VMAMI = "/user/CentOS-7-x86_64-GenericCloud.img"
++VMAMI = "/home/Documents/CentOS-7-x86_64-GenericCloud.img"
 +VMMem = 2048
 
 +VMMaximumPrice = "0.10"
