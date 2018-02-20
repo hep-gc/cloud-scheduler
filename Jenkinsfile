@@ -1,6 +1,6 @@
 node{
     checkout scm
-    docker.image('cloud-jenkins').inside('-v /hepuser/tahyaw/Documents:/home'){
+    docker.image('cloud-jenkins:logs').inside('-v /hepuser/tahyaw/Documents:/home'){
         stage('Test'){
             sh '''
                systemctl start libvirtd
@@ -35,7 +35,6 @@ node{
                '''
             try{
                 sh '''
-                   mkdir /home/hep/logs
                    sudo -u hep condor_submit try.job
                    condor_q
                    cloud_status -m
