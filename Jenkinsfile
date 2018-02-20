@@ -35,6 +35,7 @@ node{
                '''
             try{
                 sh '''
+                   ls /home/hep
                    sudo -u hep condor_submit try.job
                    condor_q
                    cloud_status -m
