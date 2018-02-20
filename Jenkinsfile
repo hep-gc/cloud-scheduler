@@ -36,7 +36,7 @@ node{
             try{
                 sh '''
                    ls
-                   condor_submit /home/containers/update-test/try.job
+                   sudo -u hep condor_submit /home/containers/update-test/try.job
                    condor_q
                    cloud_status -m
                    '''
