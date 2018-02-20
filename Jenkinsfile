@@ -34,7 +34,7 @@ node{
                '''
             try{
                 sh '''
-                   sudo -u hep mkdir -p /home/hep/logs
+                   mkdir -p /home/hep/logs
                    ls -l /home/hep
                    sudo -u hep condor_submit try.job
                    condor_q
