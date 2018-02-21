@@ -34,7 +34,7 @@ node{
                '''
             try{
                 sh '''
-                   virsh net-start default
+                   virsh net-list --all
                    sudo -u hep condor_submit try.job
                    condor_q
                    cloud_status -q all
