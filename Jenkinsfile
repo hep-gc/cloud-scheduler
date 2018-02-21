@@ -43,8 +43,7 @@ node{
                    cloud_status -m
                    virsh list --all
                    '''
-                sleep 15
-                def condor_stat = sh 'condor_q'
+                condor_stat = sh (script: 'condor_q', returnStdout: true).trim()
                 echo condor_stat
             }
             catch(exc){
