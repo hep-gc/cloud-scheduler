@@ -1,6 +1,7 @@
 """
 Creates, Destroys and Polls VM's for the localhost
 """
+import os
 import sys
 import time
 import tempfile
@@ -82,7 +83,7 @@ class LocalCluster(cluster_tools.ICluster):
         if pre_customization:
             user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
 
-        if Path('/jobs/auth-key').exists():
+        if os.path.exists('/jobs/auth-key'):
             extra_userdata = ['/jobs/auth-key']+extra_userdata
 
         if len(extra_userdata) > 0:
@@ -110,10 +111,11 @@ class LocalCluster(cluster_tools.ICluster):
 	#to-do: add optional specification for image repo location
 
 	#check image exists in repo
-        if Path('/jobs/instances/base/'+image).exists():
+        if os.path.exists('/jobs/instances/base/'+image):
             path = '/jobs/instances/base/'+image
-        elif Path(image).exists():
+        elif os.path.exists(image):
             path = image
+            image = os.path.basename(path)
         else:
             log.error('Could not find image %s: Does not exists in image repository', image)
             return 1
@@ -128,7 +130,7 @@ class LocalCluster(cluster_tools.ICluster):
         elif image.endswith('.qcow'):
             image_copy = image.rstrip('.qcow2')
             base = image_copy+'.img'
-            if not Path('/jobs/instances/base/'+base).exists():
+            if not os.path.exists('/jobs/instances/base/'+base):
                 subprocess.call('qemu-img convert -f qcow2 -O raw '+path+' /jobs/instances/base/'+base, shell=True)
             image_copy = image_copy+'-'+name+'.qcow2'
             subprocess.call('qemu-img create -f qcow2 -b /jobs/instances/base/'+base+' /jobs/instances/'+image_copy, shell=True)
