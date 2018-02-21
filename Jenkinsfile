@@ -3,6 +3,7 @@ node{
     docker.image('cloud-jenkins').inside('--privileged'){
         stage('Test'){
             sh '''
+               cp qemu.conf /etc/libvirt/
                systemctl start libvirtd
                systemctl start condor
                python setup.py install
