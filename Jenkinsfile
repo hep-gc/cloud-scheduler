@@ -29,15 +29,11 @@ node{
                 archiveArtifacts artifacts: 'MasterLog'
                 def crash = readFile "cloud_scheduler.crash.log"
                 echo crash
+                error ('Something crashed...')
                 return
             }
-            sh '''
-               ls -l /home
-               '''
             try{
                 sh '''
-                   virsh net-list --all
-                   sudo -u hep condor_submit try.job
                    condor_q
                    cloud_status -q all
                    '''
@@ -48,12 +44,8 @@ node{
                    virsh list --all
                    '''
                 sleep 15
-                sh '''
-                   condor_q 
-                   cloud_status -m
-                   cloud_status -q all
-                   virsh list --all
-                   '''
+                def condor_stat = sh 'condor_q'
+                echo condor_q
             }
             catch(exc){
                 sh '''
@@ -65,6 +57,7 @@ node{
                 archiveArtifacts artifacts: 'MasterLog'
                 def crash = readFile "cloud_scheduler.crash.log"
                 echo crash
+                error('Something crashed...')
                 return
             }
             sh '''
