@@ -1,6 +1,6 @@
 node{
     checkout scm
-    docker.image('cloud-jenkins').inside(){
+    docker.image('cloud-jenkins').inside('--privileged'){
         stage('Test'){
             sh '''
                systemctl start libvirtd
