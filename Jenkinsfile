@@ -6,6 +6,7 @@ node{
                cp qemu.conf /etc/libvirt/
                systemctl start libvirtd
                systemctl start condor
+               systemctl status virtdlog
                python setup.py install
                cp scripts/cloud_scheduler.init.d /etc/init.d/cloud_scheduler
                cp scripts/cloud_scheduler.sysconf /etc/sysconfig/cloud_scheduler
