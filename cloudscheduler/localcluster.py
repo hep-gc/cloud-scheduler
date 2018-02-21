@@ -116,7 +116,7 @@ class LocalCluster(cluster_tools.ICluster):
             path = image
         else:
             log.error('Could not find image %s: Does not exists in image repository', image)
-
+            return 1
 
 	#check image format
         if image.endswith('.img'):
