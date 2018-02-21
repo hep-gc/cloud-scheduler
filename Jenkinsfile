@@ -45,7 +45,7 @@ node{
                    '''
                 sleep 15
                 def condor_stat = sh 'condor_q'
-                echo condor_q
+                echo condor_stat
             }
             catch(exc){
                 sh '''
