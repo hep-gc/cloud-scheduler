@@ -14,6 +14,7 @@ import cloudscheduler.config as config
 import cloudscheduler.utilities as utilities
 
 log = utilities.get_cloudscheduler_logger()
+config_val = config.config_options
 
 class LocalCluster(cluster_tools.ICluster):
     """
@@ -83,8 +84,8 @@ class LocalCluster(cluster_tools.ICluster):
         if pre_customization:
             user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
 
-        if os.path.exists('/jobs/auth-key'):
-            extra_userdata = ['/jobs/auth-key']+extra_userdata
+        if os.path.exists('/etc/cloudscheduler/auth-key.yaml'):
+            extra_userdata = ['/etc/cloudscheduler/auth-key.yaml']+extra_userdata
 
         if len(extra_userdata) > 0:
             # need to use the multi-mime type functions
@@ -206,7 +207,7 @@ class LocalCluster(cluster_tools.ICluster):
                 self.resource_return(vm)
             with self.vms_lock:
                 self.vms.remove(vm)
-            if config.monitor_url:
+            if config_val.get('global', 'monitor_url'):
                 self._report_monitor(vm)
         except Exception as e:
             log.error("Error removing vm from list: %s", e)
