@@ -85,7 +85,6 @@ node{
                 return
             }
 
-            condor_register = sh(script: 'condor_status', returnStdout: true).trim()
             sh 'cloud_admin -k -c container-cloud -a'
         }
     }
