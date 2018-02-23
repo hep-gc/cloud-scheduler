@@ -70,20 +70,6 @@ node{
                 sleep 10
                 cloud_check = sh(script: 'cloud_status -m', returnStdout: true).trim()
             }
-            if virsh_base == virsh_check{
-                echo virsh_base
-                sh '''
-                   cp /var/log/condor/MasterLog .
-                   cp /tmp/cloud_scheduler.crash.log .
-                   cp /var/log/cloudscheduler.log .
-                   '''
-                archiveArtifacts artifacts: "cloudscheduler.log"
-                archiveArtifacts artifacts: 'MasterLog'
-                def crash = readFile "cloud_scheduler.crash.log"
-                echo crash
-                error("Problem with virsh...")
-                return
-            }
 
             sh 'cloud_admin -k -c container-cloud -a'
         }
