@@ -72,6 +72,8 @@ node{
                 virsh_check = sh( script: 'virsh list --all', returnStdout: true).trim()
 
                 while (cloud_base == cloud_check){
+                    echo cloud_base
+                    echo cloud_check
                     sleep 10
                     cloud_check = sh( script: 'cloud_status -m', returnStdout: true).trim()
                 }
