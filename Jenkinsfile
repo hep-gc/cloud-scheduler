@@ -6,7 +6,9 @@ node{
 
         docker.image('cloud-jenkins:conf').inside('--privileged'){
             stage('Test'){
-                sh ''' 
+                sh '''
+                   sed -i '/s/SETHOST/${ip}' /etc/condor/condor_config.local
+                   sed -i '/s/SETHOST/${ip}' /etc/cloud_scheduler/cloud_scheduler.conf
                    systemctl start libvirtd
                    systemctl start condor
                    systemctl start virtlogd
