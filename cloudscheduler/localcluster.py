@@ -128,7 +128,7 @@ class LocalCluster(cluster_tools.ICluster):
             subprocess.call('qemu-img create -f qcow2 -b '+path+' /jobs/instances/'+image_copy, shell=True)
             image = image_copy
             path = '/jobs/instances/'+image
-        elif image.endswith('.qcow'):
+        elif image.endswith('.qcow2'):
             image_copy = image.rstrip('.qcow2')
             base = image_copy+'.img'
             if not os.path.exists('/jobs/instances/base/'+base):
