@@ -8,7 +8,7 @@ node{
             stage('Test'){
                 sh '''
                    sed -i "s/SETHOST/${ip}/g" /etc/condor/condor_config.local
-                   sed -i "s/SETHOST/${ip}/g" /etc/cloud_scheduler/cloud_scheduler.conf
+                   sed -i "s/SETHOST/${ip}/g" /etc/cloudscheduler/cloud_scheduler.conf
                    systemctl start libvirtd
                    systemctl start condor
                    systemctl start virtlogd
