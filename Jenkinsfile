@@ -2,14 +2,14 @@ node{
     checkout scm
 
     docker.image('cloud-jenkins:conf').withRun{ c->
-        def ip =hostIp(c)
+        def ip = hostIp(c)
 
         docker.image('cloud-jenkins:conf').inside('--privileged'){
             stage('Test'){
                 echo ip
                 sh '''
-                   sed -i "s/SETHOST/$ip/g" /etc/condor/condor_config.local
-                   sed -i "s/SETHOST/$ip/g" /etc/cloudscheduler/cloud_scheduler.conf
+                   sed -i "s/SETHOST/172.17.0.4/g" /etc/condor/condor_config.local
+                   sed -i "s/SETHOST/172.17.0.4/g" /etc/cloudscheduler/cloud_scheduler.conf
                    systemctl start libvirtd
                    systemctl start condor
                    systemctl start virtlogd
@@ -40,7 +40,7 @@ node{
                     error ('Something crashed...')
                     return
                 }
-                /* 
+ 
                 condor_nojob = sh( script: 'condor_q', returnStdout: true).trim()
                 cloud_base = sh( script: 'cloud_status -m', returnStdout: true).trim()
                 virsh_base = sh( script: 'virsh list --all', returnStdout: true).trim()
@@ -78,9 +78,9 @@ node{
                 def condor_conf = readFile "condor_config.local"
                 def cloud_conf = readFile "cloud_scheduler.conf"
                 echo condor_conf 
-                echo cloud_conf */
+                echo cloud_conf
 
-                /* while (cloud_base == cloud_check){
+                while (cloud_base == cloud_check){
                     echo cloud_base
                     echo cloud_check
                     sleep 10
@@ -99,8 +99,8 @@ node{
                     echo crash
                     error("Problem with virsh...")
                     return
-                } */
-                /*
+                }
+                
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                 
                 if (condor_reg){
@@ -110,7 +110,7 @@ node{
                 sh '''
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a'
-                   '''*/
+                   '''
             }
         }
     }
