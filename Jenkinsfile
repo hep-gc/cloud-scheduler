@@ -118,7 +118,6 @@ node{
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a'
                    '''
-            }
         }
     }
 }
