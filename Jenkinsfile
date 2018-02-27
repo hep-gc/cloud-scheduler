@@ -77,7 +77,6 @@ node{
                 
                 condor_job = sh( script: 'condor_q', returnStdout: true).trim()
                 cloud_check = sh( script: 'cloud_status -m', returnStdout: true).trim()
-                virsh_check = sh( script: 'virsh list --all', returnStdout: true).trim()
                 sh '''
                    cp /etc/cloudscheduler/cloud_scheduler.conf .
                    cp /etc/condor/condor_config.local .
@@ -93,8 +92,10 @@ node{
                     sleep 10
                     cloud_check = sh( script: 'cloud_status -m', returnStdout: true).trim()
                 }
+                
+                virsh_check = sh( script: 'virsh list --all', returnStdout: true).trim()
                 if (virsh_base == virsh_check){
-                    echo virsh_base
+                    echo virsh_check
                     sh '''
                        cp /var/log/condor/MasterLog .
                        cp /tmp/cloud_scheduler.crash.log .
@@ -121,7 +122,7 @@ node{
                 
                 sh '''
                    condor_rm hep
-                   cloud_admin -k -c container-cloud -a'
+                   cloud_admin -k -c container-cloud -a
                    '''
         }
     }
