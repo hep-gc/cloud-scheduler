@@ -87,7 +87,7 @@ node{
                 echo condor_conf 
                 echo cloud_conf
 
-                while (cloud_base == cloud_check){
+                /*while (cloud_base == cloud_check){
                     echo cloud_base
                     echo cloud_check
                     sleep 10
@@ -106,8 +106,13 @@ node{
                     echo crash
                     error("Problem with virsh...")
                     return
-                }
+                }*/
                 
+                sh '''
+                   cloud_status -m
+                   cp /var/log/cloudscheduler.log .
+                   '''
+                archiveArtifacts artifacts: "cloudscheduler.log"
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                 
                 if (condor_reg){
