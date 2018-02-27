@@ -111,9 +111,7 @@ node{
                 
                 sh '''
                    cloud_status -m
-                   cp /var/log/cloudscheduler.log .
                    '''
-                archiveArtifacts artifacts: "cloudscheduler.log"
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                 
                 if (condor_reg){
@@ -124,6 +122,8 @@ node{
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a
                    '''
+                sh 'cp /var/log/cloudscheduler.log .'
+                archiveArtifacts artifacts: "cloudscheduler.log"
         }
     }
 }
