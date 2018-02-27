@@ -70,8 +70,16 @@ node{
                 condor_job = sh( script: 'condor_q', returnStdout: true).trim()
                 cloud_check = sh( script: 'cloud_status -m', returnStdout: true).trim()
                 virsh_check = sh( script: 'virsh list --all', returnStdout: true).trim()
+                sh '''
+                   cp /etc/cloudscheduler/cloud_scheduler.conf .
+                   cp /etc/condor/condor_config.local .
+                   '''
+                def condor_conf = readFile "condor_config.local"
+                def cloud_conf = readFile "cloud_scheduler.conf"
+                echo condor_conf 
+                echo cloud_conf
 
-                while (cloud_base == cloud_check){
+                /* while (cloud_base == cloud_check){
                     echo cloud_base
                     echo cloud_check
                     sleep 10
@@ -90,7 +98,7 @@ node{
                     echo crash
                     error("Problem with virsh...")
                     return
-                }
+                } */
                 
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                 
