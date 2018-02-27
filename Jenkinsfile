@@ -1,11 +1,12 @@
 node{
     checkout scm
     
-    docker.image('cloud-jenkins').inside('--privileged'){
+    docker.image('cloud-jenkins:conf').inside('--privileged --ip 172.17.0.7'){
         stage('Test'){
             sh '''
                ifconfig
-               cp qemu.conf /etc/libvirt/
+               sed -i "s/SETHOST/172.17.0.7/g" /etc/condor/condor_config.local
+               sed -i "s/SETHOST/172.17.0.7/g" /etc/cloudscheduler/cloud_scheduler.conf
                systemctl start libvirtd
                systemctl start condor
                systemctl start virtlogd
