@@ -1,4 +1,4 @@
-node('docker') {
+node{
     stage 'start database'
     
     docker.image('redis:3.0.7-alpine').withRun { c ->
@@ -7,7 +7,6 @@ node('docker') {
         stage 'client set'
         
         docker.image('redis:3.0.7-alpine').inside {
-            sh 'ifconfig'
             sh "redis-cli -h ${ip} set test 123"
         }
         
