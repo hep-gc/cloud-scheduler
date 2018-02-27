@@ -65,11 +65,17 @@ node{
                        cp /var/log/condor/MasterLog .
                        cp /tmp/cloud_scheduler.crash.log .
                        cp /var/log/cloudscheduler.log .
+                       cp /etc/condor/condor_config.local .
+                       cp /etc/cloudscheduler/cloud_scheduler.conf .
                        '''
                     archiveArtifacts artifacts: "cloudscheduler.log"
                     archiveArtifacts artifacts: 'MasterLog'
                     def crash = readFile "cloud_scheduler.crash.log"
                     echo crash
+                    def condor_conf = readFile "condor_config.local"
+                    echo condor_conf
+                    def cloud_conf = readFile "cloud_scheduler.conf"
+                    echo cloud_conf
                     error ('Something crashed...')
                     return
                 }
