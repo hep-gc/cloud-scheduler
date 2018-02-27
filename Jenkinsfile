@@ -87,7 +87,7 @@ node{
                 echo condor_conf 
                 echo cloud_conf
 
-                /*while (cloud_base == cloud_check){
+                while (cloud_base == cloud_check){
                     echo cloud_base
                     echo cloud_check
                     sleep 10
@@ -106,7 +106,7 @@ node{
                     echo crash
                     error("Problem with virsh...")
                     return
-                }*/
+                }
                 
                 sh '''
                    cloud_status -m
