@@ -7,9 +7,8 @@ node{
         docker.image('cloud-jenkins:conf').inside('--privileged'){
             stage('Test'){
                 echo ip
+                
                 sh '''
-                   sed -i "s/SETHOST/172.17.0.4/g" /etc/condor/condor_config.local
-                   sed -i "s/SETHOST/172.17.0.4/g" /etc/cloudscheduler/cloud_scheduler.conf
                    systemctl start libvirtd
                    systemctl start condor
                    systemctl start virtlogd
@@ -65,17 +64,15 @@ node{
                        cp /var/log/condor/MasterLog .
                        cp /tmp/cloud_scheduler.crash.log .
                        cp /var/log/cloudscheduler.log .
-                       cp /etc/condor/condor_config.local .
-                       cp /etc/cloudscheduler/cloud_scheduler.conf .
+                       cp /var/log/condor/SchedLog .
+                       cp /var/log/condor/NegotiatorLog .
                        '''
                     archiveArtifacts artifacts: "cloudscheduler.log"
                     archiveArtifacts artifacts: 'MasterLog'
+                    archiveArtifacts artifacts: "SchedLog"
+                    archiveArtifacts artifacts: "NegotiatorLog"
                     def crash = readFile "cloud_scheduler.crash.log"
                     echo crash
-                    def condor_conf = readFile "condor_config.local"
-                    echo condor_conf
-                    def cloud_conf = readFile "cloud_scheduler.conf"
-                    echo cloud_conf
                     error ('Something crashed...')
                     return
                 }
