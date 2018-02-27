@@ -1,7 +1,7 @@
 node{
     checkout scm
     
-    docker.image('cloud-jenkins:conf').inside('--privileged --ip 172.17.0.7'){
+    docker.image('cloud-jenkins:conf').inside('--privileged --ip=172.17.0.7'){
         stage('Test'){
             sh '''
                ifconfig
