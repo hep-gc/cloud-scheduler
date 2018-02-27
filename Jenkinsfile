@@ -7,18 +7,21 @@ node{
         stage 'client set'
         
         docker.image('redis:3.0.7-alpine').inside {
+            sh 'ifconfig'
             sh "redis-cli -h ${ip} set test 123"
         }
         
         stage 'client get'
         
         docker.image('redis:3.0.7-alpine').inside {
+            sh 'ifconfig'
             sh "redis-cli -h ${ip} get test"
         }
         
         stage 'client del'
         
         docker.image('redis:3.0.7-alpine').inside {
+            sh 'ifconfig'
             sh "redis-cli -h ${ip} del test"
         }
     }
