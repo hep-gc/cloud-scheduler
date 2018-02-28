@@ -134,6 +134,8 @@ node{
                 sh '''
                    cp /var/log/cloudscheduler.log .
                    cp /tmp/cloud_scheduler.crash.log .
+                   virsh list --all
+                   cloud_status -m
                    '''
                 def crash = readFile "cloud_scheduler.crash.log"
                 echo crash

@@ -76,8 +76,8 @@ class LocalCluster(cluster_tools.ICluster):
 
         config_tmp = tempfile.mkdtemp(suffix="-"+name)
         
-        print config_val.get('global', 'condor_host_on_vm')
-        print config_val.get('global', 'condor_context_file')
+        log.debug(config_val.get('global', 'condor_host_on_vm'))
+        log.debug(config_val.get('global', 'condor_context_file'))
         if customizations:
             user_data = cloud_init_util.build_write_files_cloud_init(customizations)
         else:
