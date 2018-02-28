@@ -121,11 +121,14 @@ node{
                 sh '''
                    ls -lrt /tmp
                    cp /tmp/tmp*/boot-log .
+                   '''
+                def boot = readFile "boot-log"
+                ech boot
+                sh '''
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a
                    '''
                 sh 'cp /var/log/cloudscheduler.log .'
-                archiveArtifacts artifacts: "boot-log"
                 archiveArtifacts artifacts: "cloudscheduler.log"
         }
     }
