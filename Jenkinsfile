@@ -119,7 +119,7 @@ node{
                 }
                 sh '''
                    ls -lrt /tmp
-                   cp /tmp/tmp* .
+                   cp -r /tmp/tmp* .
                    
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a
