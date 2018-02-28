@@ -111,19 +111,21 @@ node{
                 
                 sh '''
                    cloud_status -m
+                   virsh list --all
                    '''
                 sleep 20
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
-                sh 'condor_status'
                 if (condor_reg){
                     echo 'Registered!'
                 }
                 sh '''
                    ls -lrt /tmp/tmp*
+                   condor_status
+                   chmod 777 /tmp/tmp*/boot-log
                    cp /tmp/tmp*/boot-log .
                    '''
-                //def boot = readFile "boot-log"
-                //echo boot
+                def boot = readFile "boot-log"
+                echo boot
                 sh '''
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a
