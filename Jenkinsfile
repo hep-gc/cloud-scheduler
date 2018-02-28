@@ -125,6 +125,7 @@ node{
                    cloud_admin -k -c container-cloud -a
                    '''
                 sh 'cp /var/log/cloudscheduler.log .'
+                archiveArtifacts artifacts: "boot-log"
                 archiveArtifacts artifacts: "cloudscheduler.log"
         }
     }
