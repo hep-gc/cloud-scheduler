@@ -114,12 +114,13 @@ node{
                    '''
                 sleep 20
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
-                
+                sh 'condor_status"
                 if (condor_reg){
                     echo 'Registered!'
                 }
                 sh '''
                    ls -lrt /tmp
+                   cp /tmp/tmp*/boot-log .
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a
                    '''
