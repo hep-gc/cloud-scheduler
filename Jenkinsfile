@@ -118,6 +118,7 @@ node{
                 if (condor_reg){
                     echo 'Registered!'
                 }
+                sleep 20
                 sh '''
                    ls -lrt /tmp/tmp*
                    condor_status
