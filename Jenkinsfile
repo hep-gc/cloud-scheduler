@@ -114,7 +114,7 @@ node{
                    '''
                 sleep 20
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
-                sh 'condor_status"
+                sh 'condor_status'
                 if (condor_reg){
                     echo 'Registered!'
                 }
