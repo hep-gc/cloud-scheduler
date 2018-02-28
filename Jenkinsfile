@@ -112,21 +112,19 @@ node{
                 sh '''
                    cloud_status -m
                    '''
+                sleep 20
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                 
                 if (condor_reg){
-                    echo 'Nothing yet!'
+                    echo 'Registered!'
                 }
                 sh '''
                    ls -lrt /tmp
-                   cp -r /tmp/tmp* .
-                   
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a
                    '''
                 sh 'cp /var/log/cloudscheduler.log .'
                 archiveArtifacts artifacts: "cloudscheduler.log"
-                archiveArtifacts artifacts: "tmp*/boot-log"
         }
     }
 }
