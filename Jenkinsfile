@@ -126,7 +126,7 @@ node{
                    '''
                 sh 'cp /var/log/cloudscheduler.log .'
                 archiveArtifacts artifacts: "cloudscheduler.log"
-                archiveArtifacts artifacts: "tmp*"
+                archiveArtifacts artifacts: "tmp*/boot-log"
         }
     }
 }
