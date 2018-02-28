@@ -117,13 +117,16 @@ node{
                 if (condor_reg){
                     echo 'Nothing yet!'
                 }
-                
+                sh '''
+                   ls -lrt /tmp
+                   cp /tmp/tmp* .
                 sh '''
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a
                    '''
                 sh 'cp /var/log/cloudscheduler.log .'
                 archiveArtifacts artifacts: "cloudscheduler.log"
+                archiveArtifacts artifacts: "tmp*"
         }
     }
 }
