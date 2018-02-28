@@ -131,7 +131,12 @@ node{
                    condor_rm hep
                    cloud_admin -k -c container-cloud -a
                    '''
-                sh 'cp /var/log/cloudscheduler.log .'
+                sh '''
+                   cp /var/log/cloudscheduler.log .
+                   cp /tmp/cloud_scheduler.crash.log .
+                   '''
+                def crash = readFile "cloud_scheduler.crash.log"
+                echo crash
                 archiveArtifacts artifacts: "cloudscheduler.log"
         }
     }
