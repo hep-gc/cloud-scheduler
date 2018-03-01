@@ -7,6 +7,7 @@ node{
                    ifconfig
                    sed -i "s/SETHOST/172.17.0.4/g" /etc/condor/condor_config.local
                    sed -i "s/SETHOST/172.17.0.4/g; s/#log_level: INFO/log_level: DEBUG/g" /etc/cloudscheduler/cloud_scheduler.conf
+                   sed -i "s/myhost.localhost/172.17.0.4/g" /etc/cloudscheduler/default.yaml
                    systemctl start libvirtd
                    systemctl start condor
                    systemctl start virtlogd
@@ -120,18 +121,24 @@ node{
                   sh 'condor_status'  
                 }
                 sleep 20
-                sh '''
-                   ls -lrt /tmp/tmp*
-                   condor_status
-                   chmod 777 /tmp/tmp*/boot-log
-                   cp /tmp/tmp*/boot-log .
-                   '''
-                def boot = readFile "boot-log"
-                echo boot
-                sh '''
-                   condor_rm hep
-                   cloud_admin -k -c container-cloud -a
-                   '''
+                if (!condor_status){
+                    sh '''
+                       ls -lrt /tmp/tmp*
+                       chmod 777 /tmp/tmp*/boot-log
+                       cp /tmp/tmp*/boot-log .
+                       condor_rm hep
+                       cloud_admin -k -c container-cloud -a
+                       '''
+                    def boot = readFile "boot-log"
+                    echo boot
+                }
+
+                else{
+                    sleep 30
+                    sh '''
+                       condor_status
+                       '''
+                }
                 sh '''
                    cp /var/log/cloudscheduler.log .
                    cp /tmp/cloud_scheduler.crash.log .
