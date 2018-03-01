@@ -3,11 +3,12 @@ node{
 
     docker.image('cloud-jenkins:conf').inside('--privileged'){
             stage('Test'){
+                def hostip = sh(script: "ip -4 addr show eth0 | grep inet | awk '{print $2}' | awk -F '/' '{print $1}'", returnStdout: true).trim()
+                echo hostip
                 sh '''
-                   ifconfig
-                   sed -i "s/SETHOST/172.17.0.4/g" /etc/condor/condor_config.local
-                   sed -i "s/SETHOST/172.17.0.4/g; s/#log_level: INFO/log_level: DEBUG/g" /etc/cloudscheduler/cloud_scheduler.conf
-                   sed -i "s/myhost.localhost/172.17.0.4/g" /etc/cloudscheduler/default.yaml
+                   sed -i "s/SETHOST/'${hostip}'/g" /etc/condor/condor_config.local
+                   sed -i "s/SETHOST/'${hostip}'/g; s/#log_level: INFO/log_level: DEBUG/g" /etc/cloudscheduler/cloud_scheduler.conf
+                   sed -i "s/myhost.localhost/'${hostip}'/g" /etc/cloudscheduler/default.yaml
                    systemctl start libvirtd
                    systemctl start condor
                    systemctl start virtlogd
