@@ -121,7 +121,8 @@ node{
                   sh 'condor_status'  
                 }
                 sleep 20
-                if (!condor_status){
+                condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
+                if (!condor_reg){
                     sh '''
                        ls -lrt /tmp/tmp*
                        chmod 777 /tmp/tmp*/boot-log
