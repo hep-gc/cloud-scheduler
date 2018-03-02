@@ -3,8 +3,6 @@ node{
 
     docker.image('cloud-jenkins:conf').inside('--privileged'){
             stage('Test'){
-                ///def hostip = sh(script: "ip -4 addr show eth0 | grep inet | awk '{print $2}' | awk -F '/' '{print $1}'", returnStdout: true).trim()
-                ///echo hostip
                 sh '''
                    HOSTIP=`ip -4 addr show eth0 | grep 'inet ' | awk '{print $2}' | awk -F '/' '{print $1}'`
                    sed -i "s/SETHOST/${HOSTIP}/g" /etc/condor/condor_config.local
@@ -117,13 +115,13 @@ node{
                    virsh list --all
                    '''
                 sleep 20
+                def count = 0
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
-                if (!condor_reg){
+                while (!condor_reg && count < 600){
                   sleep 30
-                  sh 'condor_status'  
+                  condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
+                  count += 30
                 }
-                sleep 20
-                condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                 if (!condor_reg){
                     sh '''
                        ls -lrt /tmp/tmp*
@@ -134,13 +132,13 @@ node{
                        '''
                     def boot = readFile "boot-log"
                     echo boot
+                    echo "Didn't register with condor"
+                    return
                 }
-
-                else{
-                    sleep 30
-                    sh '''
-                       condor_status
-                       '''
+                condor_job= sh(script: 'condor_q', returnStdout: true).trim()
+                while (condor_nojob != condor_job){
+                    sleep 15
+                    condor_job = sh(script: 'condor_q', returnStdout: true).trim()
                 }
                 sh '''
                    cp /var/log/cloudscheduler.log .
