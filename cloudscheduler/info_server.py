@@ -6,31 +6,30 @@
 import logging
 import threading
 import time
-import socket
 import sys
 import re
+import urllib
 import web
 import web.wsgiserver
-import urllib
 import cloudscheduler.config as config
 import cloudscheduler.__version__ as version
-from cluster_tools import ICluster
-from cluster_tools import VM
-from job_management import Job
-from job_management import JobPool
-from cloud_management import ResourcePool
-from openstackcluster import OpenStackCluster
+from cloudscheduler.cluster_tools import ICluster
+from cloudscheduler.cluster_tools import VM
+from cloudscheduler.job_management import Job
+from cloudscheduler.job_management import JobPool
+from cloudscheduler.cloud_management import ResourcePool
+from cloudscheduler.openstackcluster import OpenStackCluster
 # JSON lib included in 2.6+
 if sys.version_info < (2, 6):
     try:
         import simplejson as json
-    except:
+    except ImportError:
         raise "Please install the simplejson lib for python 2.4 or 2.5"
 else:
     import json
 
 log = None
-
+config_val = config.config_options
 
 class InfoServer(threading.Thread,):
 
@@ -41,7 +40,8 @@ class InfoServer(threading.Thread,):
     vm_poller = None
     scheduler = None
     cleaner = None
-    def __init__(self, c_resources, c_job_pool, c_job_poller, c_machine_poller, c_vm_poller, c_scheduler, c_cleaner):
+    def __init__(self, c_resources, c_job_pool, c_job_poller,
+                 c_machine_poller, c_vm_poller, c_scheduler, c_cleaner):
 
         global log
         log = logging.getLogger("cloudscheduler")
@@ -61,40 +61,41 @@ class InfoServer(threading.Thread,):
         web.scheduler = c_scheduler
         web.config.debug = False
         self.app = None
-        self.listen = (host_name, config.info_server_port)
+        self.listen = (host_name, config_val.getint('global', 'info_server_port'))
         self.urls = (
-            r'/',                                           views.version,
-            r'/cloud',                                      views.cloud,
-            r'/cloud/config',                               views.cloud_config,
-            r'/clusters',                                   views.clusters,
-            r'/clusters()(\.json)',                         views.clusters,
-            r'/clusters/([\w\%-]+)',                        views.clusters,
-            r'/clusters/([\w\%-]+)(\.json)',                views.clusters,
-            r'/clusters/([\w\%-]+)/vms',                    views.vms,
-            r'/clusters/([\w\%-]+)/vms/([\w\%-]+)',         views.vms,
-            r'/clusters/([\w\%-]+)/vms/([\w\%-]+)(\.json)', views.vms,
-            r'/developer-info',                             views.developer_info,
-            r'/diff-types',                                 views.diff_types,
-            r'/failures/(boot|image)',                      views.failures,
-            r'/ips',                                        views.ips,
-            r'/jobs',                                       views.jobs,
-            r'/jobs/([\w\%-]+)',                            views.jobs,
-            r'/jobs/([\w\%-]+)(\.json)',                    views.jobs,
-            r'/job-pool.json',                              views.job_pool,
-            r'/shared-objs',                                views.shared_objs,
-            r'/thread-heart-beats',                         views.thread_heart_beats,
-            r'/vms',                                        views.vms,
+            r'/', Views.Version,
+            r'/cloud', Views.Cloud,
+            r'/cloud/config', Views.Cloudconfig,
+            r'/clusters', Views.Clusters,
+            r'/clusters()(\.json)', Views.Clusters,
+            r'/clusters/([\w\%-]+)', Views.Clusters,
+            r'/clusters/([\w\%-]+)(\.json)', Views.Clusters,
+            r'/clusters/([\w\%-]+)/vms', Views.Vms,
+            r'/clusters/([\w\%-]+)/vms/([\w\%-]+)', Views.Vms,
+            r'/clusters/([\w\%-]+)/vms/([\w\%-]+)(\.json)', Views.Vms,
+            r'/developer-info', Views.Developerinfo,
+            r'/diff-types', Views.Difftypes,
+            r'/failures/(boot|image)', Views.Failures,
+            r'/ips', Views.Ips,
+            r'/jobs', Views.Jobs,
+            r'/jobs/([\w\%-]+)', Views.Jobs,
+            r'/jobs/([\w\%-]+)(\.json)', Views.Jobs,
+            r'/job-pool.json', Views.Jobpool,
+            r'/shared-objs', Views.Sharedobjs,
+            r'/thread-heart-beats', Views.Threadheartbeats,
+            r'/vms', Views.Vms,
         )
 
     def run(self):
 
         # Run the server's main loop
-        log.info("Started info server on port %s" % config.info_server_port)
+        log.info("Started info server on port %s", config_val.getint('global', 'info_server_port'))
         try:
             self.app = web.application(self.urls, globals())
-            self.server = web.wsgiserver.CherryPyWSGIServer(self.listen, self.app.wsgifunc(), server_name="localhost")
+            self.server = web.wsgiserver.CherryPyWSGIServer(self.listen,
+                                                            self.app.wsgifunc(),
+                                                            server_name="localhost")
             self.server.start()
-
         except Exception as e:
             log.error("Could not start webpy server.\n{0}".format(e))
             sys.exit(1)
@@ -103,16 +104,16 @@ class InfoServer(threading.Thread,):
         self.server.stop()
         self.done = True
 
-class views:
-    class cloud:
+class Views(object):
+    class Cloud(object):
         def GET(self):
             return web.cloud_resources.get_pool_info()
 
-    class cloud_config:
+    class Cloudconfig(object):
         def GET(self):
             return web.cloud_resources.get_cloud_config_output()
 
-    class clusters:
+    class Clusters(object):
         def GET(self, cluster_name=None, json=None):
 
             if cluster_name:
@@ -152,20 +153,20 @@ class views:
                 output.append(cluster.get_cluster_info_short())
                 output.append("\n")
             return ''.join(output)
-            
 
-    class developer_info:
+
+    class Developerinfo(object):
         def GET(self):
             try:
                 from guppy import hpy
-                h = hpy()
-                heap = h.heap()
+                heapy = hpy()
+                heap = heapy.heap()
                 return str(heap)
             except:
                 return "You need to have Guppy installed to get developer " \
-                       "information" 
+                       "information"
 
-    class diff_types:
+    class Difftypes(object):
         def GET(self):
             output = []
             current_types = web.cloud_resources.vmtype_distribution()
@@ -176,11 +177,12 @@ class views:
                 if vmtype in desired_types.keys():
                     diff_types[vmtype] = current_types[vmtype] - desired_types[vmtype]
                 else:
-                    diff_types[vmtype] = 1 # changed from 0 to handle users with multiple job types, back to 0 from 1.
+                    # changed from 0 to handle users with multiple job types, back to 0 from 1
+                    diff_types[vmtype] = 1
             for vmtype in desired_types.keys():
                 if vmtype not in current_types.keys():
                     diff_types[vmtype] = -desired_types[vmtype]
-    
+
             # With user limiting will need to reset any users that are at their limits
             # so they will not interfere with scheduling
             # will need to redistribute negatives to the non-limited users
@@ -192,7 +194,8 @@ class views:
                     if vmusertype not in limited_users:
                         limited_users.append(vmusertype)
                 if vmusertype in userjoblimits.keys():
-                    if web.cloud_resources.uservmtype_at_limit(vmusertype, userjoblimits[vmusertype]):
+                    if web.cloud_resources.uservmtype_at_limit(vmusertype,
+                                                               userjoblimits[vmusertype]):
                         if vmusertype not in limited_users:
                             limited_users.append(vmusertype)
             neg_total = 0
@@ -206,12 +209,13 @@ class views:
             elif splitby == 0:
                 log.verbose("All users are limited.")
             else:
-                log.error("More user vmtypes limited than what's in diff types, something weird here.")
-    
+                log.error("More user vmtypes limited than what's in diff types, \
+                           something weird here.")
+
             for usertype in diff_types.keys():
                 if usertype not in limited_users:
                     diff_types[usertype] += adjustby # the 'extra' will be negative so add it
-                    
+
             #for type in current_types.keys():
                 #if type in desired_types.keys():
                     #diff_types[type] = current_types[type] - desired_types[type]
@@ -231,7 +235,7 @@ class views:
                 output.append("type: %s, dist: %f\n" % (key, value))
             return ''.join(output)
 
-    class failures:
+    class Failures(object):
         def GET(self, failure_type):
             if failure_type == 'boot':
                 return self.view_boot_failures()
@@ -260,18 +264,18 @@ class views:
                         output.append("      Image: %s\n" % image)
             return ''.join(output)
 
-    class ips:
+    class Ips(object):
         def GET(self):
             output = []
             for cluster in web.cloud_resources.resources:
                 for vm in cluster.vms:
-                    if re.search("(10|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.", vm.ipaddress):
+                    if re.search(r"(10|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.", vm.ipaddress):
                         continue
                     else:
                         output.append("[%s]\n\taddress %s\n" % (vm.hostname, vm.ipaddress))
             return ''.join(output)
 
-    class jobs:
+    class Jobs(object):
         def GET(self, jobid=None, json=None):
             if jobid:
                 jobid = urllib.unquote(jobid)
@@ -322,12 +326,12 @@ class views:
         def view_job_json(self, jobid):
             job_match = web.job_pool.job_container.get_job_by_id(jobid)
             return JobJSONEncoder().encode(job_match)
-        
-    class job_pool:
+
+    class Jobpool(object):
         def GET(self):
             return JobPoolJSONEncoder().encode(web.job_pool)
 
-    class shared_objs:
+    class Sharedobjs(object):
         def GET(self):
             output = []
             output.append("Scheduler Thread:\n" + web.scheduler.check_shared_objs())
@@ -342,7 +346,7 @@ class views:
             output.append("\n")
             return ''.join(output)
 
-    class thread_heart_beats:
+    class Threadheartbeats(object):
         def GET(self):
             now = time.time()
             output = []
@@ -354,11 +358,11 @@ class views:
             output.append("   MachinePoller Thread(%s): %s\n" % (web.machine_poller.polling_interval, str(int(now - web.machine_poller.heart_beat))))
             return ''.join(output)
 
-    class version:
+    class Version(object):
         def GET(self):
             return "Cloud Scheduler version: %s" % version.version
 
-    class vms:
+    class Vms(object):
         def GET(self, cluster_name=None, vm_id=None, json=None):
             if cluster_name: cluster_name = urllib.unquote(cluster_name)
             if vm_id: vm_id = urllib.unquote(vm_id)
@@ -371,7 +375,7 @@ class views:
 
             elif 'metric' in web.input():
                 return self.view_vm_metric(cluster_name, web.input().metric)
-                
+
             else:
                 return self.view_vm_resources()
 
@@ -406,12 +410,14 @@ class views:
                 if cluster_name:
                     cluster = web.cloud_resources.get_cluster(cluster_name)
                     if not cluster:
-                        return "Could not find cloud: %s - check cloud_status for list of available clouds" % cluster_name
+                        return "Could not find cloud: %s - check cloud_status for \
+                                list of available clouds" % cluster_name
                     vms.extend(cluster.vms)
                 else:
                     for cluster in web.cloud_resources.resources:
                         vms.extend(cluster.vms)
-                state_count = {'Running':0, 'Starting':0, 'Error':0, 'Retiring':0, 'ExpiredProxy':0, 'NoProxy':0, 'ConnectionRefused':0}
+                state_count = {'Running':0, 'Starting':0, 'Error':0, 'Retiring':0,
+                               'ExpiredProxy':0, 'NoProxy':0, 'ConnectionRefused':0}
                 for vm in vms:
                     if vm.override_status:
                         state_count[vm.override_status] += 1
@@ -485,20 +491,20 @@ class views:
 
 class VMJSONEncoder(json.JSONEncoder):
     def default(self, vm):
-        if not isinstance (vm, VM):
+        if not isinstance(vm, VM):
             log.error("Cannot use VMJSONEncoder on non VM object of type %s, %s" % (type(vm), vm))
             return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
                 'ipaddress': vm.ipaddress, 'ssh_port': vm.ssh_port,
-                'cloudtype': vm.cloudtype, 'network': vm.network, 
+                'cloudtype': vm.cloudtype, 'network': vm.network,
                 'image': vm.image, 'alt_hostname': vm.alt_hostname,
                 'memory': vm.memory, 'flavor': vm.flavor,
-                'cpucores': vm.cpucores, 'storage': vm.storage, 
+                'cpucores': vm.cpucores, 'storage': vm.storage,
                 'status': vm.status, 'condoraddr': vm.condoraddr,
                 'condorname': vm.condorname, 'condormasteraddr': vm.condormasteraddr,
                 'keep_alive': vm.keep_alive, 'user': vm.user, 'uservmtype': vm.uservmtype,
-                'clusteraddr': vm.clusteraddr, 'clusterport': vm.clusterport,
+                'clusterport': vm.clusterport,
                 'errorcount': vm.errorcount, 'errorconnect': vm.errorconnect,
                 'lastpoll': vm.lastpoll, 'last_state_change': vm.last_state_change,
                 'initialize_time': vm.initialize_time, 'startup_time': vm.startup_time,
@@ -507,47 +513,49 @@ class VMJSONEncoder(json.JSONEncoder):
                 'myproxy_server': vm.myproxy_server, 'myproxy_server_port': vm.myproxy_server_port,
                 'myproxy_renew_time': vm.myproxy_renew_time, 'override_status': vm.override_status,
                 'job_per_core': vm.job_per_core, 'force_retire': vm.force_retire,
-                'failed_retire': vm.failed_retire, 'x509userproxy_expiry_time': str(vm.x509userproxy_expiry_time),
+                'failed_retire': vm.failed_retire,
+                'x509userproxy_expiry_time': str(vm.x509userproxy_expiry_time),
                 'job_run_times': list(vm.job_run_times.data)}
 
 class ClusterJSONEncoder(json.JSONEncoder):
     def default(self, cluster):
-        if not isinstance (cluster, ICluster):
+        if not isinstance(cluster, ICluster):
             log.error("Cannot use ClusterJSONEncoder on non Cluster object")
             return
-        vmEncodes = []
+        vm_encodes = []
         for vm in cluster.vms:
-            vmEncodes.append(VMJSONEncoder().encode(vm))
-        vmDecodes = []
-        for vm in vmEncodes:
-            vmDecodes.append(json.loads(vm))
+            vm_encodes.append(VMJSONEncoder().encode(vm))
+        vm_decodes = []
+        for vm in vm_encodes:
+            vm_decodes.append(json.loads(vm))
         cluster_dict = {'name': cluster.name, 'network_address': cluster.network_address,
-                'cloud_type': cluster.cloud_type, 'memory': cluster.memory, 
-                'network_pools': cluster.network_pools, 
-                'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores, 
-                'storageGB': cluster.storageGB, 'vms': vmDecodes, 'enabled':cluster.enabled,
-                'max_mem': cluster.max_mem,
-                'max_vm_mem': cluster.max_vm_mem, 'max_slots': cluster.max_slots,
-                'max_storageGB': cluster.max_storageGB, 'boot_timeout': cluster.boot_timeout,
-                'connection_fail_disable_time': cluster.connection_fail_disable_time,
-                'connection_problem': cluster.connection_problem,
-                'errorconnect': cluster.errorconnect}
+                        'cloud_type': cluster.cloud_type, 'memory': cluster.memory,
+                        'network_pools': cluster.network_pools,
+                        'vm_slots': cluster.vm_slots, 'cpu_cores': cluster.cpu_cores,
+                        'storageGB': cluster.storageGB, 'vms': vm_decodes,
+                        'enabled':cluster.enabled, 'max_mem': cluster.max_mem,
+                        'max_vm_mem': cluster.max_vm_mem, 'max_slots': cluster.max_slots,
+                        'max_storageGB': cluster.max_storageGB,
+                        'boot_timeout': cluster.boot_timeout,
+                        'connection_fail_disable_time': cluster.connection_fail_disable_time,
+                        'connection_problem': cluster.connection_problem,
+                        'errorconnect': cluster.errorconnect}
         if isinstance(cluster, OpenStackCluster):
             cluster_dict['tenant'] = cluster.tenant_name
         return cluster_dict
 
 class ResourcePoolJSONEncoder(json.JSONEncoder):
     def default(self, res_pool):
-        if not isinstance (res_pool, ResourcePool):
+        if not isinstance(res_pool, ResourcePool):
             log.error("Cannot use ResourcePoolJSONEncoder on non ResourcePool Object")
             return
         pool = []
         for cluster in res_pool.resources:
             pool.append(ClusterJSONEncoder().encode(cluster))
-        poolDecodes = []
+        pool_decodes = []
         for cluster in pool:
-            poolDecodes.append(json.loads(cluster))
-        return {'resources': poolDecodes}
+            pool_decodes.append(json.loads(cluster))
+        return {'resources': pool_decodes}
 
 class JobJSONEncoder(json.JSONEncoder):
     def default(self, job):
@@ -567,9 +575,12 @@ class JobJSONEncoder(json.JSONEncoder):
                 'blocked_clouds':job.blocked_clouds, 'uservmtype': job.uservmtype,
                 'high_priority': job.high_priority, 'instance_type': job.instance_type,
                 'maximum_price': job.maximum_price, 'spool_dir': job.spool_dir,
-                'myproxy_server': job.myproxy_server, 'myproxy_server_port': job.myproxy_server_port,
-                'myproxy_creds_name': job.myproxy_creds_name, 'running_vm': job.running_vm,
-                'x509userproxysubject': job.x509userproxysubject, 'x509userproxy': job.x509userproxy,
+                'myproxy_server': job.myproxy_server,
+                'myproxy_server_port': job.myproxy_server_port,
+                'myproxy_creds_name': job.myproxy_creds_name,
+                'running_vm': job.running_vm,
+                'x509userproxysubject': job.x509userproxysubject,
+                'x509userproxy': job.x509userproxy,
                 'original_x509userproxy': job.original_x509userproxy,
                 'x509userproxy_expiry_time': job.x509userproxy_expiry_time,
                 'proxy_renew_time': job.proxy_renew_time, 'job_per_core': job.job_per_core,
@@ -580,7 +591,7 @@ class JobJSONEncoder(json.JSONEncoder):
                 'location': job.location,
                 'key_name': job.key_name, 'req_security_group': job.req_security_group,
                 'override_status': job.override_status, 'block_time': job.block_time
-                }
+               }
 
 class JobPoolJSONEncoder(json.JSONEncoder):
     def default(self, job_pool):

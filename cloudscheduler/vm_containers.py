@@ -1,19 +1,17 @@
+"""
+ This is an abstract base class; do not instantiate directly.
+
+ API documentation should go in here, as opposed to writing specific
+ documentation for each concrete subclasses.
+"""
+
 from abc import ABCMeta, abstractmethod
-from collections import defaultdict
-import time
 import threading
 import logging
-import cloudscheduler.config as config
 
 # Use this global variable for logging.
 log = None
 
-#
-# This is an abstract base class; do not instantiate directly.
-#
-# API documentation should go in here, as opposed to writing specific
-# documentation for each concrete subclasses.
-#
 class VMContainer():
     __metclass__ = ABCMeta
 
@@ -25,7 +23,6 @@ class VMContainer():
         self.lock = threading.RLock()
         global log
         log = logging.getLogger("cloudscheduler")
-        pass
 
     @abstractmethod
     def get_vm(self, vmid):

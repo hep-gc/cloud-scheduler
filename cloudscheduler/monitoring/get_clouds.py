@@ -17,8 +17,8 @@
  * limitations under the License.
  *
  * AUTHOR - Adam Bishop - ahbishop@uvic.ca
- *       
- * For comments or questions please contact the above e-mail address 
+ *
+ * For comments or questions please contact the above e-mail address
  * or Ian Gable - igable@uvic.ca
  *
  * """
@@ -27,9 +27,8 @@
 import ConfigParser
 import sys
 import os
-from redis import Redis, ConnectionError, ResponseError
-from xml.dom.minidom import parse, parseString
-from cloud_logger import Logger
+from redis import Redis, ConnectionError
+from cloudscheduler.monitoring.cloud_logger import Logger
 import amara
 
 RET_CRITICAL = -1
@@ -44,22 +43,27 @@ CLOUDS_KEY = "Clouds_Key"
 
 ConfigMapping = {}
 
-# This global method loads all the user configured options from the configuration file and saves them
-# into the global ConfigMapping dictionary
+# This global method loads all the user configured options from the configuration file
+# and saves them into the global ConfigMapping dictionary
 def loadGetCloudsClientConfig(logger):
 
     cfgFile = ConfigParser.ConfigParser()
-    # Prevent an exception from being generated should the config file not be found in the current directory
-    if(os.path.exists(CONF_FILE)):
+    # Prevent an exception from being generated should the config file
+    # not be found in the current directory
+    if os.path.exists(CONF_FILE):
         cfgFile.read(CONF_FILE)
         try:
-            ConfigMapping[SERVER_TMP_LOCATION] = cfgFile.get(CONF_FILE_SECTION, SERVER_TMP_LOCATION,0)
-            ConfigMapping[REDISDB_SERVER_HOSTNAME] = cfgFile.get(CONF_FILE_SECTION, REDISDB_SERVER_HOSTNAME,0)
-            ConfigMapping[REDISDB_SERVER_PORT] = cfgFile.get(CONF_FILE_SECTION, REDISDB_SERVER_PORT,0)
-            ConfigMapping[CLOUDS_DB] = cfgFile.get(CONF_FILE_SECTION, CLOUDS_DB,0)
+            ConfigMapping[SERVER_TMP_LOCATION] = cfgFile.get(CONF_FILE_SECTION,
+                                                             SERVER_TMP_LOCATION, 0)
+            ConfigMapping[REDISDB_SERVER_HOSTNAME] = cfgFile.get(CONF_FILE_SECTION,
+                                                                 REDISDB_SERVER_HOSTNAME, 0)
+            ConfigMapping[REDISDB_SERVER_PORT] = cfgFile.get(CONF_FILE_SECTION,
+                                                             REDISDB_SERVER_PORT, 0)
+            ConfigMapping[CLOUDS_DB] = cfgFile.get(CONF_FILE_SECTION, CLOUDS_DB, 0)
             ConfigMapping[CLOUDS_KEY] = cfgFile.get(CONF_FILE_SECTION, CLOUDS_KEY, 0)
         except ConfigParser.NoSectionError:
-            logger.error( "Unable to locate "+CONF_FILE_SECTION+" section in conf file - Malformed config file?")
+            logger.error("Unable to locate "+CONF_FILE_SECTION+" section in conf file \
+                          - Malformed config file?")
             sys.exit(RET_CRITICAL)
         except ConfigParser.NoOptionError, nopt:
             logger.error(nopt.message+" of configuration file")
@@ -68,39 +72,41 @@ def loadGetCloudsClientConfig(logger):
         logger.error("Configuration file not found in this file's directory!")
         sys.exit(RET_CRITICAL)
 
-class getCloudsClient:
+class getCloudsClient(object):
     """
-     This class is responsible for querying the RedisDB for the Sky XML and binding it back into 
-     a usable data structure. This data structure format is a nested Dictionary of dictionaries and lists. The 
-     exact format and names for various keys mimics the public XML format. This means that this class is dependant
-     on the public XML format - If the XML changes this class needs to be updated accordingly.
-     This dependancy is unavoidable conceptually, and the use of the Amara utility to provide the binding mechanism
-     requires this knowledge.
-    
+     This class is responsible for querying the RedisDB for the Sky XML and binding it back into
+     a usable data structure. This data structure format is a nested Dictionary of dictionaries
+     and lists. The exact format and names for various keys mimics the public XML format. This
+     means that this class is dependant on the public XML format - If the XML changes this class
+     needs to be updated accordingly. This dependancy is unavoidable conceptually, and the use of
+     the Amara utility to provide the binding mechanism requires this knowledge.
+
     """
     def __init__(self, logger=None):
-        if(logger):
+        if logger:
             self.logger = logger
         else:
-            self.logger = Logger("get_clouds","get_clouds.log")
+            self.logger = Logger("get_clouds", "get_clouds.log")
 
         loadGetCloudsClientConfig(self.logger)
 
-        self.db = Redis(db=ConfigMapping[CLOUDS_DB], host=ConfigMapping[REDISDB_SERVER_HOSTNAME], port=int(ConfigMapping[REDISDB_SERVER_PORT]))
+        self.db = Redis(db=ConfigMapping[CLOUDS_DB], host=ConfigMapping[REDISDB_SERVER_HOSTNAME],
+                        port=int(ConfigMapping[REDISDB_SERVER_PORT]))
         try:
             self.db.ping()
-        except ConnectionError, err:
+        except ConnectionError:
             self.logger.error("ConnectionError pinging DB - redis-server running on desired port?")
             sys.exit(RET_CRITICAL)
 
     def _lookupCloudsXML(self):
 
         # Query the Redis DB for the complete, aggregated XML file
-        cloudsXML = self.db.get(ConfigMapping[CLOUDS_KEY])
-        # amDoc will contain a data structure that mirrors the public XML Schema, allowing for direct access via name.name2.name3 style
-        amDoc = amara.parse(str(cloudsXML)) 
+        clouds_xml = self.db.get(ConfigMapping[CLOUDS_KEY])
+        # amDoc will contain a data structure that mirrors the public XML Schema,
+        # allowing for direct access via name.name2.name3 style
+        am_doc = amara.parse(str(clouds_xml))
 
-        return amDoc
+        return am_doc
 
     def _getWorkerNodeVirtualizationTech(self, node):
 
@@ -112,72 +118,72 @@ class getCloudsClient:
 
     def _getWorkerNodeCPUCores(self, node):
         return str(node.CPUCores)
-    
-    def _getWorkerNodeMem(self, node):
-       
-        tDict = {}
-        
-        tDict["TotalMB"] = str(node.Memory.TotalMB)
-        tDict["FreeMB"] = str(node.Memory.FreeMB)
 
-        return tDict
+    def _getWorkerNodeMem(self, node):
+
+        total_dict = {}
+
+        total_dict["TotalMB"] = str(node.Memory.TotalMB)
+        total_dict["FreeMB"] = str(node.Memory.FreeMB)
+
+        return total_dict
 
     def _populateWorkerNode(self, node):
 
-        tDict = {}
-        tDict["CPUCores"] = self._getWorkerNodeCPUCores(node)
-        tDict["Memory"] = self._getWorkerNodeMem(node)
-        tDict["VirtualizationTech"] = self._getWorkerNodeVirtualizationTech(node)
-        tDict["CPUID"] = self._getWorkerNodeCPUID(node)
+        t_dict = {}
+        t_dict["CPUCores"] = self._getWorkerNodeCPUCores(node)
+        t_dict["Memory"] = self._getWorkerNodeMem(node)
+        t_dict["VirtualizationTech"] = self._getWorkerNodeVirtualizationTech(node)
+        t_dict["CPUID"] = self._getWorkerNodeCPUID(node)
 
-        retDict = {"Node": tDict}
-        return retDict
+        ret_dict = {"Node": t_dict}
+        return ret_dict
 
     def _getCloudWorkerNodes(self, cloud):
-        
-        tempNodes = []
-        for curnode in cloud.WorkerNodes.Node:
-            tempNodes.append(self._populateWorkerNode(curnode))
 
-        return tempNodes
+        temp_nodes = []
+        for curnode in cloud.WorkerNodes.Node:
+            temp_nodes.append(self._populateWorkerNode(curnode))
+
+        return temp_nodes
 
     def _getCloudVMMemoryPools(self, cloud):
-        tempNodes = []
+        temp_nodes = []
         for curnode in cloud.VMM_Pools.Pool:
-            tDict = {}
+            t_dict = {}
             # This loop gives all the children of the 'Pool' XML node
             for entry in  curnode.xml_properties.keys():
-                tDict[entry] = str(curnode.xml_properties[entry])
-            tempNodes.append(tDict)
-        return tempNodes
+                t_dict[entry] = str(curnode.xml_properties[entry])
+            temp_nodes.append(t_dict)
+        return temp_nodes
 
     def _getCloudNetworkPools(self, cloud):
 
-        tempNodes = []
+        temp_nodes = []
 
         for curnode in cloud.Network_Pools.Pool:
-            tDict = {}
+            t_dict = {}
             # This loop gives all the children of the 'Pool' XML node
             for entry in curnode.xml_properties.keys():
-                tDict[entry] = str(curnode.xml_properties[entry])
-            tempNodes.append(tDict)
-        return tempNodes
+                t_dict[entry] = str(curnode.xml_properties[entry])
+            temp_nodes.append(t_dict)
+        return temp_nodes
 
     def _getCloudServiceData(self, cloud):
-        tDict = {}
-        tDict["Path"] = str(cloud.Service.Path)
-        tDict["HostName"] = str(cloud.Service.HostName)
-        tDict["Type"] = str(cloud.Service.Type)
-        tDict["Port"] = str(cloud.Service.Port)
-        tDict["IP"] = str(cloud.Service.IP)
+        t_dict = {}
+        t_dict["Path"] = str(cloud.Service.Path)
+        t_dict["HostName"] = str(cloud.Service.HostName)
+        t_dict["Type"] = str(cloud.Service.Type)
+        t_dict["Port"] = str(cloud.Service.Port)
+        t_dict["IP"] = str(cloud.Service.IP)
 
-        return tDict
+        return t_dict
 
     def _getCloudIaaSDiagnostics(self, cloud):
-        tDict = {}
-        tDict["InternalRepresentation"] = str(cloud.IaasDiagnostics.InternalRepresentation)
+        t_dict = {}
+        t_dict["InternalRepresentation"] = str(cloud.IaasDiagnostics.InternalRepresentation)
 
-        return tDict
+        return t_dict
 
     def getCloudsView(self):
 
@@ -192,12 +198,12 @@ class getCloudsClient:
             cloudDescriptor["VMMemoryPools"] = self._getCloudVMMemoryPools(cloud)
             cloudDescriptor["WorkerNodes"] = self._getCloudWorkerNodes(cloud)
             cloudDescriptor["NetworkPools"] = self._getCloudNetworkPools(cloud)
-            clouds.append( cloudDescriptor)
+            clouds.append(cloudDescriptor)
         return clouds
 
 if __name__ == '__main__':
 
-    temp = getCloudsClient()
-    thing = temp.getCloudsView()
+    cloud_client = getCloudsClient()
+    cloud_view = cloud_client.getCloudsView()
 
-    print thing
+    print cloud_view

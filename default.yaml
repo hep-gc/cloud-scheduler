@@ -667,4 +667,4 @@ users:
     shell: /sbin/nologin
 
 runcmd:
- - [ service, condor, start ]
+ - [ systemctl, start, condor ]
