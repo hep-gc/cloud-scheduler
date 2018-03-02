@@ -1,7 +1,7 @@
 node{
     checkout scm
 
-    docker.image('cloud-jenkins:conf').inside('--privileged'){
+    docker.image('cloud-jenkins').inside('--privileged'){
             stage('Test'){
                 sh '''
                    HOSTIP=`ip -4 addr show eth0 | grep 'inet ' | awk '{print $2}' | awk -F '/' '{print $1}'`
@@ -107,7 +107,7 @@ node{
                 sleep 20
                 def count = 0
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
-                while (!condor_reg && count < 90){
+                while (!condor_reg && count < 600){
                   sleep 30
                   condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                   count += 30
