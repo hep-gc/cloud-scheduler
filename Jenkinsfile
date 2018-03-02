@@ -7,7 +7,7 @@ node{
                    HOSTIP=`ip -4 addr show eth0 | grep 'inet ' | awk '{print $2}' | awk -F '/' '{print $1}'`
                    sed -i "s/SETHOST/${HOSTIP}/g" /etc/condor/condor_config.local
                    sed -i "s/SETHOST/${HOSTIP}/g; s/#log_level: INFO/log_level: DEBUG/g" /etc/cloudscheduler/cloud_scheduler.conf
-                   sed -i "s/myhost.localhost/'${HOSTIP}'/g" /etc/cloudscheduler/default.yaml
+                   sed -i "s/myhost.localhost/${HOSTIP}/g" /etc/cloudscheduler/default.yaml
                    systemctl start libvirtd
                    systemctl start condor
                    systemctl start virtlogd
