@@ -28,11 +28,14 @@ from cloudscheduler.job_management import JobPool
 from cloudscheduler.cloud_management import ResourcePool
 from cloudscheduler.openstackcluster import OpenStackCluster
 
-log = None
+
 config_val = config.config_options
 
 
 class InfoServer(threading.Thread,):
+    """
+    InfoServer related methods.
+    """
 
     cloud_resources = None
     job_pool = None
@@ -43,9 +46,9 @@ class InfoServer(threading.Thread,):
     cleaner = None
     def __init__(self, c_resources, c_job_pool, c_job_poller,
                  c_machine_poller, c_vm_poller, c_scheduler, c_cleaner):
+        """InfoServer constructor."""
 
-        global log
-        log = logging.getLogger("cloudscheduler")
+        self.log = logging.getLogger("cloudscheduler")
 
         #set up class
         threading.Thread.__init__(self, name=self.__class__.__name__)
@@ -86,11 +89,12 @@ class InfoServer(threading.Thread,):
             r'/thread-heart-beats', Views.Threadheartbeats,
             r'/vms', Views.Vms,
         )
+        self.server = None
 
     def run(self):
 
         # Run the server's main loop
-        log.info("Started info server on port %s", config_val.getint('global', 'info_server_port'))
+        self.log.info("Started info server on port %s", config_val.getint('global', 'info_server_port'))
         try:
             self.app = web.application(self.urls, globals())
             self.server = web.wsgiserver.CherryPyWSGIServer(self.listen,
@@ -98,10 +102,11 @@ class InfoServer(threading.Thread,):
                                                             server_name="localhost")
             self.server.start()
         except Exception as e:
-            log.error("Could not start webpy server.\n{0}".format(e))
+            self.log.error("Could not start webpy server.\n%s", e)
             sys.exit(1)
 
     def stop(self):
+        """Set flag to stop the info server thread main loop."""
         self.server.stop()
         self.done = True
 
@@ -110,19 +115,33 @@ class InfoServer(threading.Thread,):
 
 
 class Views(object):
+    """Various Views classes for the info server."""
+    log = logging.getLogger("cloudscheduler")
     class Cloud(object):
+        """View basic system info."""
         @staticmethod
         def GET():
+            """Get cloud related info."""
             return web.cloud_resources.get_pool_info()
 
     class Cloudconfig(object):
+        """View info related to configuration."""
         @staticmethod
         def GET():
+            """Get cloud config settings."""
             return web.cloud_resources.get_cloud_config_output()
 
     class Clusters(object):
+        """
+        View info related to clouds.
+        """
         def GET(self, cluster_name=None, json_flag=None):
-
+            """
+            Get cluster related info.
+            :param cluster_name:
+            :param json_flag:
+            :return:
+            """
             if cluster_name:
                 cluster_name = urllib.unquote(cluster_name)
 
@@ -138,6 +157,7 @@ class Views(object):
 
         @staticmethod
         def view_cluster(cluster_name):
+            """get info for a cluster."""
             output = []
             output.append("Cluster Info: %s\n" % cluster_name)
             cluster = web.cloud_resources.get_cluster(cluster_name)
@@ -149,6 +169,7 @@ class Views(object):
 
         @staticmethod
         def view_cluster_json(cluster_name):
+            """Get the json info for a cluster."""
             output = "{}"
             cluster = web.cloud_resources.get_cluster(cluster_name)
             if cluster:
@@ -157,6 +178,7 @@ class Views(object):
 
         @staticmethod
         def view_resources():
+            """Get info about all resources in pool."""
             output = []
             output.append("Clusters in resource pool:\n")
             for cluster in web.cloud_resources.resources:
@@ -166,8 +188,10 @@ class Views(object):
 
 
     class Developerinfo(object):
+        """Info methods for debugging."""
         @staticmethod
         def GET():
+            """Get debug info from heapy / guppy"""
             try:
                 from guppy import hpy
                 heapy = hpy()
@@ -178,8 +202,10 @@ class Views(object):
                        "information"
 
     class Difftypes(object):
+        """Info methods related to diff types ddebug info."""
         @staticmethod
         def GET():
+            """Get the Diff Types debug info."""
             output = []
             current_types = web.cloud_resources.vmtype_distribution()
             desired_types = web.job_pool.job_type_distribution()
@@ -219,10 +245,10 @@ class Views(object):
             if splitby > 0:
                 adjustby = neg_total / splitby
             elif splitby == 0:
-                log.verbose("All users are limited.")
+                output.append("All users are limited.\n")
             else:
-                log.error("More user vmtypes limited than what's in diff types, \
-                           something weird here.")
+                output.append("More user vmtypes limited than what's in diff types, \
+                           something weird here.\n")
 
             for usertype in diff_types.keys():
                 if usertype not in limited_users:
@@ -240,7 +266,11 @@ class Views(object):
             return ''.join(output)
 
     class Failures(object):
+        """
+        Info class related to Failure codes.
+        """
         def GET(self, failure_type):
+            """Get info related to failures"""
             if failure_type == 'boot':
                 return self.view_boot_failures()
             elif failure_type == 'image':
@@ -250,6 +280,7 @@ class Views(object):
 
         @staticmethod
         def view_boot_failures():
+            """Info about boot related failures."""
             output = []
             output.append("Job Failure Reasons:\n")
             reasons = web.job_pool.fetch_job_failure_reasons()
@@ -261,6 +292,7 @@ class Views(object):
 
         @staticmethod
         def view_image_failures():
+            """Info about image related failures."""
             output = []
             output.append("Image Failure List\n")
             for cloud in web.cloud_resources.resources:
@@ -271,8 +303,15 @@ class Views(object):
             return ''.join(output)
 
     class Ips(object):
+        """
+        Methods related to IPs.
+        """
         @staticmethod
         def GET():
+            """
+            Get IP related info
+            :return:
+            """
             output = []
             for cluster in web.cloud_resources.resources:
                 for vm in cluster.vms:
@@ -283,7 +322,17 @@ class Views(object):
             return ''.join(output)
 
     class Jobs(object):
+
+        """
+        Class for info server methods related to jobs.
+        """
         def GET(self, jobid=None, json_flag=None):
+            """
+            Fetch info about jobs.
+            :param jobid:
+            :param json_flag:
+            :return:
+            """
             if jobid:
                 jobid = urllib.unquote(jobid)
 
@@ -299,6 +348,7 @@ class Views(object):
 
         @staticmethod
         def view_jobs(state):
+            """View info of jobs with given state."""
             output = []
 
             state = web.input().state
@@ -326,6 +376,7 @@ class Views(object):
 
         @staticmethod
         def view_job(jobid):
+            """Get info about job with job id."""
             output = "Job not found."
             job = web.job_pool.job_container.get_job_by_id(jobid)
             if job != None:
@@ -334,6 +385,11 @@ class Views(object):
 
         @staticmethod
         def view_job_json(jobid):
+            """
+            Get the JSON representation of job with jobid.
+            :param jobid:
+            :return:
+            """
             job_match = web.job_pool.job_container.get_job_by_id(jobid)
             return JobJSONEncoder().encode(job_match)
 
@@ -562,9 +618,10 @@ class VMJSONEncoder(json.JSONEncoder):
     JSON Encoder for the VM class.
 
     """
+    log = logging.getLogger("cloudscheduler")
     def default(self, vm):
         if not isinstance(vm, VM):
-            log.error("Cannot use VMJSONEncoder on non VM object of type %s, %s" % (type(vm), vm))
+            self.log.error("Cannot use VMJSONEncoder on non VM object of type %s, %s", type(vm), vm)
             return
         return {'name': vm.name, 'id': vm.id, 'vmtype': vm.vmtype,
                 'hostname': vm.hostname, 'clusteraddr': vm.clusteraddr,
@@ -596,9 +653,10 @@ class ClusterJSONEncoder(json.JSONEncoder):
     JSON Encoder for the Cluster class.
 
     """
+    log = logging.getLogger("cloudscheduler")
     def default(self, cluster):
         if not isinstance(cluster, ICluster):
-            log.error("Cannot use ClusterJSONEncoder on non Cluster object")
+            self.log.error("Cannot use ClusterJSONEncoder on non Cluster object")
             return
         vm_encodes = []
         for vm in cluster.vms:
@@ -628,9 +686,10 @@ class ResourcePoolJSONEncoder(json.JSONEncoder):
     """
     JSON Encoder for the ResourcePool class.
     """
+    log = logging.getLogger("cloudscheduler")
     def default(self, res_pool):
         if not isinstance(res_pool, ResourcePool):
-            log.error("Cannot use ResourcePoolJSONEncoder on non ResourcePool Object")
+            self.log.error("Cannot use ResourcePoolJSONEncoder on non ResourcePool Object")
             return
         pool = []
         for cluster in res_pool.resources:
@@ -647,9 +706,10 @@ class JobJSONEncoder(json.JSONEncoder):
     JSON Encoder for Job class.
 
     """
+    log = logging.getLogger("cloudscheduler")
     def default(self, job):
         if not isinstance(job, Job):
-            log.error("Cannot use JobJSONEncoder on non Job Object")
+            self.log.error("Cannot use JobJSONEncoder on non Job Object")
             return
         return {'id': job.id, 'user': job.user, 'priority': job.priority,
                 'job_status': job.job_status, 'cluster_id': job.cluster_id,
@@ -689,9 +749,11 @@ class JobPoolJSONEncoder(json.JSONEncoder):
     JSON Encoder for the Job Pool Class.
 
     """
+    log = logging.getLogger("cloudscheduler")
+
     def default(self, job_pool):
         if not isinstance(job_pool, JobPool):
-            log.error("Cannot use JobPoolJSONEncoder on non JobPool Object")
+            self.log.error("Cannot use JobPoolJSONEncoder on non JobPool Object")
             return
         new_queue = []
         for job in job_pool.job_container.get_unscheduled_jobs():
