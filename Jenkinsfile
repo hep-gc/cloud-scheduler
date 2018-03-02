@@ -107,7 +107,7 @@ node{
                 sleep 20
                 def count = 0
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
-                while (!condor_reg && count < 600){
+                while (!condor_reg && count < 90){
                   sleep 30
                   condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                   count += 30
