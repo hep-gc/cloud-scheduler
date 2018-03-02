@@ -106,22 +106,32 @@ node{
                    '''
                 sleep 20
                 def count = 0
+                sh '''
+                   cp /etc/cloudscheduler/cloud_scheduler.conf .
+                   cp /etc/cloudscheduler/default.yaml .
+                   '''
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
-                while (!condor_reg && count < 600){
+                while (!condor_reg && count < 300){
                   sleep 30
                   condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                   count += 30
                 }
                 if (!condor_reg){
                     sh '''
+                       cp /etc/cloudscheduler/cloud_scheduler.conf .
+                       cp /etc/cloudscheduler/default.yaml . 
                        ls -lrt /tmp/tmp*
                        chmod 777 /tmp/tmp*/boot-log
                        cp /tmp/tmp*/boot-log .
+                       cp /tmp/tmp*/raw-user .
                        condor_rm hep
                        cloud_admin -k -c container-cloud -a
                        '''
                     def boot = readFile "boot-log"
                     echo boot
+                    archiveArtifacts artifacts: 'raw-user'
+                    archiveArtifacts artifacts: 'cloud_scheduler.conf'
+                    archiveArtifacts artifacts: 'default.yaml'
                     error ("Didn't register with condor")
                 }
 
