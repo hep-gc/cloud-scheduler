@@ -121,6 +121,7 @@ node{
                   sleep 30
                   condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                   count += 30
+                  echo count
                 }
                 if (!condor_reg){
                     sh '''
@@ -136,9 +137,11 @@ node{
                     return
                 }
                 condor_job= sh(script: 'condor_q', returnStdout: true).trim()
-                while (condor_nojob != condor_job){
-                    sleep 15
+                def job_count = 0
+                while (condor_nojob != condor_job && job_count < 600) {
+                    sleep 30
                     condor_job = sh(script: 'condor_q', returnStdout: true).trim()
+                    job_count += 30
                 }
                 sh '''
                    cp /var/log/cloudscheduler.log .
