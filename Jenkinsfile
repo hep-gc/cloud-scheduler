@@ -78,18 +78,8 @@ node{
                 
                 condor_job = sh( script: 'condor_q', returnStdout: true).trim()
                 cloud_check = sh( script: 'cloud_status -m', returnStdout: true).trim()
-                sh '''
-                   cp /etc/cloudscheduler/cloud_scheduler.conf .
-                   cp /etc/condor/condor_config.local .
-                   '''
-                def condor_conf = readFile "condor_config.local"
-                def cloud_conf = readFile "cloud_scheduler.conf"
-                echo condor_conf 
-                echo cloud_conf
 
                 while (cloud_base == cloud_check){
-                    echo cloud_base
-                    echo cloud_check
                     sleep 10
                     cloud_check = sh( script: 'cloud_status -m', returnStdout: true).trim()
                 }
@@ -121,7 +111,6 @@ node{
                   sleep 30
                   condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                   count += 30
-                  echo ${count}
                 }
                 if (!condor_reg){
                     sh '''
@@ -133,9 +122,9 @@ node{
                        '''
                     def boot = readFile "boot-log"
                     echo boot
-                    echo "Didn't register with condor"
-                    return
+                    error ("Didn't register with condor")
                 }
+
                 condor_job= sh(script: 'condor_q', returnStdout: true).trim()
                 def job_count = 0
                 while (condor_nojob != condor_job && job_count < 600) {
@@ -143,15 +132,13 @@ node{
                     condor_job = sh(script: 'condor_q', returnStdout: true).trim()
                     job_count += 30
                 }
-                sh '''
-                   cp /var/log/cloudscheduler.log .
-                   cp /tmp/cloud_scheduler.crash.log .
-                   virsh list --all
-                   cloud_status -m
-                   '''
-                def crash = readFile "cloud_scheduler.crash.log"
-                echo crash
-                archiveArtifacts artifacts: "cloudscheduler.log"
+                if (condor_nojob == condor_job){
+                    echo "Job ran! Test successful!"
+                    return
+                }
+                else{
+                    error ("Job still in queue. Something failed...")
+                }
         }
     }
 }
