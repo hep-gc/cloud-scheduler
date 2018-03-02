@@ -45,7 +45,8 @@ node{
                     return
                 }
  
-                condor_nojob = sh( script: 'condor_q', returnStdout: true).trim()
+                condor_nojob = sh( script: 'condor_q | grep jobs', returnStdout: true).trim()
+                echo condor_nojob
                 cloud_base = sh( script: 'cloud_status -m', returnStdout: true).trim()
                 virsh_base = sh( script: 'virsh list --all', returnStdout: true).trim()
 
@@ -76,7 +77,7 @@ node{
                     return
                 }
                 
-                condor_job = sh( script: 'condor_q', returnStdout: true).trim()
+                condor_job = sh( script: 'condor_q | grep jobs', returnStdout: true).trim()
                 cloud_check = sh( script: 'cloud_status -m', returnStdout: true).trim()
 
                 while (cloud_base == cloud_check){
@@ -135,11 +136,12 @@ node{
                     error ("Didn't register with condor")
                 }
 
-                condor_job= sh(script: 'condor_q', returnStdout: true).trim()
+                condor_job= sh(script: 'condor_q | grep jobs', returnStdout: true).trim()
+                echo condor_job
                 def job_count = 0
                 while (condor_nojob != condor_job && job_count < 600) {
                     sleep 30
-                    condor_job = sh(script: 'condor_q', returnStdout: true).trim()
+                    condor_job = sh(script: 'condor_q | grep jobs', returnStdout: true).trim()
                     job_count += 30
                 }
                 if (condor_nojob == condor_job){
