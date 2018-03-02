@@ -1,3 +1,6 @@
+"""
+Google Compute Engine Classes for Cloud Scheduler.
+"""
 import time
 import uuid
 from cloudscheduler import cluster_tools
@@ -17,7 +20,12 @@ except Exception as e:
 
 log = utilities.get_cloudscheduler_logger()
 
+
 class GoogleComputeEngineCluster(cluster_tools.ICluster):
+
+    """
+    Connector class for Google Compute Engine.
+    """
     VM_STATES = {
         "RUNNING" : "Running",
         "Starting" : "Starting",
@@ -49,6 +57,27 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                  auth_dat_file=None, secret_file=None, security_group=None,
                  project_id=None, enabled=True, priority=0,
                  total_cpu_cores=-1, keep_alive=0,):
+        """
+        Google Compute constructor
+        :param name:
+        :param host:
+        :param cloud_type:
+        :param memory:
+        :param max_vm_mem:
+        :param networks:
+        :param vm_slots:
+        :param cpu_cores:
+        :param storage:
+        :param boot_timeout:
+        :param auth_dat_file:
+        :param secret_file:
+        :param security_group:
+        :param project_id:
+        :param enabled:
+        :param priority:
+        :param total_cpu_cores:
+        :param keep_alive:
+        """
         log.debug("Init GCE cores %s, storage %s", cpu_cores, storage)
         self.gce_hostname_prefix = 'gce-cs-vm'
         self.security_group = security_group
@@ -91,6 +120,24 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                   vm_keepalive=0, instance_type="",
                   job_per_core=False, pre_customization=None,
                   use_cloud_init=False, extra_userdata=[]):
+        """
+        Create a VM on GCE.
+        :param vm_type:
+        :param vm_user:
+        :param vm_networkassoc:
+        :param vm_image:
+        :param vm_mem:
+        :param vm_cores:
+        :param vm_storage:
+        :param customization:
+        :param vm_keepalive:
+        :param instance_type:
+        :param job_per_core:
+        :param pre_customization:
+        :param use_cloud_init:
+        :param extra_userdata:
+        :return:
+        """
         try:
             if self.network_address in vm_image.keys():
                 vm_ami = vm_image[self.network_address]
@@ -137,6 +184,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
         machine_type_url = '%s/zones/%s/machineTypes/%s' % (
             self.project_url, self.DEFAULT_ZONE, vm_instance_type)
+
         #zone_url = '%s/zones/%s' % (self.project_url, self.DEFAULT_ZONE)
         network_url = '%s/global/networks/%s' % (self.project_url, self.DEFAULT_NETWORK)
 
@@ -266,7 +314,13 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
-        # Delete an Instance
+        """
+        Destroy VM on GCE.
+        :param vm:
+        :param return_resources:
+        :param reason:
+        :return:
+        """
         log.info("googlecluster::destroy vm::%s on %s ", vm.hostname, self.name)
         request = self.gce_service.instances().delete(
             project=self.project_id, instance=vm.name, zone=self.DEFAULT_ZONE)
@@ -298,6 +352,11 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             return 1
 
     def vm_poll(self, vm):
+        """
+        Update status of VM on GCE.
+        :param vm:
+        :return:
+        """
         #filter_str = ''.join(["id eq ", vm.id])
         #request = self.gce_service.instances().list(project=self.project_id, filter=filter_str)
         request = self.gce_service.instances().list(project=self.project_id,
@@ -358,6 +417,10 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         return response
 
     def generate_next_instance_name(self):
+        """
+        Name generator for GCE.
+        :return:
+        """
         potential_name = ''.join([self.gce_hostname_prefix, str(uuid.uuid4())])
         potential_name = potential_name[0:15]
         collision = False
@@ -369,4 +432,5 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             potential_name = None
         return potential_name
     def construct_hostname(self, instance_name):
+        """Build up the hostname for GCE VMs."""
         return ''.join([instance_name, '.c.', self.project_id, '.internal'])
