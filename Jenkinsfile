@@ -46,7 +46,6 @@ node{
                 }
  
                 condor_nojob = sh( script: 'condor_q | grep jobs', returnStdout: true).trim()
-                echo condor_nojob
                 cloud_base = sh( script: 'cloud_status -m', returnStdout: true).trim()
                 virsh_base = sh( script: 'virsh list --all', returnStdout: true).trim()
 
@@ -107,10 +106,6 @@ node{
                    '''
                 sleep 20
                 def count = 0
-                sh '''
-                   cp /etc/cloudscheduler/cloud_scheduler.conf .
-                   cp /etc/cloudscheduler/default.yaml .
-                   '''
                 condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                 while (!condor_reg && count < 300){
                   sleep 30
