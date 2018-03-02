@@ -121,7 +121,7 @@ node{
                   sleep 30
                   condor_reg = sh( script: 'condor_status', returnStdout: true).trim()
                   count += 30
-                  echo count
+                  echo ${count}
                 }
                 if (!condor_reg){
                     sh '''
