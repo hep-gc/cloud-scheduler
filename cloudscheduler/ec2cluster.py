@@ -17,8 +17,8 @@ try:
     import boto
 except ImportError:
     log.error("To use EC2-style clouds, you need to have boto "
-            "installed. You can install it from your package manager, "
-            "or get it from http://code.google.com/p/boto/")
+              "installed. You can install it from your package manager, "
+              "or get it from http://code.google.com/p/boto/")
 
 
 class EC2Cluster(cluster_tools.ICluster):
