@@ -100,7 +100,7 @@ def build_multi_mime_message(content_type_pairs, file_type_pairs):
         combined_message.attach(sub_message)
     for i in content_type_pairs:
         sub_message = MIMEText(i[0], i[1].strip(), sys.getdefaultencoding())
-        if len(i) <= 3:
+        if len(i) == 3:
             sub_message.add_header('Content-Disposition', 'attachment; filename="%s"' %
                                    (i[2].strip()))
         else:
