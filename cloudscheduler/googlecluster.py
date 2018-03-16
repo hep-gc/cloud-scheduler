@@ -29,6 +29,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             "Starting" : "Starting",
             "shutting-down" : "Shutdown",
             "terminated" : "Shutdown",
+            "STOPPING" : "Shutdown",
+            "DONE" : "Shutdown",
             "PROVISIONING" : "Provisioning",
             "error" : "Error",
     }
@@ -38,10 +40,10 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
     API_VERSION = 'v1'
     GCE_URL = 'https://www.googleapis.com/compute/%s/projects/' % (API_VERSION)
 
-    DEFAULT_ZONE = 'us-central1-b' # will need to be option in job
-    DEFAULT_MACHINE_TYPE = 'n1-standard-1'  # option specified in job config
+    DEFAULT_ZONE = 'us-west1-b' # will need to be option in job
+    DEFAULT_MACHINE_TYPE = 'n1-standard-2'  # option specified in job config
     DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config.default_VMInstanceTypeList)
-    DEFAULT_IMAGE = 'cloudscheduler-centos-9'
+    DEFAULT_IMAGE = 'test4cs-cernvm-snap-30g' # option specified in job config
     DEFAULT_ROOT_PD_NAME = 'hepgc-uvic-root-pd'  
 
     DEFAULT_NETWORK = 'default' # job option setup
@@ -66,13 +68,11 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             return None
         
         
-        # Perform OAuth 2.0 authorization.
-        flow = flow_from_clientsecrets(self.secret_file_path, scope=self.GCE_SCOPE)
-        auth_storage = Storage(self.auth_dat_file_path)
-        credentials = auth_storage.get()
-      
-        if credentials is None or credentials.invalid:
-            credentials = run_flow(flow, auth_storage)
+        # Perform OAuth 2.0 authorization with service account.
+        from oauth2client.service_account import ServiceAccountCredentials
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(
+                 self.secret_file_path, scopes=self.GCE_SCOPE)
+
         http = httplib2.Http()
         self.auth_http = credentials.authorize(http)
 
@@ -95,7 +95,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", maximum_price=0,
                   job_per_core=False, securitygroup=[],pre_customization=None,use_cloud_init=False, extra_userdata=[]):
-        
+
+        vm_ami = self.DEFAULT_IMAGE
         try:
             if self.network_address in vm_image.keys():
                 vm_ami = vm_image[self.network_address]
@@ -151,7 +152,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         # Construct the request body
         disk = {
                'name': self.DEFAULT_ROOT_PD_NAME,
-               'sourceSnapshot':'https://www.googleapis.com/compute/v1/projects/atlasgce/global/snapshots/%s'%vm_image_name,
+               # FIXME: wasn't project already configurable ?
+               'sourceSnapshot':'https://www.googleapis.com/compute/v1/projects/atlas-bnl-gov/global/snapshots/%s'%vm_image_name,
                'sizeGb':vm_storage
         }
 
@@ -181,7 +183,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                 log.error("Problem building cloud-config user data.")
                 return 1
         # Compress the user data to try and get under the limit
-        user_data = utilities.gzip_userdata(user_data)
+        # does't seem to work - to be tested again
+        # user_data = utilities.gzip_userdata(user_data)
 
         next_instance_name = self.generate_next_instance_name()
         
