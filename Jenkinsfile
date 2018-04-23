@@ -70,8 +70,7 @@ node{
                     archiveArtifacts artifacts: 'MasterLog'
                     archiveArtifacts artifacts: "SchedLog"
                     archiveArtifacts artifacts: "NegotiatorLog"
-                    def crash = readFile "cloud_scheduler.crash.log"
-                    echo crash
+                    archiveArtifacts artifacts: "cloud_scheduler.crash.log"
                     error ('Something crashed...')
                     return
                 }
@@ -94,8 +93,7 @@ node{
                        '''
                     archiveArtifacts artifacts: "cloudscheduler.log"
                     archiveArtifacts artifacts: 'MasterLog'
-                    def crash = readFile "cloud_scheduler.crash.log"
-                    echo crash
+                    archiveArtifacts artifacts: "cloud_scheduler.crash.log"
                     error("Problem with virsh...")
                     return
                 }
@@ -123,8 +121,7 @@ node{
                        condor_rm hep
                        cloud_admin -k -c container-cloud -a
                        '''
-                    def boot = readFile "boot-log"
-                    echo boot
+                    archiveArtifacts artifacts "boot-log"
                     archiveArtifacts artifacts: 'raw-user'
                     archiveArtifacts artifacts: 'cloud_scheduler.conf'
                     archiveArtifacts artifacts: 'default.yaml'
@@ -144,6 +141,14 @@ node{
                     return
                 }
                 else{
+                    sh'''
+                      cp /var/log/condor/MasterLog .
+                      cp /var/log/condor/SchedLog .
+                      cp /var/log/condor/NegotiatorLog .
+                      '''
+                    archiveArtifacts artifacts: 'MasterLog'
+                    archiveArtifacts artifacts: 'SchedLog'
+                    archiveArtifacts artifacts: 'NegotiatorLog'
                     error ("Job still in queue. Something failed...")
                 }
         }

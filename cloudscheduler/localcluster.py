@@ -190,7 +190,7 @@ class LocalCluster(cluster_tools.ICluster):
     def vm_destroy(self, vm, return_resources=True, reason=""):
 
         import libvirt
-        """ Destroy a VM on OpenStack."""
+        """ Destroy a VM on LocalHost"""
         log.info("Destroying VM: %s Name: %s on %s Reason: %s", vm.id, vm.hostname, self.name, reason)
         conn = libvirt.open(None)
         if conn is None:
