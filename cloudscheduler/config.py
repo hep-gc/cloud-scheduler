@@ -10,7 +10,6 @@ import os
 import sys
 import ConfigParser
 
-import utilities
 
 config_options = ConfigParser.ConfigParser()
 
@@ -35,7 +34,7 @@ def setup(path=None):
 
     #Create defaults dictionary
     default = {}
-    
+
     with open(def_path) as file_def:
         for line in file_def:
             base = line.strip().split('=')
@@ -308,7 +307,7 @@ def setup(path=None):
 
     try:
         max_keepalive = config_file.getint('global', 'max_keepalive')
-        if max_starting_vm < 0:
+        if max_keepalive < 0:
             config_file.set('global', 'max_keepalive', 0)
     except ValueError:
         print "Configuration file problem: max_keepalive must be an integer value"
@@ -451,7 +450,13 @@ def setup(path=None):
 
     return config_file
 
+
 def get_config_parser(path=None):
+    """
+    perform setup from path or default location.
+    :param path:
+    :return:
+    """
     if path:
         config = setup(path)
     else:

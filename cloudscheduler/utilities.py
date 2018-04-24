@@ -19,7 +19,6 @@ try:
     from OpenSSL import crypto
 except ImportError:
     pass
-import config
 
 def determine_path():
     """Borrowed from wxglade.py"""
@@ -87,15 +86,14 @@ def get_globus_path(executable="grid-proxy-init"):
     """
 
     try:
-        os.environ["GLOBUS_LOCATION"]
-        retcode = subprocess.call("$GLOBUS_LOCATION/bin/%s -help" % executable, shell=True,
-                                  stdout=open('/dev/null', 'w'), stderr=subprocess.STDOUT)
-
-        if retcode != 0:
-            raise EnvironmentError(retcode, "GLOBUS_LOCATION is in your environment, \
+        if os.environ["GLOBUS_LOCATION"]:
+            retcode = subprocess.call("$GLOBUS_LOCATION/bin/%s -help" % executable, shell=True,
+                                      stdout=open('/dev/null', 'w'), stderr=subprocess.STDOUT)
+            if retcode != 0:
+                raise EnvironmentError(retcode, "GLOBUS_LOCATION is in your environment,\
                                    but unable to call '%s'" % executable)
-        else:
-            return os.environ["GLOBUS_LOCATION"] + "/bin/"
+            else:
+                return os.environ["GLOBUS_LOCATION"] + "/bin/"
 
     except:
         retcode = subprocess.call("%s -help" % executable, shell=True,
@@ -132,7 +130,8 @@ def get_cert_DN(cert_file_path):
             log.exception('Error extracting cert subject using pyopenssl.')
             return None
     else:
-        openssl_cmd = [config_val.get('global', 'openssl_path'), 'x509', '-in', cert_file_path, '-subject', '-noout']
+        openssl_cmd = [config_val.get('global', 'openssl_path'), 'x509', '-in',
+                       cert_file_path, '-subject', '-noout']
         try:
             sub_dn = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()[0].strip()[9:]
             return sub_dn
@@ -170,7 +169,8 @@ def get_cert_expiry_time(cert_file_path):
             log.exception('Error extracting cert expiry time using pyopenssl.')
             return None
     else:
-        openssl_cmd = [config_val.get('global', 'openssl_path'), 'x509', '-in', cert_file_path, '-enddate', '-noout']
+        openssl_cmd = [config_val.get('global', 'openssl_path'), 'x509', '-in',
+                       cert_file_path, '-enddate', '-noout']
         try:
             stdout_stderr = subprocess.Popen(openssl_cmd, stdout=subprocess.PIPE).communicate()
             datetime_string = stdout_stderr[0].strip().split('=')[1]
@@ -291,8 +291,12 @@ class ErrTrackQueue(object):
         """Calculate the distribution of False(failed) starts."""
         return 1.0 - self.dist_true()
 
+    def append(self, item):
+        """Append item to the queue's data."""
+        self.data.append(item)
 
-class JobRunTrackQueue():
+
+class JobRunTrackQueue(object):
     """Job Run-[time] Tracking Queue. Keeps a list of job runtimes for  stats purposes."""
     def __init__(self, name):
         """Initizlizes new queue, of length 10."""

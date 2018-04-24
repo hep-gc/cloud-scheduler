@@ -1,3 +1,6 @@
+"""
+OpenStack Cluster Module: all the functions for dealing with OpenStack Clouds for Cloudscheduler.
+"""
 import sys
 import time
 from cloudscheduler import cluster_tools
@@ -10,9 +13,16 @@ log = utilities.get_cloudscheduler_logger()
 config_val = config.config_options
 
 class OpenStackCluster(cluster_tools.ICluster):
+
+    """
+    The OpenStackCluster class - manages connections and VMs on an OpenStack cloud.
+    """
     ERROR = 1
-    DEFAULT_INSTANCE_TYPE = config_val.get('job', 'default_VMInstanceType') if config_val.get('job', 'default_VMInstanceType') else "m1.small"
-    DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config_val.get('job', 'default_VMInstanceTypeList'))
+    DEFAULT_INSTANCE_TYPE = config_val.get('job', 'default_VMInstanceType')\
+        if config_val.get('job', 'default_VMInstanceType')\
+        else "m1.small"
+    DEFAULT_INSTANCE_TYPE_LIST = \
+        _attr_list_to_dict(config_val.get('job', 'default_VMInstanceTypeList'))
     VM_STATES = {
         "BUILD" : "Starting",
         "ACTIVE" : "Running",
@@ -29,8 +39,8 @@ class OpenStackCluster(cluster_tools.ICluster):
                  username=None, password=None, tenant_name=None, auth_url=None,
                  key_name=None, boot_timeout=None, secure_connection="",
                  regions="", reverse_dns_lookup=False, placement_zone=None,
-                 enabled=True, priority=0, cacert=None, keep_alive=0, user_domain_name=None,
-                 project_domain_name=None):
+                 enabled=True, priority=0, cacert=None, keep_alive=0,
+                 user_domain_name=None, project_domain_name=None):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self, name=name, host=auth_url, cloud_type=cloud_type,
@@ -65,7 +75,9 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.session = None
         try:
             authsplit = self.auth_url.split('/')
-            version = int(float(authsplit[-1][1:])) if len(authsplit[-1]) > 0 else int(float(authsplit[-2][1:]))
+            version = int(float(authsplit[-1][1:]))\
+                if len(authsplit[-1]) > 0\
+                else int(float(authsplit[-2][1:]))
             if version == 2:
                 self.session = self._get_keystone_session()
             elif version == 3:
@@ -91,7 +103,9 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.flavor_set = set()
         try:
             authsplit = self.auth_url.split('/')
-            version = int(float(authsplit[-1][1:])) if len(authsplit[-1]) > 0 else int(float(authsplit[-2][1:]))
+            version = int(float(authsplit[-1][1:]))\
+                if len(authsplit[-1]) > 0\
+                else int(float(authsplit[-2][1:]))
             if version == 2:
                 self.session = self._get_keystone_session()
             elif version == 3:
@@ -102,20 +116,21 @@ class OpenStackCluster(cluster_tools.ICluster):
     def vm_create(self, vm_name, vm_type, vm_user, vm_networkassoc,
                   vm_image, vm_mem, vm_cores, vm_storage, customization=None,
                   vm_keepalive=0, instance_type="", job_per_core=False,
-                  securitygroup=[], key_name="", pre_customization=None,
-                  use_cloud_init=False, extra_userdata=[]):
+                  securitygroup=None, key_name="", pre_customization=None,
+                  use_cloud_init=False, extra_userdata=None):
         """ Create a VM on OpenStack."""
 
         import novaclient.exceptions
         use_cloud_init = use_cloud_init or config_val.getboolean('global', 'use_cloud_init')
         nova = self._get_creds_nova_updated()
-        if len(securitygroup) != 0:
+        if securitygroup:
             sec_group = []
             for group in securitygroup:
                 if group in self.security_groups:
                     sec_group.append(group)
             if len(sec_group) == 0:
-                log.debug("No defined security groups for job - trying default value from cloud_resources.conf")
+                log.debug("No defined security groups for job - "
+                          "trying default value from cloud_resources.conf")
                 sec_group = self.security_groups
         else:
             sec_group = self.security_groups
@@ -137,9 +152,11 @@ class OpenStackCluster(cluster_tools.ICluster):
                 user_data = cloud_init_util.inject_customizations(pre_customization, user_data)
         elif use_cloud_init:
             user_data = cloud_init_util.inject_customizations([], user_data)
-        if len(extra_userdata) > 0:
+        if extra_userdata:
             # need to use the multi-mime type functions
-            user_data = cloud_init_util.build_multi_mime_message([(user_data, 'cloud-config', 'cloud_conf.yaml')], extra_userdata)
+            user_data = cloud_init_util.build_multi_mime_message([(user_data,
+                                                                   'cloud-config',
+                                                                   'cloud_conf.yaml')], extra_userdata)
             if not user_data:
                 log.error("Problem building cloud-config user data.")
                 return self.ERROR
@@ -193,12 +210,14 @@ class OpenStackCluster(cluster_tools.ICluster):
                 else:
                     i_type = self.DEFAULT_INSTANCE_TYPE_LIST[self.network_address]
             except:
-                log.debug("No default instance type found for %s, trying single default", self.network_address)
+                log.debug("No default instance type found for %s, trying single default",
+                          self.network_address)
                 i_type = self.DEFAULT_INSTANCE_TYPE
         try:
             flavor = nova.flavors.find(name=i_type)
         except Exception as e:
-            log.warning("Exception occurred while trying to get flavor by name: %s - will attempt to use name value as a uuid.", e)
+            log.warning("Exception occurred while trying to get flavor by name:"
+                        " %s - will attempt to use name value as a uuid.", e)
             try:
                 flavor = nova.flavors.get(i_type)
                 log.debug("Got flavor via uuid: %s", i_type)
@@ -208,9 +227,6 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.flavor_set.add(flavor)
         # find the network id to use if more than one network
         if vm_networkassoc:
-
-            ### TODO - Check version of novaclient to see if need to use neutron
-
             network = self._find_network(vm_networkassoc)
             if network:
                 netid = [{'net-id': network.id}]
@@ -267,7 +283,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                     log.info("Launching 1 VM: %s on %s under tenant: %s",
                              instance_id, self.name, self.tenant_name)
                 except:
-                    log.error("Unexpected Error checking out resources when creating a VM. Programming error?")
+                    log.error("Unexpected Error checking out resources creating VM. Programming error?")
                     self.vm_destroy(new_vm, reason="Failed Resource checkout", return_resources=False)
                     return self.ERROR
 
@@ -377,6 +393,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         return None
 
     def _get_keystone_session(self):
+        """Get a session object to keystone with v2 url."""
         try:
             from keystoneauth1.identity import v2
             from keystoneauth1 import session
@@ -389,6 +406,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         return sess
 
     def _get_keystone_session_v3(self):
+        """Get a session object to keystone using v3."""
         try:
             from keystoneauth1.identity import v3
             from keystoneauth1 import session
@@ -402,8 +420,12 @@ class OpenStackCluster(cluster_tools.ICluster):
         log.debug("Session object for %s created", self.name)
         return sess
 
-
     def _find_network(self, name):
+        """
+        Find a network on openstack given the name of network.
+        :param name: str - name of network to look for.
+        :return: openstack network obj.
+        """
         nova = self._get_creds_nova_updated()
         network = None
         try:
@@ -411,4 +433,3 @@ class OpenStackCluster(cluster_tools.ICluster):
         except Exception as e:
             log.error("Unable to find network %s on %s Exception: %s", name, self.name, e)
         return network
-

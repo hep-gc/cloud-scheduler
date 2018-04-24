@@ -21,9 +21,6 @@
 """
 
 
-##
-## IMPORTS
-##
 from __future__ import with_statement
 import os
 import re
@@ -41,17 +38,8 @@ from cloudscheduler.utilities import get_cert_expiry_time
 from cloudscheduler.utilities import splitnstrip
 from cloudscheduler import job_containers
 
-##
-## LOGGING
-##
-
-log = None
 config_val = config.get_config_parser()
 
-
-##
-## CLASSES
-##
 
 class Job(object):
     """
@@ -110,8 +98,7 @@ class Job(object):
 
      """
 
-        global log
-        log = logging.getLogger("cloudscheduler")
+        self.log = logging.getLogger("cloudscheduler")
         if not VMType:
             VMType = config_val.get('job', 'default_VMType')
         if not VMNetwork:
@@ -156,35 +143,35 @@ class Job(object):
         try:
             self.req_memory = int(VMMem)
         except:
-            log.exception("VMMem not int: %s" % VMMem)
+            self.log.exception("VMMem not int: %s", VMMem)
             raise ValueError
         try:
             self.req_cpucores = int(VMCPUCores)
         except:
-            log.exception("VMCPUCores not int: %s" % VMCPUCores)
+            self.log.exception("VMCPUCores not int: %s", VMCPUCores)
             raise ValueError
         try:
             self.req_storage = int(VMStorage)
         except:
-            log.exception("VMStorage not int: %s" % VMStorage)
+            self.log.exception("VMStorage not int: %s", VMStorage)
             raise ValueError
         try:
             self.keep_alive = int(VMKeepAlive) * 60 # Convert to seconds
             if self.keep_alive > config_val.getint('global', 'max_keepalive'):
                 self.keep_alive = config_val.getint('global', 'max_keepalive')
         except:
-            log.exception("VMKeepAlive not int: %s", VMKeepAlive)
+            self.log.exception("VMKeepAlive not int: %s", VMKeepAlive)
             raise ValueError
         try:
             self.high_priority = int(VMHighPriority)
         except:
-            log.exception("VMHighPriority not int: %s", VMHighPriority)
+            self.log.exception("VMHighPriority not int: %s", VMHighPriority)
             raise ValueError
         self.instance_type = VMInstanceType
         try:
             self.maximum_price = float(VMMaximumPrice)
         except:
-            log.exception("VMMaximumPrice not float: %s", VMMaximumPrice)
+            self.log.exception("VMMaximumPrice not float: %s", VMMaximumPrice)
             raise ValueError
         self.myproxy_server = CSMyProxyServer
         self.myproxy_server_port = CSMyProxyServerPort
@@ -212,7 +199,7 @@ class Job(object):
         try:
             self.usertype_limit = int(VMTypeLimit)
         except:
-            log.exception("VMTypeLimit not int: %s" % VMTypeLimit)
+            self.log.exception("VMTypeLimit not int: %s", VMTypeLimit)
             raise ValueError
         self.req_image_id = VMImageID
         self.location = VMLocation
@@ -240,27 +227,25 @@ class Job(object):
                 for cloud in TargetClouds.split(','):
                     self.target_clouds.append(cloud.strip().strip('"').strip("'"))
         except:
-            log.error("Failed to parse TargetClouds - use a comma separated list")
+            self.log.error("Failed to parse TargetClouds - use a comma separated list")
 
-        log.verbose('%i extra arguments pass to JobPoller from Condor', len(kwargs))
+        self.log.verbose('%i extra arguments pass to JobPoller from Condor', len(kwargs))
 
     def __repr__(self):
         return "Job '%s'" % self.id
 
-
-
-    def log(self):
+    def log_info(self):
         """Log a short string representing the job."""
-        log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, \
-                  Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s", self.id, self.user,
-                 self.priority, self.req_vmtype, self.req_imageloc, self.req_memory,
-                 self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port)
+        self.log.info("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, \
+                          Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s", self.id, self.user,
+                      self.priority, self.req_vmtype, self.req_imageloc, self.req_memory,
+                      self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port)
     def log_dbg(self):
         """Log a longer string representing the job."""
-        log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, \
-                   Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s", self.id, self.user,
-                  self.priority, self.req_vmtype, self.req_imageloc, self.req_memory,
-                  self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port)
+        self.log.debug("Job ID: %s, User: %s, Priority: %d, VM Type: %s, Image location: %s, \
+                           Memory: %d, MyProxy creds: %s, MyProxyServer: %s:%s", self.id, self.user,
+                       self.priority, self.req_vmtype, self.req_imageloc, self.req_memory,
+                       self.myproxy_creds_name, self.myproxy_server, self.myproxy_server_port)
     def get_job_info(self):
         """Formatted job info output for cloud_status -q."""
         CONDOR_STATUS = ("New", "Idle", "Running", "Removed", "Complete", "Held", "Error")
@@ -299,8 +284,8 @@ class Job(object):
 
         """
         if status not in self.statuses:
-            log.error("Error: incorrect status '%s' passed. Status must be one of: %s",
-                      status, "".join(self.statuses, ", "))
+            self.log.error("Error: incorrect status '%s' passed. Status must be one of: %s",
+                           status, "".join(self.statuses, ", "))
             return
         self.status = status
 
@@ -341,8 +326,8 @@ class Job(object):
         if self.spool_dir and self.original_x509userproxy:
             proxy += self.spool_dir + "/"
 
-        log.verbose("spool: %s orig: %s x509prox: %s",
-                    self.spool_dir, self.original_x509userproxy, self.x509userproxy)
+        self.log.verbose("spool: %s orig: %s x509prox: %s",
+                         self.spool_dir, self.original_x509userproxy, self.x509userproxy)
 
         if self.x509userproxy is None:
             proxy = None
@@ -411,6 +396,10 @@ class Job(object):
         self.req_network == job.req_network and self.user == job.user
 
     def get_vmimage_proxy_file_path(self):
+        """
+        Something to do with proxy files. Is this related to old Nimbus images or
+        something else?
+        """
         proxypath = []
         proxyfilepath = ''
 
@@ -424,11 +413,11 @@ class Job(object):
 
             proxyfilepath = ''.join(proxypath)
             if not os.path.isfile(proxyfilepath):
-                log.debug("Could not locate the proxy file at %s. Trying alternate location.",
-                          proxyfilepath)
+                self.log.debug("Could not locate the proxy file at %s. Trying alternate location.",
+                               proxyfilepath)
                 proxyfilepath = self.vmimage_proxy_file
                 if not os.path.isfile(proxyfilepath):
-                    log.debug("Could not locate the proxy file at %s." % proxyfilepath)
+                    self.log.debug("Could not locate the proxy file at %s.", proxyfilepath)
                     proxyfilepath = ''
                     # going to try stripping any extra path from the entered value
                     proxy_file_name = self.vmimage_proxy_file.split('/')
@@ -438,7 +427,7 @@ class Job(object):
                         proxy_file_name = proxy_file_name[0]
                     proxyfilepath = ''.join([self.spool_dir, '/', proxy_file_name])
                     if not os.path.isfile(proxyfilepath):
-                        log.debug("Could not locate the proxy file at %s either." % proxyfilepath)
+                        self.log.debug("Could not locate the proxy file at %s either.", proxyfilepath)
                         proxyfilepath = ''
         elif self.vmimage_proxy_file:
             if os.path.isfile(self.vmimage_proxy_file):
@@ -446,8 +435,11 @@ class Job(object):
         return proxyfilepath
 
     def get_ami_dict(self):
+        """Get the ami / image dictionary."""
         return self.req_ami
+
     def get_type_dict(self):
+        """Get the instance type dictionary."""
         return self.instance_type
 
 class JobPool(object):
@@ -485,9 +477,8 @@ class JobPool(object):
 
         """
 
-        global log
-        log = logging.getLogger("cloudscheduler")
-        log.debug("New JobPool %s created", name)
+        self.log = logging.getLogger("cloudscheduler")
+        self.log.debug("New JobPool %s created", name)
         self.job_container = job_containers.HashTableJobContainer()
 
         self.name = name
@@ -500,7 +491,7 @@ class JobPool(object):
         if condor_query_type.lower() == "local":
             self.job_query = self.job_query_local
         else:
-            log.error("Can't use '%s' retrieval method. Using local method.", condor_query_type)
+            self.log.error("Can't use '%s' retrieval method. Using local method.", condor_query_type)
             self.job_query = self.job_query_local
 
         if config_val.get('global', 'job_distribution_type').lower() == "normal":
@@ -527,8 +518,8 @@ class JobPool(object):
 
     def job_query_local(self):
         """job_query_local -- query and parse condor_q for job information."""
-        log.verbose("Querying Condor scheduler daemon (schedd) with %s",
-                    config_val.get('global', 'condor_q_command'))
+        self.log.verbose("Querying Condor scheduler daemon (schedd) with %s",
+                         config_val.get('global', 'condor_q_command'))
         try:
             condor_q = shlex.split(config_val.get('global', 'condor_q_command'))
             sub_p = subprocess.Popen(condor_q, shell=False,
@@ -536,20 +527,19 @@ class JobPool(object):
             (condor_out, condor_err) = sub_p.communicate(input=None)
             returncode = sub_p.returncode
         except:
-            log.exception("Problem running %s, unexpected error", string.join(condor_q, " "))
+            self.log.exception("Problem running %s, unexpected error", string.join(condor_q, " "))
             return None
 
         if returncode != 0:
-            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s",
-                      returncode, string.join(condor_q, " "), condor_err)
+            self.log.error("Got non-zero return code '%s' from '%s'. stderr was: %s",
+                           returncode, string.join(condor_q, " "), condor_err)
             return None
 
         job_ads = self._condor_q_to_job_list(condor_out)
         self.last_query = datetime.datetime.now()
         return job_ads
 
-    @staticmethod
-    def _condor_q_to_job_list(condor_q_output):
+    def _condor_q_to_job_list(self, condor_q_output):
         """
         _condor_q_to_job_list - Converts the output of condor_q
                 to a list of Job Objects
@@ -573,14 +563,14 @@ class JobPool(object):
             else:
                 return ""
 
-        def _attribute_from_list(classad, attribute):
+        def _attribute_from_list(self, classad, attribute):
             try:
                 attr_list = classad[attribute]
                 try:
                     attr_dict = _attr_list_to_dict(attr_list)
                     classad[attribute] = attr_dict
                 except ValueError:
-                    log.exception("Problem extracting %s attribute '%s'" % (attribute, attr_list))
+                    self.log.exception("Problem extracting %s attribute '%s'" % (attribute, attr_list))
             except:
                 pass
 
@@ -608,26 +598,29 @@ class JobPool(object):
             try:
                 classad["VMType"] = _attribute_from_requirements(classad["Requirements"], "VMType")
             except:
-                log.exception("Problem extracting VMType from Requirements")
+                self.log.exception("Problem extracting VMType from Requirements")
 
             if config_val.getboolean('global', 'vm_reqs_from_condor_reqs'):
                 if not classad.has_key("VMMem"):
                     try:
-                        classad["VMMem"] = int(_attribute_from_requirements_alt(classad["Requirements"], "Memory"))
+                        classad["VMMem"] = \
+                            int(_attribute_from_requirements_alt(classad["Requirements"], "Memory"))
                     except:
-                        log.exception("Problem extracting Memory from Requirements")
+                        self.log.exception("Problem extracting Memory from Requirements")
                 if not classad.has_key("VMStorage"):
                     try:
-                        classad["VMStorage"] = int(_attribute_from_requirements_alt(classad["Requirements"], "Disk")) / 1000000
+                        classad["VMStorage"] = \
+                            int(_attribute_from_requirements_alt(classad["Requirements"], "Disk")) / 1000000
                         if classad["VMStorage"] < 1:
                             classad["VMStorage"] = 1
                     except:
-                        log.exception("Problem extracting Disk from Requirements")
+                        self.log.exception("Problem extracting Disk from Requirements")
                 if not classad.has_key("VMCPUCores"):
                     try:
-                        classad["VMCPUCores"] = int(_attribute_from_requirements_alt(classad["Requirements"], "Cpus"))
+                        classad["VMCPUCores"] = \
+                            int(_attribute_from_requirements_alt(classad["Requirements"], "Cpus"))
                     except:
-                        log.exception("Problem extracting Cpus from Requirements")
+                        self.log.exception("Problem extracting Cpus from Requirements")
             # VMAMI requires special fiddling
             _attribute_from_list(classad, "VMAMI")
             _attribute_from_list(classad, "VMInstanceType")
@@ -635,11 +628,11 @@ class JobPool(object):
             try:
                 jobs.append(Job(**classad))
             except ValueError:
-                log.exception("Failed to add job: %s due to Value Errors in jdl.",
-                              classad["GlobalJobId"])
+                self.log.exception("Failed to add job: %s due to Value Errors in jdl.",
+                                   classad["GlobalJobId"])
             except:
-                log.exception("Failed to add job: %s due to unspecified exception.",
-                              classad["GlobalJobId"])
+                self.log.exception("Failed to add job: %s due to unspecified exception.",
+                                   classad["GlobalJobId"])
         return jobs
 
     def update_jobs(self, query_jobs):
@@ -652,7 +645,7 @@ class JobPool(object):
         """
         # If no jobs recvd, remove all jobs from the system (all have finished or have been removed)
         if query_jobs == []:
-            log.debug("No jobs received from job query. Removing all jobs from the system.")
+            self.log.debug("No jobs received from job query. Removing all jobs from the system.")
             self.job_container.clear()
             return
 
@@ -662,19 +655,19 @@ class JobPool(object):
             if job.job_status >= self.REMOVED:
                 jobs_removed_due_status += 1
                 query_jobs.remove(job)
-        log.verbose("Jobs removed due to status held, removed, error, complete: %i",
-                    jobs_removed_due_status)
+        self.log.verbose("Jobs removed due to status held, removed, error, complete: %i",
+                         jobs_removed_due_status)
         # Update all system jobs:
         #   - remove jobs already in the system from the jobs list
         #   - remove finished jobs (job in system, not in jobs list)
 
         # DBG: print both jobs dicts before updating system.
-        #log.verbose("System jobs prior to system update:")
-        #log.verbose("Unscheduled Jobs (new_jobs):")
+        #self.log.verbose("System jobs prior to system update:")
+        #self.log.verbose("Unscheduled Jobs (new_jobs):")
         #self.log_unsched_jobs()
-        #log.verbose("Scheduled Jobs (sched_jobs):")
+        #self.log.verbose("Scheduled Jobs (sched_jobs):")
         #self.log_sched_jobs()
-        #log.verbose("High Priority Jobs (high_jobs):")
+        #self.log.verbose("High Priority Jobs (high_jobs):")
         #self.log_high_jobs()
 
         # Lets remove all jobs in the container that do not appear in the
@@ -709,7 +702,7 @@ class JobPool(object):
 
 
         # Update job status of all the non-new jobs
-        log.verbose("Updating job status of %d jobs", len(jobs_to_update))
+        self.log.verbose("Updating job status of %d jobs", len(jobs_to_update))
         for job in jobs_to_update:
             self.update_job_status(job)
             #print job.get_ami_dict()
@@ -717,12 +710,12 @@ class JobPool(object):
         del jobs_to_update
 
         # DBG: print both jobs dicts before updating system.
-        #log.verbose("System jobs after system update:")
-        #log.verbose("Unscheduled Jobs (new_jobs):")
+        #self.log.verbose("System jobs after system update:")
+        #self.log.verbose("Unscheduled Jobs (new_jobs):")
         #self.log_unsched_jobs()
-        #log.verbose("Scheduled Jobs (sched_jobs):")
+        #self.log.verbose("Scheduled Jobs (sched_jobs):")
         #self.log_sched_jobs()
-        #log.verbose("High Priority Jobs (high_jobs):")
+        #self.log.verbose("High Priority Jobs (high_jobs):")
         #self.log_high_jobs()
 
     def add_new_job(self, job):
@@ -799,7 +792,7 @@ class JobPool(object):
             and not job.banned:
                 required_vmtypes.append(job.req_vmtype)
 
-        log.verbose("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
+        self.log.verbose("get_required_vmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes
 
     def get_required_uservmtypes(self):
@@ -818,7 +811,7 @@ class JobPool(object):
                and not job.banned:
                 required_vmtypes.append(job.uservmtype)
 
-        log.verbose("get_required_uservmtypes - Required VM types: " + ", ".join(required_vmtypes))
+        self.log.verbose("get_required_uservmtypes - Required VM types: " + ", ".join(required_vmtypes))
         return required_vmtypes
 
     def get_required_vmtypes_dict(self):
@@ -835,7 +828,7 @@ class JobPool(object):
         for job in self.job_container.get_all_jobs():
             if job.job_status <= self.RUNNING and not job.banned:
                 required_vmtypes[job.req_vmtype] += 1
-        log.verbose("get_required_vm_types_dict - Required VM Type : \
+        self.log.verbose("get_required_vm_types_dict - Required VM Type : \
                      Count " + str(required_vmtypes))
         return required_vmtypes
 
@@ -850,7 +843,7 @@ class JobPool(object):
         for job in self.job_container.get_all_jobs():
             if job.job_status <= self.RUNNING and not job.banned:
                 required_vmtypes[job.uservmtype] += 1
-        log.verbose("get_required_vm_usertypes_dict - Required VM Type : \
+        self.log.verbose("get_required_vm_usertypes_dict - Required VM Type : \
                      Count " + str(required_vmtypes))
         return required_vmtypes
 
@@ -863,7 +856,8 @@ class JobPool(object):
 
         type_desired = defaultdict(int)
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized=True)
-        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
+        high_priority_jobs_by_users = \
+            self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
         held_user_adjust = 0
         for user in new_jobs_by_users.keys():
             vmtype = None
@@ -874,8 +868,9 @@ class JobPool(object):
             if vmtype is None:
                 held_user_adjust -= 1 #This user is completely held
                 break
-            type_desired[vmtype] += 1 * (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) if \
-            high_priority_jobs_by_users else 1)
+            type_desired[vmtype] += 1 * (1 / Decimal(config_val.getint('global',
+                                                                       'high_priority_job_weight'))
+                                         if high_priority_jobs_by_users else 1)
         for user in high_priority_jobs_by_users.keys():
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
@@ -889,7 +884,7 @@ class JobPool(object):
         num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + \
                             len(high_priority_jobs_by_users.keys()))
         if num_users == 0:
-            log.verbose("All users held, completed, or banned")
+            self.log.verbose("All users held, completed, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
@@ -903,7 +898,8 @@ class JobPool(object):
         """
         type_desired = defaultdict(int)
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized=True)
-        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
+        high_priority_jobs_by_users = \
+            self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
         held_user_adjust = 0
         for user in new_jobs_by_users.keys():
             vmtype = None
@@ -914,7 +910,9 @@ class JobPool(object):
             if vmtype is None:
                 held_user_adjust -= 1 #This user is completely held
                 continue
-            type_desired[vmtype] += 1 * (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) if high_priority_jobs_by_users else 1)
+            type_desired[vmtype] += 1 * (1 / Decimal(config_val.getint('global',
+                                                                       'high_priority_job_weight'))
+                                         if high_priority_jobs_by_users else 1)
         for user in high_priority_jobs_by_users.keys():
             vmtype = None
             for job in high_priority_jobs_by_users[user]:
@@ -925,9 +923,10 @@ class JobPool(object):
                 held_user_adjust -= 1 # this user is completely held
                 continue
             type_desired[vmtype] += 1 * config_val.getint('global', 'high_priority_job_weight')
-        num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) + len(high_priority_jobs_by_users.keys()))
+        num_users = Decimal(held_user_adjust + len(new_jobs_by_users.keys()) +
+                            len(high_priority_jobs_by_users.keys()))
         if num_users == 0:
-            log.verbose("All users held, completed, or banned")
+            self.log.verbose("All users held, completed, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] = type_desired[vmtype] / num_users
@@ -942,7 +941,8 @@ class JobPool(object):
         """
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized=True)
-        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
+        high_priority_jobs_by_users = \
+            self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
         held_user_adjust = 0
         user_types = {}
         high_user_types = {}
@@ -973,13 +973,15 @@ class JobPool(object):
         for user in user_types.keys():
             for vmtype in user_types[user]:
                 if vmtype in type_desired.keys():
-                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) * \
-                                            (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) \
-                                            if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) *\
+                                            (1 / Decimal(config_val.getint('global',
+                                                                           'high_priority_job_weight'))
+                                             if high_priority_jobs_by_users else 1)
                 else:
-                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) * \
-                                           (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) \
-                                           if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) *\
+                                           (1 / Decimal(config_val.getint('global',
+                                                                          'high_priority_job_weight'))
+                                            if high_priority_jobs_by_users else 1)
         for user in high_user_types.keys():
             for vmtype in high_user_types[user]:
                 if vmtype in type_desired.keys():
@@ -993,7 +995,7 @@ class JobPool(object):
         if num_users != 0:
             num_users = Decimal('1.0') / num_users
         else:
-            log.verbose("All users' jobs held, complete, or banned")
+            self.log.verbose("All users' jobs held, complete, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] *= num_users
@@ -1009,7 +1011,8 @@ class JobPool(object):
 
         type_desired = {}
         new_jobs_by_users = self.job_container.get_unscheduled_jobs_by_users(prioritized=True)
-        high_priority_jobs_by_users = self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
+        high_priority_jobs_by_users = \
+            self.job_container.get_unscheduled_high_priority_jobs_by_users(prioritized=True)
         held_user_adjust = 0
         user_types = {}
         high_user_types = {}
@@ -1040,24 +1043,28 @@ class JobPool(object):
         for user in user_types.keys():
             for vmtype in user_types[user]:
                 if vmtype in type_desired.keys():
-                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) * \
-                                            (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) \
-                                            if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] += Decimal('1.0') / len(user_types[user]) *\
+                                            (1 / Decimal(config_val.getint('global',
+                                                                           'high_priority_job_weight'))
+                                             if high_priority_jobs_by_users else 1)
                 else:
-                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) * \
-                                           (1 / Decimal(config_val.getint('global', 'high_priority_job_weight')) \
-                                           if high_priority_jobs_by_users else 1)
+                    type_desired[vmtype] = Decimal('1.0') / len(user_types[user]) *\
+                                           (1 / Decimal(config_val.getint('global',
+                                                                          'high_priority_job_weight'))
+                                            if high_priority_jobs_by_users else 1)
         for user in high_user_types.keys():
             for vmtype in high_user_types[user]:
                 if vmtype in type_desired.keys():
-                    type_desired[vmtype] += Decimal('1.0') / len(high_user_types[user]) * config_val.getint('global', 'high_priority_job_weight')
+                    type_desired[vmtype] += Decimal('1.0') / len(high_user_types[user]) *\
+                                            config_val.getint('global', 'high_priority_job_weight')
                 else:
-                    type_desired[vmtype] = Decimal('1.0') / len(high_user_types[user]) * config_val.getint('global', 'high_priority_job_weight')
+                    type_desired[vmtype] = Decimal('1.0') / len(high_user_types[user]) *\
+                                           config_val.getint('global', 'high_priority_job_weight')
         num_users = held_user_adjust + len(set(user_types.keys() + high_user_types.keys()))
         if num_users != 0:
             num_users = Decimal('1.0') / num_users
         else:
-            log.verbose("All users' jobs held, complete, or banned")
+            self.log.verbose("All users' jobs held, complete, or banned")
             return {}
         for vmtype in type_desired.keys():
             type_desired[vmtype] *= num_users
@@ -1088,11 +1095,11 @@ class JobPool(object):
 
     def job_hold_local(self, jobs, reason=""):
         """job_query_local -- query and parse condor_q for job information."""
-        log.verbose("Holding Condor jobs with %s", config_val.get('global', 'condor_hold_command'))
+        self.log.verbose("Holding Condor jobs with %s", config_val.get('global', 'condor_hold_command'))
         try:
             condor_out = ""
             condor_err = ""
-            log.verbose("Holding jobs via condor_hold.")
+            self.log.verbose("Holding jobs via condor_hold.")
             condor_hold = shlex.split(config_val.get('global', 'condor_hold_command'))
             if reason:
                 try:
@@ -1106,30 +1113,30 @@ class JobPool(object):
 
             job_ids = [str(job.cluster_id)+"."+str(job.proc_id) for job in jobs]
             condor_hold.extend(job_ids)
-            log.verbose("Popen condor_hold command")
-            log.verbose(' '.join(condor_hold))
+            self.log.verbose("Popen condor_hold command")
+            self.log.verbose(' '.join(condor_hold))
             sub_p = subprocess.Popen(condor_hold, shell=False,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            log.verbose("Popen communicate condor_hold.")
+            self.log.verbose("Popen communicate condor_hold.")
             (condor_out, condor_err) = sub_p.communicate(input=None)
             returncode = sub_p.returncode
         except:
             if condor_err:
-                log.exception("Problem running %s, unexpected error", string.join(condor_err, " "))
+                self.log.exception("Problem running %s, unexpected error", string.join(condor_err, " "))
             else:
-                log.exception("Problem running condor_hold, unexpected error.")
+                self.log.exception("Problem running condor_hold, unexpected error.")
             return None
 
         if returncode != 0:
-            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s", returncode,
-                      string.join(condor_out, " "), condor_err)
+            self.log.error("Got non-zero return code '%s' from '%s'. stderr was: %s", returncode,
+                           string.join(condor_out, " "), condor_err)
             return None
-        log.debug("Out: %s, Err: %s", condor_out, condor_err)
+        self.log.debug("Out: %s, Err: %s", condor_out, condor_err)
         return returncode
 
     def job_release_local(self, jobs):
         """job_query_local -- query and parse condor_q for job information."""
-        log.verbose("Releasing Condor jobs with %s", \
+        self.log.verbose("Releasing Condor jobs with %s", \
                     config_val.get('global', 'condor_release_command'))
         try:
             condor_release = shlex.split(config_val.get('global', 'condor_release_command'))
@@ -1140,12 +1147,12 @@ class JobPool(object):
             (_, condor_err) = sub_p.communicate(input=None)
             returncode = sub_p.returncode
         except:
-            log.exception("Problem running %s, unexpected error", string.join(condor_release, " "))
+            self.log.exception("Problem running %s, unexpected error", string.join(condor_release, " "))
             return None
 
         if returncode != 0:
-            log.error("Got non-zero return code '%s' from '%s'. stderr was: %s",
-                      returncode, string.join(condor_release, " "), condor_err)
+            self.log.error("Got non-zero return code '%s' from '%s'. stderr was: %s",
+                           returncode, string.join(condor_release, " "), condor_err)
             return None
         return returncode
 
@@ -1160,6 +1167,7 @@ class JobPool(object):
                         job.running_vm.job_run_times.append(int(job.servertime) - int(job.jobstarttime))
 
     def fetch_job_failure_reasons(self):
+        """Get all the job failure codes."""
         reasons = []
         for job in self.job_container.get_all_jobs():
             if job.failed_boot_reason and len(job.failed_boot_reason) > 0:
@@ -1190,11 +1198,11 @@ class JobPool(object):
         req_re = r"(VMType\s=\?=\s\"(?P<vm_type>.+?)\")"
         match = re.search(req_re, requirements)
         if match:
-            log.verbose("parse_classAd_requirements - VMType parsed from "
-                        + "Requirements string: %s", match.group('vm_type'))
+            self.log.verbose("parse_classAd_requirements - VMType parsed from "
+                             + "Requirements string: %s", match.group('vm_type'))
             return match.group('vm_type')
         else:
-            log.verbose("parse_classAd_requirements - No VMType specified. Returning None.")
+            self.log.verbose("parse_classAd_requirements - No VMType specified. Returning None.")
             return None
 
     ## Log methods
@@ -1223,10 +1231,10 @@ class JobPool(object):
     def log_jobs_list(self, jobs):
         """Log a list of jobs."""
         if jobs == []:
-            log.verbose("(none)")
+            self.log.verbose("(none)")
         for job in jobs:
-            log.verbose("\tJob: %s, %10s, %4d, %10s", job.id, job.user,
-                        job.priority, job.req_vmtype)
+            self.log.verbose("\tJob: %s, %10s, %4d, %10s", job.id, job.user,
+                             job.priority, job.req_vmtype)
 
 
 

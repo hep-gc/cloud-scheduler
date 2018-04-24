@@ -1,3 +1,7 @@
+"""
+StratusLab connector - done as part of a Cern summer student project by unknown
+student.
+"""
 import os
 import time
 import ConfigParser
@@ -9,10 +13,14 @@ from stratuslab.Runner import Runner
 from stratuslab.Exceptions import OneException
 import cloudscheduler.utilities as utilities
 
-log = utilities.get_cloudscheduler_logger()
+
 
 
 class StratusLabCluster(cluster_tools.ICluster):
+
+    """
+    Connector class for StratusLab Clouds - Has not been tested for years.
+    """
 
     VM_TARGETSTATE = "Running"
     VM_NODES = "1"
@@ -35,7 +43,7 @@ class StratusLabCluster(cluster_tools.ICluster):
         'FAILURE'   : 'Error',
         'UNKNOWN'   : 'Error',
     }
-
+    log = utilities.get_cloudscheduler_logger()
     config = ConfigParser.ConfigParser()
     config_file = os.path.expanduser('~/.stratuslab/stratuslab-user.cfg')
     config_section = 'default'
@@ -76,7 +84,6 @@ class StratusLabCluster(cluster_tools.ICluster):
                     'endpoint'            : endpoint,
                     'marketplaceEndpoint' : 'https://marketplace.stratuslab.eu',
                     'mpi_machine_file'    : True,
-                    #'instanceType'        : self.instanceType,
                     'cluster_admin'       : 'root',
                     'master_vmid'         : None,
                     'tolerate_failures'   : False,
@@ -85,7 +92,6 @@ class StratusLabCluster(cluster_tools.ICluster):
                     'shared_folder'       :'/home',
                     'add_packages'        : None,
                     'ssh_hostbased'       : True,
-                    #'instanceNumber'      : 0,
                     'verboseLevel'        : 0
                    })
     _v_configHolder = ConfigHolder(options)
@@ -95,7 +101,7 @@ class StratusLabCluster(cluster_tools.ICluster):
 
 
     def __init__(self, name="Dummy StratusLab Cluster", host="localhost", cloud_type="StratusLab",
-                 memory=[], max_vm_mem=-1, cpu_archs=[], networks=[], vm_slots=0,
+                 memory=None, max_vm_mem=-1, cpu_archs=None, networks=None, vm_slots=0,
                  cpu_cores=0, storage=0,
                  contextualization='', enabled=True, priority=0,
                  keep_alive=0,):
@@ -112,7 +118,7 @@ class StratusLabCluster(cluster_tools.ICluster):
             StratusLabCluster._v_configHolder.set('extraContextData', 'EC2_USER_DATA=%s' \
                                                   %base64.standard_b64encode(strat))
         except IOError:
-            log.error("Contextualization file '%s' is not valid. \
+            self.log.error("Contextualization file '%s' is not valid. \
                       Proceeding without contextualization...", str(contextualization))
 
         self.__runnerIds = {}
@@ -123,7 +129,7 @@ class StratusLabCluster(cluster_tools.ICluster):
                   myproxy_creds_name=None, myproxy_server=None, myproxy_server_port=None,
                   job_per_core=False, vm_loc=''):
 
-        log.debug("Running new instance with Marketplace id %s in StratusLab", str(vm_loc))
+        self.log.debug("Running new instance with Marketplace id %s in StratusLab", str(vm_loc))
         runner = None
 
         if vm_loc not in StratusLabCluster.__idMap:
@@ -135,7 +141,7 @@ class StratusLabCluster(cluster_tools.ICluster):
 
         try:
             ids = runner.runInstance()
-            log.debug("Created instances: %s", str(ids))
+            self.log.debug("Created instances: %s", str(ids))
             #for new_id in ids:
             new_id = ids[len(ids) - 1]
             #if job didnt't set a keep_alive use the clouds default
@@ -161,22 +167,20 @@ class StratusLabCluster(cluster_tools.ICluster):
             try:
                 self.resource_checkout(new_vm)
             except:
-                log.exception("Unexpected error checking out resources when creating a VM. Programming error?")
+                self.log.exception("Unexpected error checking out resources when creating a VM."
+                                   " Programming error?")
                 return self.ERROR
             #endfor
             return 0
 
         except Exception, e:
-            log.debug("Exception running new instance in StratusLab: %s", str(e))
-
-            #import traceback
-            #traceback.print_exc()
+            self.log.exception("Exception running new instance in StratusLab: %s", str(e))
             return -1
 
 
     def __cleanKill(self, vm, return_resources=True):
 
-        log.verbose('Cleaning caches for VM with id %s' % str(vm.id))
+        self.log.verbose('Cleaning caches for VM with id %s' % str(vm.id))
 
         if return_resources and vm.return_resources:
             self.resource_return(vm)
@@ -186,22 +190,22 @@ class StratusLabCluster(cluster_tools.ICluster):
             try:
                 self.vms.remove(vm)
             except ValueError:
-                log.error("Attempted to remove vm from list that was already removed.")
+                self.log.exception("Attempted to remove vm from list that was already removed.")
 
             try:
                 self.__runnerIds[StratusLabCluster.__vmMap[vm.id]].remove(vm.id)
             except:
-                log.verbose("Attempted to remove already removed runner id")
+                self.log.verbose("Attempted to remove already removed runner id")
 
             try:
                 del StratusLabCluster.__vmMap[vm.id]
             except:
-                log.verbose("Attempted to remove already removed VM id")
+                self.log.verbose("Attempted to remove already removed VM id")
 
 
     def __vm_kill(self, vm, runner, clean=False, return_resources=True):
 
-        log.debug("Send kill signal to VM %s in StratusLab", str(vm.id))
+        self.log.debug("Send kill signal to VM %s in StratusLab", str(vm.id))
 
         try:
             runner.killInstances([int(vm.id)])
@@ -212,49 +216,46 @@ class StratusLabCluster(cluster_tools.ICluster):
 
     def vm_destroy(self, vm, return_resources=True, reason=""):
 
-        log.debug("Send shutdown signal to VM %s in StratusLab", str(vm.id))
+        self.log.debug("Send shutdown signal to VM %s in StratusLab", str(vm.id))
 
         if len(reason) > 0:
-            log.debug("Reason: %s", reason)
+            self.log.debug("Reason: %s", reason)
 
         try:
             StratusLabCluster.__idMap[StratusLabCluster.__vmMap[vm.id]].shutdownInstances([int(vm.id)])
             thread = threading._Timer(StratusLabCluster.VM_SHUTDOWN, self.__vm_kill,
                                       args=[vm,
                                             StratusLabCluster.__idMap[StratusLabCluster.__vmMap[vm.id]]])
-            log.debug("Waiting in new thread %s to send kill signal to VM %s in StratusLab",
-                      str(StratusLabCluster.VM_SHUTDOWN), str(vm.id))
+            self.log.debug("Waiting in new thread %s to send kill signal to VM %s in StratusLab",
+                           str(StratusLabCluster.VM_SHUTDOWN), str(vm.id))
             thread.start()
             self.__cleanKill(vm, return_resources)
             return 0
         except:
-            log.debug("VM with id %s shutdown error in StratusLab", str(vm.id))
-            #import traceback
-            #traceback.print_exc()
+            self.log.exception("VM with id %s shutdown error in StratusLab", str(vm.id))
 
             try:
                 self.__vm_kill(vm, StratusLabCluster.__idMap[StratusLabCluster.__vmMap[vm.id]],
                                clean=True, return_resources=return_resources)
-                log.debug("Managed to kill VM with id %s in StratusLab", str(vm.id))
+                self.log.debug("Managed to kill VM with id %s in StratusLab", str(vm.id))
                 return 0
             except:
                 retry = 3
                 while retry > 0:
-                    log.debug("Error sending kill signal to VM with id %s, %s trials remaining. \
+                    self.log.debug("Error sending kill signal to VM with id %s, %s trials remaining. \
                               Retrying...", str(vm.id), str(retry))
                     time.sleep(5)
                     try:
                         self.__vm_kill(vm, StratusLabCluster.__idMap[StratusLabCluster.__vmMap[vm.id]],
                                        clean=True, return_resources=return_resources)
-                        log.debug("Managed to kill VM with id %s in StratusLab", str(vm.id))
+                        self.log.debug("Managed to kill VM with id %s in StratusLab", str(vm.id))
                         return 0
                     except:
                         pass
                     retry -= 1
-                log.debug("No way, can't destroy VM with id %s in StratusLab. \
+                self.log.debug("No way, can't destroy VM with id %s in StratusLab. \
                           Maybe already destroyed, cleaning...", str(vm.id))
                 self.__cleanKill(vm, False)
-                #traceback.print_exc()
                 return -1
 
 
@@ -262,11 +263,13 @@ class StratusLabCluster(cluster_tools.ICluster):
 
         try:
             with self.vms_lock:
-                new_status = self.VM_STATES.get(StratusLabCluster.__idMap[StratusLabCluster.__vmMap[vm.id]].getVmState(int(vm.id)).upper(), 'Error')
+                new_status = self.VM_STATES.\
+                    get(StratusLabCluster.__idMap[StratusLabCluster.__vmMap[vm.id]].
+                        getVmState(int(vm.id)).upper(), 'Error')
                 if vm.status != new_status:
                     vm.last_state_change = int(time.time())
-                    log.debug("VM: %s on %s. Changed from %s to %s.",
-                              str(vm.id), self.name, vm.status, new_status)
+                    self.log.debug("VM: %s on %s. Changed from %s to %s.",
+                                   str(vm.id), self.name, vm.status, new_status)
                     vm.status = new_status
                 elif vm.override_status != None and new_status:
                     log.debug("New status for VM %s, override status", str(vm.id))
@@ -276,10 +279,10 @@ class StratusLabCluster(cluster_tools.ICluster):
             vm.lastpoll = int(time.time())
             return new_status
         except OneException, e:
-            log.debug("One exception: %s", str(e))
+            self.log.exception("One exception: %s", str(e))
             return 'shutdown'
         except Exception, e:
-            log.debug("Unknown exception: %s", str(e))
+            self.log.exception("Unknown exception: %s", str(e))
             return 'unknown'
 
 
@@ -314,5 +317,3 @@ class StratusLabCluster(cluster_tools.ICluster):
                     run.vmIds.append(runner_id)
             else:
                 del self.__runnerIds[key]
-
-

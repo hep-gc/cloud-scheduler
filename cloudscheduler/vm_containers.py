@@ -12,7 +12,7 @@ import logging
 # Use this global variable for logging.
 log = None
 
-class VMContainer():
+class VMContainer(object):
     __metclass__ = ABCMeta
 
     # Use this lock if you require to threadsafe an operation.
@@ -33,79 +33,110 @@ class VMContainer():
         """
         pass
 
-
-    # Tests if the container has a specific VM, by id.
-    # Returns True if the container has the given VM, returns False otherwise.
     @abstractmethod
     def has_vm(self, vmid):
+        """
+        Tests if the container has a specific VM, by id.
+        Returns True if the container has the given VM, returns False otherwise.
+        :param vmid:
+        """
         pass
 
-    # Add a VM to the container.
-    # If the VM already exist, it will be replaced.
     @abstractmethod
     def add_vm(self, vm):
+        """
+        Add a VM to the container.
+        If the VM already exist, it will be replaced.
+        :param vm:
+        """
         pass
 
-    # Add a set of VMs (in a list) to the container.
-    # If a VM already exist, it will be replaced.
     @abstractmethod
     def add_vms(self, vms):
+        """
+        Add a set of VMs (in a list) to the container.
+        If a VM already exist, it will be replaced.
+        :param vms:
+        """
         pass
 
-    # Remove all VMs from the container.
-    # After calling this method, the container is completely empty.
     @abstractmethod
     def clear(self):
+        """
+        Remove all VMs from the container.
+        After calling this method, the container is completely empty.
+        """
         pass
 
-    # Remove a single VM form the container.
-    # If the VM does not exist in the container, then nothing is done.
     @abstractmethod
     def remove_vm(self, vm):
+        """
+        Remove a single VM form the container.
+        If the VM does not exist in the container, then nothing is done.
+        :param vm:
+        """
         pass
 
-    # Remove a set of VMs (in a list) from the container.
-    # If a VM does not exist in the container, then it is ignored.
     @abstractmethod
     def remove_vms(self, vms):
+        """
+        Remove a set of VMs (in a list) from the container.
+        If a VM does not exist in the container, then it is ignored.
+        :param vms:
+        """
         pass
 
-    # Remove a VM (by VM id) from the container.
-    # If the VM does not exist in the container, then nothing is done.
     @abstractmethod
     def remove_vm_by_id(self, vmid):
+        """
+        Remove a VM (by VM id) from the container.
+        If the VM does not exist in the container, then nothing is done.
+        :param vmid:
+        """
         pass
 
-    # Remove a set of VMs (by VM ids, in a list) from the container.
-    # If a VM does not exist in the container, then it is ignored.
     @abstractmethod
     def remove_vms_by_id(self, vmids):
+        """
+        Remove a set of VMs (by VM ids, in a list) from the container.
+        If a VM does not exist in the container, then it is ignored.
+        :param vmids:
+        """
         pass
 
-    # Remove all VMs in the container that do not appear in a given set
-    # of jobs (in a list).
     @abstractmethod
     def remove_all_not_in(self, vms_to_keep):
+        """
+        Remove all VMs in the container that do not appear in a given set
+        of jobs (in a list).
+        :param vms_to_keep:
+        """
         pass
 
-
-    # Returns True if the container has no jobs, returns False otherwise.
     @abstractmethod
     def is_empty(self):
+        """
+        Returns True if the container has no jobs, returns False otherwise.
+        """
         pass
 
-    # Returns a string containing human-readable information about this container.
     @abstractmethod
     def __str__(self):
+        """
+        Returns a string containing human-readable information about this container.
+        """
         pass
-
-
 
 
 class HashTableJobContainer(VMContainer):
 
-
+    """
+    Implementation of VMContainer base class using HashTables/Dictionaries.
+    """
     def __init__(self):
+        """
+        Constructor.
+        """
         VMContainer.__init__(self)
         self.vms = {} # keyed on id
 
@@ -115,6 +146,10 @@ class HashTableJobContainer(VMContainer):
 
 
     def __str__(self):
+        """
+        Printable string of the VMs in the container.
+        :return:
+        """
         return self.vms.__str__()
 
 

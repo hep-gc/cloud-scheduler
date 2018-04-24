@@ -134,7 +134,8 @@ class ResourcePool(object):
         elif config_val.get('global', 'scheduling_metric').lower() == "memory_cpu_storage":
             self.vmtype_distribution = self.vmtype_mem_cpu_storage_distribution
         else:
-            log.error("Can't use '%s' distribution method, not valid", config_val.get('global', 'scheduling_metric'))
+            log.error("Can't use '%s' distribution method, not valid",
+                      config_val.get('global', 'scheduling_metric'))
             self.vmtype_distribution = self.vmtype_slot_distribution
 
         self.setup()
@@ -144,7 +145,8 @@ class ResourcePool(object):
         if config_val.get('global', 'ban_tracking'):
             self.load_banned_job_resource()
         if config_val.get('global', 'target_cloud_alias_file'):
-            self.target_cloud_aliases = self.load_cloud_aliases(config_val.get('global', 'target_cloud_alias_file'))
+            self.target_cloud_aliases = self.load_cloud_aliases(config_val.get('global',
+                                                                               'target_cloud_alias_file'))
         else:
             self.target_cloud_aliases = {}
         self.load_persistence()
@@ -232,8 +234,9 @@ class ResourcePool(object):
                                                                reason="Not enough %s on %s." %
                                                                (e.resource, new_cluster.name))
                                     except:
-                                        new_cluster.vm_destroy(vm, return_resources=False,
-                                                               reason="Unexcepted error checking out resources")
+                                        new_cluster.\
+                                            vm_destroy(vm, return_resources=False,
+                                                       reason="Unexcepted error checking out resources")
                                 self.resources.append(new_cluster)
 
         # Add new resources
@@ -300,95 +303,129 @@ class ResourcePool(object):
             except:
                 log.error("No networks specified for %s, will use the default", cluster)
 
-        if cloud_type.lower() == "amazonec2" or cloud_type.lower() == "eucalyptus" or cloud_type.lower() == "openstack":
+        if cloud_type.lower() == "amazonec2" or cloud_type.lower() == "eucalyptus" or\
+                        cloud_type.lower() == "openstack":
             try:
                 port = int(get_or_none(cconfig, cluster, "port"))
             except TypeError:
                 port = 8773
             if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
-                return ec2cluster.EC2Cluster(name=cluster.lower(),
-                                             host=get_or_none(cconfig, cluster, "host"),
-                                             cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
-                                             memory=int(get_or_none(cconfig, cluster, "memory")),
-                                             max_vm_mem=max_vm_mem if max_vm_mem != None else -1,
-                                             networks=networks,
-                                             vm_slots=int(get_or_none(cconfig, cluster, "vm_slots")),
-                                             cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
-                                             storage=int(get_or_none(cconfig, cluster, "storage")),
-                                             access_key_id=get_or_none(cconfig, cluster, "access_key_id"),
-                                             secret_access_key=get_or_none(cconfig, cluster, "secret_access_key"),
-                                             security_group=splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
-                                             key_name=get_or_none(cconfig, cluster, "key_name"),
-                                             boot_timeout=get_or_none(cconfig, cluster, "boot_timeout"),
-                                             secure_connection=get_or_none(cconfig, cluster, "secure_connection"),
-                                             regions=map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
-                                             reverse_dns_lookup=get_or_none(cconfig, cluster, "reverse_dns_lookup"),
-                                             placement_zone=get_or_none(cconfig, cluster, "placement_zone"),
-                                             enabled=enabled,
-                                             priority=priority,
-                                             keep_alive=keep_alive,
-                                             port=port,
-                                            )
-        elif cloud_type.lower() == "stratuslab" and stratuslab_support and cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):
-            return stratuslabcluster.StratusLabCluster(name=cluster.lower(),
-                                                       host=get_or_none(cconfig, cluster, "host"),
-                                                       cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
-                                                       memory=int(get_or_none(cconfig, cluster, "memory")),
-                                                       max_vm_mem=max_vm_mem if max_vm_mem != None else -1,
-                                                       networks=networks,
-                                                       vm_slots=int(get_or_none(cconfig, cluster, "vm_slots")),
-                                                       cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
-                                                       storage=int(get_or_none(cconfig, cluster, "storage")),
-                                                       contextualization=get_or_none(cconfig, cluster, "contextualization"),
-                                                       enabled=enabled,
-                                                       priority=priority,
-                                                       keep_alive=keep_alive,
-                                                      )
-        elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce" and cloudconfig.verify_cloud_conf_gce(cconfig, cluster):
-            return googlecluster.GoogleComputeEngineCluster(name=cluster.lower(),
-                                                            cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
-                                                            memory=int(get_or_none(cconfig, cluster, "memory")),
-                                                            max_vm_mem=max_vm_mem if max_vm_mem != None else -1,
-                                                            networks=networks,
-                                                            vm_slots=int(get_or_none(cconfig, cluster, "vm_slots")),
-                                                            cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
-                                                            storage=int(get_or_none(cconfig, cluster, "storage")),
-                                                            auth_dat_file=get_or_none(cconfig, cluster, "auth_dat_file"),
-                                                            secret_file=get_or_none(cconfig, cluster, "secret_file"),
-                                                            security_group=splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
-                                                            boot_timeout=get_or_none(cconfig, cluster, "boot_timeout"),
-                                                            project_id=get_or_none(cconfig, cluster, "project_id"),
-                                                            enabled=enabled,
-                                                            priority=priority,
-                                                            total_cpu_cores=total_cpu_cores,
-                                                            keep_alive=keep_alive,
-                                                           )
-        elif cloud_type.lower() == "openstacknative" and cloudconfig.verify_cloud_conf_openstacknative(cconfig, cluster):
+                return ec2cluster.\
+                    EC2Cluster(name=cluster.lower(),
+                               host=get_or_none(cconfig, cluster, "host"),
+                               cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
+                               memory=int(get_or_none(cconfig, cluster, "memory")),
+                               max_vm_mem=max_vm_mem if max_vm_mem != None else -1,
+                               networks=networks,
+                               vm_slots=int(get_or_none(cconfig, cluster, "vm_slots")),
+                               cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
+                               storage=int(get_or_none(cconfig, cluster, "storage")),
+                               access_key_id=get_or_none(cconfig, cluster, "access_key_id"),
+                               secret_access_key=get_or_none(cconfig, cluster, "secret_access_key"),
+                               security_group=splitnstrip(",", get_or_none(cconfig,
+                                                                           cluster,
+                                                                           "security_group")),
+                               key_name=get_or_none(cconfig, cluster, "key_name"),
+                               boot_timeout=get_or_none(cconfig, cluster, "boot_timeout"),
+                               secure_connection=get_or_none(cconfig, cluster, "secure_connection"),
+                               regions=map(str, splitnstrip(",", get_or_none(cconfig,
+                                                                             cluster,
+                                                                             "regions"))),
+                               reverse_dns_lookup=get_or_none(cconfig, cluster, "reverse_dns_lookup"),
+                               placement_zone=get_or_none(cconfig, cluster, "placement_zone"),
+                               enabled=enabled,
+                               priority=priority,
+                               keep_alive=keep_alive,
+                               port=port,)
+        elif cloud_type.lower() == "stratuslab" and stratuslab_support and\
+                cloudconfig.verify_cloud_conf_stratuslab(cconfig, cluster):
+            return stratuslabcluster.\
+                StratusLabCluster(name=cluster.lower(),
+                                  host=get_or_none(cconfig, cluster, "host"),
+                                  cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
+                                  memory=int(get_or_none(cconfig, cluster, "memory")),
+                                  max_vm_mem=max_vm_mem if max_vm_mem != None else -1,
+                                  networks=networks,
+                                  vm_slots=int(get_or_none(cconfig, cluster, "vm_slots")),
+                                  cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
+                                  storage=int(get_or_none(cconfig, cluster, "storage")),
+                                  contextualization=get_or_none(cconfig, cluster, "contextualization"),
+                                  enabled=enabled,
+                                  priority=priority,
+                                  keep_alive=keep_alive,)
+        elif cloud_type.lower() == "googlecomputeengine" or cloud_type.lower() == "gce" and\
+                cloudconfig.verify_cloud_conf_gce(cconfig, cluster):
+            return googlecluster.\
+                GoogleComputeEngineCluster(name=cluster.lower(),
+                                           cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
+                                           memory=int(get_or_none(cconfig, cluster, "memory")),
+                                           max_vm_mem=max_vm_mem if max_vm_mem != None else -1,
+                                           networks=networks,
+                                           vm_slots=int(get_or_none(cconfig, cluster, "vm_slots")),
+                                           cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
+                                           storage=int(get_or_none(cconfig, cluster, "storage")),
+                                           auth_dat_file=get_or_none(cconfig, cluster, "auth_dat_file"),
+                                           secret_file=get_or_none(cconfig, cluster, "secret_file"),
+                                           security_group=splitnstrip(",", get_or_none(cconfig,
+                                                                                       cluster,
+                                                                                       "security_group")),
+                                           boot_timeout=get_or_none(cconfig, cluster, "boot_timeout"),
+                                           project_id=get_or_none(cconfig, cluster, "project_id"),
+                                           enabled=enabled,
+                                           priority=priority,
+                                           total_cpu_cores=total_cpu_cores,
+                                           keep_alive=keep_alive,)
+        elif cloud_type.lower() == "openstacknative" and\
+                cloudconfig.verify_cloud_conf_openstacknative(cconfig, cluster):
             return openstackcluster.OpenStackCluster(name=cluster.lower(),
                                                      cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
                                                      memory=int(get_or_none(cconfig, cluster, "memory")),
                                                      max_vm_mem=max_vm_mem if max_vm_mem != None else -1,
                                                      networks=networks,
-                                                     vm_slots=int(get_or_none(cconfig, cluster, "vm_slots")),
-                                                     cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
+                                                     vm_slots=int(get_or_none(cconfig,
+                                                                              cluster,
+                                                                              "vm_slots")),
+                                                     cpu_cores=int(get_or_none(cconfig,
+                                                                               cluster,
+                                                                               "cpu_cores")),
                                                      storage=int(get_or_none(cconfig, cluster, "storage")),
                                                      username=get_or_none(cconfig, cluster, "username"),
                                                      password=get_or_none(cconfig, cluster, "password"),
-                                                     tenant_name=get_or_none(cconfig, cluster, "tenant_name"),
+                                                     tenant_name=get_or_none(cconfig,
+                                                                             cluster,
+                                                                             "tenant_name"),
                                                      auth_url=get_or_none(cconfig, cluster, "auth_url"),
-                                                     security_group=splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
+                                                     security_group=
+                                                     splitnstrip(",", get_or_none(cconfig,
+                                                                                  cluster,
+                                                                                  "security_group")),
                                                      key_name=get_or_none(cconfig, cluster, "key_name"),
-                                                     boot_timeout=get_or_none(cconfig, cluster, "boot_timeout"),
-                                                     secure_connection=get_or_none(cconfig, cluster, "secure_connection"),
-                                                     regions=map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
-                                                     reverse_dns_lookup=get_or_none(cconfig, cluster, "reverse_dns_lookup"),
-                                                     placement_zone=get_or_none(cconfig, cluster, "placement_zone"),
+                                                     boot_timeout=get_or_none(cconfig,
+                                                                              cluster,
+                                                                              "boot_timeout"),
+                                                     secure_connection=get_or_none(cconfig,
+                                                                                   cluster,
+                                                                                   "secure_connection"),
+                                                     regions=map(str, splitnstrip(",",
+                                                                                  get_or_none(cconfig,
+                                                                                              cluster,
+                                                                                              "regions"))),
+                                                     reverse_dns_lookup=get_or_none(cconfig,
+                                                                                    cluster,
+                                                                                    "reverse_dns_lookup"),
+                                                     placement_zone=get_or_none(cconfig,
+                                                                                cluster,
+                                                                                "placement_zone"),
                                                      enabled=enabled,
                                                      priority=priority,
                                                      cacert=get_or_none(cconfig, cluster, "cacert"),
                                                      keep_alive=keep_alive,
-                                                     user_domain_name=get_or_none(cconfig, cluster, "user_domain_name"),
-                                                     project_domain_name=get_or_none(cconfig, cluster, "project_domain_name")
+                                                     user_domain_name=get_or_none(cconfig,
+                                                                                  cluster,
+                                                                                  "user_domain_name"),
+                                                     project_domain_name=get_or_none(cconfig,
+                                                                                     cluster,
+                                                                                     "project_domain_name")
                                                     )
         elif cloud_type.lower() == "azure" and cloudconfig.verify_cloud_conf_azure(cconfig, cluster):
             return azurecluster.AzureCluster(name=cluster.lower(),
@@ -402,7 +439,10 @@ class ResourcePool(object):
                                              password=get_or_none(cconfig, cluster, "password"),
                                              tenant_name=get_or_none(cconfig, cluster, "tenant_name"),
                                              boot_timeout=get_or_none(cconfig, cluster, "boot_timeout"),
-                                             regions=map(str, splitnstrip(",", get_or_none(cconfig, cluster, "regions"))),
+                                             regions=map(str,
+                                                         splitnstrip(",", get_or_none(cconfig,
+                                                                                      cluster,
+                                                                                      "regions"))),
                                              placement_zone=get_or_none(cconfig, cluster, "placement_zone"),
                                              enabled=enabled,
                                              priority=priority,
@@ -536,7 +576,7 @@ class ResourcePool(object):
         return None
 
 
-    def get_fitting_resources(self, network, memory, cpucores, storage, ami, imageloc, targets=[],
+    def get_fitting_resources(self, network, memory, cpucores, storage, ami, imageloc, targets=None,
                               blocked=[]):
         """get a list of Clusters that fit the given VM/Job requirements.
 
@@ -555,7 +595,7 @@ class ResourcePool(object):
             return []
 
         fitting_clusters = []
-        if len(targets) > 0:
+        if targets:
             clusters = self.filter_resources_by_names(targets)
         else:
             clusters = self.resources
@@ -796,7 +836,8 @@ class ResourcePool(object):
         Returns a list of dictionaries with information about the machines
         registered with condor.
         """
-        log.verbose("Querying Condor Collector with %s", config_val.get('global', 'condor_status_command'))
+        log.verbose("Querying Condor Collector with %s",
+                    config_val.get('global', 'condor_status_command'))
         condor_status = condor_out = condor_err = ""
         try:
             condor_status = shlex.split(config_val.get('global', 'condor_status_command'))
@@ -820,7 +861,8 @@ class ResourcePool(object):
         Returns a list of dictionaries with information about the machines masters
         registered with condor.
         """
-        log.verbose("Querying Condor Collector with %s", config_val.get('global', 'condor_status_master_command'))
+        log.verbose("Querying Condor Collector with %s",
+                    config_val.get('global', 'condor_status_master_command'))
         condor_status = condor_out = condor_err = ""
         try:
             condor_status = shlex.split(config_val.get('global', 'condor_status_master_command'))
@@ -896,7 +938,7 @@ class ResourcePool(object):
                 except:
                     log.error("Failed to parse out remote owner on %s", vm.machine_name)
             elif vm.start_req:
-                userexp = re.search('(?<=Owner == ")\w+', vm.start_req)
+                userexp = re.search(r'(?<=Owner == ")\w+', vm.start_req)
                 if userexp:
                     user = userexp.group(0)
                     vmusertype = ':'.join([user, vm.vmtype])
@@ -905,7 +947,8 @@ class ResourcePool(object):
                 pass
             else:
                 log.warning("VM Missing expected Start = ( Owner=='user') and no RemoteOwner \
-                             set on %s - are the condor init scripts on the VM up-to-date?", vm.machine_name)
+                             set on %s - are the condor init scripts on the VM up-to-date?",
+                            vm.machine_name)
                 if vm.start_req:
                     log.warning("VM Start attrib = %s on %s", vm.start_req, vm.machine_name)
                 elif vm.activity == 'Retiring':
@@ -1133,9 +1176,13 @@ class ResourcePool(object):
             for vm in cluster.vms:
                 if hasattr(vm, "job_per_core") and vm.job_per_core:
                     for _ in range(vm.cpucores):
-                        types[vm.uservmtype].append({'memory': vm.memory, 'cores': 1, 'storage': vm.storage})
+                        types[vm.uservmtype].append({'memory': vm.memory,
+                                                     'cores': 1,
+                                                     'storage': vm.storage})
                 else:
-                    types[vm.uservmtype].append({'memory': vm.memory, 'cores': vm.cpucores, 'storage': vm.storage})
+                    types[vm.uservmtype].append({'memory': vm.memory,
+                                                 'cores': vm.cpucores,
+                                                 'storage': vm.storage})
         return types
 
     def machine_jobs_changed(self, current, previous):
@@ -1296,7 +1343,8 @@ class ResourcePool(object):
             banned_changed = False
             for img in self.failures.keys():
                 for entry in self.failures[img]:
-                    if entry.min_use() and entry.dist_false() == config_val.getfloat('global', 'ban_failrate_threshold'):
+                    if entry.min_use() and entry.dist_false() ==\
+                            config_val.getfloat('global', 'ban_failrate_threshold'):
                         # add this img / cluster entry to banned jobs
                         if img in self.banned_job_resource.keys():
                             if entry.name not in self.banned_job_resource[img]:
@@ -1429,9 +1477,12 @@ class ResourcePool(object):
         Return:
             a 3 tuple of the returncodes from the 2 commands used and a return code
         """
-        log.debug("cloud_management.py::do_condor_off: %s, addr: %s, master_addr: %s", machine_name, machine_addr, master_addr)
-        cmd2 = '%s -peaceful -addr "%s" -subsystem startd' % (config_val.get('global', 'condor_off_command'), machine_addr)
-        cmd3 = '%s -peaceful -addr "%s" -subsystem master' % (config_val.get('global', 'condor_off_command'), master_addr)
+        log.debug("cloud_management.py::do_condor_off: %s, addr: %s, master_addr: %s",
+                  machine_name, machine_addr, master_addr)
+        cmd2 = '%s -peaceful -addr "%s" -subsystem startd' %\
+               (config_val.get('global', 'condor_off_command'), machine_addr)
+        cmd3 = '%s -peaceful -addr "%s" -subsystem master' %\
+               (config_val.get('global', 'condor_off_command'), master_addr)
         #args = []
         args2 = []
         args3 = []
@@ -1449,7 +1500,8 @@ class ResourcePool(object):
             #args.append(config.ssh_path)
             #args.append('-i')
             #args.append(config.cloudscheduler_ssh_key)
-            central_address = re.search('(?<=http://)(.*):', config_val.get('global', 'condor_webservice_url')).group(1)
+            central_address = re.search('(?<=http://)(.*):',
+                                        config_val.get('global', 'condor_webservice_url')).group(1)
             #args.append(central_address)
             #args.append(cmd)
 
@@ -1498,7 +1550,8 @@ class ResourcePool(object):
             if sp1.returncode == 0 and ret1 == 0:
                 log.debug("Successfuly sent condor_off startd to %s", machine_name)
             else:
-                log.debug("Failed to send condor_off startd to %s: Reason: %s. Err: %s", machine_name, out, err)
+                log.debug("Failed to send condor_off startd to %s: Reason: %s. Err: %s",
+                          machine_name, out, err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"", ' '.join(args2), e.errno, e.strerror)
             return (-1, -1, -1, -1)
@@ -1518,7 +1571,8 @@ class ResourcePool(object):
             if sp2.returncode == 0 and ret2 == 0:
                 log.debug("Successfuly sent condor_off master to %s", machine_name)
             else:
-                log.debug("Failed to send condor_off master to %s : Reason: %s : Error: %s", machine_name, out, err)
+                log.debug("Failed to send condor_off master to %s : Reason: %s : Error: %s",
+                          machine_name, out, err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"", ' '.join(args3), e.errno, e.strerror)
             return (-1, -1, -1, -1)
@@ -1540,14 +1594,16 @@ class ResourcePool(object):
         """
         log.debug("cloud_management.py::do_advertise_master - target_file: %s", target_file)
 
-        cmd = '%s INVALIDATE_MASTER_ADS "%s"' % (config_val.get('global', 'condor_advertise_command'), target_file)
+        cmd = '%s INVALIDATE_MASTER_ADS "%s"' %\
+              (config_val.get('global', 'condor_advertise_command'), target_file)
         args = []
 
         if target_file is None:
             log.error("No target_file specified, cannot perform condor_advertise INVALIDATE_MASTER_ADS")
             return (-1, -1)
         if config_val.get('global', 'cloudscheduler_ssh_key'):
-            central_address = re.search('(?<=http://)(.*):', config_val.get('global', 'condor_webservice_url')).group(1)
+            central_address = re.search('(?<=http://)(.*):',
+                                        config_val.get('global', 'condor_webservice_url')).group(1)
             args.append(config_val.get('global', 'ssh_path'))
             args.append('-i')
             args.append(config_val.get('global', 'cloudscheduler_ssh_key'))
@@ -1569,7 +1625,8 @@ class ResourcePool(object):
             if sp1.returncode == 0:
                 log.verbose("Successfuly sent condor_advertise invalidate_master_ads %s", target_file)
             else:
-                log.debug("Failed to send condor_advertise invalidate_master_ads %s: Reason: %s. Err: %s", target_file, out, err)
+                log.debug("Failed to send condor_advertise invalidate_master_ads %s: Reason: %s. Err: %s",
+                          target_file, out, err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"", ' '.join(args), e.errno, e.strerror)
             return (-1, -1)
@@ -1592,14 +1649,16 @@ class ResourcePool(object):
         """
         log.debug("cloud_management.py::do_advertise_startd - target_file: %s", target_file)
 
-        cmd = '%s INVALIDATE_STARTD_ADS "%s"' % (config_val.get('global', 'condor_advertise_command'), target_file)
+        cmd = '%s INVALIDATE_STARTD_ADS "%s"' % \
+              (config_val.get('global', 'condor_advertise_command'), target_file)
         args = []
 
         if target_file is None:
             log.error("No target_file specified, cannot perform condor_advertise INVALIDATE_STARTD_ADS")
             return (-1, -1)
         if config_val.get('global', 'cloudscheduler_ssh_key'):
-            central_address = re.search('(?<=http://)(.*):', config_val.get('global', 'condor_webservice_url')).group(1)
+            central_address = re.search('(?<=http://)(.*):',
+                                        config_val.get('global', 'condor_webservice_url')).group(1)
             args.append(config_val.get('global', 'ssh_path'))
             args.append('-i')
             args.append(config_val.get('global', 'cloudscheduler_ssh_key'))
@@ -1621,7 +1680,8 @@ class ResourcePool(object):
             if sp1.returncode == 0:
                 log.verbose("Successfuly sent condor_advertise invalidate_startd_ads %s", target_file)
             else:
-                log.debug("Failed to send condor_advertise invalidate_startd_ads %s: Reason: %s. Err: %s", target_file, out, err)
+                log.debug("Failed to send condor_advertise invalidate_startd_ads %s: Reason: %s. Err: %s",
+                          target_file, out, err)
         except OSError, e:
             log.error("Problem running %s, got errno %d \"%s\"", ' '.join(args), e.errno, e.strerror)
             return (-1, -1)
@@ -1763,7 +1823,8 @@ class ResourcePool(object):
             for vm in cluster.vms:
                 if vm.status == "Starting" or vm.status == "Unpropagated":
                     num_starting += 1
-        log.verbose("There are %i Starting VMs, the max_starting_vm is %i.", num_starting, config_val.getint('global', 'max_starting_vm'))
+        log.verbose("There are %i Starting VMs, the max_starting_vm is %i.",
+                    num_starting, config_val.getint('global', 'max_starting_vm'))
         return num_starting
 
     def get_starting_of_usertype(self, vmtype):
@@ -1851,7 +1912,8 @@ class ResourcePool(object):
                     time.sleep(1)
                 if not desthreads[-1].is_alive():
                     if desthreads[-1].get_result() != 0:
-                        output += "Destroying VM %s failed. Leaving it for now.\n" % desthreads[-1].get_vm().id
+                        output += "Destroying VM %s failed. Leaving it for now.\n" %\
+                                  desthreads[-1].get_vm().id
                     else:
                         output += "VM %s has been Destroyed.\n" % thread.get_vm().id
                     desthreads[-1].join()
@@ -2359,4 +2421,5 @@ class VMMachine(object):
 
 
     def __repr__(self):
-        return "MachineName: %s, State: %s, Activity: %s, VMType: %s, SlotType: %s, TotalSlots: %s" % (self.machine_name, self.state, self.activity, self.vmtype, self.slot_type, self.total_slots)
+        return "MachineName: %s, State: %s, Activity: %s, VMType: %s, SlotType: %s, TotalSlots: %s" %\
+               (self.machine_name, self.state, self.activity, self.vmtype, self.slot_type, self.total_slots)
