@@ -2,6 +2,19 @@ from cloudscheduler import utilities
 
 log = utilities.get_cloudscheduler_logger()
 
+def verify_cloud_conf_localhost(conf, name):
+    """
+    :param conf: Ref to config file data
+    :param name: name of cloud checking conf values for
+    :return: True if all required fields present, False otherise
+    """
+    required_options_localhost = {'cloud_type', 'memory', 'networks'}
+    options = set(conf.options(name))
+    diff = required_options_localhost - options
+    if len(diff) > 0:
+        log.error("Missing required options in %s: %s", name, str(diff))
+        return False
+    return True
 
 def verify_cloud_conf_openstacknative(conf, name):
     """

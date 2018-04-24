@@ -929,6 +929,21 @@ class Scheduler(threading.Thread):
                         'instance_type':vminstancetype_expanded,
                         'job_per_core':job.job_per_core,}
                 create_ret = resource.vm_create(**args)
+            elif resource.__class__.__name__ == "LocalCluster":
+                customizations.append((resource.cloud_type, cloud_type_file_dest))
+                customizations.append((resource.name, cloud_name_file_dest))
+                args= {'vm_name': job.req_image,
+                       'vm_image': vmimage_expanded,
+                       'vm_mem': job.req_memory,
+                       'vm_cores': job.req_cpucores, 
+                       'vm_user':job.user,
+                       'customizations': customizations,
+                       'pre_customization': pre_customizations,
+                       'extra_userdata': extra_userdata,
+                       'vm_keepalive': job.keep_alive,
+                       'key_name': job.key_name,
+                       'vm_type': job.req_vmtype}
+                create_ret = resource.vm_create(**args)
 
             # If the VM create fails, try again on another resource
             if create_ret != 0:

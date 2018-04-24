@@ -46,6 +46,10 @@ try:
     from cloudscheduler import  botocluster
 except ImportError:
     pass
+try:
+    import localcluster
+except ImportError:
+    pass
 
 import cloudscheduler.config as config
 from cloudscheduler import cloudconfig
@@ -452,30 +456,38 @@ class ResourcePool(object):
             except TypeError:
                 port = 8773
             if cloudconfig.verify_cloud_conf_ec2(cconfig, cluster):
-                return botocluster.\
-                    BotoCluster(name=cluster.lower(),
-                                host=get_or_none(cconfig, cluster, "host"),
-                                cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
-                                memory=int(get_or_none(cconfig, cluster, "memory")),
-                                max_vm_mem=max_vm_mem if max_vm_mem != None else -1,
-                                networks=networks,
-                                vm_slots=int(get_or_none(cconfig, cluster, "vm_slots")),
-                                cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
-                                storage=int(get_or_none(cconfig, cluster, "storage")),
-                                access_key_id=get_or_none(cconfig, cluster, "access_key_id"),
-                                secret_access_key=get_or_none(cconfig, cluster, "secret_access_key"),
-                                security_group=splitnstrip(",",
-                                                           get_or_none(cconfig, cluster, "security_group")),
-                                key_name=get_or_none(cconfig, cluster, "key_name"),
-                                boot_timeout=get_or_none(cconfig, cluster, "boot_timeout"),
-                                secure_connection=get_or_none(cconfig, cluster, "secure_connection"),
-                                regions=get_or_none(cconfig, cluster, "regions"),
-                                reverse_dns_lookup=get_or_none(cconfig, cluster, "reverse_dns_lookup"),
-                                placement_zone=get_or_none(cconfig, cluster, "placement_zone"),
-                                enabled=enabled,
-                                priority=priority,
-                                keep_alive=keep_alive,
-                                port=port,)
+                return botocluster.BotoCluster(name=cluster.lower(),
+                                               host=get_or_none(cconfig, cluster, "host"),
+                                               cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
+                                               memory=int(get_or_none(cconfig, cluster, "memory")),
+                                               max_vm_mem=max_vm_mem if max_vm_mem != None else -1,
+                                               networks=networks,
+                                               vm_slots=int(get_or_none(cconfig, cluster, "vm_slots")),
+                                               cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
+                                               storage=int(get_or_none(cconfig, cluster, "storage")),
+                                               access_key_id=get_or_none(cconfig, cluster, "access_key_id"),
+                                               secret_access_key=get_or_none(cconfig, cluster, "secret_access_key"),
+                                               security_group=splitnstrip(",", get_or_none(cconfig, cluster, "security_group")),
+                                               key_name=get_or_none(cconfig, cluster, "key_name"),
+                                               boot_timeout=get_or_none(cconfig, cluster, "boot_timeout"),
+                                               secure_connection=get_or_none(cconfig, cluster, "secure_connection"),
+                                               regions=get_or_none(cconfig, cluster, "regions"),
+                                               reverse_dns_lookup=get_or_none(cconfig, cluster, "reverse_dns_lookup"),
+                                               placement_zone=get_or_none(cconfig, cluster, "placement_zone"),
+                                               enabled=enabled,
+                                               priority=priority,
+                                               keep_alive=keep_alive,
+                                               port=port,
+                                              )
+        elif cloud_type.lower() == "localhost" and cloudconfig.verify_cloud_conf_localhost(cconfig, cluster):
+            return localcluster.LocalCluster(name=cluster.lower(),
+                   cloud_type=get_or_none(cconfig, cluster, "cloud_type"),
+                   memory=int(get_or_none(cconfig, cluster, 'memory')),
+                   networks=networks,
+                   cpu_cores=int(get_or_none(cconfig, cluster, "cpu_cores")),
+                   key_name=get_or_none(cconfig, cluster, "key_name"),
+                   vm_slots=int(get_or_none(cconfig, cluster, "vm_slots"))
+                   )
         else:
             log.error("ResourcePool.setup encountered a problem creating entry for %s", cluster)
         return None
