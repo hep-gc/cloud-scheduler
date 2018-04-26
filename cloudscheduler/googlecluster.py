@@ -14,6 +14,7 @@ try:
     from oauth2client.file import Storage
     #from oauth2client.tools import run
     from oauth2client.tools import run_flow
+    from oauth2client.service_account import ServiceAccountCredentials
     from apiclient.discovery import build
 except Exception as e:
     print e
@@ -30,9 +31,12 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         "RUNNING" : "Running",
         "Starting" : "Starting",
         "shutting-down" : "Shutdown",
-        "terminated" : "Shutdown",
+        "terminated" : "Error",
+        "TERMINATED" : "Error",
+        "DONE" : "Shutdown",
         "PROVISIONING" : "Provisioning",
         "error" : "Error",
+        "ERROR" : "Error",
     }
 
     GCE_SCOPE = 'https://www.googleapis.com/auth/compute'
@@ -40,10 +44,10 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
     API_VERSION = 'v1'
     GCE_URL = 'https://www.googleapis.com/compute/%s/projects/' % (API_VERSION)
 
-    DEFAULT_ZONE = 'us-central1-b' # will need to be option in job
-    DEFAULT_MACHINE_TYPE = 'n1-standard-1'  # option specified in job config
+    DEFAULT_ZONE = 'us-west1-b' # will need to be option in job
+    DEFAULT_MACHINE_TYPE = 'n1-standard-2'  # option specified in job config
     DEFAULT_INSTANCE_TYPE_LIST = _attr_list_to_dict(config.config_options.get('job', 'default_VMInstanceTypeList'))
-    DEFAULT_IMAGE = 'cloudscheduler-centos-9'
+    DEFAULT_IMAGE = 'test4cs-cernvm-snap-30g'
     DEFAULT_ROOT_PD_NAME = 'hepgc-uvic-root-pd'
 
     DEFAULT_NETWORK = 'default' # job option setup
@@ -88,15 +92,19 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         self.keep_alive = keep_alive
         if not project_id:
             return None
-
+        self.preemptible = True # TODO Add to the configuration for the cloud / job for gce
+        if self.preemptible:
+            self.gce_hostname_prefix = "gce-cs-p-vm"
 
         # Perform OAuth 2.0 authorization.
-        flow = flow_from_clientsecrets(self.secret_file_path, scope=self.GCE_SCOPE)
-        auth_storage = Storage(self.auth_dat_file_path)
-        credentials = auth_storage.get()
+        #flow = flow_from_clientsecrets(self.secret_file_path, scope=self.GCE_SCOPE)
+        #auth_storage = Storage(self.auth_dat_file_path)
+        #credentials = auth_storage.get()
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(
+                 self.secret_file_path, scopes=self.GCE_SCOPE)
 
-        if credentials is None or credentials.invalid:
-            credentials = run_flow(flow, auth_storage)
+        #if credentials is None or credentials.invalid:
+        #    credentials = run_flow(flow, auth_storage)
         http = httplib2.Http()
         self.auth_http = credentials.authorize(http)
 
@@ -138,6 +146,7 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
         :param extra_userdata:
         :return:
         """
+        vm_ami = self.DEFAULT_IMAGE
         try:
             if self.network_address in vm_image.keys():
                 vm_ami = vm_image[self.network_address]
@@ -187,12 +196,13 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
         #zone_url = '%s/zones/%s' % (self.project_url, self.DEFAULT_ZONE)
         network_url = '%s/global/networks/%s' % (self.project_url, self.DEFAULT_NETWORK)
+        log.debug("booting GCE with vm_storage of %s" % str(vm_storage))        
 
         # Construct the request body
         disk = {
             'name': self.DEFAULT_ROOT_PD_NAME,
             'sourceSnapshot':
-                'https://www.googleapis.com/compute/v1/projects/atlasgce/global/snapshots/%s'%vm_image_name,
+                'https://www.googleapis.com/compute/v1/projects/atlas-bnl-gov/global/snapshots/%s'%vm_image_name,
             'sizeGb':vm_storage
         }
 
@@ -269,7 +279,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
                 ]
             }
         }
-
+        if self.preemptible:
+            instance['scheduling'] = [{ 'preemptible':'true' }]
 
         # Create the instance
         response = None
@@ -381,8 +392,11 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
 
 
                     vm.status = self.VM_STATES[instance['status']]
-                    vm.ipaddress = instance['networkInterfaces'][0]['accessConfigs'][0]['natIP']
-
+                    try:
+                        if 'natIP' in instance['networkInterfaces'][0]['accessConfigs'][0]:
+                            vm.ipaddress = instance['networkInterfaces'][0]['accessConfigs'][0]['natIP']
+                    except KeyError as ex:
+                        log.exception("Could not set ipaddress: %s", ex)
         else:
             pass
 
@@ -401,7 +415,8 @@ class GoogleComputeEngineCluster(cluster_tools.ICluster):
             if 'zone' in response:
                 zone_name = response['zone'].split('/')[-1]
                 request = gce_service.zoneOperations().get(project=self.project_id,
-                                                           operation=operation_id, zone=zone_name)
+                                                           operation=operation_id,
+                                                           zone=zone_name)
             else:
                 request = gce_service.globalOperations().get(project=self.project_id,
                                                              operation=operation_id)
