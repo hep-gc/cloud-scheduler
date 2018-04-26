@@ -1781,7 +1781,7 @@ class Cleanup(threading.Thread):
                                         unused_vms_of_type[i].machine_name)
                             # Check that machine is Isn't still starting
                             # and CS has picked up a zombie condor entry
-                            if vm.status != 'Running' and vm.status != 'RUNNING':
+                            if vm.status.lower() != 'running':
                                 log.verbose("VM %s still Starting, not going to shutdown",
                                             unused_vms_of_type[i].machine_name)
                                 break
