@@ -70,7 +70,7 @@ def verify_cloud_conf_gce(conf, name):
     :param name: name of cloud checking conf values for
     :return: True if all required fields present, False otherise
     """
-    required_options_gce = {'auth_dat_file', 'cloud_type', 'networks', 'project_id',
+    required_options_gce = {'cloud_type', 'networks', 'project_id',
                             'secret_file', 'security_group', 'vm_slots'}
     options = set(conf.options(name))
     diff = required_options_gce - options
