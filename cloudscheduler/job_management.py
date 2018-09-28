@@ -563,7 +563,7 @@ class JobPool(object):
             else:
                 return ""
 
-        def _attribute_from_list(self, classad, attribute):
+        def _attribute_from_list(classad, attribute):
             try:
                 attr_list = classad[attribute]
                 try:
