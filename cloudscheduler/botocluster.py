@@ -286,6 +286,7 @@ class BotoCluster(cluster_tools.ICluster):
         log.info("Destroying VM: %s Name: %s on %s Reason: %s", \
                  vm.id, vm.hostname, self.name, reason)
         client = self._get_connection()
+        response = None
         try:
             response = client.terminate_instances(InstanceIds=[vm.id])
             if 'TerminatingInstances' in response.keys():
