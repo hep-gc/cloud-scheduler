@@ -563,7 +563,7 @@ class JobPool(object):
             else:
                 return ""
 
-        def _attribute_from_list(classad, attribute):
+        def _attribute_from_list(self, classad, attribute):
             try:
                 attr_list = classad[attribute]
                 try:
@@ -622,8 +622,8 @@ class JobPool(object):
                     except:
                         self.log.exception("Problem extracting Cpus from Requirements")
             # VMAMI requires special fiddling
-            _attribute_from_list(classad, "VMAMI")
-            _attribute_from_list(classad, "VMInstanceType")
+            _attribute_from_list(self, classad, "VMAMI")
+            _attribute_from_list(self, classad, "VMInstanceType")
 
             try:
                 jobs.append(Job(**classad))
