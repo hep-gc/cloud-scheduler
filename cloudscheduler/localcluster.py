@@ -57,7 +57,7 @@ class LocalCluster(cluster_tools.ICluster):
         return state
 
     def __setstate__(self, state):
-        cluster_tools.ICluster.__setstate(self, state)
+        cluster_tools.ICluster.__setstate__(self, state)
 
     def vm_create(self, vm_name, vm_image, vm_mem, vm_cores, vm_type, vm_user,
                   vm_keepalive=0, network='default', customizations=None,
