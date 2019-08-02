@@ -382,6 +382,8 @@ class ResourcePool:
                     keep_alive=keep_alive,
                     user_domain_name=get_or_none(cconfig, cluster, "user_domain_name"),
                     project_domain_name=get_or_none(cconfig, cluster, "project_domain_name")
+                    boot_volume = get_or_none(cconfig, cluster, "boot_volume"),
+                    boot_volume_gb_per_core = get_or_none(cconfig, cluster, "boot_volume_gb_per_core"),
                     )
         elif cloud_type.lower() == "azure" and cloudconfig.verify_cloud_conf_azure(cconfig, cluster):
             return azurecluster.AzureCluster(name = cluster.lower(),

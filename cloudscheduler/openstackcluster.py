@@ -37,7 +37,8 @@ class OpenStackCluster(cluster_tools.ICluster):
                  key_name=None, boot_timeout=None, secure_connection="",
                  regions="", reverse_dns_lookup=False,placement_zone=None,
                  enabled=True, priority=0, cacert=None,keep_alive=0, user_domain_name=None,
-                 project_domain_name=None):
+                 project_domain_name=None, boot_volume=False,
+                 boot_volume_gb_per_core=20):
 
         # Call super class's init
         cluster_tools.ICluster.__init__(self,name=name, host=auth_url, cloud_type=cloud_type,
@@ -115,6 +116,8 @@ class OpenStackCluster(cluster_tools.ICluster):
         import novaclient.exceptions
         use_cloud_init = use_cloud_init or config.use_cloud_init
         nova = self._get_creds_nova_updated()
+        if boot_volume:
+            cinder = self._get_creds_cinder()
         if len(securitygroup) != 0:
             sec_group = []
             for group in securitygroup:
@@ -238,14 +241,52 @@ class OpenStackCluster(cluster_tools.ICluster):
                     netid = []
         else:
             netid = []
-        # Need to get the rotating hostname from the google code to use for here.  
+        # Need to get the rotating hostname from the google code to use for here.
         name = self._generate_next_name()
         instance = None
 
         if name:
+            log.info("Trying to create VM on %s: " % self.name)
             try:
-                instance = nova.servers.create(name=name, image=imageobj, flavor=flavor, key_name=key_name, 
-                                               availability_zone=self.placement_zone, nics =netid, userdata=user_data, security_groups=sec_group)
+                if not boot_volume:
+                    instance = nova.servers.create(name=name,
+                                                   image=imageobj,
+                                                   flavor=flavor,
+                                                   key_name=key_name,
+                                                   availability_zone=self.placement_zone,
+                                                   nics =netid,
+                                                   userdata=user_data,
+                                                   security_groups=sec_group)
+                else:
+                    bdm = None
+                    log.debug("creating boot volume")
+                    try:
+                        bv_name = "vol-{}".format(name)
+                        if boot_volume_gb_per_core:
+                            bv_size = boot_volume_gb_per_core * cpu_cores
+                        else:
+                            bv_size = 20
+                        cv = cinder.volumes.create(name=bv_name,
+                                                   size=bv_size,
+                                                   imageRef=imageobj.id)
+                        while (cv.status != 'available'):
+                            time.sleep(1)
+                        cv = cinder.volumes.get(cv.id)
+                        cinder.volumes.set_bootable(cv, True)
+                        bdm = {'vda': str(cv.id) + ':::1'}
+                    except Exception as e:
+                        log.error("failed to create boot volume: {}".format(e))
+                        raise e
+                    log.debug("boot volume creation successful")
+                    instance = nova.servers.create(name=name,
+                                                   image=imageobj,
+                                                   flavor=flavor,
+                                                   key_name=key_name,
+                                                   block_device_mapping=bdm,
+                                                   availability_zone=self.placement_zone,
+                                                   nics=netid,
+                                                   userdata=user_data,
+                                                   security_groups=sec_group)
                 #print instance.__dict__
             except novaclient.exceptions.OverLimit as e:
                 log.info("Unable to create VM without exceeded quota on %s: %s" % (self.name, e.message))
@@ -293,8 +334,8 @@ class OpenStackCluster(cluster_tools.ICluster):
         except novaclient.exceptions.NotFound as e:
             log.error("VM %s not found on %s: removing from CS" % (vm.id, self.name))
         except Exception as e:
-            try:
-                log.error("Unhandled exception while destroying VM on %s : %s" % (self.name,e))
+                try:
+                    log.error("Unhandled exception while destroying VM on %s : %s" % (self.name,e))
                 return 1
             except:
                 log.error("Failed to log exception properly?")
@@ -400,6 +441,22 @@ class OpenStackCluster(cluster_tools.ICluster):
         log.debug("Session object for %s created" % self.name)
         return sess
 
+    def _get_creds_cinder(self):
+        try:
+            from cinderclient import client as cclient
+        except Exception as e:
+            print("Unable to import cinderclient - cannot create boot volumes")
+            print(e)
+            sys.exit(1)
+        try:
+            cinder = cclient.Client("3",
+                                    session=self.session,
+                                    region_name=self.regions[0],
+                                    timeout=10)
+        except Exception as e:
+            log.error("Cannot use cinder on {}: {}".format(self.name, e))
+            raise e
+        return cinder
 
     def _find_network(self, name):
         nova = self._get_creds_nova_updated()
