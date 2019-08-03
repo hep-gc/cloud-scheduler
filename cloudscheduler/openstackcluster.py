@@ -118,6 +118,7 @@ class OpenStackCluster(cluster_tools.ICluster):
         nova = self._get_creds_nova_updated()
         if boot_volume:
             cinder = self._get_creds_cinder()
+            from cinderclient import exceptions as ccexceptions
         if len(securitygroup) != 0:
             sec_group = []
             for group in securitygroup:
@@ -260,23 +261,19 @@ class OpenStackCluster(cluster_tools.ICluster):
                 else:
                     bdm = None
                     log.debug("creating boot volume")
-                    try:
-                        bv_name = "vol-{}".format(name)
-                        if boot_volume_gb_per_core:
-                            bv_size = boot_volume_gb_per_core * cpu_cores
-                        else:
-                            bv_size = 20
-                        cv = cinder.volumes.create(name=bv_name,
-                                                   size=bv_size,
-                                                   imageRef=imageobj.id)
-                        while (cv.status != 'available'):
-                            time.sleep(1)
+                    bv_name = "vol-{}".format(name)
+                    if boot_volume_gb_per_core:
+                        bv_size = boot_volume_gb_per_core * cpu_cores
+                    else:
+                        bv_size = 20
+                    cv = cinder.volumes.create(name=bv_name,
+                                               size=bv_size,
+                                               imageRef=imageobj.id)
+                    while (cv.status != 'available'):
+                        time.sleep(1)
                         cv = cinder.volumes.get(cv.id)
-                        cinder.volumes.set_bootable(cv, True)
-                        bdm = {'vda': str(cv.id) + ':::1'}
-                    except Exception as e:
-                        log.error("failed to create boot volume: {}".format(e))
-                        raise e
+                    cinder.volumes.set_bootable(cv, True)
+                    bdm = {'vda': str(cv.id) + ':::1'}
                     log.debug("boot volume creation successful")
                     instance = nova.servers.create(name=name,
                                                    image=imageobj,
@@ -290,9 +287,14 @@ class OpenStackCluster(cluster_tools.ICluster):
                 #print instance.__dict__
             except novaclient.exceptions.OverLimit as e:
                 log.info("Unable to create VM without exceeded quota on %s: %s" % (self.name, e.message))
+                if cv: cv.delete
+            except ccexceptions.ClientException as e:
+                log.error("failed to create boot volume: {}".format(e))
+                if cv: cv.delete 
             except Exception as e:
                 #print e
                 log.error("Unhandled exception while creating vm on %s: %s" %(self.name, e))
+                if cv: cv.delete
             if instance:
                 instance_id = instance.id
                 if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
@@ -334,8 +336,8 @@ class OpenStackCluster(cluster_tools.ICluster):
         except novaclient.exceptions.NotFound as e:
             log.error("VM %s not found on %s: removing from CS" % (vm.id, self.name))
         except Exception as e:
-                try:
-                    log.error("Unhandled exception while destroying VM on %s : %s" % (self.name,e))
+            try:
+                log.error("Unhandled exception while destroying VM on %s : %s" % (self.name,e))
                 return 1
             except:
                 log.error("Failed to log exception properly?")
