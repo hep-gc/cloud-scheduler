@@ -291,15 +291,29 @@ class OpenStackCluster(cluster_tools.ICluster):
                             security_groups=sec_group)
                 # print instance.__dict__
             except novaclient.exceptions.OverLimit as e:
-                log.info("Unable to create VM without exceeded quota on %s: %s" % (self.name, e.message)
-                if cv: cv.delete
+                log.info("Unable to create VM without exceeded quota on %s: %s" % (self.name, e.message))
+                try:
+                    cv.delete
+                except NameError:
+                    pass
+                else:
+                    log.info("deleted created boot volume")
             except ccexceptions.ClientException as e:
                 log.error("failed to create boot volume: {}".format(e))
-                if cv: cv.delete 
+                try:
+                    cv.delete
+                except NameError:
+                    pass
+                else:
+                    log.info("deleted created boot volume")
             except Exception as e:
-                #print e
                 log.error("Unhandled exception while creating vm on %s: %s" %(self.name, e))
-                if cv: cv.delete
+                try:
+                    cv.delete
+                except NameError:
+                    pass
+                else:
+                    log.info("deleted created boot volume")
             if instance:
                 instance_id = instance.id
                 if not vm_keepalive and self.keep_alive: #if job didn't set a keep_alive use the clouds default
