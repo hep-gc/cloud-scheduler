@@ -69,8 +69,14 @@ class OpenStackCluster(cluster_tools.ICluster):
         self.placement_zone = placement_zone
         self.flavor_set = set()
         self.cacert = cacert
-        self.boot_volume = boot_volume
-        self.boot_volume_gb_per_core = boot_volume_gb_per_core
+        try:
+            self.boot_volume = boot_volume.lower() in ["y", "yes", "true", "on"]
+        except AttributeError:
+            self.boot_volume = False
+        try:
+            self.boot_volume_gb_per_core = int(boot_volume_gb_per_core)
+        except (TypeError, ValueError):
+            self.boot_volume_gb_per_core = 20
         self.user_domain_name = user_domain_name if user_domain_name is not None else "Default"
         self.project_domain_name = project_domain_name if project_domain_name is not None else "Default"
         self.session = None
@@ -267,7 +273,7 @@ class OpenStackCluster(cluster_tools.ICluster):
                     log.debug("creating boot volume")
                     bv_name = "vol-{}".format(name)
                     if self.boot_volume_gb_per_core:
-                        bv_size = self.boot_volume_gb_per_core * cpu_cores
+                        bv_size = self.boot_volume_gb_per_core * self.cpu_cores
                     else:
                         bv_size = 20
                     cv = cinder.volumes.create(name=bv_name,
