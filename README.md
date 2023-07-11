@@ -1,3 +1,7 @@
+# THIS REPO IS NO LONGER MAINTAINED!  THE NEW CLOUDSCHEDULER REPO IS AT https://github.com/hep-gc/cloudscheduler !
+
+
+
 # Cloud Scheduler 1.13.2 README
 
 ## Introduction
